@@ -8,6 +8,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
   const [overlayKey, setOverlayKey] = useState(0);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOverlayKey((k) => k + 1);
   }, [pathname]);
 
