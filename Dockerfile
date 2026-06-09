@@ -35,9 +35,8 @@ COPY --from=builder /app/public          ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static    ./.next/static
 
-# SQLite data directory — mount a volume here in production
+# SQLite data directory — mount a Railway Volume at /data in production
 RUN mkdir -p /data && chown nextjs:nodejs /data
-VOLUME /data
 
 USER nextjs
 
