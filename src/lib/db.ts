@@ -21,7 +21,7 @@
 
 import Database from "better-sqlite3";
 import path from "path";
-import { seedBuiltinAgents } from "./agentSeed";
+import { seedBuiltinAgents, backfillAgentHistory } from "./agentSeed";
 import { applyMigrations } from "./migrations";
 import { isTursoConfigured } from "./db-turso";
 
@@ -103,6 +103,7 @@ export function getDb(): Database.Database {
 
   applyMigrations(_db);
   seedBuiltinAgents(_db);
+  backfillAgentHistory(_db);
 
   return _db;
 }
