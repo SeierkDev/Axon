@@ -332,8 +332,9 @@ describe("getNetworkStats", () => {
     expect(typeof stats.payments.totalUsdcTransacted).toBe("number");
     expect(typeof stats.payments.totalTxns).toBe("number");
 
-    expect(stats.workflows).toBeDefined();
-    expect(typeof stats.workflows.total).toBe("number");
+    expect(typeof stats.tasks.weeklyCompleted).toBe("number");
+    expect(typeof stats.tasks.weeklySuccessRate).toBe("number");
+    expect(typeof stats.payments.weeklyUsdcTransacted).toBe("number");
 
     expect(Array.isArray(stats.topAgents)).toBe(true);
     expect(Array.isArray(stats.topCapabilities)).toBe(true);
