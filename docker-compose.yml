@@ -1,0 +1,32 @@
+services:
+  axon:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_PATH: /data/axon.db
+      # Copy .env.example → .env.local and fill in values, then uncomment:
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      # HELIUS_API_KEY: ${HELIUS_API_KEY}
+      # NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS: ${NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS}
+      # SOLANA_NETWORK: mainnet-beta
+      # SEED_SECRET: ${SEED_SECRET}
+      # CRON_SECRET: ${CRON_SECRET}
+      # CORS_ORIGIN: "*"
+      LOG_LEVEL: info
+      # Allow the in-container SQLite to be used without a Turso setup:
+      AXON_ALLOW_EPHEMERAL_DB: "false"
+    volumes:
+      - axon_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  axon_data:
+    driver: local

@@ -1,0 +1,129 @@
+import Link from "next/link";
+import { searchAgents, getAgentCounts } from "@/lib/agents";
+import { getAllCapabilities } from "@/lib/capabilities";
+import type { SortField } from "@/lib/agents";
+import SiteNav from "@/components/SiteNav";
+import { MarketplaceGrid } from "./MarketplaceGrid";
+
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Agent Marketplace — Axon" };
+
+const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: "reputation",  label: "Top Rated" },
+  { value: "activity",    label: "Most Active" },
+  { value: "successRate", label: "Reliability" },
+  { value: "latency",     label: "Fastest" },
+  { value: "reviews",     label: "Best Reviewed" },
+  { value: "price",       label: "Lowest Price" },
+  { value: "createdAt",   label: "Newest" },
+];
+
+export default async function AgentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ capability?: string; sort?: string }>;
+}) {
+  const { capability, sort } = await searchParams;
+  const counts = getAgentCounts();
+  const capabilities = getAllCapabilities();
+  const activeSort = sort ?? "reputation";
+
+  const filtered = searchAgents({
+    capability: capability || undefined,
+    sort: (activeSort as SortField),
+    limit: 200,
+  });
+
+  return (
+    <div className="bg-white min-h-screen text-[#0a0a0a]">
+      <SiteNav />
+
+      <main className="max-w-6xl mx-auto px-6 pt-32 pb-24">
+
+        {/* Header */}
+        <div className="mb-10">
+          <p className="text-xs font-mono text-gray-400 tracking-wider mb-3">AXON MARKETPLACE</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">Agent Marketplace</h1>
+          <p className="text-gray-500 max-w-2xl">
+            Compare agents by capability, price, reputation, and payment readiness before routing work to them.
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-gray-100 mb-10">
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{counts.total}</p>
+            <p className="text-xs text-gray-400 mt-1">Listed Agents</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{counts.paid}</p>
+            <p className="text-xs text-gray-400 mt-1">Priced Listings</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{counts.categories}</p>
+            <p className="text-xs text-gray-400 mt-1">Categories</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{counts.active}</p>
+            <p className="text-xs text-gray-400 mt-1">Active Agents</p>
+          </div>
+        </div>
+
+        {/* Sort tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-6 border-b border-gray-100">
+          {SORT_OPTIONS.map(({ value, label }) => (
+            <Link
+              key={value}
+              href={`/agents?${capability ? `capability=${encodeURIComponent(capability)}&` : ""}sort=${value}`}
+              className={`text-xs px-4 py-2 rounded-t whitespace-nowrap transition-colors font-medium ${
+                activeSort === value
+                  ? "text-gray-900 border-b-2 border-gray-900 -mb-px"
+                  : "text-gray-400 hover:text-gray-700"
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Capability filter */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          <Link
+            href={sort ? `/agents?sort=${sort}` : "/agents"}
+            className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
+              !capability
+                ? "border-gray-900 bg-gray-900 text-white"
+                : "border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700"
+            }`}
+          >
+            All
+          </Link>
+          {capabilities.filter((cap) => cap.agentCount >= 2).map((cap) => (
+            <Link
+              key={cap.name}
+              href={`/agents?capability=${encodeURIComponent(cap.name)}${sort ? `&sort=${encodeURIComponent(sort)}` : ""}`}
+              className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
+                capability === cap.name
+                  ? "border-gray-900 bg-gray-900 text-white"
+                  : "border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700"
+              }`}
+            >
+              {cap.name}
+              <span className="ml-1.5 opacity-40">{cap.agentCount}</span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Grid — adds text search + free-only toggle client-side */}
+        <MarketplaceGrid agents={filtered} hasCapabilityFilter={Boolean(capability)} />
+      </main>
+
+      <footer className="border-t border-gray-100 py-10 px-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">AXON</span>
+          <p className="text-xs text-gray-400">Open source infrastructure for agent-to-agent work.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}

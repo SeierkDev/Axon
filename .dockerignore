@@ -1,0 +1,17 @@
+.git
+.gitignore
+.next
+node_modules
+packages/sdk/node_modules
+packages/sdk/dist
+*.db
+*.db-wal
+*.db-shm
+.env.local
+.env*.local
+README.md
+Dockerfile
+docker-compose.yml
+.dockerignore
+src/__tests__
+vitest.config.ts

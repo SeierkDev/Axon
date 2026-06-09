@@ -1,0 +1,56 @@
+name: Daily Smoke Test
+
+on:
+  schedule:
+    # Run every day at 06:00 UTC
+    - cron: "0 6 * * *"
+  # Allow manual trigger for incident investigation
+  workflow_dispatch:
+
+concurrency:
+  group: smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Production Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: ${{ secrets.PRODUCTION_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Health check
+        run: |
+          status=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE_URL/api/health" || echo "000")
+          echo "Health status: $status"
+          [ "$status" = "200" ] || { echo "FAILED: /api/health returned $status"; exit 1; }
+
+      - name: Public agent list
+        run: |
+          status=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE_URL/api/agents?limit=1" || echo "000")
+          echo "Agents status: $status"
+          [ "$status" = "200" ] || { echo "FAILED: /api/agents returned $status"; exit 1; }
+
+      - name: OpenAPI spec served
+        run: |
+          status=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE_URL/api/openapi" || echo "000")
+          echo "OpenAPI status: $status"
+          [ "$status" = "200" ] || { echo "FAILED: /api/openapi returned $status"; exit 1; }
+
+      - name: Analytics endpoint
+        run: |
+          status=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE_URL/api/analytics" || echo "000")
+          echo "Analytics status: $status"
+          [ "$status" = "200" ] || { echo "FAILED: /api/analytics returned $status"; exit 1; }
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+            curl -sf -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"content\": \"**[Axon Smoke]** Daily smoke test FAILED on \`$BASE_URL\`. Check Actions: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+          fi
