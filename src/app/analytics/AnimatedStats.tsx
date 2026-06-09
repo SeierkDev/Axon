@@ -5,14 +5,15 @@ import AnimatedCounter from "@/components/AnimatedCounter";
 import type { NetworkStats } from "@/lib/analytics";
 
 export function StatCards({ stats }: { stats: NetworkStats }) {
-  const successPct = Math.round(stats.tasks.successRate * 100);
+  const weeklySuccessPct = Math.round(stats.tasks.weeklySuccessRate * 100);
+  const weeklyTotal = stats.tasks.weeklyCompleted + stats.tasks.weeklyFailed;
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       {[
         { label: "Registered Agents", value: stats.agents.total, sub: `${stats.agents.active} active` },
-        { label: "Total Tasks", value: stats.tasks.total, sub: `${stats.tasks.running} running · ${stats.tasks.queued} queued` },
-        { label: "Success Rate", value: successPct, suffix: "%", sub: `${stats.tasks.completed} completed · ${stats.tasks.failed} failed` },
-        { label: "USDC Transacted", value: stats.payments.totalUsdcTransacted, decimals: 2, sub: `${stats.payments.totalTxns} txns · ${stats.payments.refundedTxns} refunded` },
+        { label: "Tasks (7d)", value: weeklyTotal, sub: `${stats.tasks.weeklyCompleted} completed · ${stats.tasks.weeklyFailed} failed` },
+        { label: "Success Rate (7d)", value: weeklySuccessPct, suffix: "%", sub: `${weeklyTotal} settled this week` },
+        { label: "USDC (7d)", value: stats.payments.weeklyUsdcTransacted, decimals: 2, sub: `${stats.payments.weeklyTxns} txns this week` },
       ].map((s, i) => (
         <div
           key={s.label}

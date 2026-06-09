@@ -13,6 +13,9 @@ export interface NetworkStats {
     running: number;
     queued: number;
     successRate: number;
+    weeklyCompleted: number;
+    weeklyFailed: number;
+    weeklySuccessRate: number;
   };
   capabilities: number;
   payments: {
@@ -20,12 +23,8 @@ export interface NetworkStats {
     totalSolTransacted: number;
     totalTxns: number;
     refundedTxns: number;
-  };
-  workflows: {
-    total: number;
-    completed: number;
-    failed: number;
-    running: number;
+    weeklyUsdcTransacted: number;
+    weeklyTxns: number;
   };
   topAgents: { agentId: string; name: string; reputation: number; tasksCompleted: number }[];
   topCapabilities: { capability: string; agentCount: number }[];
@@ -60,6 +59,16 @@ export function getNetworkStats(): NetworkStats {
   const settled = taskCounts.completed + taskCounts.failed;
   const successRate = settled > 0 ? taskCounts.completed / settled : 0;
 
+  const weeklyTasks = db.prepare(`
+    SELECT
+      COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+      COUNT(*) FILTER (WHERE status = 'failed')    AS failed
+    FROM tasks
+    WHERE date(completed_at) >= date('now', '-6 days')
+  `).get() as { completed: number; failed: number };
+  const weeklySettled = weeklyTasks.completed + weeklyTasks.failed;
+  const weeklySuccessRate = weeklySettled > 0 ? weeklyTasks.completed / weeklySettled : 0;
+
   const txStats = db.prepare(`
     SELECT
       COUNT(*) AS total,
@@ -70,14 +79,13 @@ export function getNetworkStats(): NetworkStats {
     FROM transactions
   `).get() as { total: number; completed: number; refunded: number; usdc_transacted: number; sol_transacted: number };
 
-  const wfStats = db.prepare(`
+  const weeklyTx = db.prepare(`
     SELECT
       COUNT(*) AS total,
-      COUNT(*) FILTER (WHERE status = 'completed') AS completed,
-      COUNT(*) FILTER (WHERE status = 'failed')    AS failed,
-      COUNT(*) FILTER (WHERE status = 'running')   AS running
-    FROM workflows
-  `).get() as { total: number; completed: number; failed: number; running: number };
+      COALESCE(SUM(amount_sol) FILTER (WHERE status = 'completed' AND currency = 'USDC'), 0) AS usdc
+    FROM transactions
+    WHERE date(settled_at) >= date('now', '-6 days')
+  `).get() as { total: number; usdc: number };
 
   const topAgents = db.prepare(`
     SELECT a.agent_id AS agentId, a.name, a.reputation,
@@ -127,6 +135,9 @@ export function getNetworkStats(): NetworkStats {
       running: taskCounts.running,
       queued: taskCounts.queued,
       successRate: Math.round(successRate * 1000) / 1000,
+      weeklyCompleted: weeklyTasks.completed,
+      weeklyFailed: weeklyTasks.failed,
+      weeklySuccessRate: Math.round(weeklySuccessRate * 1000) / 1000,
     },
     capabilities: capCount,
     payments: {
@@ -134,8 +145,9 @@ export function getNetworkStats(): NetworkStats {
       totalSolTransacted: Math.round(txStats.sol_transacted * 10000) / 10000,
       totalTxns: txStats.total,
       refundedTxns: txStats.refunded,
+      weeklyUsdcTransacted: Math.round(weeklyTx.usdc * 100) / 100,
+      weeklyTxns: weeklyTx.total,
     },
-    workflows: { total: wfStats.total, completed: wfStats.completed, failed: wfStats.failed, running: wfStats.running },
     topAgents,
     topCapabilities,
     activityByDay,

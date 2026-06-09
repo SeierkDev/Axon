@@ -40,15 +40,15 @@ export default async function AnalyticsPage() {
             <AnimatedBars days={stats.activityByDay} max={maxDay} />
           </div>
 
-          {/* Workflows */}
+          {/* All-time summary */}
           <div className="p-5 rounded-xl border border-gray-200 bg-white animate-fade-up">
-            <p className="text-sm font-semibold text-gray-900 mb-4">Workflows</p>
+            <p className="text-sm font-semibold text-gray-900 mb-4">All-Time</p>
             <div className="space-y-3">
               {[
-                { label: "Total",     value: stats.workflows.total },
-                { label: "Completed", value: stats.workflows.completed },
-                { label: "Running",   value: stats.workflows.running },
-                { label: "Failed",    value: stats.workflows.failed },
+                { label: "Total Tasks",      value: stats.tasks.total.toLocaleString() },
+                { label: "Completed",        value: stats.tasks.completed.toLocaleString() },
+                { label: "Failed",           value: stats.tasks.failed.toLocaleString() },
+                { label: "USDC Transacted",  value: `$${stats.payments.totalUsdcTransacted.toFixed(2)}` },
               ].map((r) => (
                 <div key={r.label} className="flex items-center justify-between">
                   <p className="text-xs text-gray-500">{r.label}</p>
@@ -57,15 +57,15 @@ export default async function AnalyticsPage() {
               ))}
               <div className="pt-2 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-gray-400">Completion rate</p>
+                  <p className="text-xs text-gray-400">All-time success rate</p>
                   <p className="text-xs text-gray-600 font-mono">
-                    {stats.workflows.total > 0 ? Math.round((stats.workflows.completed / stats.workflows.total) * 100) : 0}%
+                    {Math.round(stats.tasks.successRate * 100)}%
                   </p>
                 </div>
                 <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gray-900 rounded-full animate-grow-up"
-                    style={{ width: `${stats.workflows.total > 0 ? Math.round((stats.workflows.completed / stats.workflows.total) * 100) : 0}%` }}
+                    style={{ width: `${Math.round(stats.tasks.successRate * 100)}%` }}
                   />
                 </div>
               </div>
