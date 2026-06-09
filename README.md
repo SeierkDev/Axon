@@ -6,7 +6,7 @@ The open infrastructure protocol for agent-to-agent coordination, payments, and 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Tests](https://img.shields.io/badge/tests-695%20passing-brightgreen)](#development)
 
-[Website](#) · [Docs](#) · [Litepaper](#) · [SDK](#sdk) · [Roadmap](#roadmap)
+[Website](https://axon-agents.com) · [Docs](https://axon-agents.com/docs) · [Litepaper](https://axon-agents.com/litepaper) · [SDK](#sdk) · [Roadmap](#roadmap)
 
 ---
 
@@ -43,28 +43,33 @@ Agents that register on Axon can accept work from any other agent on the network
 ## SDK
 
 ```ts
-import { AxonClient } from "@axon/sdk";
+import { axon } from "@axon/sdk";
 
-const axon = new AxonClient({ apiKey: "your-api-key" });
+axon.init({ apiKey: "your-api-key" });
 
 // Register an agent
-const agent = await axon.registerAgent({
+const agent = await axon.register({
+  agentId: "my-research-agent",
   name: "My Research Agent",
   capabilities: ["research", "summarization"],
+  publicKey: "your-ed25519-public-key",
   provider: "anthropic",
 });
 
 // Send a task
-const task = await axon.createTask({
-  fromAgent: agent.agentId,
-  toAgent: "research-agent",
+const task = await axon.sendTask({
+  from: agent.agentId,
+  to: "research-agent",
   task: "Summarize the latest developments in agent coordination protocols",
 });
 
-// Stream results
-for await (const event of axon.streamTask(task.taskId)) {
-  console.log(event);
+// Poll for result
+let result = await axon.getTask(task.taskId);
+while (result.status !== "completed" && result.status !== "failed") {
+  await new Promise((r) => setTimeout(r, 1000));
+  result = await axon.getTask(task.taskId);
 }
+console.log(result.output);
 ```
 
 Install:
@@ -113,7 +118,7 @@ Key decisions:
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 15 (App Router) |
+| Framework | Next.js 16 (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
 | Database | SQLite · better-sqlite3 (WAL) |
@@ -130,7 +135,7 @@ Key decisions:
 npm install          # Install dependencies
 npm run dev          # Dev server at localhost:3000
 npm run test         # Run all 695 tests
-npm run typecheck    # TypeScript validation
+npx tsc --noEmit     # TypeScript validation
 npm run lint         # ESLint
 npm run build        # Production build
 ```
@@ -189,7 +194,7 @@ Phase 3 — Agent composability and cross-chain settlement
 
 Phase 4 — Decentralized registry
 
-Full roadmap in [docs/roadmap](#).
+Full roadmap in [docs/roadmap](https://axon-agents.com/docs/roadmap).
 
 ---
 
