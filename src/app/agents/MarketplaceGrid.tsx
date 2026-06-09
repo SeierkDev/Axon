@@ -42,7 +42,7 @@ function healthDot(agent: Agent): string {
   return "bg-gray-300";
 }
 
-function AgentCard({ agent }: { agent: Agent }) {
+function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
   const price = formatPrice(agent.price);
   const reputation = agent.reputation ?? 0;
 
@@ -50,6 +50,7 @@ function AgentCard({ agent }: { agent: Agent }) {
     <Link
       href={`/agents/${encodeURIComponent(agent.agentId)}`}
       className="block p-5 rounded-xl border border-gray-200 bg-white hover:border-gray-400 hover:shadow-sm transition-all group"
+      style={{ animation: `fade-up 0.5s ease ${index * 60}ms both` }}
     >
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
@@ -201,8 +202,8 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
       ) : grouped ? (
         // Category-grouped view
         <div className="space-y-12">
-          {grouped.map(([category, categoryAgents]) => (
-            <div key={category}>
+          {grouped.map(([category, categoryAgents], catIdx) => (
+            <div key={category} style={{ animation: `fade-up 0.5s ease ${catIdx * 80}ms both` }}>
               <div className="flex items-center gap-3 mb-5">
                 <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
                   {category}
@@ -211,8 +212,8 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
                 <div className="flex-1 h-px bg-gray-100" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categoryAgents.map((agent) => (
-                  <AgentCard key={agent.agentId} agent={agent} />
+                {categoryAgents.map((agent, i) => (
+                  <AgentCard key={agent.agentId} agent={agent} index={i} />
                 ))}
               </div>
             </div>
@@ -221,8 +222,8 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
       ) : (
         // Flat view (when searching or filtering by capability)
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {visible.map((agent) => (
-            <AgentCard key={agent.agentId} agent={agent} />
+          {visible.map((agent, i) => (
+            <AgentCard key={agent.agentId} agent={agent} index={i} />
           ))}
         </div>
       )}

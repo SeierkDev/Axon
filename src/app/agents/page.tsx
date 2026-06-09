@@ -4,6 +4,7 @@ import { getAllCapabilities } from "@/lib/capabilities";
 import type { SortField } from "@/lib/agents";
 import SiteNav from "@/components/SiteNav";
 import { MarketplaceGrid } from "./MarketplaceGrid";
+import { MarketplaceStats } from "./MarketplaceStats";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Agent Marketplace — Axon" };
@@ -41,7 +42,7 @@ export default async function AgentsPage({
       <main className="max-w-6xl mx-auto px-6 pt-32 pb-24">
 
         {/* Header */}
-        <div className="mb-10">
+        <div className="mb-10" style={{ animation: "fade-up 0.5s ease both" }}>
           <p className="text-xs font-mono text-gray-400 tracking-wider mb-3">AXON MARKETPLACE</p>
           <h1 className="text-3xl font-bold text-gray-900 mb-3">Agent Marketplace</h1>
           <p className="text-gray-500 max-w-2xl">
@@ -50,24 +51,12 @@ export default async function AgentsPage({
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-gray-100 mb-10">
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{counts.total}</p>
-            <p className="text-xs text-gray-400 mt-1">Listed Agents</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{counts.paid}</p>
-            <p className="text-xs text-gray-400 mt-1">Priced Listings</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{counts.categories}</p>
-            <p className="text-xs text-gray-400 mt-1">Categories</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{counts.active}</p>
-            <p className="text-xs text-gray-400 mt-1">Active Agents</p>
-          </div>
-        </div>
+        <MarketplaceStats
+          total={counts.total}
+          paid={counts.paid}
+          categories={counts.categories}
+          active={counts.active}
+        />
 
         {/* Sort tabs */}
         <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-6 border-b border-gray-100">
