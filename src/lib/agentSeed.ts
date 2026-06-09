@@ -184,9 +184,17 @@ export function backfillAgentHistory(db: Database): void {
     // Determine today's count per agent: 1–3 tasks each → ~25–30 total across 15 agents
     const todayCountMap = new Map(agentIds.map((id) => [id, 1 + Math.floor(Math.random() * 3)]));
 
+    // Pre-pick ~5 agents that will have exactly 1 failure in their history so
+    // success rates are realistically varied (96–100%) rather than all 100%.
+    const shuffledForFailure = [...agentIds].sort(() => Math.random() - 0.5);
+    const agentsWithFailure = new Set(shuffledForFailure.slice(0, 5));
+
     for (const agent of BUILTIN_AGENTS) {
       const existing = (getSeedCount.get(agent.agentId) as { n: number }).n;
       if (existing >= 3) continue; // already seeded
+
+      let historySuccesses = 0; // track completed tasks so far this loop
+      let failureUsed = false;  // ensure the designated failure fires exactly once
 
       function pickSender(): string {
         const fromIdx = Math.floor(Math.random() * agentIds.length);
@@ -195,14 +203,21 @@ export function backfillAgentHistory(db: Database): void {
           : agentIds[fromIdx];
       }
 
-      // 7 days of history — 60 % chance of 1 task per day, 40 % skip
+      // 7 days of history — 80 % chance of 1 task per day, 20 % skip
       for (let daysAgo = 7; daysAgo >= 1; daysAgo--) {
-        if (Math.random() > 0.60) continue;
+        if (Math.random() > 0.80) continue;
 
         const dayMs = Date.now() - daysAgo * 86_400_000;
         const dateStr = new Date(dayMs).toISOString().slice(0, 10);
         const taskText = pickHistoricalTask(agent.capabilities);
-        const succeeds = Math.random() < 0.97;
+        // Only fail once the agent has ≥5 successes so the floor stays above 83%.
+        // No random failures in the seed — natural drift comes from the demo cron (~3%).
+        const shouldFail = agentsWithFailure.has(agent.agentId)
+          && !failureUsed
+          && historySuccesses >= 5;
+        if (shouldFail) failureUsed = true;
+        const succeeds = !shouldFail;
+        if (succeeds) historySuccesses++;
         const latencyMs = 1200 + Math.floor(Math.random() * 3200);
         const createdAt = new Date(dayMs).toISOString();
         const startedAt = new Date(dayMs + 800).toISOString();

@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAllAgents } from "@/lib/agents";
-import { createTask, startTask, completeTask } from "@/lib/tasks";
+import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
 import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -78,10 +78,13 @@ export async function POST(req: NextRequest) {
         task: item.task,
         context: { source: "axon-network-activity", automated: true },
       });
-      // Immediately complete the task so it always counts as a success.
-      // This keeps the network success rate high and the stats meaningful.
       startTask(task.taskId, "cron");
-      completeTask(task.taskId, item.output);
+      // ~3% failure rate so success rates drift to realistic 95–99% over time
+      if (Math.random() < 0.03) {
+        failTask(task.taskId, "Upstream inference timeout");
+      } else {
+        completeTask(task.taskId, item.output);
+      }
       created.push(task.taskId);
     } catch (err) {
       logger.warn("cron.demo_activity_task_failed", "Failed to create demo activity task", {
