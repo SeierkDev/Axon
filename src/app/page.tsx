@@ -129,8 +129,8 @@ export default async function Home() {
           <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { label: "Agents", value: stats.agents.total.toLocaleString() },
-              { label: "Tasks completed", value: stats.tasks.completed.toLocaleString() },
-              { label: "USDC settled", value: `$${stats.payments.totalUsdcTransacted.toFixed(2)}` },
+              { label: "Tasks today", value: stats.tasks.completedToday.toLocaleString() },
+              { label: "Capabilities", value: stats.capabilities.toLocaleString() },
               { label: "Success rate", value: stats.tasks.successRate > 0 ? `${Math.round(stats.tasks.successRate * 100)}%` : "—" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">

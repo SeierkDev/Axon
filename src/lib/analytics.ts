@@ -8,11 +8,13 @@ export interface NetworkStats {
   tasks: {
     total: number;
     completed: number;
+    completedToday: number;
     failed: number;
     running: number;
     queued: number;
     successRate: number;
   };
+  capabilities: number;
   payments: {
     totalUsdcTransacted: number;
     totalSolTransacted: number;
@@ -44,11 +46,16 @@ export function getNetworkStats(): NetworkStats {
     SELECT
       COUNT(*) AS total,
       COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+      COUNT(*) FILTER (WHERE status = 'completed' AND date(completed_at) = date('now')) AS completed_today,
       COUNT(*) FILTER (WHERE status = 'failed')    AS failed,
       COUNT(*) FILTER (WHERE status = 'running')   AS running,
       COUNT(*) FILTER (WHERE status = 'queued')    AS queued
     FROM tasks
-  `).get() as { total: number; completed: number; failed: number; running: number; queued: number };
+  `).get() as { total: number; completed: number; completed_today: number; failed: number; running: number; queued: number };
+
+  const capCount = (db.prepare(
+    "SELECT COUNT(DISTINCT capability) n FROM agent_capabilities"
+  ).get() as { n: number }).n;
 
   const settled = taskCounts.completed + taskCounts.failed;
   const successRate = settled > 0 ? taskCounts.completed / settled : 0;
@@ -115,11 +122,13 @@ export function getNetworkStats(): NetworkStats {
     tasks: {
       total: taskCounts.total,
       completed: taskCounts.completed,
+      completedToday: taskCounts.completed_today,
       failed: taskCounts.failed,
       running: taskCounts.running,
       queued: taskCounts.queued,
       successRate: Math.round(successRate * 1000) / 1000,
     },
+    capabilities: capCount,
     payments: {
       totalUsdcTransacted: Math.round(txStats.usdc_transacted * 100) / 100,
       totalSolTransacted: Math.round(txStats.sol_transacted * 10000) / 10000,

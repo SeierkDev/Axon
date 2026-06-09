@@ -184,11 +184,11 @@ export function backfillAgentHistory(db: Database): void {
       const existing = (getTaskCount.get(agent.agentId) as { n: number }).n;
       if (existing >= 50) continue; // already has history
 
-      // 30 days × 4 tasks/day per agent
-      for (let daysAgo = 30; daysAgo >= 1; daysAgo--) {
+      // 30 days × 4 tasks/day per agent, plus a few tasks seeded for today
+      for (let daysAgo = 30; daysAgo >= 0; daysAgo--) {
         const dayMs = Date.now() - daysAgo * 86_400_000;
         const dateStr = new Date(dayMs).toISOString().slice(0, 10);
-        const tasksThisDay = 3 + Math.floor(Math.random() * 3); // 3-5
+        const tasksThisDay = daysAgo === 0 ? 1 + Math.floor(Math.random() * 2) : 3 + Math.floor(Math.random() * 3); // today: 1-2, history: 3-5
         let completed = 0;
         let failed = 0;
         let totalLatencyMs = 0;
