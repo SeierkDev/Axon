@@ -29,19 +29,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser  --system --uid 1001 nextjs
-
 # Only copy what the production server needs
 COPY --from=builder /app/public          ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static    ./.next/static
 
 # SQLite data directory — mount a Railway Volume at /data in production
-RUN mkdir -p /data && chown nextjs:nodejs /data
-
-USER nextjs
+RUN mkdir -p /data
 
 EXPOSE 3000
 ENV PORT=3000
