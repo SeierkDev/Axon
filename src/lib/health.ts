@@ -134,9 +134,10 @@ function checkMemory(): HealthCheck {
   const heapTotalMb = Math.round(mem.heapTotal / 1024 / 1024);
   const rssMb = Math.round(mem.rss / 1024 / 1024);
   const heapPct = Math.round((mem.heapUsed / mem.heapTotal) * 100);
+  const status = heapUsedMb > 400 ? "error" : heapUsedMb > 300 ? "warn" : "ok";
   return {
     name: "memory",
-    status: heapPct > 90 ? "error" : heapPct > 75 ? "warn" : "ok",
+    status,
     details: { heapUsedMb, heapTotalMb, rssMb, heapPercent: heapPct },
   };
 }
