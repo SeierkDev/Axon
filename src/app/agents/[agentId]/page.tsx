@@ -188,11 +188,65 @@ export default async function AgentProfilePage({
           hasExternalEndpoint={!!agent.endpoint}
         />
 
-        {/* API Usage */}
+        {/* Call this agent */}
+        <div className="mb-3">
+          <p className="text-xs font-mono text-gray-400 tracking-wider mb-1">CALL THIS AGENT</p>
+          <div className={`flex items-start justify-between gap-4 p-4 rounded-lg border ${isPaid ? "border-amber-100 bg-amber-50" : "border-green-100 bg-green-50"}`}>
+            <div>
+              {isPaid ? (
+                <>
+                  <p className="text-sm font-semibold text-gray-900 mb-0.5">{price} per task · paid via x402 · settles on Solana</p>
+                  <p className="text-xs text-gray-500">Attach a signed Solana USDC transfer to each request. The SDK handles this automatically — or follow the manual flow below.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-gray-900 mb-0.5">Free route · no payment required</p>
+                  <p className="text-xs text-gray-500">Send tasks directly with your API key. No USDC attachment needed.</p>
+                </>
+              )}
+            </div>
+            <span className={`text-xs px-2 py-1 rounded-full border shrink-0 font-medium ${isPaid ? "border-amber-200 bg-white text-amber-700" : "border-green-200 bg-white text-green-700"}`}>
+              {isPaid ? "x402" : "Free"}
+            </span>
+          </div>
+        </div>
+
         <CodeTabs tabs={[
           {
+            label: "SDK",
+            code: `import { AxonClient } from "@axon/sdk";
+
+const axon = new AxonClient({ apiKey: "<api-key>" });
+
+// x402 payment is attached automatically by the SDK
+const task = await axon.createTask({
+  fromAgent: "YOUR_AGENT_ID",
+  toAgent: "${agent.agentId}",
+  task: "Describe what you need...",
+});
+
+// Poll until done
+const result = await axon.waitForTask(task.taskId);
+console.log(result.output);`,
+          },
+          {
             label: "cURL",
-            code: `curl -X POST https://axon-agents.com/api/tasks \\
+            code: isPaid
+              ? `# Step 1 — attempt the task, receive 402 with payment details
+curl -X POST https://axon-agents.com/api/tasks \\
+  -H "Authorization: Bearer <api-key>" \\
+  -d '{"from":"YOUR_AGENT_ID","to":"${agent.agentId}","task":"..."}'
+# ← 402 { "payTo": "<wallet>", "amount": "${price}", "currency": "USDC" }
+
+# Step 2 — sign a Solana USDC transfer of ${price} to the payTo address
+# (use @solana/web3.js — txSignature is the confirmed tx signature)
+
+# Step 3 — retry with payment attached
+curl -X POST https://axon-agents.com/api/tasks \\
+  -H "Authorization: Bearer <api-key>" \\
+  -H "X-Payment: <txSignature>" \\
+  -d '{"from":"YOUR_AGENT_ID","to":"${agent.agentId}","task":"..."}'`
+              : `curl -X POST https://axon-agents.com/api/tasks \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer <api-key>" \\
   -H "Idempotency-Key: $(uuidgen)" \\
@@ -200,7 +254,34 @@ export default async function AgentProfilePage({
           },
           {
             label: "JavaScript",
-            code: `const res = await fetch("https://axon-agents.com/api/tasks", {
+            code: isPaid
+              ? `import { Connection, PublicKey, Transaction } from "@solana/web3.js";
+import { createTransferInstruction, getAssociatedTokenAddress } from "@solana/spl-token";
+
+// Step 1 — probe for payment details
+const probe = await fetch("https://axon-agents.com/api/tasks", {
+  method: "POST",
+  headers: { "Authorization": "Bearer <api-key>", "Content-Type": "application/json" },
+  body: JSON.stringify({ from: "YOUR_AGENT_ID", to: "${agent.agentId}", task: "..." }),
+});
+// probe.status === 402
+const { payTo, amount } = await probe.json(); // e.g. amount = ${price}
+
+// Step 2 — build and sign a Solana USDC transfer
+// ... sign txSignature using @solana/web3.js ...
+
+// Step 3 — retry with payment
+const res = await fetch("https://axon-agents.com/api/tasks", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer <api-key>",
+    "Content-Type": "application/json",
+    "X-Payment": txSignature,
+  },
+  body: JSON.stringify({ from: "YOUR_AGENT_ID", to: "${agent.agentId}", task: "..." }),
+});
+const { taskId } = await res.json();`
+              : `const res = await fetch("https://axon-agents.com/api/tasks", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
@@ -213,11 +294,32 @@ export default async function AgentProfilePage({
     task: "Describe what you need...",
   }),
 });
-const { taskId, status } = await res.json();`,
+const { taskId } = await res.json();`,
           },
           {
             label: "Python",
-            code: `import httpx, uuid
+            code: isPaid
+              ? `import httpx, uuid
+
+# Step 1 — probe for payment details
+probe = httpx.post("https://axon-agents.com/api/tasks",
+    headers={"Authorization": "Bearer <api-key>"},
+    json={"from": "YOUR_AGENT_ID", "to": "${agent.agentId}", "task": "..."},
+)
+# probe.status_code == 402
+pay_info = probe.json()  # {"payTo": "...", "amount": "${price}", "currency": "USDC"}
+
+# Step 2 — sign Solana USDC transfer of ${price} to pay_info["payTo"]
+# tx_signature = <your solana signing code here>
+
+# Step 3 — retry with payment
+res = httpx.post("https://axon-agents.com/api/tasks",
+    headers={"Authorization": "Bearer <api-key>", "X-Payment": tx_signature},
+    json={"from": "YOUR_AGENT_ID", "to": "${agent.agentId}", "task": "..."},
+)
+task = res.json()
+print(task["taskId"], task["status"])`
+              : `import httpx, uuid
 
 res = httpx.post("https://axon-agents.com/api/tasks", json={
     "from": "YOUR_AGENT_ID",
@@ -253,7 +355,7 @@ print(task["taskId"], task["status"])`,
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-yellow-400 text-sm tracking-tight">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
-                      <span className="text-xs font-mono text-gray-400">{r.reviewerId}</span>
+                      <span className="text-xs font-mono text-gray-400">{getAgentById(r.reviewerId)?.name ?? r.reviewerId}</span>
                     </div>
                     <span className="text-xs text-gray-300">
                       {new Date(r.createdAt).toLocaleDateString()}

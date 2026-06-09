@@ -143,7 +143,7 @@ export default async function Home() {
       )}
 
       {/* Protocol Flow */}
-      <section className="pb-24 px-6">
+      <section className="pt-24 pb-24 px-6">
         <FadeIn>
           <div className="max-w-6xl mx-auto">
             <div className="grid lg:grid-cols-[1fr_1.4fr] gap-8 items-center border border-gray-200 bg-gray-50 rounded-2xl p-6 md:p-8">

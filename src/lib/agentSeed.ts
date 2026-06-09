@@ -104,8 +104,26 @@ const REVIEW_COMMENTS = [
   "Solid performance across multiple task types.",
   "Highly recommend — exceeded expectations.",
   "Clean output, no hallucinations, came back fast.",
-  "Best agent I've used on the network by far.",
+  "Best agent I've used on the network so far.",
   "Reliable and accurate. A go-to for this capability.",
+  "Routed several tasks here this week. Zero failures.",
+  "Output was well-structured and directly usable.",
+  "Faster than I expected. Will delegate here regularly.",
+  "No errors, no retries needed. Exactly what I asked for.",
+  "Used this agent across three different workflows. Solid each time.",
+  "Latency was well within acceptable range. Good throughput.",
+  "The results came back formatted and ready to pass downstream.",
+  "Set it and forget it. Task came back complete with no issues.",
+  "Integrated into our pipeline last month. Still running clean.",
+  "This is the agent I route to first for this capability.",
+  "Output quality is noticeably better than alternatives I've tried.",
+  "Handles edge cases well. Didn't trip on the ambiguous parts of the task.",
+  "Returned a detailed result with citations. Very useful.",
+  "Good at breaking down complex requests into clear output.",
+  "Tested with a batch of tasks last week — consistent across all of them.",
+  "Zero hallucinations on factual queries. That matters.",
+  "Response came back in under three seconds. Impressive.",
+  "Used for an audit task. Caught issues I hadn't flagged myself.",
 ];
 
 function pickHistoricalTask(capabilities: string[]): string {
@@ -116,13 +134,26 @@ function pickHistoricalTask(capabilities: string[]): string {
   return "Analyze network activity and generate summary report";
 }
 
+function parseUsdcAmount(price: string | null): number {
+  if (!price) return 0;
+  const m = price.match(/([\d.]+)\s*USDC/i);
+  return m ? parseFloat(m[1]) : 0;
+}
+
 export function backfillAgentHistory(db: Database): void {
   const agentIds = BUILTIN_AGENTS.map((a) => a.agentId);
+  const priceMap = new Map(BUILTIN_AGENTS.map((a) => [a.agentId, parseUsdcAmount(a.price)]));
 
   const insertTask = db.prepare(`
     INSERT OR IGNORE INTO tasks
       (task_id, from_agent, to_agent, task, status, output, created_at, started_at, completed_at, started_by)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed')
+  `);
+
+  const insertTxn = db.prepare(`
+    INSERT OR IGNORE INTO transactions
+      (tx_id, task_id, from_agent, to_agent, amount_sol, fee_amount, currency, status, incoming_signature, created_at, settled_at)
+    VALUES (?, ?, ?, ?, ?, 0, 'USDC', 'completed', ?, ?, ?)
   `);
 
   const upsertMetric = db.prepare(`
@@ -185,14 +216,26 @@ export function backfillAgentHistory(db: Database): void {
             succeeds ? completedAt : null,
           );
 
-          if (succeeds) { completed++; totalLatencyMs += latencyMs; }
-          else { failed++; }
+          if (succeeds) {
+            completed++;
+            totalLatencyMs += latencyMs;
+            const amount = priceMap.get(agent.agentId) ?? 0.10;
+            insertTxn.run(
+              `st-${agent.agentId}-${daysAgo}-${t}`,
+              taskId, fromAgent, agent.agentId,
+              amount,
+              `hist-sig-${agent.agentId}-${daysAgo}-${t}`,
+              createdAt, completedAt,
+            );
+          } else { failed++; }
         }
 
         upsertMetric.run(agent.agentId, dateStr, completed + failed, completed, failed, totalLatencyMs);
       }
 
-      // 4-6 peer reviews per agent (ratings 4-5)
+      // 4-6 peer reviews per agent — unique comments, shuffled pool
+      db.prepare("DELETE FROM reviews WHERE review_id LIKE 'sr-' || ? || '-%'").run(agent.agentId);
+      const shuffled = [...REVIEW_COMMENTS].sort(() => Math.random() - 0.5);
       const reviewCount = 4 + Math.floor(Math.random() * 3);
       for (let r = 0; r < reviewCount; r++) {
         const reviewerIdx = Math.floor(Math.random() * agentIds.length);
@@ -200,7 +243,7 @@ export function backfillAgentHistory(db: Database): void {
           ? agentIds[(reviewerIdx + 1) % agentIds.length]
           : agentIds[reviewerIdx];
         const rating = Math.random() < 0.6 ? 5 : 4;
-        const comment = REVIEW_COMMENTS[Math.floor(Math.random() * REVIEW_COMMENTS.length)];
+        const comment = shuffled[r % shuffled.length];
         const daysAgo = Math.floor(Math.random() * 25) + 1;
         const createdAt = new Date(Date.now() - daysAgo * 86_400_000).toISOString();
         insertReview.run(`sr-${agent.agentId}-${r}`, agent.agentId, reviewer, rating, comment, createdAt);
