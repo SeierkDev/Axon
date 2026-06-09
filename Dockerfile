@@ -2,6 +2,9 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
+# Required for better-sqlite3 native compilation via node-gyp
+RUN apk add --no-cache python3 make g++
+
 COPY package.json package-lock.json ./
 # Install production + dev deps (needed for Next.js build)
 RUN npm ci
