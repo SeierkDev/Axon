@@ -68,9 +68,9 @@ export function seedBuiltinAgents(db: Database): void {
 }
 
 // ── Historical data backfill ────────────────────────────────────────────────
-// Gives all built-in agents realistic 30-day task history, metrics, and
-// peer reviews so they display high reputation and success rate on day one.
-// Idempotent — skips agents that already have ≥ 50 completed tasks.
+// Gives all built-in agents a small, realistic task history so they display
+// high reputation and a believable launch-day count (3–8 completed per agent).
+// Idempotent — skips agents that already have ≥ 3 seed tasks.
 
 const HISTORICAL_TASKS: Record<string, string[]> = {
   research:            ["Research top DeFi protocols by TVL", "Summarize latest Solana upgrade impact", "Compile institutional BTC holdings report", "Analyze AI agent adoption in crypto", "Research Ethereum Layer 2 ecosystem growth"],
@@ -175,81 +175,105 @@ export function backfillAgentHistory(db: Database): void {
     "UPDATE agents SET reputation = ? WHERE agent_id = ?"
   );
 
-  const getTaskCount = db.prepare(
-    "SELECT COUNT(*) AS n FROM tasks WHERE to_agent = ? AND status = 'completed'"
+  // Idempotency: skip agents that already have seed data
+  const getSeedCount = db.prepare(
+    "SELECT COUNT(*) AS n FROM tasks WHERE to_agent = ? AND started_by = 'seed'"
   );
 
   db.transaction(() => {
+    // Determine today's count per agent: 1–3 tasks each → ~25–30 total across 15 agents
+    const todayCountMap = new Map(agentIds.map((id) => [id, 1 + Math.floor(Math.random() * 3)]));
+
     for (const agent of BUILTIN_AGENTS) {
-      const existing = (getTaskCount.get(agent.agentId) as { n: number }).n;
-      if (existing >= 50) continue; // already has history
+      const existing = (getSeedCount.get(agent.agentId) as { n: number }).n;
+      if (existing >= 3) continue; // already seeded
 
-      // 30 days × 4 tasks/day per agent, plus a few tasks seeded for today
-      for (let daysAgo = 30; daysAgo >= 0; daysAgo--) {
-        const dayMs = Date.now() - daysAgo * 86_400_000;
-        const dateStr = new Date(dayMs).toISOString().slice(0, 10);
-        const tasksThisDay = daysAgo === 0 ? 1 + Math.floor(Math.random() * 2) : 3 + Math.floor(Math.random() * 3); // today: 1-2, history: 3-5
-        let completed = 0;
-        let failed = 0;
-        let totalLatencyMs = 0;
-
-        for (let t = 0; t < tasksThisDay; t++) {
-          // Pick a different agent as sender
-          const fromIdx = Math.floor(Math.random() * agentIds.length);
-          const fromAgent = agentIds[fromIdx] === agent.agentId
-            ? agentIds[(fromIdx + 1) % agentIds.length]
-            : agentIds[fromIdx];
-
-          const taskText = pickHistoricalTask(agent.capabilities);
-          const succeeds = Math.random() < 0.97;
-          const latencyMs = 1200 + Math.floor(Math.random() * 3200); // 1.2-4.4s
-          const createdAt = new Date(dayMs + t * 600_000).toISOString();
-          const startedAt = new Date(dayMs + t * 600_000 + 800).toISOString();
-          const completedAt = new Date(dayMs + t * 600_000 + 800 + latencyMs).toISOString();
-          const taskId = `sh-${agent.agentId}-${daysAgo}-${t}`;
-
-          insertTask.run(
-            taskId, fromAgent, agent.agentId, taskText,
-            succeeds ? "completed" : "failed",
-            succeeds ? `Completed: ${taskText.slice(0, 60)}. Result ready.` : null,
-            createdAt, startedAt,
-            succeeds ? completedAt : null,
-          );
-
-          if (succeeds) {
-            completed++;
-            totalLatencyMs += latencyMs;
-            const amount = priceMap.get(agent.agentId) ?? 0.10;
-            insertTxn.run(
-              `st-${agent.agentId}-${daysAgo}-${t}`,
-              taskId, fromAgent, agent.agentId,
-              amount,
-              `hist-sig-${agent.agentId}-${daysAgo}-${t}`,
-              createdAt, completedAt,
-            );
-          } else { failed++; }
-        }
-
-        upsertMetric.run(agent.agentId, dateStr, completed + failed, completed, failed, totalLatencyMs);
+      function pickSender(): string {
+        const fromIdx = Math.floor(Math.random() * agentIds.length);
+        return agentIds[fromIdx] === agent.agentId
+          ? agentIds[(fromIdx + 1) % agentIds.length]
+          : agentIds[fromIdx];
       }
 
-      // 4-6 peer reviews per agent — unique comments, shuffled pool
+      // 7 days of history — 60 % chance of 1 task per day, 40 % skip
+      for (let daysAgo = 7; daysAgo >= 1; daysAgo--) {
+        if (Math.random() > 0.60) continue;
+
+        const dayMs = Date.now() - daysAgo * 86_400_000;
+        const dateStr = new Date(dayMs).toISOString().slice(0, 10);
+        const taskText = pickHistoricalTask(agent.capabilities);
+        const succeeds = Math.random() < 0.97;
+        const latencyMs = 1200 + Math.floor(Math.random() * 3200);
+        const createdAt = new Date(dayMs).toISOString();
+        const startedAt = new Date(dayMs + 800).toISOString();
+        const completedAt = new Date(dayMs + 800 + latencyMs).toISOString();
+        const taskId = `sh-${agent.agentId}-d${daysAgo}`;
+
+        insertTask.run(
+          taskId, pickSender(), agent.agentId, taskText,
+          succeeds ? "completed" : "failed",
+          succeeds ? `Completed: ${taskText.slice(0, 60)}. Result ready.` : null,
+          createdAt, startedAt,
+          succeeds ? completedAt : null,
+        );
+
+        if (succeeds) {
+          const amount = priceMap.get(agent.agentId) ?? 0.10;
+          insertTxn.run(
+            `st-${agent.agentId}-d${daysAgo}`,
+            taskId, pickSender(), agent.agentId,
+            amount, `hist-sig-${agent.agentId}-d${daysAgo}`,
+            createdAt, completedAt,
+          );
+        }
+        upsertMetric.run(agent.agentId, dateStr, 1, succeeds ? 1 : 0, succeeds ? 0 : 1, latencyMs);
+      }
+
+      // Today: each agent gets 1–3 tasks (totals ~25–30 across all agents)
+      const todayCount = todayCountMap.get(agent.agentId) ?? 1;
+      const nowMs = Date.now();
+      const dateStr = new Date(nowMs).toISOString().slice(0, 10);
+      for (let ti = 0; ti < todayCount; ti++) {
+        const taskText = pickHistoricalTask(agent.capabilities);
+        const latencyMs = 1200 + Math.floor(Math.random() * 3200);
+        const offsetMs = (todayCount - ti) * 300_000; // spread over last ~15 min
+        const createdAt = new Date(nowMs - offsetMs).toISOString();
+        const startedAt = new Date(nowMs - offsetMs + 800).toISOString();
+        const completedAt = new Date(nowMs - offsetMs + 800 + latencyMs).toISOString();
+        const taskId = `sh-${agent.agentId}-today-${ti}`;
+
+        insertTask.run(
+          taskId, pickSender(), agent.agentId, taskText, "completed",
+          `Completed: ${taskText.slice(0, 60)}. Result ready.`,
+          createdAt, startedAt, completedAt,
+        );
+        const amount = priceMap.get(agent.agentId) ?? 0.10;
+        insertTxn.run(
+          `st-${agent.agentId}-today-${ti}`,
+          taskId, pickSender(), agent.agentId,
+          amount, `hist-sig-${agent.agentId}-today-${ti}`,
+          createdAt, completedAt,
+        );
+        upsertMetric.run(agent.agentId, dateStr, 1, 1, 0, latencyMs);
+      }
+
+      // 2–3 peer reviews per agent
       db.prepare("DELETE FROM reviews WHERE review_id LIKE 'sr-' || ? || '-%'").run(agent.agentId);
       const shuffled = [...REVIEW_COMMENTS].sort(() => Math.random() - 0.5);
-      const reviewCount = 4 + Math.floor(Math.random() * 3);
+      const reviewCount = 2 + Math.floor(Math.random() * 2); // 2 or 3
       for (let r = 0; r < reviewCount; r++) {
         const reviewerIdx = Math.floor(Math.random() * agentIds.length);
         const reviewer = agentIds[reviewerIdx] === agent.agentId
           ? agentIds[(reviewerIdx + 1) % agentIds.length]
           : agentIds[reviewerIdx];
         const rating = Math.random() < 0.6 ? 5 : 4;
-        const comment = shuffled[r % shuffled.length];
-        const daysAgo = Math.floor(Math.random() * 25) + 1;
-        const createdAt = new Date(Date.now() - daysAgo * 86_400_000).toISOString();
+        const comment = shuffled[r];
+        const reviewDaysAgo = Math.floor(Math.random() * 6) + 1;
+        const createdAt = new Date(Date.now() - reviewDaysAgo * 86_400_000).toISOString();
         insertReview.run(`sr-${agent.agentId}-${r}`, agent.agentId, reviewer, rating, comment, createdAt);
       }
 
-      // Compute and store reputation from the new data
+      // Compute and store reputation
       const counts = db.prepare(`
         SELECT
           COUNT(*) FILTER (WHERE status = 'completed') AS c,

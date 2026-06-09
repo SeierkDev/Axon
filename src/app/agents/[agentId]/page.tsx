@@ -214,38 +214,57 @@ export default async function AgentProfilePage({
         <CodeTabs tabs={[
           {
             label: "SDK",
-            code: `import { AxonClient } from "@axon/sdk";
+            code: isPaid
+              ? `import { axon } from "@axon/sdk";
+axon.init({ apiKey: "<api-key>" });
 
-const axon = new AxonClient({ apiKey: "<api-key>" });
+// submitTaskX402 runs the full x402 protocol automatically:
+// probe → pay on-chain → submit with X-Payment header
+const task = await axon.submitTaskX402(
+  "${agent.agentId}",
+  "Describe what you need...",
+  async (requirements) => {
+    const { payToAddress, maxAmountRequired } = requirements.accepts[0];
+    // Send ${price} USDC to payToAddress using your wallet library
+    // const txSig = await yourWallet.sendUsdc(payToAddress, maxAmountRequired);
+    return { signature: "<tx-signature>", from: "<your-wallet-address>" };
+  }
+);
+console.log(task.taskId, task.status); // "queued"`
+              : `import { axon } from "@axon/sdk";
+axon.init({ apiKey: "<api-key>" });
 
-// x402 payment is attached automatically by the SDK
-const task = await axon.createTask({
-  fromAgent: "YOUR_AGENT_ID",
-  toAgent: "${agent.agentId}",
+const task = await axon.sendTask({
+  from: "YOUR_AGENT_ID",
+  to: "${agent.agentId}",
   task: "Describe what you need...",
 });
 
-// Poll until done
-const result = await axon.waitForTask(task.taskId);
+// Poll until complete
+let result = await axon.getTask(task.taskId);
+while (result.status === "queued" || result.status === "running") {
+  await new Promise(r => setTimeout(r, 2000));
+  result = await axon.getTask(task.taskId);
+}
 console.log(result.output);`,
           },
           {
             label: "cURL",
             code: isPaid
-              ? `# Step 1 — attempt the task, receive 402 with payment details
-curl -X POST https://axon-agents.com/api/tasks \\
-  -H "Authorization: Bearer <api-key>" \\
-  -d '{"from":"YOUR_AGENT_ID","to":"${agent.agentId}","task":"..."}'
-# ← 402 { "payTo": "<wallet>", "amount": "${price}", "currency": "USDC" }
+              ? `# Step 1 — discover payment requirements
+curl https://axon-agents.com/api/agents/${agent.agentId}/x402
+# ← 402 + X-Payment-Required header (base64 JSON with payToAddress, amount)
 
-# Step 2 — sign a Solana USDC transfer of ${price} to the payTo address
-# (use @solana/web3.js — txSignature is the confirmed tx signature)
+# Step 2 — send ${price} USDC to payToAddress on Solana
+# → TX_SIG = confirmed transaction signature
 
-# Step 3 — retry with payment attached
-curl -X POST https://axon-agents.com/api/tasks \\
-  -H "Authorization: Bearer <api-key>" \\
-  -H "X-Payment: <txSignature>" \\
-  -d '{"from":"YOUR_AGENT_ID","to":"${agent.agentId}","task":"..."}'`
+# Step 3 — build X-Payment header (base64 of JSON) and submit
+X_PAYMENT=$(echo -n '{"scheme":"exact","network":"solana-mainnet","payload":{"signature":"TX_SIG","from":"YOUR_WALLET"}}' | base64)
+
+curl -X POST https://axon-agents.com/api/agents/${agent.agentId}/x402 \\
+  -H "Content-Type: application/json" \\
+  -H "X-Payment: $X_PAYMENT" \\
+  -d '{"task":"Describe what you need..."}'`
               : `curl -X POST https://axon-agents.com/api/tasks \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer <api-key>" \\
@@ -255,32 +274,29 @@ curl -X POST https://axon-agents.com/api/tasks \\
           {
             label: "JavaScript",
             code: isPaid
-              ? `import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { createTransferInstruction, getAssociatedTokenAddress } from "@solana/spl-token";
+              ? `// Step 1 — probe for payment requirements
+const probeRes = await fetch("https://axon-agents.com/api/agents/${agent.agentId}/x402");
+// probeRes.status === 402
+const rawReq = probeRes.headers.get("x-payment-required");
+const requirements = JSON.parse(atob(rawReq));
+const { payToAddress, maxAmountRequired } = requirements.accepts[0];
 
-// Step 1 — probe for payment details
-const probe = await fetch("https://axon-agents.com/api/tasks", {
+// Step 2 — send USDC on-chain (using @solana/web3.js + @solana/spl-token)
+// const txSig = await sendUsdcTransfer(payToAddress, maxAmountRequired, yourKeypair);
+
+// Step 3 — build X-Payment header and submit
+const xPayment = btoa(JSON.stringify({
+  scheme: "exact",
+  network: "solana-mainnet",
+  payload: { signature: txSig, from: "YOUR_WALLET_ADDRESS" },
+}));
+
+const res = await fetch("https://axon-agents.com/api/agents/${agent.agentId}/x402", {
   method: "POST",
-  headers: { "Authorization": "Bearer <api-key>", "Content-Type": "application/json" },
-  body: JSON.stringify({ from: "YOUR_AGENT_ID", to: "${agent.agentId}", task: "..." }),
+  headers: { "Content-Type": "application/json", "X-Payment": xPayment },
+  body: JSON.stringify({ task: "Describe what you need..." }),
 });
-// probe.status === 402
-const { payTo, amount } = await probe.json(); // e.g. amount = ${price}
-
-// Step 2 — build and sign a Solana USDC transfer
-// ... sign txSignature using @solana/web3.js ...
-
-// Step 3 — retry with payment
-const res = await fetch("https://axon-agents.com/api/tasks", {
-  method: "POST",
-  headers: {
-    "Authorization": "Bearer <api-key>",
-    "Content-Type": "application/json",
-    "X-Payment": txSignature,
-  },
-  body: JSON.stringify({ from: "YOUR_AGENT_ID", to: "${agent.agentId}", task: "..." }),
-});
-const { taskId } = await res.json();`
+const task = await res.json(); // { taskId, status: "queued" }`
               : `const res = await fetch("https://axon-agents.com/api/tasks", {
   method: "POST",
   headers: {
@@ -299,23 +315,29 @@ const { taskId } = await res.json();`,
           {
             label: "Python",
             code: isPaid
-              ? `import httpx, uuid
+              ? `import httpx, json, base64
 
-# Step 1 — probe for payment details
-probe = httpx.post("https://axon-agents.com/api/tasks",
-    headers={"Authorization": "Bearer <api-key>"},
-    json={"from": "YOUR_AGENT_ID", "to": "${agent.agentId}", "task": "..."},
-)
+# Step 1 — probe for payment requirements
+probe = httpx.get("https://axon-agents.com/api/agents/${agent.agentId}/x402")
 # probe.status_code == 402
-pay_info = probe.json()  # {"payTo": "...", "amount": "${price}", "currency": "USDC"}
+raw_req = probe.headers["x-payment-required"]
+requirements = json.loads(base64.b64decode(raw_req))
+pay_to = requirements["accepts"][0]["payToAddress"]
+amount = requirements["accepts"][0]["maxAmountRequired"]  # micro-USDC
 
-# Step 2 — sign Solana USDC transfer of ${price} to pay_info["payTo"]
-# tx_signature = <your solana signing code here>
+# Step 2 — send ${price} USDC to pay_to on Solana
+# tx_sig = your_solana_wallet.send_usdc(pay_to, amount)
 
-# Step 3 — retry with payment
-res = httpx.post("https://axon-agents.com/api/tasks",
-    headers={"Authorization": "Bearer <api-key>", "X-Payment": tx_signature},
-    json={"from": "YOUR_AGENT_ID", "to": "${agent.agentId}", "task": "..."},
+# Step 3 — build X-Payment header and submit
+x_payment = base64.b64encode(json.dumps({
+    "scheme": "exact",
+    "network": "solana-mainnet",
+    "payload": {"signature": tx_sig, "from": "YOUR_WALLET_ADDRESS"},
+}).encode()).decode()
+
+res = httpx.post("https://axon-agents.com/api/agents/${agent.agentId}/x402",
+    headers={"Content-Type": "application/json", "X-Payment": x_payment},
+    json={"task": "Describe what you need..."},
 )
 task = res.json()
 print(task["taskId"], task["status"])`
