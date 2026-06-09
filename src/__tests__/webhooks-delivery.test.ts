@@ -49,7 +49,6 @@ beforeEach(() => {
     agentId: AGENT_ID,
     url: WEBHOOK_URL,
     events: ["task.queued"],
-    walletAddress: WALLET,
   });
   webhookId = wh.webhookId;
   queueWebhookEvent(AGENT_ID, "task.queued", { taskId: "t1", agentId: AGENT_ID });

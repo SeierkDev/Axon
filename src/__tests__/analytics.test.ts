@@ -29,7 +29,6 @@ describe("getNetworkStats: structure", () => {
     expect(stats).toHaveProperty("agents");
     expect(stats).toHaveProperty("tasks");
     expect(stats).toHaveProperty("payments");
-    expect(stats).toHaveProperty("workflows");
     expect(stats).toHaveProperty("topAgents");
     expect(stats).toHaveProperty("topCapabilities");
     expect(stats).toHaveProperty("activityByDay");

@@ -442,7 +442,7 @@ describe("getReceipt: hasOpenMppChannel detected when open MPP channel exists", 
     const agent = makeAgent();
     createAgent(agent);
     const task = createTask({
-      fromAgent: agent.walletAddress,
+      fromAgent: agent.walletAddress ?? agent.agentId,
       toAgent: agent.agentId,
       task: "mpp path test",
       payment: "5 USDC",

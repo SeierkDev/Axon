@@ -33,6 +33,8 @@ function makeValidX402Header(): string {
         network: "solana-devnet",
         maxAmountRequired: "100000",
         requiredDeadlineSeconds: 300,
+        mimeType: "application/json",
+        extra: { name: "USD Coin", symbol: "USDC", decimals: 6, contractAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" },
       },
     ],
   };

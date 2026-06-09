@@ -343,6 +343,7 @@ describe("getNetworkStats", () => {
   });
 
   it("successRate is 0 when no settled tasks", () => {
+    getDb().prepare("DELETE FROM tasks").run();
     const stats = getNetworkStats();
     expect(stats.tasks.successRate).toBe(0);
   });
@@ -422,6 +423,7 @@ describe("getDailyStats", () => {
   });
 
   it("returns zero counts for an empty DB", () => {
+    getDb().prepare("DELETE FROM tasks").run();
     const stats = getDailyStats(3);
     expect(stats.every((s) => s.tasksCompleted === 0 && s.tasksFailed === 0)).toBe(true);
   });
