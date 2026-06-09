@@ -418,7 +418,8 @@ function truncateValue(value: string) {
 }
 
 function providerLabel(provider: string, model?: string) {
-  return model ? `${provider} / ${model}` : provider;
+  const display = provider === "anthropic" ? "Axon" : provider;
+  return model ? `${display} / ${model}` : display;
 }
 
 function trustLabel(reputation: number) {
