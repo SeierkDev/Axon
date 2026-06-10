@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 import { createWalletChallenge } from "@/lib/identity";
-import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
+import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { apiError } from "@/lib/apiError";
 
 export async function POST(req: NextRequest) {
@@ -23,10 +23,13 @@ export async function POST(req: NextRequest) {
 
   const challenge = createWalletChallenge(body.walletAddress);
 
-  return NextResponse.json({
-    walletAddress: body.walletAddress,
-    challenge,
-    expiresInSeconds: 300,
-    instruction: "Sign the challenge string with your Solana wallet and POST walletAddress, challenge, and base64 signature to /api/auth/login",
-  });
+  return NextResponse.json(
+    {
+      walletAddress: body.walletAddress,
+      challenge,
+      expiresInSeconds: 300,
+      instruction: "Sign the challenge string with your Solana wallet and POST walletAddress, challenge, and base64 signature to /api/auth/login",
+    },
+    { headers: rateLimitHeaders(rl, 5) }
+  );
 }
