@@ -438,6 +438,7 @@ function verificationLabel(agent: {
   endpoint?: string;
   verificationStatus?: string;
 }) {
+  if (agent.verificationStatus === "platform") return "Axon platform agent — hosted and verified";
   if (!agent.endpoint) return "Hosted or provider-backed route";
   if (agent.verificationStatus === "x402_compliant") return "Endpoint verified as x402-compliant";
   if (agent.verificationStatus === "reachable") return "Endpoint reachable, x402 not detected";

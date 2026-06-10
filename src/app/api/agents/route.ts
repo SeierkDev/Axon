@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const minReputationRaw = searchParams.get("minReputation");
   const minReputation = minReputationRaw === null ? undefined : Number.parseFloat(minReputationRaw);
   const sort = searchParams.get("sort");
-  const limit = parseLimit(searchParams.get("limit"), 10, 200);
+  const limit = parseLimit(searchParams.get("limit"), 50, 200);
 
   const sharedOpts = {
     capability: searchParams.get("capability") ?? undefined,

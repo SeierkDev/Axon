@@ -34,15 +34,16 @@ export function seedBuiltinAgents(db: Database): void {
   // wallet_address is intentionally NULL — built-in agents are platform-owned.
   const upsertAgent = db.prepare(`
     INSERT INTO agents
-      (agent_id, name, capabilities, public_key, price, reputation, category, provider, wallet_address, created_at)
-    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, 'anthropic', NULL, ?)
+      (agent_id, name, capabilities, public_key, price, reputation, category, provider, wallet_address, verification_status, created_at)
+    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, 'anthropic', NULL, 'platform', ?)
     ON CONFLICT(agent_id) DO UPDATE SET
-      name         = excluded.name,
-      capabilities = excluded.capabilities,
-      price        = excluded.price,
-      category     = excluded.category,
-      provider     = excluded.provider,
-      wallet_address = NULL
+      name                = excluded.name,
+      capabilities        = excluded.capabilities,
+      price               = excluded.price,
+      category            = excluded.category,
+      provider            = excluded.provider,
+      wallet_address      = NULL,
+      verification_status = 'platform'
   `);
   const insertCap = db.prepare(
     "INSERT OR IGNORE INTO agent_capabilities (capability, agent_id) VALUES (?, ?)"

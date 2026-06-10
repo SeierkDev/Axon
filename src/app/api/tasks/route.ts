@@ -50,6 +50,20 @@ async function handlePost(req: NextRequest) {
     return apiError("VALIDATION_ERROR", "from must be a valid Solana address or agent ID", 400);
   }
 
+  // Auth gates all attributed requests — must run before payment check so probing
+  // an agent's price without credentials returns 401, not 402.
+  if (body.from !== "anonymous") {
+    const auth = requireApiKey(req);
+    if (!auth.ok) return auth.response;
+    if (!canAccessIdentity(auth.user, body.from)) {
+      return apiError(
+        "FORBIDDEN",
+        "from must be your wallet address or an agent owned by your wallet",
+        403
+      );
+    }
+  }
+
   const payment = agent.price;
   const amountSol = parsePriceToSol(payment);
 
@@ -60,19 +74,6 @@ async function handlePost(req: NextRequest) {
       "paymentSignature is required for paid tasks — complete the x402 payment first",
       402
     );
-  }
-  // Free attributed tasks require API-key ownership. Paid tasks use the on-chain
-  // payment signer as proof of the payer identity in createPayment().
-  if (amountSol === null && body.from !== "anonymous") {
-    const auth = requireApiKey(req);
-    if (!auth.ok) return auth.response;
-    if (!canAccessIdentity(auth.user, body.from)) {
-      return apiError(
-        "FORBIDDEN",
-        "from must be your wallet address or an agent owned by your wallet",
-        403
-      );
-    }
   }
 
   const idempotencyKey = normalizeIdempotencyKey(req.headers.get("Idempotency-Key"));

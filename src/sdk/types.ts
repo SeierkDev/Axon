@@ -1,7 +1,7 @@
 // ─── Agent ────────────────────────────────────────────────────────────────────
 
 export type InferenceProvider = "anthropic" | "ollama" | "openai";
-export type VerificationStatus = "unverified" | "reachable" | "x402_compliant" | "unreachable";
+export type VerificationStatus = "unverified" | "reachable" | "x402_compliant" | "unreachable" | "platform";
 
 export interface Agent {
   agentId: string;

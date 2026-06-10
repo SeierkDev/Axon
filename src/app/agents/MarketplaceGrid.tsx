@@ -27,6 +27,7 @@ function paymentLabel(agent: Agent) {
 }
 
 function verificationLabel(agent: Agent) {
+  if (agent.verificationStatus === "platform") return "Axon hosted";
   if (!agent.endpoint) return "Hosted route";
   if (agent.verificationStatus === "x402_compliant") return "x402 verified";
   if (agent.verificationStatus === "reachable") return "Endpoint reachable";
@@ -35,6 +36,7 @@ function verificationLabel(agent: Agent) {
 }
 
 function healthDot(agent: Agent): string {
+  if (agent.verificationStatus === "platform") return "bg-green-400";
   if (!agent.endpoint) return "bg-green-400";
   if (agent.verificationStatus === "x402_compliant") return "bg-green-400";
   if (agent.verificationStatus === "reachable") return "bg-blue-400";
