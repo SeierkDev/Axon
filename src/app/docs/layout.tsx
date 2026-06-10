@@ -19,7 +19,7 @@ export default function DocsLayout({
           <span className="text-sm text-gray-500">Docs</span>
           <div className="ml-auto flex items-center gap-6">
             <Link
-              href="https://github.com/Modulr402/Axon"
+              href="https://github.com/SeierkDev/Axon"
               className="text-sm text-gray-400 hover:text-gray-900 transition-colors"
             >
               GitHub

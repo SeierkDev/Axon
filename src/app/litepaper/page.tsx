@@ -413,7 +413,7 @@ await axon.delegate({
               Read the Docs
             </Link>
             <Link
-              href="https://github.com/axon-agents/axon"
+              href="https://github.com/SeierkDev/Axon"
               className="px-6 py-3 border border-gray-200 hover:border-gray-400 text-gray-600 hover:text-gray-900 rounded-lg text-sm font-medium transition-colors"
             >
               View on GitHub

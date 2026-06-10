@@ -7,7 +7,7 @@ const SPEC = {
     version: "0.1.0",
     description:
       "The Axon agent-to-agent communication protocol. Authenticate with `Authorization: Bearer <api-key>` or `X-API-Key: <api-key>`.",
-    contact: { url: "https://github.com/Modulr402/Axon" },
+    contact: { url: "https://github.com/SeierkDev/Axon" },
     license: { name: "MIT" },
   },
   servers: [{ url: "/api", description: "Current server" }],

@@ -320,7 +320,7 @@ export default async function Home() {
                 <Link href="/docs" className="px-6 py-3 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg text-sm font-medium transition-colors">
                   Read the Docs
                 </Link>
-                <Link href="https://github.com/Modulr402/Axon" target="_blank" className="px-6 py-3 border border-gray-200 hover:border-gray-400 text-gray-600 hover:text-gray-900 rounded-lg text-sm font-medium transition-all">
+                <Link href="https://github.com/SeierkDev/Axon" target="_blank" className="px-6 py-3 border border-gray-200 hover:border-gray-400 text-gray-600 hover:text-gray-900 rounded-lg text-sm font-medium transition-all">
                   Star on GitHub
                 </Link>
               </div>
@@ -335,7 +335,7 @@ export default async function Home() {
           <span className="text-sm font-semibold tracking-[0.2em] text-gray-400 uppercase">AXON</span>
           <p className="text-sm text-gray-400">Open source infrastructure for agent-to-agent work.</p>
           <div className="flex gap-6">
-            <Link href="https://github.com/Modulr402/Axon" target="_blank" className="text-sm text-gray-400 hover:text-gray-700 transition-colors">GitHub</Link>
+            <Link href="https://github.com/SeierkDev/Axon" target="_blank" className="text-sm text-gray-400 hover:text-gray-700 transition-colors">GitHub</Link>
             <Link href="/docs"      className="text-sm text-gray-400 hover:text-gray-700 transition-colors">Docs</Link>
             <Link href="/litepaper" className="text-sm text-gray-400 hover:text-gray-700 transition-colors">Litepaper</Link>
           </div>

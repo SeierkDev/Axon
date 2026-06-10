@@ -60,7 +60,9 @@ export default function SiteNav() {
           <div className="flex items-center gap-3">
             {/* Twitter / X */}
             <a
-              href="#"
+              href="https://x.com/axon402"
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="Twitter / X"
               className="hidden sm:flex text-gray-400 hover:text-gray-700 transition-colors"
             >
@@ -70,7 +72,9 @@ export default function SiteNav() {
             </a>
             {/* GitHub */}
             <a
-              href="#"
+              href="https://github.com/SeierkDev/Axon"
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="GitHub"
               className="hidden sm:flex text-gray-400 hover:text-gray-700 transition-colors"
             >
