@@ -162,15 +162,6 @@ function StepApiKey({
         disabled={phantomLoading}
         className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-[#ab9ff2] hover:bg-[#9b8ee2] text-white text-sm font-semibold disabled:opacity-50 transition-colors mb-4"
       >
-        {/* Official Phantom ghost mark */}
-        <svg width="22" height="22" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="128" height="128" rx="26" fill="white" fillOpacity="0.2"/>
-          <path fillRule="evenodd" clipRule="evenodd"
-            d="M64 18C41.9 18 24 35.9 24 58v4c0 1.1.9 2 2 2s2-.9 2-2v-4c0-19.9 16.1-36 36-36s36 16.1 36 36v38.3l-7.3-5.8a2 2 0 0 0-2.7.3l-7 8.7-7-8.7a2 2 0 0 0-3.1 0l-7 8.7-7-8.7a2 2 0 0 0-2.7-.3L29 96.3V62a2 2 0 0 0-4 0v38a2 2 0 0 0 3.3 1.5l8.7-7 7 8.7a2 2 0 0 0 3.1 0l7-8.7 7 8.7a2 2 0 0 0 3.1 0l7-8.7 8.7 7A2 2 0 0 0 104 100V58c0-22.1-17.9-40-40-40z"
-            fill="white"/>
-          <circle cx="52" cy="62" r="6" fill="#ab9ff2"/>
-          <circle cx="76" cy="62" r="6" fill="#ab9ff2"/>
-        </svg>
         {phantomLoading ? "Connecting…" : "Connect Phantom"}
       </button>
 
