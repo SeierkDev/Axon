@@ -162,11 +162,14 @@ function StepApiKey({
         disabled={phantomLoading}
         className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-[#ab9ff2] hover:bg-[#9b8ee2] text-white text-sm font-semibold disabled:opacity-50 transition-colors mb-4"
       >
-        <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
-          <rect width="40" height="40" rx="10" fill="white" fillOpacity="0.2"/>
-          <path d="M8 20.5C8 13.596 13.596 8 20.5 8S33 13.596 33 20.5c0 3.59-1.49 6.83-3.88 9.14a1 1 0 0 1-.7.29H11.58a1 1 0 0 1-.7-.29A12.44 12.44 0 0 1 8 20.5Z" fill="white"/>
-          <ellipse cx="16.5" cy="20" rx="2" ry="2.5" fill="#ab9ff2"/>
-          <ellipse cx="23.5" cy="20" rx="2" ry="2.5" fill="#ab9ff2"/>
+        {/* Official Phantom ghost mark */}
+        <svg width="22" height="22" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="128" height="128" rx="26" fill="white" fillOpacity="0.2"/>
+          <path fillRule="evenodd" clipRule="evenodd"
+            d="M64 18C41.9 18 24 35.9 24 58v4c0 1.1.9 2 2 2s2-.9 2-2v-4c0-19.9 16.1-36 36-36s36 16.1 36 36v38.3l-7.3-5.8a2 2 0 0 0-2.7.3l-7 8.7-7-8.7a2 2 0 0 0-3.1 0l-7 8.7-7-8.7a2 2 0 0 0-2.7-.3L29 96.3V62a2 2 0 0 0-4 0v38a2 2 0 0 0 3.3 1.5l8.7-7 7 8.7a2 2 0 0 0 3.1 0l7-8.7 7 8.7a2 2 0 0 0 3.1 0l7-8.7 8.7 7A2 2 0 0 0 104 100V58c0-22.1-17.9-40-40-40z"
+            fill="white"/>
+          <circle cx="52" cy="62" r="6" fill="#ab9ff2"/>
+          <circle cx="76" cy="62" r="6" fill="#ab9ff2"/>
         </svg>
         {phantomLoading ? "Connecting…" : "Connect Phantom"}
       </button>
@@ -197,13 +200,21 @@ function StepApiKey({
             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-mono text-gray-900 outline-none focus:border-gray-500 mb-3"
             autoFocus
           />
-          <button
-            onClick={() => void validate()}
-            disabled={!value.trim() || loading}
-            className="w-full py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
-          >
-            {loading ? "Validating…" : "Validate & continue"}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => { setShowPaste(false); setValue(""); setError(null); }}
+              className="px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() => void validate()}
+              disabled={!value.trim() || loading}
+              className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
+            >
+              {loading ? "Validating…" : "Validate & continue"}
+            </button>
+          </div>
         </>
       )}
 
@@ -409,11 +420,13 @@ function StepTest({
   agent,
   onNext,
   onSkip,
+  onBack,
 }: {
   apiKey: string;
   agent: RegisteredAgent;
   onNext: () => void;
   onSkip: () => void;
+  onBack: () => void;
 }) {
   const [task, setTask] = useState("Say hello and briefly describe what you can do.");
   const [output, setOutput] = useState("");
@@ -519,6 +532,13 @@ function StepTest({
       )}
 
       <div className="flex gap-3">
+        <button
+          onClick={onBack}
+          disabled={testState === "running"}
+          className="px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 disabled:opacity-40 transition-colors"
+        >
+          ← Back
+        </button>
         <button
           onClick={() => void run()}
           disabled={testState === "running" || !task.trim() || !!agent.endpoint}
@@ -633,6 +653,7 @@ export default function OnboardingClient() {
           agent={agent}
           onNext={() => setStep(4)}
           onSkip={() => setStep(4)}
+          onBack={() => setStep(2)}
         />
       )}
 
