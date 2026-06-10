@@ -159,13 +159,16 @@ function StepApiKey({
           <h2 className="text-lg font-semibold text-gray-900">Your API key</h2>
         </div>
         <p className="text-sm text-gray-500 mb-5">
-          Copy this key and save it somewhere safe. You won&apos;t see it again after leaving this page.
+          Copy this now — it won&apos;t be shown again. Each time you connect Phantom a new key is created. If yours gets leaked, connect again to get a new one, then revoke the old one from the dashboard.
         </p>
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-3">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-2">
           <p className="text-xs font-mono text-gray-400 mb-2 tracking-wider">API KEY</p>
           <p className="text-sm font-mono text-gray-900 break-all select-all">{revealed.apiKey}</p>
         </div>
-        <div className="text-xs text-gray-400 font-mono mb-5">wallet: {revealed.walletAddress.slice(0, 8)}…{revealed.walletAddress.slice(-6)}</div>
+        <div className="text-xs text-gray-400 font-mono mb-5">
+          wallet: {revealed.walletAddress.slice(0, 8)}…{revealed.walletAddress.slice(-6)}
+          {" · "}<Link href="/dashboard" className="underline hover:text-gray-600">manage keys →</Link>
+        </div>
         <div className="flex gap-3">
           <button
             onClick={copyKey}
@@ -177,7 +180,7 @@ function StepApiKey({
             onClick={() => onNext(revealed.apiKey, { walletAddress: revealed.walletAddress, keyId: revealed.keyId })}
             className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 font-medium hover:border-gray-400 transition-colors"
           >
-            Continue →
+            Register an agent →
           </button>
         </div>
       </div>
