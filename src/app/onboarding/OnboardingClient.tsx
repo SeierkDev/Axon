@@ -81,7 +81,53 @@ function StepApiKey({
 }) {
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
+  const [phantomLoading, setPhantomLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPaste, setShowPaste] = useState(false);
+
+  async function connectPhantom() {
+    setPhantomLoading(true);
+    setError(null);
+    try {
+      const solana = (window as unknown as { solana?: { isPhantom?: boolean; connect: () => Promise<{ publicKey: { toString(): string } }>; signMessage: (msg: Uint8Array, encoding: string) => Promise<{ signature: Uint8Array }> } }).solana;
+      if (!solana?.isPhantom) {
+        throw new Error("Phantom wallet not found — install it from phantom.app");
+      }
+
+      // Connect and get wallet address
+      const { publicKey } = await solana.connect();
+      const walletAddress = publicKey.toString();
+
+      // Get challenge
+      const challengeRes = await fetch("/api/auth/challenge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletAddress }),
+      });
+      const { challenge } = await challengeRes.json() as { challenge: string };
+      if (!challengeRes.ok || !challenge) throw new Error("Failed to get challenge");
+
+      // Sign the challenge
+      const encoded = new TextEncoder().encode(challenge);
+      const { signature } = await solana.signMessage(encoded, "utf8");
+      const b64 = btoa(String.fromCharCode(...signature));
+
+      // Exchange for API key
+      const loginRes = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletAddress, challenge, signature: b64 }),
+      });
+      const loginBody = await loginRes.json() as { apiKey?: string; keyId?: string; error?: string };
+      if (!loginRes.ok || !loginBody.apiKey) throw new Error(loginBody.error ?? "Login failed");
+
+      onNext(loginBody.apiKey, { walletAddress, keyId: loginBody.keyId! });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Wallet connection failed");
+    } finally {
+      setPhantomLoading(false);
+    }
+  }
 
   async function validate() {
     const key = value.trim();
@@ -105,28 +151,63 @@ function StepApiKey({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">API Key</h2>
-      <p className="text-sm text-gray-500 mb-5">
-        Paste your Axon API key. It&apos;s validated against the server — nothing is stored.
-        {" "}<Link href="/docs/getting-started" className="underline text-gray-700 hover:text-gray-900" target="_blank">How to get one →</Link>
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Get your API key</h2>
+      <p className="text-sm text-gray-500 mb-6">
+        Connect your Phantom wallet to create a key instantly — or paste an existing one.
       </p>
-      <input
-        type="password"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && void validate()}
-        placeholder="axon_..."
-        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-mono text-gray-900 outline-none focus:border-gray-500 mb-3"
-        autoFocus
-      />
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+
+      {/* Phantom connect — primary path */}
       <button
-        onClick={() => void validate()}
-        disabled={!value.trim() || loading}
-        className="w-full py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
+        onClick={() => void connectPhantom()}
+        disabled={phantomLoading}
+        className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-[#ab9ff2] hover:bg-[#9b8ee2] text-white text-sm font-semibold disabled:opacity-50 transition-colors mb-4"
       >
-        {loading ? "Validating…" : "Validate & continue"}
+        <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="10" fill="white" fillOpacity="0.2"/>
+          <path d="M8 20.5C8 13.596 13.596 8 20.5 8S33 13.596 33 20.5c0 3.59-1.49 6.83-3.88 9.14a1 1 0 0 1-.7.29H11.58a1 1 0 0 1-.7-.29A12.44 12.44 0 0 1 8 20.5Z" fill="white"/>
+          <ellipse cx="16.5" cy="20" rx="2" ry="2.5" fill="#ab9ff2"/>
+          <ellipse cx="23.5" cy="20" rx="2" ry="2.5" fill="#ab9ff2"/>
+        </svg>
+        {phantomLoading ? "Connecting…" : "Connect Phantom"}
       </button>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-xs text-gray-400">or</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+
+      {/* Paste existing key */}
+      {!showPaste ? (
+        <button
+          onClick={() => setShowPaste(true)}
+          className="w-full py-2.5 rounded-lg border border-gray-200 text-gray-500 text-sm hover:border-gray-400 hover:text-gray-700 transition-colors"
+        >
+          Paste existing key
+        </button>
+      ) : (
+        <>
+          <input
+            type="password"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void validate()}
+            placeholder="axon_..."
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-mono text-gray-900 outline-none focus:border-gray-500 mb-3"
+            autoFocus
+          />
+          <button
+            onClick={() => void validate()}
+            disabled={!value.trim() || loading}
+            className="w-full py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
+          >
+            {loading ? "Validating…" : "Validate & continue"}
+          </button>
+        </>
+      )}
+
+      {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
     </div>
   );
 }
