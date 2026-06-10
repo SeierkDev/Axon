@@ -244,9 +244,9 @@ export function searchAgents(opts: SearchOptions): Agent[] {
   const queryLimit = opts.sort === "price" ? 2000 : opts.limit ?? 10;
 
   // Endpoint agents must pass at least a reachability check before appearing in discovery.
-  // Agents with no endpoint are internal inference agents — always discoverable.
+  // Platform agents and no-endpoint inference agents are always discoverable.
   const verifiedClause =
-    "AND (endpoint IS NULL OR verification_status IN ('reachable', 'x402_compliant'))";
+    "AND (endpoint IS NULL OR verification_status IN ('reachable', 'x402_compliant', 'platform'))";
 
   let rows: AgentRow[];
   if (agentIds !== null) {

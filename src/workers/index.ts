@@ -130,6 +130,11 @@ async function poll() {
   if (pollRunning) return;
   pollRunning = true;
   try {
+    // Record heartbeat so the health endpoint can confirm the worker is alive.
+    getDb()
+      .prepare("INSERT OR REPLACE INTO worker_state (key, value, updated_at) VALUES ('last_seen', 'ok', ?)")
+      .run(new Date().toISOString());
+
     try {
       await deliverPendingWebhooks();
     } catch (err) {

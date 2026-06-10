@@ -172,20 +172,39 @@ function checkTaskStats(): HealthCheck {
   }
 }
 
+function checkWorker(): HealthCheck {
+  try {
+    const db = getDb();
+    const row = db
+      .prepare("SELECT value, updated_at FROM worker_state WHERE key = 'last_seen'")
+      .get() as { value: string; updated_at: string } | undefined;
+
+    if (!row) {
+      return { name: "worker", status: "warn", message: "Worker has not reported in yet" };
+    }
+
+    const ageMs = Date.now() - new Date(row.updated_at).getTime();
+    const ageMins = Math.round(ageMs / 60_000);
+    // Worker polls every 15 s — flag as warn if silent for >2 min, error if >10 min
+    const status = ageMs > 10 * 60_000 ? "error" : ageMs > 2 * 60_000 ? "warn" : "ok";
+    return {
+      name: "worker",
+      status,
+      details: { lastSeenAt: row.updated_at, ageMinutes: ageMins },
+    };
+  } catch {
+    return { name: "worker", status: "warn", message: "Worker state table not yet available" };
+  }
+}
+
 function checkAgentStats(): HealthCheck {
   try {
     const db = getDb();
     const row = db.prepare("SELECT COUNT(*) AS total FROM agents").get() as { total: number };
-    const lastVerified = db
-      .prepare("SELECT MAX(last_verified_at) AS ts FROM agents WHERE last_verified_at IS NOT NULL")
-      .get() as { ts: string | null };
     return {
       name: "agents",
       status: "ok",
-      details: {
-        registered: row.total,
-        workerLastSeen: lastVerified.ts ?? "never",
-      },
+      details: { registered: row.total },
     };
   } catch (err) {
     return {
@@ -212,6 +231,7 @@ export function getHealthReport(): HealthReport {
     checkMemory(),
     checkTaskStats(),
     checkAgentStats(),
+    checkWorker(),
     checkHeliusCircuit(),
   ]);
 }

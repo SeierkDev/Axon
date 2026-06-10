@@ -46,20 +46,43 @@ function jsonReq(url: string, method: string, body?: unknown, headers?: Record<s
 // ── Health ────────────────────────────────────────────────────────────────────
 
 describe("GET /api/health smoke", () => {
-  it("returns 200 with ok:true and required check names", async () => {
-    const res = await healthGET();
+  function makeHealthReq(secret?: string) {
+    const headers: Record<string, string> = {};
+    if (secret) headers["Authorization"] = `Bearer ${secret}`;
+    return new NextRequest("http://localhost/api/health", { headers });
+  }
+
+  it("returns minimal public response without auth", async () => {
+    const res = await healthGET(makeHealthReq());
     expect(res.status).toBe(200);
-    const body = await res.json() as { ok: boolean; service: string; checks: { name: string }[] };
-    expect(body.ok).toBe(true);
-    expect(body.service).toBe("axon");
-    const names = body.checks.map((c) => c.name);
-    expect(names).toContain("database");
-    expect(names).toContain("memory");
-    expect(names).toContain("helius_circuit");
+    const body = await res.json() as { ok: boolean; status: string; timestamp: string };
+    expect(typeof body.ok).toBe("boolean");
+    expect(body.status).toBeDefined();
+    expect(body.timestamp).toBeDefined();
+    // Full details must NOT be present in public response
+    expect((body as Record<string, unknown>).checks).toBeUndefined();
+  });
+
+  it("returns full report with valid CRON_SECRET", async () => {
+    const original = process.env.CRON_SECRET;
+    process.env.CRON_SECRET = "test-secret";
+    try {
+      const res = await healthGET(makeHealthReq("test-secret"));
+      expect(res.status).toBe(200);
+      const body = await res.json() as { ok: boolean; checks: { name: string }[] };
+      expect(body.ok).toBe(true);
+      const names = body.checks.map((c) => c.name);
+      expect(names).toContain("database");
+      expect(names).toContain("memory");
+      expect(names).toContain("worker");
+      expect(names).toContain("helius_circuit");
+    } finally {
+      process.env.CRON_SECRET = original;
+    }
   });
 
   it("sets Cache-Control: no-store", async () => {
-    const res = await healthGET();
+    const res = await healthGET(makeHealthReq());
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 });

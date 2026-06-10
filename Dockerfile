@@ -41,5 +41,6 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 ENV DATABASE_PATH=/data/axon.db
+ENV NODE_OPTIONS="--max-old-space-size=512"
 
 CMD ["node", "server.js"]
