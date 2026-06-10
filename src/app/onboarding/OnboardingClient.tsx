@@ -84,6 +84,8 @@ function StepApiKey({
   const [phantomLoading, setPhantomLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPaste, setShowPaste] = useState(false);
+  const [revealed, setRevealed] = useState<{ apiKey: string; walletAddress: string; keyId: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function connectPhantom() {
     setPhantomLoading(true);
@@ -93,12 +95,8 @@ function StepApiKey({
       if (!solana?.isPhantom) {
         throw new Error("Phantom wallet not found — install it from phantom.app");
       }
-
-      // Connect and get wallet address
       const { publicKey } = await solana.connect();
       const walletAddress = publicKey.toString();
-
-      // Get challenge
       const challengeRes = await fetch("/api/auth/challenge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,13 +104,9 @@ function StepApiKey({
       });
       const { challenge } = await challengeRes.json() as { challenge: string };
       if (!challengeRes.ok || !challenge) throw new Error("Failed to get challenge");
-
-      // Sign the challenge
       const encoded = new TextEncoder().encode(challenge);
       const { signature } = await solana.signMessage(encoded, "utf8");
       const b64 = btoa(String.fromCharCode(...signature));
-
-      // Exchange for API key
       const loginRes = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,13 +114,20 @@ function StepApiKey({
       });
       const loginBody = await loginRes.json() as { apiKey?: string; keyId?: string; error?: string };
       if (!loginRes.ok || !loginBody.apiKey) throw new Error(loginBody.error ?? "Login failed");
-
-      onNext(loginBody.apiKey, { walletAddress, keyId: loginBody.keyId! });
+      // Show the key — don't skip past it
+      setRevealed({ apiKey: loginBody.apiKey, walletAddress, keyId: loginBody.keyId! });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wallet connection failed");
     } finally {
       setPhantomLoading(false);
     }
+  }
+
+  function copyKey() {
+    if (!revealed) return;
+    void navigator.clipboard.writeText(revealed.apiKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function validate() {
@@ -149,6 +150,41 @@ function StepApiKey({
     }
   }
 
+  // ── Key revealed screen ───────────────────────────────────────────────────
+  if (revealed) {
+    return (
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xs">✓</div>
+          <h2 className="text-lg font-semibold text-gray-900">Your API key</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-5">
+          Copy this key and save it somewhere safe. You won&apos;t see it again after leaving this page.
+        </p>
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-3">
+          <p className="text-xs font-mono text-gray-400 mb-2 tracking-wider">API KEY</p>
+          <p className="text-sm font-mono text-gray-900 break-all select-all">{revealed.apiKey}</p>
+        </div>
+        <div className="text-xs text-gray-400 font-mono mb-5">wallet: {revealed.walletAddress.slice(0, 8)}…{revealed.walletAddress.slice(-6)}</div>
+        <div className="flex gap-3">
+          <button
+            onClick={copyKey}
+            className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
+          >
+            {copied ? "Copied!" : "Copy key"}
+          </button>
+          <button
+            onClick={() => onNext(revealed.apiKey, { walletAddress: revealed.walletAddress, keyId: revealed.keyId })}
+            className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 font-medium hover:border-gray-400 transition-colors"
+          >
+            Continue →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Connect screen ────────────────────────────────────────────────────────
   return (
     <div>
       <h2 className="text-lg font-semibold text-gray-900 mb-1">Get your API key</h2>
@@ -156,7 +192,6 @@ function StepApiKey({
         Connect your Phantom wallet to create a key instantly — or paste an existing one.
       </p>
 
-      {/* Phantom connect — primary path */}
       <button
         onClick={() => void connectPhantom()}
         disabled={phantomLoading}
@@ -165,14 +200,12 @@ function StepApiKey({
         {phantomLoading ? "Connecting…" : "Connect Phantom"}
       </button>
 
-      {/* Divider */}
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 h-px bg-gray-200" />
         <span className="text-xs text-gray-400">or</span>
         <div className="flex-1 h-px bg-gray-200" />
       </div>
 
-      {/* Paste existing key */}
       {!showPaste ? (
         <button
           onClick={() => setShowPaste(true)}
