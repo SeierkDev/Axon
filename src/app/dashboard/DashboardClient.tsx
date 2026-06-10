@@ -790,7 +790,7 @@ npm run demo:agent`}</code>
 
       {data && (
         <>
-          <div className="flex items-center justify-between -mb-2">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full transition-colors ${autoRefreshing ? "bg-amber-400" : "bg-green-400"}`} />
               <span className="text-xs text-gray-400">
