@@ -6,7 +6,7 @@ import { apiError } from "@/lib/apiError";
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
-  const rl = checkRateLimit(`auth-challenge:${ip}`, 20, 60_000);
+  const rl = checkRateLimit(`auth-challenge:${ip}`, 5, 60_000);
   if (!rl.allowed) return tooManyRequests(rl);
 
   const body = await req.json().catch(() => ({})) as { walletAddress?: string };
