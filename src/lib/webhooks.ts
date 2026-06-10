@@ -1,4 +1,4 @@
-import { randomUUID, createHmac } from "crypto";
+import { randomUUID, randomBytes, createHmac } from "crypto";
 import { getDb } from "./db";
 import { publicHttpFetch } from "./urlSecurity";
 import { logger } from "./logger";
@@ -122,7 +122,7 @@ export function createWebhook(opts: {
 }): Webhook {
   const db = getDb();
   const webhookId = randomUUID();
-  const secret = randomUUID().replace(/-/g, ""); // 32 hex chars
+  const secret = randomBytes(32).toString("hex"); // 256-bit secret
   const createdAt = new Date().toISOString();
 
   db.prepare(`
