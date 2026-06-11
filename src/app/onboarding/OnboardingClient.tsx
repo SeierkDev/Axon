@@ -97,9 +97,10 @@ function StepApiKey({
         // Phantom's built-in browser where window.solana is injected.
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         if (isMobile) {
+          // Open this page inside Phantom's built-in browser where window.solana is injected.
+          // phantom:// scheme navigates directly to the browse URL on both iOS and Android.
           const dest = encodeURIComponent(window.location.href);
-          const ref = encodeURIComponent(window.location.origin);
-          window.location.href = `https://phantom.app/ul/v1/browse/${dest}?ref=${ref}`;
+          window.location.href = `phantom://browse/${dest}`;
           return;
         }
         throw new Error("Phantom wallet not found — install the extension from phantom.app");
