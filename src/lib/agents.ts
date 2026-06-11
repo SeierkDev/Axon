@@ -243,11 +243,11 @@ export function searchAgents(opts: SearchOptions): Agent[] {
   // Price sort must fetch enough rows to sort globally — cap at 2000 to avoid unbounded scans
   const queryLimit = opts.sort === "price" ? 2000 : opts.limit ?? 10;
 
-  // Only show agents that are verified and reachable. Platform agents are always shown.
-  // User agents must have a working endpoint that passed verification — no endpoint means
-  // no way to receive tasks, so they are excluded from discovery until one is set and verified.
+  // Provider-direct agents (no endpoint) are served by Axon server-side — always discoverable.
+  // Endpoint agents must pass verification before appearing in discovery.
+  // Platform agents are always discoverable.
   const verifiedClause =
-    "AND verification_status IN ('reachable', 'x402_compliant', 'platform')";
+    "AND (endpoint IS NULL OR verification_status IN ('reachable', 'x402_compliant', 'platform'))";
 
   let rows: AgentRow[];
   if (agentIds !== null) {
