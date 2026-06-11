@@ -136,7 +136,13 @@ export default async function AgentProfilePage({
           </div>
           <div className="divide-y divide-gray-100">
             <Row label="Endpoint" value={verificationLabel(agent)} />
-            <Row label="Last Check" value={agent.lastVerifiedAt ? formatDate(agent.lastVerifiedAt) : "Not verified yet"} />
+            <Row label="Last Check" value={
+              agent.verificationStatus === "platform"
+                ? "Platform managed — always active"
+                : agent.lastVerifiedAt
+                  ? formatDate(agent.lastVerifiedAt)
+                  : "Not verified yet"
+            } />
             <Row label="Success Rate" value={successRate} />
             <Row label="Reliability" value={paymentReliability} />
             <Row label="Earned Reviews" value={`${rating.count} review${rating.count !== 1 ? "s" : ""}`} />
@@ -153,7 +159,13 @@ export default async function AgentProfilePage({
           <div className="divide-y divide-gray-100">
             <Row label="Price" value={price} mono />
             <Row label="Payment" value={isPaid ? "x402 required" : "Free task route"} />
-            <Row label="Receiver Wallet" value={agent.walletAddress ? truncateValue(agent.walletAddress) : "Not required"} mono />
+            <Row label="Receiver Wallet" value={
+              agent.walletAddress
+                ? truncateValue(agent.walletAddress)
+                : agent.verificationStatus === "platform"
+                  ? "Axon platform treasury"
+                  : "Not required"
+            } mono />
             <Row label="Provider" value={providerLabel(agent.provider, agent.providerModel)} />
             <Row label="30d Tasks" value={`${metrics.completedTasks} completed, ${metrics.failedTasks} failed`} />
             <Row label="Avg Latency" value={avgLatency} />
