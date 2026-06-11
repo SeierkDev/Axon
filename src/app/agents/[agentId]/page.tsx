@@ -164,7 +164,7 @@ export default async function AgentProfilePage({
                 ? truncateValue(agent.walletAddress)
                 : agent.verificationStatus === "platform"
                   ? "Axon platform treasury"
-                  : "Not required"
+                  : "Not configured"
             } mono />
             <Row label="Provider" value={providerLabel(agent.provider, agent.providerModel)} />
             <Row label="30d Tasks" value={`${metrics.completedTasks} completed, ${metrics.failedTasks} failed`} />
