@@ -62,6 +62,16 @@ async function handlePost(req: NextRequest) {
         403
       );
     }
+  } else {
+    // 3 free calls per IP total — 1 year window so refreshing the page doesn't reset it
+    const freeRl = checkRateLimit(`free-demo:${ip}`, 3, 365 * 24 * 60 * 60 * 1000);
+    if (!freeRl.allowed) {
+      return apiError(
+        "FREE_LIMIT_REACHED",
+        "You've used your 3 free demo calls. Connect your Phantom wallet at axon-agents.com/onboarding to get an API key and continue.",
+        429
+      );
+    }
   }
 
   const payment = agent.price;

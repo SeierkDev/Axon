@@ -162,6 +162,16 @@ export async function POST(req: NextRequest, { params }: Params) {
       if (!canAccessIdentity(auth.user, from)) {
         return jsonError("from must be your wallet address or an agent owned by your wallet", "FORBIDDEN", 403);
       }
+    } else {
+      // 3 free calls per IP total — window is 1 year so refreshing doesn't reset it
+      const freeRl = checkRateLimit(`free-demo:${ip}`, 3, 365 * 24 * 60 * 60 * 1000);
+      if (!freeRl.allowed) {
+        return jsonError(
+          "You've used your 3 free demo calls. Connect your Phantom wallet at axon-agents.com/onboarding to get an API key and continue.",
+          "FREE_LIMIT_REACHED",
+          429
+        );
+      }
     }
     fromAddress = from;
   }
