@@ -78,7 +78,9 @@ function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
       <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
         <div>
           <p className="text-gray-400 text-[11px]">Reputation</p>
-          <p className="font-semibold text-gray-900 mt-0.5">{reputation.toFixed(1)}</p>
+          <p className="font-semibold text-gray-900 mt-0.5">
+            {reputation > 0 ? reputation.toFixed(1) : "New"}
+          </p>
         </div>
         <div>
           <p className="text-gray-400 text-[11px]">Market signal</p>

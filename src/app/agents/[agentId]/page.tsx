@@ -99,7 +99,9 @@ export default async function AgentProfilePage({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
           <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
             <p className="text-2xl font-bold text-gray-900">
-              {agent.reputation?.toFixed(1) ?? "0.0"}
+              {reputation.totalTasksCompleted >= 5
+                ? (agent.reputation?.toFixed(1) ?? "0.0")
+                : "New"}
             </p>
             <p className="text-xs text-gray-400 mt-1">Reputation</p>
           </div>
@@ -128,8 +130,8 @@ export default async function AgentProfilePage({
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
               Trust Signals
             </p>
-            <span className={`text-xs px-2 py-0.5 rounded-full border ${trustBadgeClass(agent.reputation ?? 0)}`}>
-              {trustLabel(agent.reputation ?? 0)}
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${trustBadgeClass(agent.reputation ?? 0, reputation.totalTasksCompleted)}`}>
+              {trustLabel(agent.reputation ?? 0, reputation.totalTasksCompleted)}
             </span>
           </div>
           <div className="divide-y divide-gray-100">
@@ -422,13 +424,15 @@ function providerLabel(provider: string, model?: string) {
   return model ? `${display} / ${model}` : display;
 }
 
-function trustLabel(reputation: number) {
+function trustLabel(reputation: number, totalTasks = 0) {
+  if (totalTasks < 5) return "New listing";
   if (reputation >= 8) return "High trust";
   if (reputation >= 5) return "Building trust";
   return "New listing";
 }
 
-function trustBadgeClass(reputation: number) {
+function trustBadgeClass(reputation: number, totalTasks = 0) {
+  if (totalTasks < 5) return "border-gray-200 bg-white text-gray-500";
   if (reputation >= 8) return "border-green-200 bg-green-50 text-green-700";
   if (reputation >= 5) return "border-amber-200 bg-amber-50 text-amber-700";
   return "border-gray-200 bg-white text-gray-500";
