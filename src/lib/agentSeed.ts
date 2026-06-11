@@ -30,19 +30,22 @@ const BUILTIN_AGENTS: BuiltinAgent[] = [
 ];
 
 export function seedBuiltinAgents(db: Database): void {
-  // INSERT OR REPLACE so re-running the seed fixes corrupted placeholder data.
-  // wallet_address is intentionally NULL — built-in agents are platform-owned.
+  const treasuryWallet =
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS ??
+    process.env.NEXT_PUBLIC_WALLET_ADDRESS ??
+    null;
+
   const upsertAgent = db.prepare(`
     INSERT INTO agents
       (agent_id, name, capabilities, public_key, price, reputation, category, provider, wallet_address, verification_status, created_at)
-    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, 'anthropic', NULL, 'platform', ?)
+    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, 'anthropic', ?, 'platform', ?)
     ON CONFLICT(agent_id) DO UPDATE SET
       name                = excluded.name,
       capabilities        = excluded.capabilities,
       price               = excluded.price,
       category            = excluded.category,
       provider            = excluded.provider,
-      wallet_address      = NULL,
+      wallet_address      = excluded.wallet_address,
       verification_status = 'platform'
   `);
   const insertCap = db.prepare(
@@ -59,6 +62,7 @@ export function seedBuiltinAgents(db: Database): void {
         JSON.stringify(agent.capabilities),
         agent.price,
         agent.category,
+        treasuryWallet,
         now,
       );
       for (const cap of agent.capabilities) {
