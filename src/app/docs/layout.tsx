@@ -38,8 +38,8 @@ export default function DocsLayout({
       <DocsSidebar />
 
       {/* Main content */}
-      <main className="ml-64 mt-14 min-h-[calc(100vh-56px)]">
-        <div className="max-w-3xl px-12 py-12">{children}</div>
+      <main className="md:ml-64 mt-14 min-h-[calc(100vh-56px)]">
+        <div className="max-w-3xl px-4 py-8 md:px-12 md:py-12">{children}</div>
       </main>
     </div>
   );

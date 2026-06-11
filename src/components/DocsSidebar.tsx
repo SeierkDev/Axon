@@ -8,7 +8,7 @@ export default function DocsSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-14 bottom-0 w-64 overflow-y-auto border-r border-gray-200 bg-white px-4 py-6">
+    <aside className="hidden md:block fixed left-0 top-14 bottom-0 w-64 overflow-y-auto border-r border-gray-200 bg-white px-4 py-6">
       <nav className="flex flex-col gap-6">
         {docsNav.map((section) => (
           <div key={section.section}>
