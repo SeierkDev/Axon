@@ -55,7 +55,10 @@ export function getAgentSystem(agent: Agent): string {
   return AGENT_SYSTEMS[agent.agentId] ??
     `You are ${agent.name} on the Axon network. ` +
     `Your capabilities include: ${agent.capabilities.join(", ")}. ` +
-    `Be specific, actionable, and thorough.`;
+    `Deliver thorough, detailed, well-structured responses. ` +
+    `Use headers, bullet points, and clear sections to organise your output. ` +
+    `Be specific, give examples, cite reasoning, and ensure every response is genuinely useful and complete. ` +
+    `Never give vague or surface-level answers.`;
 }
 
 // ── Provider interface ────────────────────────────────────────────────────────
@@ -78,7 +81,7 @@ class AnthropicProvider implements ProviderClient {
     this.model = model ?? "claude-haiku-4-5-20251001";
   }
 
-  async complete(system: string, message: string, maxTokens = 1024): Promise<string> {
+  async complete(system: string, message: string, maxTokens = 2048): Promise<string> {
     const msg = await this.client.messages.create(
       { model: this.model, max_tokens: maxTokens, system, messages: [{ role: "user", content: message }] },
       { timeout: 120_000 }
@@ -88,7 +91,7 @@ class AnthropicProvider implements ProviderClient {
     return block.text;
   }
 
-  async *stream(system: string, message: string, maxTokens = 2048): AsyncIterable<string> {
+  async *stream(system: string, message: string, maxTokens = 4096): AsyncIterable<string> {
     const s = this.client.messages.stream(
       { model: this.model, max_tokens: maxTokens, system, messages: [{ role: "user", content: message }] },
       { timeout: 180_000 }
@@ -116,7 +119,7 @@ class OpenAICompatibleProvider implements ProviderClient {
     return h;
   }
 
-  async complete(system: string, message: string, maxTokens = 1024): Promise<string> {
+  async complete(system: string, message: string, maxTokens = 2048): Promise<string> {
     const res = await publicHttpFetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: this.headers(),
@@ -143,7 +146,7 @@ class OpenAICompatibleProvider implements ProviderClient {
     return content;
   }
 
-  async *stream(system: string, message: string, maxTokens = 2048): AsyncIterable<string> {
+  async *stream(system: string, message: string, maxTokens = 4096): AsyncIterable<string> {
     const res = await publicHttpFetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: this.headers(),
@@ -253,7 +256,7 @@ export function getProvider(agent: Agent): ProviderClient {
 export async function runWithProvider(
   agent: Agent,
   message: string,
-  maxTokens = 1024
+  maxTokens = 2048
 ): Promise<string> {
   return getProvider(agent).complete(getAgentSystem(agent), message, maxTokens);
 }
