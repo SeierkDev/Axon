@@ -243,10 +243,11 @@ export function searchAgents(opts: SearchOptions): Agent[] {
   // Price sort must fetch enough rows to sort globally — cap at 2000 to avoid unbounded scans
   const queryLimit = opts.sort === "price" ? 2000 : opts.limit ?? 10;
 
-  // Endpoint agents must pass at least a reachability check before appearing in discovery.
-  // Platform agents and no-endpoint inference agents are always discoverable.
+  // Only show agents that are verified and reachable. Platform agents are always shown.
+  // User agents must have a working endpoint that passed verification — no endpoint means
+  // no way to receive tasks, so they are excluded from discovery until one is set and verified.
   const verifiedClause =
-    "AND (endpoint IS NULL OR verification_status IN ('reachable', 'x402_compliant', 'platform'))";
+    "AND verification_status IN ('reachable', 'x402_compliant', 'platform')";
 
   let rows: AgentRow[];
   if (agentIds !== null) {
