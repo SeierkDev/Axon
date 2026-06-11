@@ -34,6 +34,9 @@ COPY --from=builder /app/public          ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static    ./.next/static
 
+# curl is needed by Railway cron services that use sh -c 'curl ...' as their start command
+RUN apk add --no-cache curl
+
 # SQLite data directory — mount a Railway Volume at /data in production
 RUN mkdir -p /data
 
