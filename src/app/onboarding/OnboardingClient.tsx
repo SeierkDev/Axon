@@ -93,7 +93,16 @@ function StepApiKey({
     try {
       const solana = (window as unknown as { solana?: { isPhantom?: boolean; connect: () => Promise<{ publicKey: { toString(): string } }>; signMessage: (msg: Uint8Array, encoding: string) => Promise<{ signature: Uint8Array }> } }).solana;
       if (!solana?.isPhantom) {
-        throw new Error("Phantom wallet not found — install it from phantom.app");
+        // On mobile, Phantom is an app not an extension — open the page inside
+        // Phantom's built-in browser where window.solana is injected.
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+          const dest = encodeURIComponent(window.location.href);
+          const ref = encodeURIComponent(window.location.origin);
+          window.location.href = `https://phantom.app/ul/v1/browse/${dest}?ref=${ref}`;
+          return;
+        }
+        throw new Error("Phantom wallet not found — install the extension from phantom.app");
       }
       const { publicKey } = await solana.connect();
       const walletAddress = publicKey.toString();
