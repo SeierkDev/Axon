@@ -163,6 +163,7 @@ export default function DashboardClient() {
   const [loadingMoreTasks, setLoadingMoreTasks] = useState(false);
   const [creatingKey, setCreatingKey] = useState(false);
   const [newKeyReveal, setNewKeyReveal] = useState<string | null>(null);
+  const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   function addToast(type: Toast["type"], message: string) {
@@ -1154,13 +1155,47 @@ npm run demo:agent`}</code>
               {data.keys.map((key) => {
                 const isCurrent = key.keyId === data.keyId;
                 const isRevoking = revoking.has(key.keyId);
+                const isRevealed = revealedKeys.has(key.keyId);
                 const ageMs = Date.now() - new Date(key.createdAt).getTime();
                 const isStale = ageMs > 90 * 24 * 60 * 60 * 1000;
                 return (
                   <div key={key.keyId} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono text-gray-700">{key.keyPrefix}…</span>
+                        <span className="text-sm font-mono text-gray-700">
+                          {isRevealed ? `${key.keyPrefix}…` : "••••••••••••"}
+                        </span>
+                        <button
+                          onClick={() => setRevealedKeys((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(key.keyId)) next.delete(key.keyId); else next.add(key.keyId);
+                            return next;
+                          })}
+                          className="text-gray-400 hover:text-gray-700 transition-colors"
+                          title={isRevealed ? "Hide key" : "Show key"}
+                        >
+                          {isRevealed ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                              <path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+                              <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 0 1 0-1.186A10.004 10.004 0 0 1 10 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0 1 10 17c-4.257 0-7.893-2.66-9.336-6.41ZM14 10a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                              <path fillRule="evenodd" d="M3.28 2.22a.75.75 0 0 0-1.06 1.06l14.5 14.5a.75.75 0 1 0 1.06-1.06l-1.745-1.745a10.029 10.029 0 0 0 3.3-4.38 1.651 1.651 0 0 0 0-1.185A10.004 10.004 0 0 0 9.999 3a9.956 9.956 0 0 0-4.744 1.194L3.28 2.22ZM7.752 6.69l1.092 1.092a2.5 2.5 0 0 1 3.374 3.373l1.091 1.092a4 4 0 0 0-5.557-5.557Z" clipRule="evenodd" />
+                              <path d="m10.748 13.93 2.523 2.524a10.04 10.04 0 0 1-3.27.547c-4.258 0-7.894-2.66-9.337-6.41a1.651 1.651 0 0 1 0-1.186A10.007 10.007 0 0 1 2.839 6.02L6.07 9.252a4 4 0 0 0 4.678 4.678Z" />
+                            </svg>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => { void navigator.clipboard.writeText(key.keyPrefix); addToast("success", "Key prefix copied"); }}
+                          className="text-gray-400 hover:text-gray-700 transition-colors"
+                          title="Copy key prefix"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path d="M7 3.5A1.5 1.5 0 0 1 8.5 2h3.879a1.5 1.5 0 0 1 1.06.44l3.122 3.12A1.5 1.5 0 0 1 17 6.622V12.5a1.5 1.5 0 0 1-1.5 1.5h-1v-3.379a3 3 0 0 0-.879-2.121L10.5 5.379A3 3 0 0 0 8.379 4.5H7v-1Z" />
+                            <path d="M4.5 6A1.5 1.5 0 0 0 3 7.5v9A1.5 1.5 0 0 0 4.5 18h7a1.5 1.5 0 0 0 1.5-1.5v-5.879a1.5 1.5 0 0 0-.44-1.06L9.44 6.439A1.5 1.5 0 0 0 8.378 6H4.5Z" />
+                          </svg>
+                        </button>
                         {isCurrent && (
                           <span className="text-[11px] px-2 py-0.5 rounded-full border border-green-200 bg-green-50 text-green-700">
                             active
