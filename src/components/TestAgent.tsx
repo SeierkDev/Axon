@@ -60,7 +60,7 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
       if (!res.ok) {
         const data = await res.json() as { message?: string; error?: string };
         const msg = data.message ?? data.error ?? "Test failed";
-        setError(res.status === 429 ? "Rate limit reached. Try again in an hour." : msg);
+        setError(res.status === 429 ? "You've used your 3 free demo calls. Connect your Phantom wallet to continue." : msg);
         setStep("error");
         return;
       }
@@ -135,7 +135,7 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
     <div className="rounded-lg border border-gray-200 overflow-hidden mb-10">
       <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Try this agent</p>
-        <span className="text-xs text-gray-400">Free demo · 3 calls/hour</span>
+        <span className="text-xs text-gray-400">Free demo · 3 calls total</span>
       </div>
 
       <div className="p-5">
