@@ -16,6 +16,40 @@ import { verifyAgentEndpoint } from "@/lib/verification";
 const VALID_SORT_FIELDS = new Set<string>(["reputation", "price", "createdAt", "activity", "successRate", "latency", "reviews"]);
 const VALID_PROVIDERS: InferenceProvider[] = ["anthropic", "ollama", "openai"];
 
+// Terms that would impersonate the platform or well-known brands
+const IMPERSONATION_TERMS = [
+  "axon", "anthropic", "openai", "chatgpt", "gemini", "mistral", "cohere",
+  "deepmind", "grok", "perplexity", "midjourney", "stability",
+];
+
+// Basic profanity / hate speech blocklist — extend as needed
+const PROFANITY_TERMS = [
+  "fuck", "shit", "cunt", "nigger", "nigga", "faggot", "retard",
+  "bitch", "asshole", "bastard", "whore", "slut", "cock", "dick",
+  "pussy", "rape", "nazi",
+];
+
+function validateAgentContent(name: string, agentId: string, capabilities: string[]): string | null {
+  const haystack = [name, agentId, ...capabilities].join(" ").toLowerCase().replace(/[^a-z0-9 ]/g, " ");
+
+  for (const term of PROFANITY_TERMS) {
+    if (haystack.split(/\s+/).includes(term)) {
+      return "Agent name or capabilities contain inappropriate language.";
+    }
+  }
+
+  const nameLower = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const idLower = agentId.toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (const term of IMPERSONATION_TERMS) {
+    const t = term.replace(/[^a-z0-9]/g, "");
+    if (nameLower.includes(t) || idLower.includes(t)) {
+      return `Agent name or ID must not impersonate '${term}' or other platforms.`;
+    }
+  }
+
+  return null;
+}
+
 function parseLimit(raw: string | null, fallback: number, max: number): number {
   const parsed = Number.parseInt(raw ?? "", 10);
   return Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), max) : fallback;
@@ -93,6 +127,9 @@ async function handlePost(req: NextRequest) {
   if (agentExists(body.agentId)) {
     return apiError("CONFLICT", `Agent '${body.agentId}' is already registered`, 409);
   }
+
+  const contentError = validateAgentContent(body.name, body.agentId, body.capabilities);
+  if (contentError) return apiError("VALIDATION_ERROR", contentError, 400);
 
   if (body.provider && !VALID_PROVIDERS.includes(body.provider)) {
     return apiError(
