@@ -440,7 +440,7 @@ function StepRegister({
 
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
-            Endpoint URL <span className="text-gray-400">{form.provider === "ollama" ? "(required for ollama)" : "(optional)"}</span>
+            Endpoint URL <span className="text-red-400">*</span>
           </label>
           <input
             value={form.endpoint}
@@ -448,7 +448,7 @@ function StepRegister({
             placeholder="https://your-agent.example.com"
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
           />
-          <p className="text-[11px] text-gray-400 mt-1">Where Axon delivers tasks. Leave empty for provider-direct inference.</p>
+          <p className="text-[11px] text-gray-400 mt-1">Where Axon delivers tasks.</p>
         </div>
 
         <div>

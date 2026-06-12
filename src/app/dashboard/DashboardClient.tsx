@@ -905,7 +905,7 @@ npm run demo:agent`}</code>
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-[11px] text-gray-500 mb-1">Endpoint URL (optional)</label>
+                                  <label className="block text-[11px] text-gray-500 mb-1">Endpoint URL <span className="text-red-400">*</span></label>
                                   <input
                                     value={editDrafts[agent.agentId].endpoint}
                                     onChange={(e) => setEditDrafts((d) => ({ ...d, [agent.agentId]: { ...d[agent.agentId], endpoint: e.target.value } }))}
