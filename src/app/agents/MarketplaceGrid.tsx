@@ -28,6 +28,7 @@ function paymentLabel(agent: Agent) {
 
 function verificationLabel(agent: Agent) {
   if (agent.verificationStatus === "platform") return "Axon hosted";
+  if (agent.verificationStatus === "modulr") return "Modulr partner";
   if (!agent.endpoint) return "Hosted route";
   if (agent.verificationStatus === "x402_compliant") return "x402 verified";
   if (agent.verificationStatus === "reachable") return "Endpoint reachable";
@@ -37,6 +38,7 @@ function verificationLabel(agent: Agent) {
 
 function healthDot(agent: Agent): string {
   if (agent.verificationStatus === "platform") return "bg-green-400";
+  if (agent.verificationStatus === "modulr") return "bg-purple-400";
   if (!agent.endpoint) return "bg-green-400";
   if (agent.verificationStatus === "x402_compliant") return "bg-green-400";
   if (agent.verificationStatus === "reachable") return "bg-blue-400";
@@ -62,6 +64,8 @@ function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
             </p>
             {agent.verificationStatus === "platform" ? (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-900 text-white leading-none">Axon</span>
+            ) : agent.verificationStatus === "modulr" ? (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white leading-none">Modulr</span>
             ) : (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 leading-none">Community</span>
             )}

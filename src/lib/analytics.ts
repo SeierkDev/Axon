@@ -37,7 +37,7 @@ export function getNetworkStats(): NetworkStats {
   const agentTotal = (db.prepare(`
     SELECT COUNT(*) n FROM agents
     WHERE endpoint IS NULL
-       OR verification_status IN ('reachable', 'x402_compliant', 'platform')
+       OR verification_status IN ('reachable', 'x402_compliant', 'platform', 'modulr')
   `).get() as { n: number }).n;
   const agentActive = agentTotal;
 

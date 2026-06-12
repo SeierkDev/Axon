@@ -247,7 +247,7 @@ export function searchAgents(opts: SearchOptions): Agent[] {
   // Endpoint agents must pass verification before appearing in discovery.
   // Platform agents are always discoverable.
   const verifiedClause =
-    "AND (endpoint IS NULL OR verification_status IN ('reachable', 'x402_compliant', 'platform'))";
+    "AND (endpoint IS NULL OR verification_status IN ('reachable', 'x402_compliant', 'platform', 'modulr'))";
 
   let rows: AgentRow[];
   if (agentIds !== null) {
@@ -318,10 +318,10 @@ export interface AgentCounts {
 export function getAgentCounts(): AgentCounts {
   const row = getDb().prepare(`
     SELECT
-      COUNT(CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform') THEN 1 END) AS total,
-      COUNT(CASE WHEN (endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform')) AND price IS NOT NULL AND price != '' THEN 1 END) AS paid,
-      COUNT(DISTINCT CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform') THEN COALESCE(category, 'General') END) AS categories,
-      COUNT(CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform') THEN 1 END) AS active
+      COUNT(CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform', 'modulr') THEN 1 END) AS total,
+      COUNT(CASE WHEN (endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform', 'modulr')) AND price IS NOT NULL AND price != '' THEN 1 END) AS paid,
+      COUNT(DISTINCT CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform', 'modulr') THEN COALESCE(category, 'General') END) AS categories,
+      COUNT(CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform', 'modulr') THEN 1 END) AS active
     FROM agents
   `).get() as AgentCounts;
   return row;
