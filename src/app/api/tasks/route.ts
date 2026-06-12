@@ -63,8 +63,8 @@ async function handlePost(req: NextRequest) {
       );
     }
   } else if (!process.env.VITEST) {
-    // 3 free calls per IP total — 1 year window so refreshing the page doesn't reset it
-    const freeRl = checkRateLimit(`free-demo:${ip}`, 3, 365 * 24 * 60 * 60 * 1000);
+    // 3 free calls per IP per agent — 1 year window so refreshing the page doesn't reset it
+    const freeRl = checkRateLimit(`free-demo:${ip}:${body.to}`, 3, 365 * 24 * 60 * 60 * 1000);
     if (!freeRl.allowed) {
       return apiError(
         "FREE_LIMIT_REACHED",
