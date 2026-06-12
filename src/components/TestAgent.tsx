@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 function MarkdownOutput({ text }: { text: string }) {
   const lines = text.split("\n");
@@ -132,17 +132,23 @@ function storeRemaining(agentId: string, value: number) {
   try { localStorage.setItem(`demo-remaining:${agentId}`, String(value)); } catch { /* noop */ }
 }
 
+function useStoredRemaining(agentId: string): number {
+  return useSyncExternalStore(
+    (cb) => { window.addEventListener("storage", cb); return () => window.removeEventListener("storage", cb); },
+    () => getStoredRemaining(agentId),
+    () => LIMIT
+  );
+}
+
 export default function TestAgent({ agentId, agentName, capabilities, hasExternalEndpoint }: Props) {
   const [task, setTask] = useState("");
   const [step, setStep] = useState<Step>("idle");
   const [output, setOutput] = useState("");
   const [latency, setLatency] = useState<number | null>(null);
-  const [remaining, setRemaining] = useState<number>(LIMIT);
+  const storedRemaining = useStoredRemaining(agentId);
+  const [serverRemaining, setServerRemaining] = useState<number | null>(null);
+  const remaining = serverRemaining ?? storedRemaining;
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setRemaining(getStoredRemaining(agentId));
-  }, [agentId]);
 
   if (hasExternalEndpoint) return null;
 
@@ -206,7 +212,7 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
               receivedDone = true;
               setLatency(data.latencyMs ?? null);
               const rem = data.remaining ?? 0;
-              setRemaining(rem);
+              setServerRemaining(rem);
               storeRemaining(agentId, rem);
               setStep("done");
             } else if (data.error) {
