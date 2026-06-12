@@ -28,7 +28,7 @@ const EMPTY_FORM: AgentForm = {
   name: "",
   capabilities: "",
   price: "",
-  provider: "anthropic",
+  provider: "external",
   providerModel: "",
   providerEndpoint: "",
   endpoint: "",
@@ -40,6 +40,8 @@ const PROVIDER_LABELS: Record<Provider, string> = {
   ollama: "Ollama (self-hosted)",
   external: "External HTTP endpoint",
 };
+
+const COMMUNITY_PROVIDERS: Provider[] = ["ollama", "external"];
 
 const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: "claude-haiku-4-5-20251001",
@@ -402,7 +404,7 @@ export default function PublishWizard() {
               }}
               className={inputCls}
             >
-              {(Object.keys(PROVIDER_LABELS) as Provider[]).map((p) => (
+              {COMMUNITY_PROVIDERS.map((p) => (
                 <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
               ))}
             </select>
@@ -420,7 +422,7 @@ export default function PublishWizard() {
           )}
 
           {form.provider === "ollama" && (
-            <Field label="Ollama endpoint" hint="Public HTTPS URL to your Ollama-compatible API.">
+            <Field label="Ollama endpoint *" hint="Public HTTPS URL to your Ollama-compatible API.">
               <input
                 value={form.providerEndpoint}
                 onChange={(e) => setForm((f) => ({ ...f, providerEndpoint: e.target.value }))}
@@ -432,7 +434,7 @@ export default function PublishWizard() {
           )}
 
           {form.provider === "external" && (
-            <Field label="Agent endpoint" hint="Public HTTPS URL Axon will POST tasks to.">
+            <Field label="Agent endpoint *" hint="Public HTTPS URL Axon will POST tasks to.">
               <input
                 value={form.endpoint}
                 onChange={(e) => setForm((f) => ({ ...f, endpoint: e.target.value }))}
