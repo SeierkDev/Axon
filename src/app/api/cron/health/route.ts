@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const agents = getAllAgents().filter((a) => a.endpoint);
+  const agents = getAllAgents().filter((a) => a.endpoint && a.verificationStatus !== "modulr");
   const start = Date.now();
 
   const results = await Promise.allSettled(
