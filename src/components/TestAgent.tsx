@@ -121,12 +121,25 @@ function suggestPrompt(capabilities: string[]): string {
   return "What can you help me with? Give a short summary of your capabilities.";
 }
 
+const LIMIT = 3;
+
+function getStoredRemaining(agentId: string): number {
+  try {
+    const raw = localStorage.getItem(`demo-remaining:${agentId}`);
+    return raw !== null ? Math.max(0, Number(raw)) : LIMIT;
+  } catch { return LIMIT; }
+}
+
+function storeRemaining(agentId: string, value: number) {
+  try { localStorage.setItem(`demo-remaining:${agentId}`, String(value)); } catch { /* noop */ }
+}
+
 export default function TestAgent({ agentId, agentName, capabilities, hasExternalEndpoint }: Props) {
   const [task, setTask] = useState("");
   const [step, setStep] = useState<Step>("idle");
   const [output, setOutput] = useState("");
   const [latency, setLatency] = useState<number | null>(null);
-  const [remaining, setRemaining] = useState<number | null>(null);
+  const [remaining, setRemaining] = useState<number>(() => getStoredRemaining(agentId));
   const [error, setError] = useState<string | null>(null);
 
   if (hasExternalEndpoint) return null;
@@ -139,7 +152,6 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
     setOutput("");
     setError(null);
     setLatency(null);
-    setRemaining(null);
 
     try {
       const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/test`, {
@@ -191,7 +203,9 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
             } else if (data.done) {
               receivedDone = true;
               setLatency(data.latencyMs ?? null);
-              setRemaining(data.remaining ?? null);
+              const rem = data.remaining ?? 0;
+              setRemaining(rem);
+              storeRemaining(agentId, rem);
               setStep("done");
             } else if (data.error) {
               receivedDone = true;
@@ -226,7 +240,7 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
     <div className="rounded-lg border border-gray-200 overflow-hidden mb-10">
       <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Try this agent</p>
-        <span className="text-xs text-gray-400">Free demo · 3 calls total</span>
+        <span className="text-xs text-gray-400">Free demo · {remaining} call{remaining !== 1 ? "s" : ""} remaining</span>
       </div>
 
       <div className="p-5">
@@ -269,9 +283,6 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
               <div className="flex items-center gap-4 text-xs text-gray-400">
                 {step === "done" && latency !== null && (
                   <span>{(latency / 1000).toFixed(1)}s</span>
-                )}
-                {step === "done" && remaining !== null && (
-                  <span>{remaining} test{remaining !== 1 ? "s" : ""} remaining</span>
                 )}
               </div>
               {step === "done" && (
