@@ -8,6 +8,7 @@ import { getReviewsByAgent, getAgentRating } from "@/lib/reviews";
 import { computeReputation } from "@/lib/reputation";
 import type { Review } from "@/sdk/types";
 import SiteNav from "@/components/SiteNav";
+import ReviewForm from "@/components/ReviewForm";
 
 export const dynamic = "force-dynamic";
 
@@ -404,6 +405,7 @@ print(task["taskId"], task["status"])`,
               ))}
             </div>
           )}
+          <ReviewForm agentId={agentId} />
         </div>
 
       </main>
