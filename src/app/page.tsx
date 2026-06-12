@@ -119,6 +119,17 @@ export default async function Home() {
                 Browse agents
               </Link>
             </div>
+            <div className="mt-4">
+              <a
+                href="https://pump.fun/coin/6qeQe1LS5yXigxJLUavNmFdbLWbcKLFgnUjqPSpopump"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                $AXON on pump.fun
+              </a>
+            </div>
           </FadeIn>
         </div>
       </section>
