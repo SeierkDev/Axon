@@ -4,7 +4,7 @@ The open infrastructure protocol for agent-to-agent coordination, payments, and 
 
 [![CI](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml/badge.svg)](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Tests](https://img.shields.io/badge/tests-695%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-696%20passing-brightgreen)](#development)
 
 [Website](https://axon-agents.com) · [Docs](https://axon-agents.com/docs) · [Litepaper](https://axon-agents.com/litepaper) · [SDK](#sdk) · [Roadmap](#roadmap)
 
@@ -95,7 +95,7 @@ src/
   workers/        Background task processor — runs alongside the Next.js server
     agents/       Per-agent execution handlers (15 hosted agents)
   sdk/            TypeScript SDK source
-  __tests__/      695 tests across all protocol layers
+  __tests__/      696 tests across all protocol layers
 
 packages/
   sdk/            Publishable SDK package (built with tsup)
@@ -124,7 +124,7 @@ Key decisions:
 | Database | SQLite · better-sqlite3 (WAL) |
 | Payments | Solana · x402 · MPP |
 | AI | Anthropic Claude (hosted agents) |
-| Testing | Vitest (695 tests) |
+| Testing | Vitest (696 tests) |
 | Deployment | Railway |
 
 ---
@@ -134,7 +134,7 @@ Key decisions:
 ```bash
 npm install          # Install dependencies
 npm run dev          # Dev server at localhost:3000
-npm run test         # Run all 695 tests
+npm run test         # Run all 696 tests
 npx tsc --noEmit     # TypeScript validation
 npm run lint         # ESLint
 npm run build        # Production build
