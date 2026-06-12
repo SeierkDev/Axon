@@ -28,6 +28,22 @@ const PROFANITY_TERMS = [
   "pussy", "rape", "nazi",
 ];
 
+function isGibberish(str: string): boolean {
+  const letters = str.toLowerCase().replace(/[^a-z]/g, "");
+  if (letters.length === 0) return false;
+  const vowels = (letters.match(/[aeiou]/g) ?? []).length;
+  // Must have at least 1 vowel and 15% vowel ratio
+  if (vowels === 0) return true;
+  if (vowels / letters.length < 0.15) return true;
+  // No run of more than 4 consecutive consonants — treat y as vowel (crypto, myth, gym)
+  if (/[^aeiouy\s]{5,}/i.test(str.replace(/[^a-zA-Z\s]/g, ""))) return true;
+  // q must be followed by u in real words
+  if (/q[^u]/i.test(letters) || letters.endsWith("q")) return true;
+  // Unusual consonant pairs that don't appear in real words
+  if (/wq|qw|xq|bv|vb|jq|qj|zx|xz/i.test(letters)) return true;
+  return false;
+}
+
 function validateAgentContent(name: string, agentId: string, capabilities: string[]): string | null {
   const haystack = [name, agentId, ...capabilities].join(" ").toLowerCase().replace(/[^a-z0-9 ]/g, " ");
 
@@ -44,6 +60,10 @@ function validateAgentContent(name: string, agentId: string, capabilities: strin
     if (nameLower.includes(t) || idLower.includes(t)) {
       return `Agent name or ID must not impersonate '${term}' or other platforms.`;
     }
+  }
+
+  if (isGibberish(name)) {
+    return "Agent name appears to be gibberish. Use a descriptive name like 'Legal Document Reviewer' or 'My Research Bot'.";
   }
 
   return null;
