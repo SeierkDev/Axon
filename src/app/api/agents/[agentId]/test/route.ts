@@ -8,7 +8,7 @@ import { apiError } from "@/lib/apiError";
 const RATE_LIMIT = 3;
 const RATE_WINDOW_MS = 365 * 24 * 60 * 60 * 1000;
 const MAX_INPUT_CHARS = 500;
-const TEST_MAX_TOKENS = 2048;
+const TEST_MAX_TOKENS = 4096;
 
 function sseEvent(data: Record<string, unknown>): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
