@@ -51,19 +51,17 @@ function MarkdownOutput({ text }: { text: string }) {
       );
       continue;
     }
-    // Numbered list
+    // Numbered list item — rendered individually to preserve original numbers
+    // even when items are separated by blank lines or sub-bullets
     else if (line.match(/^\d+\. /)) {
-      const items: string[] = [];
-      while (i < lines.length && lines[i].match(/^\d+\. /)) {
-        items.push(lines[i].replace(/^\d+\. /, ""));
-        i++;
-      }
+      const num = line.match(/^(\d+)\. /)?.[1] ?? "1";
+      const content = line.replace(/^\d+\. /, "");
       elements.push(
-        <ol key={i} className="list-decimal list-inside space-y-0.5 my-2 text-gray-700">
-          {items.map((item, idx) => <li key={idx} className="text-sm">{renderInline(item)}</li>)}
-        </ol>
+        <div key={i} className="flex gap-2 my-1">
+          <span className="text-sm font-semibold text-gray-500 shrink-0 w-5 text-right">{num}.</span>
+          <span className="text-sm text-gray-700">{renderInline(content)}</span>
+        </div>
       );
-      continue;
     }
     // Blank line
     else if (line.trim() === "") {
