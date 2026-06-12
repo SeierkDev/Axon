@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function MarkdownOutput({ text }: { text: string }) {
   const lines = text.split("\n");
@@ -137,8 +137,12 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
   const [step, setStep] = useState<Step>("idle");
   const [output, setOutput] = useState("");
   const [latency, setLatency] = useState<number | null>(null);
-  const [remaining, setRemaining] = useState<number>(() => getStoredRemaining(agentId));
+  const [remaining, setRemaining] = useState<number>(LIMIT);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRemaining(getStoredRemaining(agentId));
+  }, [agentId]);
 
   if (hasExternalEndpoint) return null;
 
