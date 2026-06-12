@@ -130,6 +130,16 @@ async function handlePost(req: NextRequest) {
     );
   }
 
+  // Community agents must bring their own inference — either an external endpoint (any model)
+  // or a providerEndpoint (ollama). Registering without either would run on Axon's API keys.
+  if (!body.endpoint && !body.providerEndpoint) {
+    return apiError(
+      "VALIDATION_ERROR",
+      "endpoint or providerEndpoint is required. Supply an endpoint (your own server) or providerEndpoint with provider 'ollama'. To use OpenAI, point your endpoint at your own server that calls the OpenAI API.",
+      400
+    );
+  }
+
   const price = body.price?.trim() || undefined;
   const parsedPrice = price ? parsePaymentAmount(price) : null;
   if (price && (!parsedPrice || parsedPrice.amount <= 0)) {

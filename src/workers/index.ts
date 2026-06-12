@@ -73,9 +73,7 @@ async function processTasks() {
 
   for (const agent of agents) {
     const mcpHandler = mcpHandlers[agent.agentId];
-    if (agent.endpoint && !mcpHandler) {
-      continue;
-    }
+    if (agent.endpoint && !mcpHandler) continue;
 
     const queued = getTasksByAgent({
       agentId: agent.agentId,
