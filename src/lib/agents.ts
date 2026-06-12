@@ -318,10 +318,10 @@ export interface AgentCounts {
 export function getAgentCounts(): AgentCounts {
   const row = getDb().prepare(`
     SELECT
-      COUNT(*) AS total,
-      COUNT(CASE WHEN price IS NOT NULL AND price != '' THEN 1 END) AS paid,
-      COUNT(DISTINCT COALESCE(category, 'General')) AS categories,
-      COUNT(CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable') THEN 1 END) AS active
+      COUNT(CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform') THEN 1 END) AS total,
+      COUNT(CASE WHEN (endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform')) AND price IS NOT NULL AND price != '' THEN 1 END) AS paid,
+      COUNT(DISTINCT CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform') THEN COALESCE(category, 'General') END) AS categories,
+      COUNT(CASE WHEN endpoint IS NULL OR verification_status IN ('x402_compliant', 'reachable', 'platform') THEN 1 END) AS active
     FROM agents
   `).get() as AgentCounts;
   return row;

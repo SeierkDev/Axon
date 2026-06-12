@@ -194,10 +194,12 @@ async function handlePost(req: NextRequest) {
     createdAt: new Date().toISOString(),
   });
 
-  // Fire-and-forget: verify endpoint immediately so agents don't sit unverified for
-  // up to 5 minutes waiting for the next health check cycle.
+  let endpointWarning: string | undefined;
   if (agent.endpoint) {
-    void verifyAgentEndpoint(agent.agentId, agent.endpoint);
+    const verification = await verifyAgentEndpoint(agent.agentId, agent.endpoint);
+    if (verification.status === "unreachable") {
+      endpointWarning = `Your endpoint (${agent.endpoint}) could not be reached. The agent is registered but will not appear in the marketplace until the endpoint is reachable. Check that your server is live and publicly accessible.`;
+    }
   }
 
   recordAuditEvent({
@@ -216,5 +218,8 @@ async function handlePost(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(agent, { status: 201, headers: rateLimitHeaders(rl, 10) });
+  return NextResponse.json(
+    { ...agent, ...(endpointWarning ? { warning: endpointWarning } : {}) },
+    { status: 201, headers: rateLimitHeaders(rl, 10) }
+  );
 }
