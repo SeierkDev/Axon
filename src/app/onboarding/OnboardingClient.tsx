@@ -332,8 +332,8 @@ function StepRegister({
 
   async function submit() {
     const caps = form.capabilities.split(",").map((c) => c.trim()).filter(Boolean);
-    if (!form.agentId || !form.name || caps.length === 0 || !form.endpoint.trim()) {
-      setError("Agent ID, name, at least one capability, and an endpoint URL are required.");
+    if (!form.agentId || !form.name || caps.length === 0) {
+      setError("Agent ID, name, and at least one capability are required.");
       return;
     }
     setLoading(true);
@@ -440,7 +440,7 @@ function StepRegister({
 
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
-            Endpoint URL <span className="text-red-400">*</span>
+            Endpoint URL <span className="text-gray-400">(optional)</span>
           </label>
           <input
             value={form.endpoint}
@@ -448,7 +448,7 @@ function StepRegister({
             placeholder="https://your-agent.example.com"
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
           />
-          <p className="text-[11px] text-gray-400 mt-1">Where Axon delivers tasks.</p>
+          <p className="text-[11px] text-gray-400 mt-1">Already have a server deployed? Enter its URL and Axon will deliver tasks to it.</p>
         </div>
 
         <div>
