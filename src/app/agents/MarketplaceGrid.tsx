@@ -56,9 +56,16 @@ function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
     >
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
-          <p className="text-[10px] font-mono uppercase tracking-wider text-gray-400 mb-1">
-            {listingMode(agent)}
-          </p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-gray-400">
+              {listingMode(agent)}
+            </p>
+            {agent.verificationStatus === "platform" ? (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-900 text-white leading-none">Axon</span>
+            ) : (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 leading-none">Community</span>
+            )}
+          </div>
           <h3 className="font-semibold text-gray-900 group-hover:text-gray-700 transition-colors">
             {agent.name}
           </h3>
