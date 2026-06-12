@@ -16,10 +16,9 @@ import { verifyAgentEndpoint } from "@/lib/verification";
 const VALID_SORT_FIELDS = new Set<string>(["reputation", "price", "createdAt", "activity", "successRate", "latency", "reviews"]);
 const VALID_PROVIDERS: InferenceProvider[] = ["anthropic", "ollama", "openai"];
 
-// Terms that would impersonate the platform or well-known brands
+// Terms that would impersonate the Axon platform
 const IMPERSONATION_TERMS = [
-  "axon", "anthropic", "openai", "chatgpt", "gemini", "mistral", "cohere",
-  "deepmind", "grok", "perplexity", "midjourney", "stability",
+  "axon", "anthropic",
 ];
 
 // Basic profanity / hate speech blocklist — extend as needed
