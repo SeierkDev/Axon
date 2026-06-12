@@ -581,6 +581,7 @@ describe("POST /api/agents", () => {
         capabilities: ["research"],
         publicKey: `pk-fresh-${agentId}`,
         walletAddress: WALLET_A,
+        endpoint: "https://example.com/agent",
       }, bearer(apiKey))
     );
     expect(res.status).toBe(201);
@@ -627,6 +628,7 @@ describe("POST /api/agents: rate-limit headers on 201", () => {
         capabilities: ["research"],
         publicKey: `pk-ratelimit-${agentId}`,
         walletAddress: WALLET_A,
+        endpoint: "https://example.com/agent",
       }, bearer(apiKey))
     );
     expect(res.status).toBe(201);
