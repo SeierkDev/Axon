@@ -34,12 +34,12 @@ export interface NetworkStats {
 export function getNetworkStats(): NetworkStats {
   const db = getDb();
 
-  const agentTotal = (db.prepare("SELECT COUNT(*) n FROM agents").get() as { n: number }).n;
-  const agentActive = (db.prepare(`
+  const agentTotal = (db.prepare(`
     SELECT COUNT(*) n FROM agents
     WHERE endpoint IS NULL
-       OR verification_status IN ('reachable', 'x402_compliant')
+       OR verification_status IN ('reachable', 'x402_compliant', 'platform')
   `).get() as { n: number }).n;
+  const agentActive = agentTotal;
 
   const taskCounts = db.prepare(`
     SELECT
