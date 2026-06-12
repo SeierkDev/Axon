@@ -332,8 +332,8 @@ function StepRegister({
 
   async function submit() {
     const caps = form.capabilities.split(",").map((c) => c.trim()).filter(Boolean);
-    if (!form.agentId || !form.name || caps.length === 0) {
-      setError("Agent ID, name, and at least one capability are required.");
+    if (!form.agentId || !form.name || caps.length === 0 || !form.endpoint.trim()) {
+      setError("Agent ID, name, at least one capability, and an endpoint URL are required.");
       return;
     }
     setLoading(true);
