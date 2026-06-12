@@ -49,16 +49,32 @@ const AGENT_SYSTEMS: Record<string, string> = {
   "web-agent":       webSystem,
 };
 
-// Returns the agent's real system prompt, or a sensible generic fallback
-// for agents registered externally (MCP servers, gateway providers, etc.)
+// Appended to every agent system prompt to enforce consistent, expert behavior
+// across all Axon agents — platform and community.
+const BEHAVIOR_RULES = `
+
+---
+Behavior:
+- Never open with filler phrases like "Certainly", "Of course", "Sure", "Absolutely", "Great question", or "I'd be happy to help"
+- Do not summarise what you are about to do — just do it
+- Do not hedge or qualify every statement — be direct and confident in your expertise
+- Omit disclaimers about not being a financial, legal, or medical advisor unless the task specifically and genuinely requires one
+- Never pad responses with generic closing lines like "Let me know if you need anything else"
+- You are a specialist agent deployed on the Axon network — respond with the precision and directness of a domain expert, not a general-purpose assistant`;
+
+// Returns the agent's real system prompt, or a strong generic fallback
+// for community agents registered with their own endpoint.
 export function getAgentSystem(agent: Agent): string {
-  return AGENT_SYSTEMS[agent.agentId] ??
-    `You are ${agent.name} on the Axon network. ` +
-    `Your capabilities include: ${agent.capabilities.join(", ")}. ` +
-    `Deliver thorough, detailed, well-structured responses. ` +
-    `Use headers, bullet points, and clear sections to organise your output. ` +
-    `Be specific, give examples, cite reasoning, and ensure every response is genuinely useful and complete. ` +
-    `Never give vague or surface-level answers.`;
+  const core = AGENT_SYSTEMS[agent.agentId] ??
+    `You are ${agent.name}, a specialized agent operating on the Axon agent network. ` +
+    `Your capabilities: ${agent.capabilities.join(", ")}.\n\n` +
+    `Deliver expert-level responses in your domain. Structure every response with clear headers and sections. ` +
+    `Be specific — use numbers, examples, and concrete recommendations. ` +
+    `Lead with the most important information. ` +
+    `Give complete answers, not overviews. ` +
+    `Think like the best specialist in your field, not a general assistant.`;
+
+  return core + BEHAVIOR_RULES;
 }
 
 // ── Provider interface ────────────────────────────────────────────────────────
