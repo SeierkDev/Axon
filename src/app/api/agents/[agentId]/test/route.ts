@@ -4,11 +4,11 @@ import { getProvider, getAgentSystem } from "@/lib/providers";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { apiError } from "@/lib/apiError";
 
-// 3 free test calls per IP per hour
+// 3 free test calls per IP per agent — 1 year window matches the tasks free demo limit
 const RATE_LIMIT = 3;
-const RATE_WINDOW_MS = 60 * 60 * 1000;
+const RATE_WINDOW_MS = 365 * 24 * 60 * 60 * 1000;
 const MAX_INPUT_CHARS = 500;
-const TEST_MAX_TOKENS = 300;
+const TEST_MAX_TOKENS = 2048;
 
 function sseEvent(data: Record<string, unknown>): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
@@ -20,7 +20,7 @@ export async function POST(
 ) {
   const { agentId } = await params;
   const ip = getClientIp(req);
-  const rl = checkRateLimit(`test:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
+  const rl = checkRateLimit(`test:${ip}:${agentId}`, RATE_LIMIT, RATE_WINDOW_MS);
   if (!rl.allowed) return tooManyRequests(rl);
 
   const agent = getAgentById(agentId);

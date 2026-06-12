@@ -2,6 +2,97 @@
 
 import { useState } from "react";
 
+function MarkdownOutput({ text }: { text: string }) {
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Code block
+    if (line.startsWith("```")) {
+      const lang = line.slice(3).trim();
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      elements.push(
+        <pre key={i} className="bg-gray-900 text-gray-100 rounded-md p-3 text-xs overflow-x-auto my-3 font-mono">
+          {lang && <div className="text-gray-500 text-[10px] mb-2 uppercase tracking-wider">{lang}</div>}
+          <code>{codeLines.join("\n")}</code>
+        </pre>
+      );
+      i++;
+      continue;
+    }
+
+    // Headings
+    if (line.startsWith("### ")) {
+      elements.push(<h3 key={i} className="font-semibold text-gray-800 text-sm mt-4 mb-1">{renderInline(line.slice(4))}</h3>);
+    } else if (line.startsWith("## ")) {
+      elements.push(<h2 key={i} className="font-semibold text-gray-900 text-base mt-5 mb-1">{renderInline(line.slice(3))}</h2>);
+    } else if (line.startsWith("# ")) {
+      elements.push(<h1 key={i} className="font-bold text-gray-900 text-lg mt-5 mb-2">{renderInline(line.slice(2))}</h1>);
+    }
+    // Bullet
+    else if (line.match(/^[-*] /)) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].match(/^[-*] /)) {
+        items.push(lines[i].slice(2));
+        i++;
+      }
+      elements.push(
+        <ul key={i} className="list-disc list-inside space-y-0.5 my-2 text-gray-700">
+          {items.map((item, idx) => <li key={idx} className="text-sm">{renderInline(item)}</li>)}
+        </ul>
+      );
+      continue;
+    }
+    // Numbered list
+    else if (line.match(/^\d+\. /)) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].match(/^\d+\. /)) {
+        items.push(lines[i].replace(/^\d+\. /, ""));
+        i++;
+      }
+      elements.push(
+        <ol key={i} className="list-decimal list-inside space-y-0.5 my-2 text-gray-700">
+          {items.map((item, idx) => <li key={idx} className="text-sm">{renderInline(item)}</li>)}
+        </ol>
+      );
+      continue;
+    }
+    // Blank line
+    else if (line.trim() === "") {
+      elements.push(<div key={i} className="h-2" />);
+    }
+    // Paragraph
+    else {
+      elements.push(<p key={i} className="text-sm text-gray-700 leading-relaxed">{renderInline(line)}</p>);
+    }
+
+    i++;
+  }
+
+  return <div>{elements}</div>;
+}
+
+function renderInline(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={i} className="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-xs font-mono">{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
+}
+
 interface Props {
   agentId: string;
   agentName: string;
@@ -165,11 +256,11 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
 
         {(step === "running" || step === "done") && (
           <div>
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed min-h-16">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 min-h-16">
               {isRunning && !output && (
-                <span className="text-gray-300">Calling {agentName}…</span>
+                <span className="text-sm text-gray-300">Calling {agentName}…</span>
               )}
-              {output}
+              {output && <MarkdownOutput text={output} />}
               {isRunning && (
                 <span className="inline-block w-2 h-4 bg-gray-400 ml-0.5 align-text-bottom animate-pulse" />
               )}
@@ -180,7 +271,7 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
                   <span>{(latency / 1000).toFixed(1)}s</span>
                 )}
                 {step === "done" && remaining !== null && (
-                  <span>{remaining} test{remaining !== 1 ? "s" : ""} remaining this hour</span>
+                  <span>{remaining} test{remaining !== 1 ? "s" : ""} remaining</span>
                 )}
               </div>
               {step === "done" && (
