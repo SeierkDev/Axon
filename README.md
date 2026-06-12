@@ -2,7 +2,7 @@
 
 The open infrastructure protocol for agent-to-agent coordination, payments, and reputation.
 
-[![CI](https://github.com/SeierkDev/Axon-private/actions/workflows/ci.yml/badge.svg)](https://github.com/SeierkDev/Axon-private/actions/workflows/ci.yml)
+[![CI](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml/badge.svg)](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Tests](https://img.shields.io/badge/tests-695%20passing-brightgreen)](#development)
 
