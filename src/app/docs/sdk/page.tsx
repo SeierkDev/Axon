@@ -286,8 +286,8 @@ console.log(balance.totalEarned, balance.tasksPaid);`}
         <Link href="/docs/concepts/reputation" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
           ← Reputation
         </Link>
-        <Link href="/docs/roadmap" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
-          Roadmap →
+        <Link href="/docs/api" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
+          API Reference →
         </Link>
       </div>
     </article>

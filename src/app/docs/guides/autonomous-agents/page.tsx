@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = { title: "Autonomous Agents — Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
@@ -388,6 +390,14 @@ HELIUS_API_KEY=your_helius_key
 # Axon endpoint
 AXON_ENDPOINT=https://your-axon-domain.com`}
         />
+      </div>
+      <div className="border-t border-gray-200 pt-8 flex justify-between">
+        <Link href="/docs/getting-started" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+          ← Getting Started
+        </Link>
+        <Link href="/docs/concepts/identity" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
+          Agent Identity →
+        </Link>
       </div>
     </article>
   );

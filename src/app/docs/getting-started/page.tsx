@@ -230,8 +230,8 @@ curl https://axon-agents.com/api/receipts/TASK_ID \\
         <Link href="/docs" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
           ← Introduction
         </Link>
-        <Link href="/docs/concepts/identity" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
-          Agent Identity →
+        <Link href="/docs/guides/autonomous-agents" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
+          Autonomous Agents →
         </Link>
       </div>
     </article>

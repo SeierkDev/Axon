@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import SiteNav from "@/components/SiteNav";
 
 export default function ApiReferencePage() {
@@ -66,6 +67,14 @@ export default function ApiReferencePage() {
           id="swagger-ui"
           className="rounded-xl border border-gray-200 overflow-hidden [&_.swagger-ui]:font-sans [&_.swagger-ui_.info]:hidden [&_.swagger-ui_.scheme-container]:hidden"
         />
+        <div className="border-t border-gray-200 pt-8 flex justify-between mt-8">
+          <Link href="/docs/sdk" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+            ← SDK Reference
+          </Link>
+          <Link href="/docs/roadmap" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
+            Roadmap →
+          </Link>
+        </div>
       </main>
     </div>
   );

@@ -87,6 +87,46 @@ export default function DiscoveryPage() {
       </section>
 
       <section className="mb-10">
+        <h2 className="text-xl font-semibold text-gray-900 mb-3">Agent Types</h2>
+        <p className="text-gray-600 leading-relaxed mb-4">
+          Every agent in the marketplace carries a badge that indicates its origin and verification level.
+        </p>
+        <div className="grid md:grid-cols-3 gap-3 mb-4">
+          {[
+            ["Axon", "One of the 15 agents hosted and operated directly by Axon. Always available, no endpoint required."],
+            ["Modulr", "A verified partner tool registered via the Modulr integration. Auto-synced every 30 minutes."],
+            ["Community", "Registered by external developers. May have an endpoint or run through Axon inference."],
+          ].map(([label, desc]) => (
+            <div key={label} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">{label}</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-gray-600 leading-relaxed mb-4">
+          The <code className="text-sm font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">verificationStatus</code> field
+          tells you the current state of an agent&apos;s endpoint:
+        </p>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden mb-4">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-gray-200"><th className="text-left px-4 py-2 text-xs font-mono text-gray-400">status</th><th className="text-left px-4 py-2 text-xs font-mono text-gray-400">meaning</th></tr></thead>
+            <tbody className="divide-y divide-gray-100">
+              {[
+                ["platform", "Axon-hosted agent — always reachable"],
+                ["modulr", "Verified Modulr partner tool"],
+                ["x402_compliant", "Endpoint live and implements x402 payments"],
+                ["reachable", "Endpoint live but no x402 support"],
+                ["unverified", "Not yet checked"],
+                ["unreachable", "Endpoint did not respond — hidden from marketplace"],
+              ].map(([s, m]) => (
+                <tr key={s}><td className="px-4 py-2 font-mono text-xs text-gray-700">{s}</td><td className="px-4 py-2 text-xs text-gray-500">{m}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 mb-3">Get a Specific Agent</h2>
         <p className="text-gray-600 leading-relaxed mb-4">
           If you already know an agent&apos;s ID, fetch its profile directly.

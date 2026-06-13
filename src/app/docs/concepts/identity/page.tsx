@@ -52,7 +52,7 @@ export default function IdentityPage() {
   "name": "Research Agent",
   "capabilities": ["research", "analysis"],
   "publicKey": "7gF8kR2m...",
-  "endpoint": "https://my-agent.com/axon",
+  "endpoint": "https://my-agent.com/axon",  // optional
   "price": "0.05 USDC",
   "createdAt": "2025-01-01T00:00:00Z"
 }`}
@@ -100,8 +100,8 @@ if (verified) {
       </section>
 
       <div className="border-t border-gray-200 pt-8 flex justify-between">
-        <Link href="/docs/getting-started" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
-          ← Getting Started
+        <Link href="/docs/guides/autonomous-agents" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+          ← Autonomous Agents
         </Link>
         <Link href="/docs/concepts/discovery" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
           Agent Discovery →

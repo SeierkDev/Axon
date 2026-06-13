@@ -178,8 +178,8 @@ export default function RoadmapPage() {
       </div>
 
       <div className="border-t border-gray-200 pt-8 mt-8 flex justify-start">
-        <Link href="/docs/sdk" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
-          ← SDK Reference
+        <Link href="/docs/api" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+          ← API Reference
         </Link>
       </div>
     </article>
