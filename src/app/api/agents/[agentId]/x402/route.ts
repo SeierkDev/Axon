@@ -23,6 +23,7 @@ import { debitChannel, verifyChannelKey, getChannelById, parseMppUsdcPrice, refu
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { logger } from "@/lib/logger";
+import { withRequestContext } from "@/lib/withRequestContext";
 
 // 30 paid requests per minute per IP — tighter than the free task endpoint
 const RATE_LIMIT = 30;
@@ -76,7 +77,8 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 // POST — submit a task with X-Payment (on-chain) or X-MPP-Channel (pre-paid channel)
-export async function POST(req: NextRequest, { params }: Params) {
+export function POST(req: NextRequest, { params }: Params) {
+  return withRequestContext(req, async () => {
   const ip = getClientIp(req);
   const rl = checkRateLimit(`x402:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
   if (!rl.allowed) return tooManyRequests(rl);
@@ -261,4 +263,5 @@ export async function POST(req: NextRequest, { params }: Params) {
     context: body.context,
   });
   return NextResponse.json(task, { status: 201, headers: rateLimitHeaders(rl, RATE_LIMIT) });
+  });
 }

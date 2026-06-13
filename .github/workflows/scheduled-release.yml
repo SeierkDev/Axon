@@ -1,8 +1,7 @@
 name: Scheduled public release
 
 on:
-  schedule:
-    - cron: '4 17 13 6 *'  # 17:04 UTC = 19:04 Sweden (CEST) on June 13
+  workflow_dispatch:
 
 jobs:
   push-to-public:

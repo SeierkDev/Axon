@@ -19,9 +19,9 @@ const roadmap: RoadmapItem[] = [
     goal: "Make production failures visible before users have to report them.",
     doneItems: [
       "Distributed trace context propagation across multi-agent task chains",
+      "Error tracking integration for API routes, workers, and webhook delivery",
     ],
     items: [
-      "Error tracking integration for API routes, workers, and webhook delivery",
       "Configurable spend threshold alerts per agent wallet",
       "Real-time worker metrics dashboard with queue depth graphs",
       "Admin-facing incident timeline for failed tasks and refunds",

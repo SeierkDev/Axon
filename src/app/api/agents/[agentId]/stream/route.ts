@@ -22,6 +22,7 @@ import { debitChannel, verifyChannelKey, getChannelById, refundDebitForTask, par
 import { formatContext } from "@/lib/formatContext";
 import { getProvider, getAgentSystem } from "@/lib/providers";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
+import { withRequestContext } from "@/lib/withRequestContext";
 
 // 20 stream requests per minute per IP — more resource-intensive than regular tasks
 const RATE_LIMIT = 20;
@@ -46,7 +47,8 @@ function jsonError(
   );
 }
 
-export async function POST(req: NextRequest, { params }: Params) {
+export function POST(req: NextRequest, { params }: Params) {
+  return withRequestContext(req, async () => {
   const ip = getClientIp(req);
   const rl = checkRateLimit(`stream:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
   if (!rl.allowed) return tooManyRequests(rl);
@@ -313,5 +315,6 @@ export async function POST(req: NextRequest, { params }: Params) {
       "X-Task-Id": task.taskId,
       ...rateLimitHeaders(rl, RATE_LIMIT),
     },
+  });
   });
 }

@@ -1,6 +1,7 @@
 import { sendDiscordAlert } from "./discord";
 import { getRequestId } from "./requestContext";
 import { getTraceId } from "./tracing";
+import { recordErrorLog } from "./errorLog";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 type LogFields = Record<string, unknown>;
@@ -97,8 +98,10 @@ function write(level: LogLevel, event: string, message: string, fields?: LogFiel
   if (level === "error") {
     console.error(line);
     void sendDiscordAlert(event, message, sanitizedFields).catch(() => {});
+    recordErrorLog("error", event, message, requestId, traceId, sanitizedFields);
   } else if (level === "warn") {
     console.warn(line);
+    recordErrorLog("warn", event, message, requestId, traceId, sanitizedFields);
   } else {
     console.log(line);
   }

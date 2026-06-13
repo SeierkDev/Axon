@@ -254,6 +254,11 @@ export function debitChannel(
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(randomUUID(), channelId, agentId, amount.amountUsdc, amount.microUsdc, taskId ?? null, now);
 
+    db.prepare(`
+      INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
+      VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, 'USDC', ?, ?)
+    `).run(randomUUID(), taskId ?? null, row.owner_address, agentId, amount.amountUsdc, now, now);
+
     const updated = db
       .prepare("SELECT balance_micro_usdc FROM mpp_channels WHERE channel_id = ?")
       .get(channelId) as { balance_micro_usdc: number };
@@ -281,6 +286,8 @@ export function refundDebitForTask(taskId: string): DebitResult {
        WHERE channel_id = ?`
     ).run(debit.amount_micro_usdc, debit.amount_micro_usdc, now, debit.channel_id);
     db.prepare("DELETE FROM mpp_debits WHERE debit_id = ?").run(debit.debit_id);
+    db.prepare("UPDATE transactions SET status='refunded', settled_at=? WHERE task_id=? AND currency='USDC' AND status='completed'")
+      .run(now, taskId);
 
     const updated = db
       .prepare("SELECT balance_micro_usdc FROM mpp_channels WHERE channel_id = ?")
