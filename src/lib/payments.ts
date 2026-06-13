@@ -36,6 +36,7 @@ interface PaymentRow {
   incoming_signature: string | null;
   created_at: string;
   settled_at: string | null;
+  burn_status: string | null;
 }
 
 function rowToPayment(row: PaymentRow): Payment {
@@ -139,9 +140,13 @@ export function releasePayment(taskId: string): Payment | null {
 
   const settledAt = new Date().toISOString();
 
+  // Platform agent payments are queued for $AXON token burn instead of going to treasury
+  const toAgent = getAgentById(row.to_agent);
+  const isBurn = toAgent?.verificationStatus === "platform";
+
   db.prepare(
-    "UPDATE transactions SET status='completed', settled_at=? WHERE tx_id=?"
-  ).run(settledAt, row.tx_id);
+    "UPDATE transactions SET status='completed', settled_at=?, burn_status=? WHERE tx_id=?"
+  ).run(settledAt, isBurn ? "pending" : null, row.tx_id);
 
   const payment = getPaymentById(row.tx_id);
   if (!payment) throw new Error(`Payment ${row.tx_id} not found after settlement`);

@@ -74,8 +74,8 @@ export function createAgent(agent: Agent): Agent {
   const db = getDb();
 
   const insertAgent = db.prepare(`
-    INSERT INTO agents (agent_id, name, capabilities, public_key, endpoint, price, reputation, category, wallet_address, provider, provider_model, provider_endpoint, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO agents (agent_id, name, capabilities, public_key, endpoint, price, reputation, category, wallet_address, provider, provider_model, provider_endpoint, verification_status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertCap = db.prepare(
     "INSERT OR IGNORE INTO agent_capabilities (capability, agent_id) VALUES (?, ?)"
@@ -95,6 +95,7 @@ export function createAgent(agent: Agent): Agent {
       agent.provider ?? "anthropic",
       agent.providerModel ?? null,
       agent.providerEndpoint ?? null,
+      agent.verificationStatus ?? "unverified",
       agent.createdAt,
     );
     for (const cap of agent.capabilities) {

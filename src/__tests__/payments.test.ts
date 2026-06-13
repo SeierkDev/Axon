@@ -174,6 +174,31 @@ describe("releasePayment", () => {
   it("returns null when no escrow payment exists for task", () => {
     expect(releasePayment("no-such-task")).toBeNull();
   });
+
+  it("sets burn_status=pending for platform agent payments", async () => {
+    const sender = makeAgent();
+    const platform = makeAgent({ verificationStatus: "platform" });
+    createAgent(sender);
+    createAgent(platform);
+    const task = createTask({ fromAgent: sender.agentId, toAgent: platform.agentId, task: "x" });
+
+    await createPayment({
+      taskId: task.taskId,
+      fromAgent: sender.agentId,
+      toAgent: platform.agentId,
+      amountSol: 2,
+      paymentSignature: mockSig(2_000_000, "burn-1"),
+      priceString: "2 USDC",
+    });
+
+    releasePayment(task.taskId);
+
+    const { getDb } = await import("@/lib/db");
+    const row = getDb()
+      .prepare("SELECT burn_status FROM transactions WHERE task_id = ?")
+      .get(task.taskId) as { burn_status: string } | undefined;
+    expect(row?.burn_status).toBe("pending");
+  });
 });
 
 describe("refundPayment", () => {
