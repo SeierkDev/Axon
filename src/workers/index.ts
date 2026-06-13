@@ -10,6 +10,7 @@ import { formatContext } from "../lib/formatContext";
 import { runWithProvider } from "../lib/providers";
 import { verifyAgentEndpoint } from "../lib/verification";
 import { logger } from "../lib/logger";
+import { runWithTraceId } from "../lib/tracing";
 
 // Agents that append live market prices to their task message
 const PRICE_AGENTS = new Set(["crypto-agent", "trading-agent"]);
@@ -83,42 +84,44 @@ async function processTasks() {
     });
 
     for (const task of queued) {
-      const started = startTask(task.taskId, "worker");
-      if (!started) continue;
-      logger.info("worker.task_picked", "Worker picked up task", {
-        agentId: agent.agentId,
-        taskId: task.taskId,
-        hasMcpHandler: Boolean(mcpHandler),
+      await runWithTraceId(task.traceId ?? task.taskId, async () => {
+        const started = startTask(task.taskId, "worker");
+        if (!started) return;
+        logger.info("worker.task_picked", "Worker picked up task", {
+          agentId: agent.agentId,
+          taskId: task.taskId,
+          hasMcpHandler: Boolean(mcpHandler),
+        });
+
+        try {
+          // Combine task text, user-supplied context, and live prices into one message
+          const prices = PRICE_AGENTS.has(agent.agentId) ? livePrices : "";
+          const fullMessage = task.task + formatContext(task.context) + prices;
+
+          const output = mcpHandler
+            ? await mcpHandler(fullMessage)
+            : await runWithProvider(agent, fullMessage);
+
+          if (completeTask(task.taskId, output)) {
+            releasePayment(task.taskId);
+          }
+          logger.info("worker.task_processed", "Worker processed task", {
+            agentId: agent.agentId,
+            taskId: task.taskId,
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Agent execution failed";
+          if (failTask(task.taskId, msg)) {
+            refundPayment(task.taskId);
+            refundDebitForTask(task.taskId);
+          }
+          logger.error("worker.task_failed", "Worker task execution failed", {
+            err,
+            agentId: agent.agentId,
+            taskId: task.taskId,
+          });
+        }
       });
-
-      try {
-        // Combine task text, user-supplied context, and live prices into one message
-        const prices = PRICE_AGENTS.has(agent.agentId) ? livePrices : "";
-        const fullMessage = task.task + formatContext(task.context) + prices;
-
-        const output = mcpHandler
-          ? await mcpHandler(fullMessage)
-          : await runWithProvider(agent, fullMessage);
-
-        if (completeTask(task.taskId, output)) {
-          releasePayment(task.taskId);
-        }
-        logger.info("worker.task_processed", "Worker processed task", {
-          agentId: agent.agentId,
-          taskId: task.taskId,
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Agent execution failed";
-        if (failTask(task.taskId, msg)) {
-          refundPayment(task.taskId);
-          refundDebitForTask(task.taskId);
-        }
-        logger.error("worker.task_failed", "Worker task execution failed", {
-          err,
-          agentId: agent.agentId,
-          taskId: task.taskId,
-        });
-      }
     }
   }
 }

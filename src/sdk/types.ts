@@ -104,6 +104,7 @@ export interface TaskRequest {
   completedAt?: string;
   outputHash?: string;
   outputCommitment?: string;
+  traceId?: string;
 }
 
 export interface TaskResult {

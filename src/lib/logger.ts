@@ -1,5 +1,6 @@
 import { sendDiscordAlert } from "./discord";
 import { getRequestId } from "./requestContext";
+import { getTraceId } from "./tracing";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 type LogFields = Record<string, unknown>;
@@ -80,6 +81,7 @@ function write(level: LogLevel, event: string, message: string, fields?: LogFiel
   if (LEVEL_WEIGHT[level] < LEVEL_WEIGHT[configuredLevel()]) return;
 
   const requestId = getRequestId();
+  const traceId = getTraceId();
   const sanitizedFields = fields ? (sanitize(fields) as LogFields) : undefined;
   const record = {
     ts: new Date().toISOString(),
@@ -87,6 +89,7 @@ function write(level: LogLevel, event: string, message: string, fields?: LogFiel
     event,
     msg: message,
     ...(requestId ? { requestId } : {}),
+    ...(traceId ? { traceId } : {}),
     ...(sanitizedFields ?? {}),
   };
 

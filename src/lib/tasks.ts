@@ -9,6 +9,7 @@ import { logger } from "./logger";
 import { emitAxonEvent } from "./eventBus";
 import { commitOutput } from "./outputCommitment";
 import { syncToTurso } from "./db-turso";
+import { resolveTraceId, runWithTraceId } from "./tracing";
 
 export type TaskStatus = "payment_pending" | "queued" | "running" | "completed" | "failed";
 
@@ -32,6 +33,7 @@ export interface Task {
   completedAt?: string;
   outputHash?: string;
   outputCommitment?: string;
+  traceId?: string;
 }
 
 interface TaskRow {
@@ -57,6 +59,7 @@ interface TaskRow {
   completed_at: string | null;
   output_hash: string | null;
   output_commitment: string | null;
+  trace_id: string | null;
 }
 
 function rowToTask(row: TaskRow): Task {
@@ -80,6 +83,7 @@ function rowToTask(row: TaskRow): Task {
     completedAt: row.completed_at ?? undefined,
     outputHash: row.output_hash ?? undefined,
     outputCommitment: row.output_commitment ?? undefined,
+    traceId: row.trace_id ?? undefined,
   };
 }
 
@@ -99,6 +103,7 @@ export interface CreateTaskOptions {
   queueQueuedWebhook?: boolean;
   initialStatus?: Extract<TaskStatus, "payment_pending" | "queued" | "running">;
   startedBy?: string;
+  traceId?: string;
 }
 
 export function queueTaskQueuedWebhook(task: Task): void {
@@ -119,10 +124,11 @@ export function createTask(opts: CreateTaskOptions): Task {
   const initialStatus = opts.initialStatus ?? "queued";
   const startedAt = initialStatus === "running" ? createdAt : null;
   const startedBy = initialStatus === "running" ? (opts.startedBy ?? "api") : null;
+  const traceId = opts.traceId ?? resolveTraceId();
 
   db.prepare(`
-    INSERT INTO tasks (task_id, from_agent, to_agent, task, context, payment, status, created_at, started_at, started_by, signature, idempotency_scope, idempotency_key, idempotency_hash, workflow_id, step_index, quorum_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tasks (task_id, from_agent, to_agent, task, context, payment, status, created_at, started_at, started_by, signature, idempotency_scope, idempotency_key, idempotency_hash, workflow_id, step_index, quorum_id, trace_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     taskId,
     opts.fromAgent,
@@ -141,12 +147,14 @@ export function createTask(opts: CreateTaskOptions): Task {
     opts.workflowId ?? null,
     opts.stepIndex ?? null,
     opts.quorumId ?? null,
+    traceId,
   );
 
   const task = getTaskById(taskId)!;
   if (initialStatus === "queued" && opts.queueQueuedWebhook !== false) queueTaskQueuedWebhook(task);
   logger.info("task.created", "Task created", {
     taskId: task.taskId,
+    traceId: task.traceId,
     fromAgent: task.fromAgent,
     toAgent: task.toAgent,
     status: task.status,
@@ -244,7 +252,7 @@ export function completeTask(taskId: string, output: string): Task | null {
   }
 
   if (task.workflowId !== undefined && task.stepIndex !== undefined) {
-    advanceWorkflow(task.workflowId, task.stepIndex, output);
+    runWithTraceId(task.traceId ?? task.taskId, () => advanceWorkflow(task.workflowId!, task.stepIndex!, output));
   }
 
   if (task.quorumId !== undefined) {

@@ -9,6 +9,7 @@ interface RoadmapItem {
   status: RoadmapStatus;
   goal: string;
   items: string[];
+  doneItems?: string[];
 }
 
 const roadmap: RoadmapItem[] = [
@@ -16,8 +17,10 @@ const roadmap: RoadmapItem[] = [
     title: "Production Observability",
     status: "next",
     goal: "Make production failures visible before users have to report them.",
-    items: [
+    doneItems: [
       "Distributed trace context propagation across multi-agent task chains",
+    ],
+    items: [
       "Error tracking integration for API routes, workers, and webhook delivery",
       "Configurable spend threshold alerts per agent wallet",
       "Real-time worker metrics dashboard with queue depth graphs",
@@ -166,6 +169,12 @@ export default function RoadmapPage() {
               </div>
             </div>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+              {item.doneItems?.map((task) => (
+                <li key={task} className="text-sm flex gap-2">
+                  <span className="text-green-500">✓</span>
+                  <span className="text-gray-400 line-through">{task}</span>
+                </li>
+              ))}
               {item.items.map((task) => (
                 <li key={task} className="text-sm text-gray-500 flex gap-2">
                   <span className="text-gray-300">•</span>
