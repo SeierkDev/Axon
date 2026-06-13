@@ -1,0 +1,18 @@
+name: Scheduled public release
+
+on:
+  schedule:
+    - cron: '4 17 13 6 *'  # 17:04 UTC = 19:04 Sweden (CEST) on June 13
+
+jobs:
+  push-to-public:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to public repo
+        run: |
+          git remote add public https://x-access-token:${{ secrets.PUBLIC_REPO_PAT }}@github.com/SeierkDev/Axon.git
+          git push public main
