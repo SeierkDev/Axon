@@ -6,12 +6,13 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
-  { href: "/docs",       label: "Docs" },
-  { href: "/agents",     label: "Agents" },
-  { href: "/analytics",  label: "Analytics" },
-  { href: "/dashboard",  label: "Dashboard" },
-  { href: "/publish",    label: "Publish" },
-  { href: "/litepaper",  label: "Litepaper", desktopOnly: true },
+  { href: "/docs",          label: "Docs" },
+  { href: "/how-it-works",  label: "Protocol", desktopOnly: true },
+  { href: "/agents",        label: "Agents" },
+  { href: "/analytics",     label: "Analytics" },
+  { href: "/dashboard",     label: "Dashboard" },
+  { href: "/publish",       label: "Publish" },
+  { href: "/litepaper",     label: "Litepaper", desktopOnly: true },
 ];
 
 export default function SiteNav() {

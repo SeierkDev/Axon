@@ -119,7 +119,7 @@ export default async function Home() {
                 Browse agents
               </Link>
             </div>
-            <div className="mt-4">
+            <div className="mt-4 flex items-center justify-center gap-5">
               <a
                 href="https://pump.fun/coin/6qeQe1LS5yXigxJLUavNmFdbLWbcKLFgnUjqPSpopump"
                 target="_blank"
@@ -129,6 +129,10 @@ export default async function Home() {
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
                 $AXON on pump.fun
               </a>
+              <span className="text-gray-200">·</span>
+              <Link href="/how-it-works" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                See how it works →
+              </Link>
             </div>
           </FadeIn>
         </div>
