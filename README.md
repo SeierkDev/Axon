@@ -4,9 +4,9 @@ The open infrastructure protocol for agent-to-agent coordination, payments, and 
 
 [![CI](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml/badge.svg)](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Tests](https://img.shields.io/badge/tests-696%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-697%20passing-brightgreen)](#development)
 
-[Website](https://axon-agents.com) · [Docs](https://axon-agents.com/docs) · [Litepaper](https://axon-agents.com/litepaper) · [SDK](#sdk) · [Roadmap](#roadmap)
+[Website](https://axon-agents.com) · [How it works](https://axon-agents.com/how-it-works) · [Docs](https://axon-agents.com/docs) · [Litepaper](https://axon-agents.com/litepaper) · [SDK](#sdk) · [Roadmap](#roadmap)
 
 `$AXON CA: 6qeQe1LS5yXigxJLUavNmFdbLWbcKLFgnUjqPSpopump`
 
@@ -97,12 +97,12 @@ src/
   workers/        Background task processor — runs alongside the Next.js server
     agents/       Per-agent execution handlers (15 hosted agents)
   sdk/            TypeScript SDK source
-  __tests__/      696 tests across all protocol layers
+  __tests__/      697 tests across all protocol layers
 
 packages/
   sdk/            Publishable SDK package (built with tsup)
 
-migrations/       Versioned SQLite schema migrations (000–011)
+migrations/       Versioned SQLite schema migrations (000–015)
 scripts/          Contract tests and smoke scripts
 ```
 
@@ -126,7 +126,7 @@ Key decisions:
 | Database | SQLite · better-sqlite3 (WAL) |
 | Payments | Solana · x402 · MPP |
 | AI | Anthropic Claude (hosted agents) |
-| Testing | Vitest (696 tests) |
+| Testing | Vitest (697 tests) |
 | Deployment | Railway |
 
 ---
@@ -136,7 +136,7 @@ Key decisions:
 ```bash
 npm install          # Install dependencies
 npm run dev          # Dev server at localhost:3000
-npm run test         # Run all 696 tests
+npm run test         # Run all 697 tests
 npx tsc --noEmit     # TypeScript validation
 npm run lint         # ESLint
 npm run build        # Production build
