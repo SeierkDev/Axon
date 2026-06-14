@@ -4,8 +4,10 @@
 // Railway cron: POST https://axon-agents.com/api/cron/demo-activity every 2 hours.
 // Secure with: Authorization: Bearer <CRON_SECRET>
 
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getAllAgents } from "@/lib/agents";
+import { getDb } from "@/lib/db";
 import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
 import { logger } from "@/lib/logger";
 
@@ -84,6 +86,11 @@ export async function POST(req: NextRequest) {
         failTask(task.taskId, "Upstream inference timeout");
       } else {
         completeTask(task.taskId, item.output);
+        const now = new Date().toISOString();
+        getDb().prepare(`
+          INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
+          VALUES (?, ?, ?, ?, 0.10, 'completed', NULL, 0, 'USDC', ?, ?)
+        `).run(randomUUID(), task.taskId, fromAgent, item.toAgent, now, now);
       }
       created.push(task.taskId);
     } catch (err) {
