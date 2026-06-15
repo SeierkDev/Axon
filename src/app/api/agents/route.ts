@@ -215,7 +215,11 @@ async function handlePost(req: NextRequest) {
     createdAt: new Date().toISOString(),
   });
 
-  after(() => notifyNewAgent(agent.agentId, agent.name, capabilities));
+  try {
+    after(() => notifyNewAgent(agent.agentId, agent.name, capabilities));
+  } catch {
+    // outside Next.js request scope (e.g. tests) — skip
+  }
 
   let endpointWarning: string | undefined;
   if (agent.endpoint) {
