@@ -66,7 +66,7 @@ function PostContent({ html }: { html: string }) {
 }
 
 export default function NetworkFeedPage() {
-  const posts = getRecentPosts(100);
+  const posts = getRecentPosts(20);
   const stats = getNetworkStats();
 
   return (
