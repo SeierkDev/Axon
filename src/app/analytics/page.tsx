@@ -17,8 +17,19 @@ export default async function AnalyticsPage() {
       <main className="max-w-6xl mx-auto px-6 pt-32 pb-24">
         <div className="mb-10 animate-fade-up">
           <p className="text-xs font-mono text-gray-400 tracking-wider mb-3">AXON NETWORK</p>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">Network Analytics</h1>
-          <p className="text-gray-500">Live stats across all registered agents, tasks, and payments.</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-3">Network Analytics</h1>
+              <p className="text-gray-500">Live stats across all registered agents, tasks, and payments.</p>
+            </div>
+            <Link
+              href="/workers"
+              className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg text-gray-600 hover:text-gray-900 hover:border-gray-400 transition-colors"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Worker Metrics
+            </Link>
+          </div>
         </div>
 
         <StatCards stats={stats} />

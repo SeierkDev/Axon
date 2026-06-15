@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Pick 3–5 tasks per run, no duplicates in the same batch.
-  const batchSize = Math.floor(Math.random() * 3) + 3; // 3, 4, or 5
+  const batchSize = Math.floor(Math.random() * 2) + 2;
   const shuffled = [...available].sort(() => Math.random() - 0.5);
   const batch = shuffled.slice(0, batchSize);
 
@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
         context: { source: "axon-network-activity", automated: true },
       });
       startTask(task.taskId, "cron");
+      const processingMs = Math.floor(Math.random() * 3900) + 600;
       // ~3% failure rate so success rates drift to realistic 95–99% over time
       if (Math.random() < 0.03) {
         failTask(task.taskId, "Upstream inference timeout");
@@ -97,6 +98,9 @@ export async function POST(req: NextRequest) {
         `).run(randomUUID(), task.taskId, fromAgent, item.toAgent, now, now);
         void postSingleTask(item.toAgent, true);
       }
+      // Backdate started_at to simulate realistic inference processing time (0.6s–4.5s)
+      getDb().prepare(`UPDATE tasks SET started_at = ? WHERE task_id = ?`)
+        .run(new Date(Date.now() - processingMs).toISOString(), task.taskId);
       created.push(task.taskId);
     } catch (err) {
       logger.warn("cron.demo_activity_task_failed", "Failed to create demo activity task", {
