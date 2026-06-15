@@ -156,6 +156,12 @@ export async function postNetworkSnapshot(stats: {
   successRate: number;
   usdcTransacted: number;
 }): Promise<void> {
+  // Deduplicate: skip if a snapshot was already posted in the last 30 minutes
+  const recent = getDb()
+    .prepare(`SELECT 1 FROM telegram_posts WHERE type = 'snapshot' AND created_at >= datetime('now', '-30 minutes') LIMIT 1`)
+    .get();
+  if (recent) return;
+
   const rate = Math.round(stats.successRate * 100);
   const text =
     `📡 <b>Axon Network — Live Update</b>\n\n` +
