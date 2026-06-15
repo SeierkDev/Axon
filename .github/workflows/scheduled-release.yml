@@ -2,6 +2,8 @@ name: Scheduled public release
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "40 17 14 6 *"
 
 jobs:
   push-to-public:

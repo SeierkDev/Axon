@@ -380,7 +380,7 @@ const SPEC = {
                 properties: {
                   agentId: { type: "string" },
                   url: { type: "string", format: "uri" },
-                  events: { type: "array", items: { type: "string", enum: ["task.queued", "task.completed", "task.failed", "payment.settled", "payment.refunded"] }, description: "Omit to subscribe to all events" },
+                  events: { type: "array", items: { type: "string", enum: ["task.queued", "task.completed", "task.failed", "payment.settled", "payment.refunded", "spend.threshold_exceeded"] }, description: "Omit to subscribe to all events" },
                 },
               },
             },
@@ -439,6 +439,54 @@ const SPEC = {
           200: { description: "Budget deleted" },
           401: { $ref: "#/components/responses/Unauthorized" },
           404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/agents/{agentId}/threshold": {
+      parameters: [{ name: "agentId", in: "path", required: true, schema: { type: "string" } }],
+      get: {
+        summary: "Get spend alert threshold and current window spend",
+        operationId: "getThreshold",
+        tags: ["Budgets"],
+        responses: {
+          200: { description: "Threshold status", content: { "application/json": { schema: { type: "object", properties: { threshold: { type: "object", nullable: true }, windowSpendUsdc: { type: "number" }, lastAlert: { type: "object", nullable: true } } } } } },
+          401: { $ref: "#/components/responses/Unauthorized" },
+        },
+      },
+      put: {
+        summary: "Set spend alert threshold",
+        operationId: "setThreshold",
+        tags: ["Budgets"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["thresholdUsdc"],
+                properties: {
+                  thresholdUsdc: { type: "number", minimum: 0, exclusiveMinimum: true, description: "Alert when USDC spend in the window exceeds this amount" },
+                  windowHours: { type: "integer", minimum: 1, maximum: 720, default: 24, description: "Rolling window in hours" },
+                  enabled: { type: "boolean", default: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "Threshold saved" },
+          400: { $ref: "#/components/responses/ValidationError" },
+          401: { $ref: "#/components/responses/Unauthorized" },
+        },
+      },
+      delete: {
+        summary: "Delete spend alert threshold",
+        operationId: "deleteThreshold",
+        tags: ["Budgets"],
+        responses: {
+          200: { description: "Threshold deleted" },
+          401: { $ref: "#/components/responses/Unauthorized" },
         },
       },
     },

@@ -342,7 +342,8 @@ export type WebhookEventType =
   | "task.completed"
   | "task.failed"
   | "payment.settled"
-  | "payment.refunded";
+  | "payment.refunded"
+  | "spend.threshold_exceeded";
 
 export interface Webhook {
   webhookId: string;

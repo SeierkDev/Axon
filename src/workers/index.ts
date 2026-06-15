@@ -11,17 +11,20 @@ import { runWithProvider } from "../lib/providers";
 import { verifyAgentEndpoint } from "../lib/verification";
 import { logger } from "../lib/logger";
 import { runWithTraceId } from "../lib/tracing";
+import { checkAllThresholds } from "../lib/spendThreshold";
 
 // Agents that append live market prices to their task message
 const PRICE_AGENTS = new Set(["crypto-agent", "trading-agent"]);
 
 const POLL_INTERVAL_MS = 15_000;
 const HEALTH_INTERVAL_MS = 5 * 60 * 1000;
+const THRESHOLD_INTERVAL_MS = 5 * 60 * 1000;
 const SHUTDOWN_TIMEOUT_MS = Number.parseInt(process.env.AXON_WORKER_SHUTDOWN_TIMEOUT_MS ?? "25000", 10);
 let pollRunning = false;
 let shutdownRequested = false;
 let pollTimer: NodeJS.Timeout | null = null;
 let healthTimer: NodeJS.Timeout | null = null;
+let thresholdTimer: NodeJS.Timeout | null = null;
 let activePoll: Promise<void> | null = null;
 let activeHealthCheck: Promise<void> | null = null;
 
@@ -188,6 +191,10 @@ function clearTimers(): void {
     clearInterval(healthTimer);
     healthTimer = null;
   }
+  if (thresholdTimer) {
+    clearInterval(thresholdTimer);
+    thresholdTimer = null;
+  }
 }
 
 async function waitForActiveWork(): Promise<void> {
@@ -255,6 +262,11 @@ async function main() {
   healthTimer = setInterval(() => {
     void runHealthCheck("interval");
   }, HEALTH_INTERVAL_MS);
+
+  checkAllThresholds();
+  thresholdTimer = setInterval(() => {
+    checkAllThresholds();
+  }, THRESHOLD_INTERVAL_MS);
 }
 
 main().catch((err) => logger.error("worker.crashed", "Axon worker crashed", { err }));

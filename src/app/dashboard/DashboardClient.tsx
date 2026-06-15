@@ -85,6 +85,31 @@ type BudgetStatus = {
   status: string;
 };
 
+type SpendThreshold = {
+  thresholdId: string;
+  agentId: string;
+  thresholdUsdc: number;
+  windowHours: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type SpendAlert = {
+  alertId: string;
+  agentId: string;
+  amountUsdc: number;
+  thresholdUsdc: number;
+  windowHours: number;
+  firedAt: string;
+};
+
+type ThresholdStatus = {
+  threshold: SpendThreshold;
+  windowSpendUsdc: number;
+  lastAlert: SpendAlert | null;
+};
+
 type DashboardData = {
   walletAddress: string;
   keyId: string;
@@ -95,6 +120,7 @@ type DashboardData = {
   channels: Channel[];
   keys: ApiKey[];
   budgets: Record<string, BudgetStatus | null>;
+  thresholds: Record<string, ThresholdStatus | null>;
 };
 
 type Toast = { id: string; type: "success" | "error"; message: string };
@@ -155,6 +181,9 @@ export default function DashboardClient() {
   const [budgetDrafts, setBudgetDrafts] = useState<Record<string, { maxPerCall: string; maxPerDay: string }>>({});
   const [savingBudget, setSavingBudget] = useState<Set<string>>(new Set());
   const [clearingBudget, setClearingBudget] = useState<Set<string>>(new Set());
+  const [thresholdDrafts, setThresholdDrafts] = useState<Record<string, { amount: string; hours: string }>>({});
+  const [savingThreshold, setSavingThreshold] = useState<Set<string>>(new Set());
+  const [clearingThreshold, setClearingThreshold] = useState<Set<string>>(new Set());
   const [editExpanded, setEditExpanded] = useState<Set<string>>(new Set());
   const [editDrafts, setEditDrafts] = useState<Record<string, { name: string; capabilities: string; price: string; endpoint: string }>>({});
   const [savingEdit, setSavingEdit] = useState<Set<string>>(new Set());
@@ -210,21 +239,37 @@ export default function DashboardClient() {
         key
       );
       const keysRes = await apiGet<{ keys: ApiKey[] }>("/api/auth/keys", key);
-      const budgetEntries = await Promise.all(
-        me.agents.map(async (agent) => {
-          try {
-            const res = await apiGet<{ budget: BudgetStatus | null }>(
-              `/api/agents/${encodeURIComponent(agent.agentId)}/budget`,
-              key
-            );
-            return [agent.agentId, res.budget] as const;
-          } catch {
-            return [agent.agentId, null] as const;
-          }
-        })
-      );
+      const [budgetEntries, thresholdEntries] = await Promise.all([
+        Promise.all(
+          me.agents.map(async (agent) => {
+            try {
+              const res = await apiGet<{ budget: BudgetStatus | null }>(
+                `/api/agents/${encodeURIComponent(agent.agentId)}/budget`,
+                key
+              );
+              return [agent.agentId, res.budget] as const;
+            } catch {
+              return [agent.agentId, null] as const;
+            }
+          })
+        ),
+        Promise.all(
+          me.agents.map(async (agent) => {
+            try {
+              const res = await apiGet<ThresholdStatus & { threshold: SpendThreshold | null }>(
+                `/api/agents/${encodeURIComponent(agent.agentId)}/threshold`,
+                key
+              );
+              return [agent.agentId, res.threshold ? res : null] as const;
+            } catch {
+              return [agent.agentId, null] as const;
+            }
+          })
+        ),
+      ]);
 
       const budgets = Object.fromEntries(budgetEntries);
+      const thresholds = Object.fromEntries(thresholdEntries);
       setBudgetDrafts(
         Object.fromEntries(
           me.agents.map((agent) => {
@@ -232,6 +277,17 @@ export default function DashboardClient() {
             return [agent.agentId, {
               maxPerCall: b?.maxPerCallUsdc != null ? String(b.maxPerCallUsdc) : "",
               maxPerDay: b?.maxPerDayUsdc != null ? String(b.maxPerDayUsdc) : "",
+            }];
+          })
+        )
+      );
+      setThresholdDrafts(
+        Object.fromEntries(
+          me.agents.map((agent) => {
+            const t = thresholds[agent.agentId];
+            return [agent.agentId, {
+              amount: t?.threshold ? String(t.threshold.thresholdUsdc) : "",
+              hours: t?.threshold ? String(t.threshold.windowHours) : "24",
             }];
           })
         )
@@ -247,6 +303,7 @@ export default function DashboardClient() {
         channels: channelRes.channels,
         keys: keysRes.keys,
         budgets,
+        thresholds,
       });
       agentsRef.current = me.agents;
       setLastRefreshed(new Date());
@@ -575,6 +632,66 @@ export default function DashboardClient() {
       addToast("error", "Failed to clear spend limit");
     } finally {
       setClearingBudget((prev) => { const next = new Set(prev); next.delete(agentId); return next; });
+    }
+  }
+
+  async function saveThreshold(agentId: string) {
+    if (!apiKey) return;
+    const draft = thresholdDrafts[agentId];
+    if (!draft) return;
+    const amount = parseFloat(draft.amount);
+    const hours = parseInt(draft.hours, 10);
+    if (isNaN(amount) || amount <= 0) { addToast("error", "Enter a valid USDC amount"); return; }
+    if (isNaN(hours) || hours < 1) { addToast("error", "Enter a valid window in hours"); return; }
+    setSavingThreshold((prev) => new Set(prev).add(agentId));
+    try {
+      const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/threshold`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ thresholdUsdc: amount, windowHours: hours, enabled: true }),
+      });
+      if (res.ok) {
+        const { threshold } = await res.json() as { threshold: SpendThreshold };
+        setData((prev) => {
+          if (!prev) return prev;
+          const existing = prev.thresholds[agentId];
+          const newStatus: ThresholdStatus = {
+            threshold,
+            windowSpendUsdc: existing?.windowSpendUsdc ?? 0,
+            lastAlert: existing?.lastAlert ?? null,
+          };
+          return { ...prev, thresholds: { ...prev.thresholds, [agentId]: newStatus } };
+        });
+        addToast("success", "Spend alert saved");
+      } else {
+        addToast("error", "Failed to save spend alert");
+      }
+    } catch {
+      addToast("error", "Failed to save spend alert");
+    } finally {
+      setSavingThreshold((prev) => { const next = new Set(prev); next.delete(agentId); return next; });
+    }
+  }
+
+  async function clearThreshold(agentId: string) {
+    if (!apiKey) return;
+    setClearingThreshold((prev) => new Set(prev).add(agentId));
+    try {
+      const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/threshold`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (res.ok) {
+        setData((prev) => prev ? { ...prev, thresholds: { ...prev.thresholds, [agentId]: null } } : prev);
+        setThresholdDrafts((prev) => ({ ...prev, [agentId]: { amount: "", hours: "24" } }));
+        addToast("success", "Spend alert cleared");
+      } else {
+        addToast("error", "Failed to clear spend alert");
+      }
+    } catch {
+      addToast("error", "Failed to clear spend alert");
+    } finally {
+      setClearingThreshold((prev) => { const next = new Set(prev); next.delete(agentId); return next; });
     }
   }
 
@@ -1297,6 +1414,90 @@ npm run demo:agent`}</code>
                           {budget && (
                             <button
                               onClick={() => void clearBudget(agent.agentId)}
+                              disabled={isSaving || isClearing}
+                              className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 text-xs font-medium hover:border-red-300 hover:text-red-600 disabled:opacity-40 transition-colors"
+                            >
+                              {isClearing ? "Clearing…" : "Clear"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-lg border border-gray-200 bg-white p-5">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <h2 className="font-semibold text-gray-900">Spend Alerts</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Get a webhook when an agent exceeds a USDC spend threshold within a rolling window</p>
+              </div>
+            </div>
+            {data.agents.length === 0 ? (
+              <p className="text-sm text-gray-400 py-4">Register an agent first to configure spend alerts.</p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {data.agents.map((agent) => {
+                  const status = data.thresholds[agent.agentId];
+                  const draft = thresholdDrafts[agent.agentId] ?? { amount: "", hours: "24" };
+                  const isSaving = savingThreshold.has(agent.agentId);
+                  const isClearing = clearingThreshold.has(agent.agentId);
+                  return (
+                    <div key={agent.agentId} className="py-4 first:pt-0 last:pb-0">
+                      <div className="flex flex-col md:flex-row md:items-start gap-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900">{agent.name}</p>
+                          <p className="text-xs font-mono text-gray-400 mt-0.5">{agent.agentId}</p>
+                          {status?.threshold && (
+                            <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
+                              <span>Alert at: <span className="font-medium text-gray-700">{status.threshold.thresholdUsdc} USDC / {status.threshold.windowHours}h</span></span>
+                              <span>Window spend: <span className={`font-medium ${status.windowSpendUsdc >= status.threshold.thresholdUsdc ? "text-red-600" : "text-gray-700"}`}>{status.windowSpendUsdc.toFixed(4)} USDC</span></span>
+                              {status.lastAlert && (
+                                <span>Last alert: <span className="font-medium text-amber-600">{dateTime(status.lastAlert.firedAt)}</span></span>
+                              )}
+                              <span className={`font-medium ${status.threshold.enabled ? "text-green-600" : "text-gray-400"}`}>{status.threshold.enabled ? "Enabled" : "Disabled"}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-end gap-2">
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[11px] text-gray-400">Alert threshold (USDC)</label>
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              placeholder="e.g. 10.00"
+                              value={draft.amount}
+                              onChange={(e) => setThresholdDrafts((prev) => ({ ...prev, [agent.agentId]: { ...draft, amount: e.target.value } }))}
+                              className="w-32 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[11px] text-gray-400">Window (hours)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="720"
+                              step="1"
+                              placeholder="24"
+                              value={draft.hours}
+                              onChange={(e) => setThresholdDrafts((prev) => ({ ...prev, [agent.agentId]: { ...draft, hours: e.target.value } }))}
+                              className="w-24 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
+                            />
+                          </div>
+                          <button
+                            onClick={() => void saveThreshold(agent.agentId)}
+                            disabled={isSaving || isClearing}
+                            className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
+                          >
+                            {isSaving ? "Saving…" : "Save"}
+                          </button>
+                          {status?.threshold && (
+                            <button
+                              onClick={() => void clearThreshold(agent.agentId)}
                               disabled={isSaving || isClearing}
                               className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 text-xs font-medium hover:border-red-300 hover:text-red-600 disabled:opacity-40 transition-colors"
                             >

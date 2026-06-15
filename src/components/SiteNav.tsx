@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/how-it-works",  label: "Protocol", desktopOnly: true },
   { href: "/agents",        label: "Agents" },
   { href: "/analytics",     label: "Analytics" },
+  { href: "/network-feed",  label: "Feed" },
   { href: "/dashboard",     label: "Dashboard" },
   { href: "/publish",       label: "Publish" },
   { href: "/litepaper",     label: "Litepaper", desktopOnly: true },

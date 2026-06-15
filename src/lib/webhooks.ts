@@ -11,6 +11,7 @@ export const WEBHOOK_EVENTS = [
   "task.failed",
   "payment.settled",
   "payment.refunded",
+  "spend.threshold_exceeded",
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENTS)[number];

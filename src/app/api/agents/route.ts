@@ -12,6 +12,7 @@ import { registerAgentSchema, parseBody } from "@/lib/schemas";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { withRequestContext } from "@/lib/withRequestContext";
 import { verifyAgentEndpoint } from "@/lib/verification";
+import { notifyNewAgent } from "@/lib/telegram";
 
 const VALID_SORT_FIELDS = new Set<string>(["reputation", "price", "createdAt", "activity", "successRate", "latency", "reviews"]);
 const VALID_PROVIDERS: InferenceProvider[] = ["anthropic", "ollama", "openai"];
@@ -213,6 +214,8 @@ async function handlePost(req: NextRequest) {
     reputation: 0,
     createdAt: new Date().toISOString(),
   });
+
+  void notifyNewAgent(agent.agentId, agent.name, capabilities);
 
   let endpointWarning: string | undefined;
   if (agent.endpoint) {
