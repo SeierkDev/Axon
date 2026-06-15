@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import type { InferenceProvider } from "@/sdk/types";
 import { createAgent, searchAgents, agentExists, categoryFromCapabilities } from "@/lib/agents";
 import type { SortField } from "@/lib/agents";
@@ -215,7 +215,7 @@ async function handlePost(req: NextRequest) {
     createdAt: new Date().toISOString(),
   });
 
-  void notifyNewAgent(agent.agentId, agent.name, capabilities);
+  after(() => notifyNewAgent(agent.agentId, agent.name, capabilities));
 
   let endpointWarning: string | undefined;
   if (agent.endpoint) {
