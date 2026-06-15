@@ -98,7 +98,7 @@ export default function WorkersDashboard() {
       <main className="max-w-6xl mx-auto px-6 pt-32 pb-24">
 
         {/* Header */}
-        <div className="flex items-start justify-between flex-wrap gap-4 mb-8">
+        <div className="flex items-start justify-between flex-wrap gap-4 mb-8 animate-fade-up">
           <div>
             <p className="text-xs font-mono text-gray-400 tracking-wider mb-2">AXON NETWORK</p>
             <h1 className="text-3xl font-bold text-gray-900">Worker Metrics</h1>
@@ -121,7 +121,7 @@ export default function WorkersDashboard() {
         ) : (
           <>
             {/* Status cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 animate-fade-up" style={{ animationDelay: "60ms" }}>
               {(() => {
                 const ws = workerStatus(data.worker.lastSeenMs, data.worker.queueDepth, data.worker.running);
                 return [
@@ -144,7 +144,7 @@ export default function WorkersDashboard() {
             </div>
 
             {/* Latency cards */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-4 mb-6 animate-fade-up" style={{ animationDelay: "120ms" }}>
               {[
                 { label: "P50 Processing", value: fmtMs(data.latency.p50ProcessingMs), sub: "median task duration" },
                 { label: "P95 Processing", value: fmtMs(data.latency.p95ProcessingMs), sub: "95th percentile duration" },
@@ -159,7 +159,7 @@ export default function WorkersDashboard() {
             </div>
 
             {/* Throughput chart — last 12 hours */}
-            <div className="rounded-xl border border-gray-200 p-6 mb-6">
+            <div className="rounded-xl border border-gray-200 p-6 mb-6 animate-fade-up" style={{ animationDelay: "180ms" }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-gray-900">Throughput — last 12 hours</h2>
                 <span className="text-xs text-gray-400">{data.throughput.last24h} tasks / 24h</span>
@@ -207,7 +207,7 @@ export default function WorkersDashboard() {
             </div>
 
             {/* Per-agent table */}
-            <div className="rounded-xl border border-gray-200 mb-6 overflow-hidden">
+            <div className="rounded-xl border border-gray-200 mb-6 overflow-hidden animate-fade-up" style={{ animationDelay: "240ms" }}>
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-900">Per-agent breakdown</h2>
                 <span className="text-xs text-gray-400 md:hidden">scroll →</span>
@@ -249,7 +249,7 @@ export default function WorkersDashboard() {
             </div>
 
             {/* Recent tasks */}
-            <div className="rounded-xl border border-gray-200 overflow-hidden">
+            <div className="rounded-xl border border-gray-200 overflow-hidden animate-fade-up" style={{ animationDelay: "300ms" }}>
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-900">Recent tasks</h2>
                 <span className="text-xs text-gray-400">last 20</span>
