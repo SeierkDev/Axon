@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
 
   const created: string[] = [];
   let failedCount = 0;
+  const telegramPromises: Promise<void>[] = [];
 
   for (const item of batch) {
     // Use a different registered agent as the sender so it looks like real agent-to-agent traffic.
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
       if (Math.random() < 0.03) {
         failTask(task.taskId, "Upstream inference timeout");
         failedCount++;
-        void postSingleTask(item.toAgent, false, "Upstream inference timeout");
+        telegramPromises.push(postSingleTask(item.toAgent, false, "Upstream inference timeout"));
       } else {
         completeTask(task.taskId, item.output);
         const now = new Date().toISOString();
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
           INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
           VALUES (?, ?, ?, ?, 0.10, 'completed', NULL, 0, 'USDC', ?, ?)
         `).run(randomUUID(), task.taskId, fromAgent, item.toAgent, now, now);
-        void postSingleTask(item.toAgent, true);
+        telegramPromises.push(postSingleTask(item.toAgent, true));
       }
       // Backdate after all task calls so startTask/completeTask don't overwrite timestamps
       const completedNow = Date.now();
@@ -115,6 +116,9 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  // Await all Telegram posts before returning so Railway doesn't cut them off
+  await Promise.all(telegramPromises);
 
   logger.info("cron.demo_activity_complete", "Demo activity cron created tasks", {
     created: created.length,
