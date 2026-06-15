@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
   const created: string[] = [];
   let failedCount = 0;
-  const telegramPromises: Promise<void>[] = [];
+  const telegramQueue: { toAgent: string; success: boolean; failReason?: string }[] = [];
 
   for (const item of batch) {
     // Use a different registered agent as the sender so it looks like real agent-to-agent traffic.
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       if (Math.random() < 0.03) {
         failTask(task.taskId, "Upstream inference timeout");
         failedCount++;
-        telegramPromises.push(postSingleTask(item.toAgent, false, "Upstream inference timeout"));
+        telegramQueue.push({ toAgent: item.toAgent, success: false, failReason: "Upstream inference timeout" });
       } else {
         completeTask(task.taskId, item.output);
         const now = new Date().toISOString();
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
           INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
           VALUES (?, ?, ?, ?, 0.10, 'completed', NULL, 0, 'USDC', ?, ?)
         `).run(randomUUID(), task.taskId, fromAgent, item.toAgent, now, now);
-        telegramPromises.push(postSingleTask(item.toAgent, true));
+        telegramQueue.push({ toAgent: item.toAgent, success: true });
       }
       // Backdate after all task calls so startTask/completeTask don't overwrite timestamps
       const completedNow = Date.now();
@@ -117,8 +117,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Await all Telegram posts before returning so Railway doesn't cut them off
-  await Promise.all(telegramPromises);
+  // Post to Telegram sequentially with 2-5s gaps so posts don't flood at once
+  for (let i = 0; i < telegramQueue.length; i++) {
+    if (i > 0) await new Promise(r => setTimeout(r, Math.floor(Math.random() * 3000) + 2000));
+    const p = telegramQueue[i];
+    await postSingleTask(p.toAgent, p.success, p.failReason);
+  }
 
   logger.info("cron.demo_activity_complete", "Demo activity cron created tasks", {
     created: created.length,
