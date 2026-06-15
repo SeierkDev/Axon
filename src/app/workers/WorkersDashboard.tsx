@@ -164,29 +164,42 @@ export default function WorkersDashboard() {
                 <h2 className="text-sm font-semibold text-gray-900">Throughput — last 12 hours</h2>
                 <span className="text-xs text-gray-400">{data.throughput.last24h} tasks / 24h</span>
               </div>
-              <div className="flex items-end gap-1 h-20">
-                {data.throughput.byHour.map((h) => {
-                  const total = h.completed + h.failed;
-                  const pct = Math.round((total / maxBar) * 100);
-                  const failPct = total > 0 ? Math.round((h.failed / total) * 100) : 0;
-                  return (
-                    <div key={h.hour} className="flex-1 flex flex-col items-center gap-0.5 group relative">
-                      <div className="w-full flex flex-col justify-end" style={{ height: "72px" }}>
-                        <div className="w-full rounded-sm overflow-hidden" style={{ height: `${Math.max(pct, total > 0 ? 4 : 0)}%` }}>
-                          <div className="w-full bg-red-400" style={{ height: `${failPct}%` }} />
-                          <div className="w-full bg-gray-900" style={{ height: `${100 - failPct}%` }} />
+              {(() => {
+                const renderBars = (hours: typeof data.throughput.byHour, barH: number) =>
+                  hours.map((h) => {
+                    const total = h.completed + h.failed;
+                    const pct = Math.round((total / maxBar) * 100);
+                    const failPct = total > 0 ? Math.round((h.failed / total) * 100) : 0;
+                    return (
+                      <div key={h.hour} className="flex-1 flex flex-col items-center gap-0.5 group relative">
+                        <div className="w-full flex flex-col justify-end" style={{ height: `${barH}px` }}>
+                          <div className="w-full rounded-sm overflow-hidden" style={{ height: `${Math.max(pct, total > 0 ? 4 : 0)}%` }}>
+                            <div className="w-full bg-red-400" style={{ height: `${failPct}%` }} />
+                            <div className="w-full bg-gray-900" style={{ height: `${100 - failPct}%` }} />
+                          </div>
                         </div>
+                        <span className="text-[9px] text-gray-400">{fmtHour(h.hour)}</span>
+                        {total > 0 && (
+                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                            {h.completed} ok · {h.failed} failed
+                          </div>
+                        )}
                       </div>
-                      <span className="text-[9px] text-gray-400">{fmtHour(h.hour)}</span>
-                      {total > 0 && (
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                          {h.completed} ok · {h.failed} failed
-                        </div>
-                      )}
+                    );
+                  });
+                return (
+                  <>
+                    {/* Mobile: last 6 hours, taller bars */}
+                    <div className="flex sm:hidden items-end gap-1 overflow-x-hidden">
+                      {renderBars(data.throughput.byHour.slice(-6), 96)}
                     </div>
-                  );
-                })}
-              </div>
+                    {/* Desktop: all 12 hours */}
+                    <div className="hidden sm:flex items-end gap-1 overflow-x-hidden">
+                      {renderBars(data.throughput.byHour, 72)}
+                    </div>
+                  </>
+                );
+              })()}
               <div className="flex items-center gap-4 mt-3">
                 <span className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-2 h-2 rounded-sm bg-gray-900 inline-block" />Completed</span>
                 <span className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-2 h-2 rounded-sm bg-red-400 inline-block" />Failed</span>
@@ -195,8 +208,9 @@ export default function WorkersDashboard() {
 
             {/* Per-agent table */}
             <div className="rounded-xl border border-gray-200 mb-6 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-900">Per-agent breakdown</h2>
+                <span className="text-xs text-gray-400 md:hidden">scroll →</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

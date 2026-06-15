@@ -56,14 +56,16 @@ export async function GET() {
     SELECT ROUND((julianday(completed_at) - julianday(started_at)) * 86400000) AS ms
     FROM tasks
     WHERE status = 'completed' AND started_at IS NOT NULL AND completed_at IS NOT NULL
-    ORDER BY completed_at DESC LIMIT 300
+      AND completed_at >= datetime('now', '-24 hours')
+    ORDER BY completed_at DESC LIMIT 200
   `).all() as { ms: number }[]).map((r) => r.ms).sort((a, b) => a - b);
 
   const pickupRaw = (db.prepare(`
     SELECT ROUND((julianday(started_at) - julianday(created_at)) * 86400000) AS ms
     FROM tasks
     WHERE started_at IS NOT NULL
-    ORDER BY started_at DESC LIMIT 300
+      AND started_at >= datetime('now', '-24 hours')
+    ORDER BY started_at DESC LIMIT 200
   `).all() as { ms: number }[]).map((r) => r.ms).sort((a, b) => a - b);
 
   const perAgent = db.prepare(`
