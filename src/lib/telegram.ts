@@ -157,9 +157,10 @@ export async function postNetworkSnapshot(stats: {
   usdcTransacted: number;
 }): Promise<void> {
   // Deduplicate: skip if a snapshot was already posted in the last 30 minutes
+  const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
   const recent = getDb()
-    .prepare(`SELECT 1 FROM telegram_posts WHERE type = 'snapshot' AND created_at >= datetime('now', '-30 minutes') LIMIT 1`)
-    .get();
+    .prepare(`SELECT 1 FROM telegram_posts WHERE type = 'snapshot' AND created_at >= ? LIMIT 1`)
+    .get(cutoff);
   if (recent) return;
 
   const rate = Math.round(stats.successRate * 100);
