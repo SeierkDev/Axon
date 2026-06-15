@@ -52,23 +52,25 @@ export async function GET() {
     byHour.push(found ?? { hour: key, completed: 0, failed: 0 });
   }
 
+  const cutoff24h = new Date(Date.now() - 24 * 3_600_000).toISOString();
+
   const processingRaw = (db.prepare(`
     SELECT ROUND((julianday(completed_at) - julianday(started_at)) * 86400000) AS ms
     FROM tasks
     WHERE status = 'completed' AND started_at IS NOT NULL AND completed_at IS NOT NULL
       AND completed_at >= started_at
-      AND completed_at >= datetime('now', '-24 hours')
+      AND completed_at >= ?
     ORDER BY completed_at DESC LIMIT 200
-  `).all() as { ms: number }[]).map((r) => r.ms).sort((a, b) => a - b);
+  `).all(cutoff24h) as { ms: number }[]).map((r) => r.ms).sort((a, b) => a - b);
 
   const pickupRaw = (db.prepare(`
     SELECT ROUND((julianday(started_at) - julianday(created_at)) * 86400000) AS ms
     FROM tasks
     WHERE started_at IS NOT NULL
       AND started_at >= created_at
-      AND started_at >= datetime('now', '-24 hours')
+      AND started_at >= ?
     ORDER BY started_at DESC LIMIT 200
-  `).all() as { ms: number }[]).map((r) => r.ms).sort((a, b) => a - b);
+  `).all(cutoff24h) as { ms: number }[]).map((r) => r.ms).sort((a, b) => a - b);
 
   const perAgent = db.prepare(`
     SELECT
