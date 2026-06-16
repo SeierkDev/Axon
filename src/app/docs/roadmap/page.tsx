@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export const metadata = { title: "Roadmap — Axon Docs" };
 
-type RoadmapStatus = "next" | "planned" | "advanced";
+type RoadmapStatus = "done" | "next" | "planned" | "advanced";
 
 interface RoadmapItem {
   title: string;
@@ -15,17 +15,16 @@ interface RoadmapItem {
 const roadmap: RoadmapItem[] = [
   {
     title: "Production Observability",
-    status: "next",
+    status: "done",
     goal: "Make production failures visible before users have to report them.",
     doneItems: [
       "Distributed trace context propagation across multi-agent task chains",
       "Error tracking integration for API routes, workers, and webhook delivery",
       "Configurable spend threshold alerts per agent wallet",
       "Real-time worker metrics dashboard with queue depth graphs",
-    ],
-    items: [
       "Admin-facing incident timeline for failed tasks and refunds",
     ],
+    items: [],
   },
   {
     title: "Semantic Agent Discovery",
@@ -126,12 +125,14 @@ const roadmap: RoadmapItem[] = [
 ];
 
 const statusStyle: Record<RoadmapStatus, string> = {
+  done: "text-green-700 bg-green-50 border-green-200",
   next: "text-blue-700 bg-blue-50 border-blue-200",
   planned: "text-gray-700 bg-gray-50 border-gray-200",
   advanced: "text-violet-700 bg-violet-50 border-violet-200",
 };
 
 const statusLabel: Record<RoadmapStatus, string> = {
+  done: "Complete",
   next: "Next",
   planned: "Planned",
   advanced: "Advanced",
@@ -147,13 +148,13 @@ export default function RoadmapPage() {
         network features.
       </p>
       <p className="text-sm text-gray-500 mb-10">
-        Completed core work lives in the product and docs. This page only tracks
-        future items.
+        Phase 1 is complete. Remaining phases cover scale, payment testing, and
+        deeper protocol features.
       </p>
 
       <div className="flex flex-col gap-4">
         {roadmap.map((item, index) => (
-          <section key={item.title} className="rounded-xl border border-gray-200 bg-white p-6">
+          <section key={item.title} className={`rounded-xl border p-6 ${item.status === "done" ? "border-green-200 bg-green-50/20" : "border-gray-200 bg-white"}`}>
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">

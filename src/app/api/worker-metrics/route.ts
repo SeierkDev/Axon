@@ -25,12 +25,16 @@ export async function GET() {
   ).get() as { started_at: string } | undefined;
   const lastSeenMs = lastStarted ? Date.now() - new Date(lastStarted.started_at).getTime() : null;
 
+  const cutoffToday = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z").toISOString();
+  const cutoff24h = new Date(Date.now() - 24 * 3_600_000).toISOString();
+  const cutoff12h = new Date(Date.now() - 12 * 3_600_000).toISOString();
+
   const throughput = db.prepare(`
     SELECT
-      COUNT(*) FILTER (WHERE date(completed_at) = date('now')) AS today,
-      COUNT(*) FILTER (WHERE completed_at >= datetime('now', '-24 hours')) AS last24h
+      COUNT(*) FILTER (WHERE completed_at >= ?) AS today,
+      COUNT(*) FILTER (WHERE completed_at >= ?) AS last24h
     FROM tasks WHERE status = 'completed'
-  `).get() as { today: number; last24h: number };
+  `).get(cutoffToday, cutoff24h) as { today: number; last24h: number };
 
   const rawByHour = db.prepare(`
     SELECT
@@ -38,10 +42,10 @@ export async function GET() {
       COUNT(*) FILTER (WHERE status = 'completed') AS completed,
       COUNT(*) FILTER (WHERE status = 'failed')    AS failed
     FROM tasks
-    WHERE completed_at >= datetime('now', '-12 hours')
+    WHERE completed_at >= ?
     GROUP BY hour
     ORDER BY hour ASC
-  `).all() as { hour: string; completed: number; failed: number }[];
+  `).all(cutoff12h) as { hour: string; completed: number; failed: number }[];
 
   // Fill gaps so every hour slot exists
   const byHour: { hour: string; completed: number; failed: number }[] = [];
@@ -51,8 +55,6 @@ export async function GET() {
     const found = rawByHour.find((r) => r.hour === key);
     byHour.push(found ?? { hour: key, completed: 0, failed: 0 });
   }
-
-  const cutoff24h = new Date(Date.now() - 24 * 3_600_000).toISOString();
 
   const processingRaw = (db.prepare(`
     SELECT ROUND((julianday(completed_at) - julianday(started_at)) * 86400000) AS ms

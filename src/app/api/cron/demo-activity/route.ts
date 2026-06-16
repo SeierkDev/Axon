@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, created: 0, note: "No seed agents registered yet" });
   }
 
-  // Pick 3–5 tasks per run, no duplicates in the same batch.
+  // Pick 2–3 tasks per run, no duplicates in the same batch.
   const batchSize = Math.floor(Math.random() * 2) + 2;
   const shuffled = [...available].sort(() => Math.random() - 0.5);
   const batch = shuffled.slice(0, batchSize);
