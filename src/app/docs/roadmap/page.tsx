@@ -30,11 +30,13 @@ const roadmap: RoadmapItem[] = [
     title: "Semantic Agent Discovery",
     status: "next",
     goal: "Move beyond keyword filters to embedding-based capability matching.",
+    doneItems: [
+      "Natural language capability query interface",
+    ],
     items: [
       "Embedding generation for agent capabilities and descriptions",
       "Vector similarity search for capability queries",
       "Semantic ranking combined with reputation and price score",
-      "Natural language capability query interface",
       "Capability clustering and taxonomy suggestions for publishers",
     ],
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Agent } from "@/sdk/types";
 
@@ -116,14 +116,55 @@ interface Props {
 
 const CATEGORY_ORDER = ["Research", "Development", "Finance", "Content", "General"];
 
+function isNaturalLanguage(q: string): boolean {
+  return q.trim().split(/\s+/).length >= 3;
+}
+
 export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
   const [query, setQuery] = useState("");
   const [freeOnly, setFreeOnly] = useState(false);
+  const [semanticResults, setSemanticResults] = useState<Agent[] | null>(null);
+  const [semanticLoading, setSemanticLoading] = useState(false);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (!isNaturalLanguage(q)) {
+      setSemanticResults(null);
+      setSemanticLoading(false);
+      return;
+    }
+
+    setSemanticLoading(true);
+    const controller = new AbortController();
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/agents?q=${encodeURIComponent(q)}&limit=50`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) { setSemanticResults(null); return; }
+        const data = await res.json() as { agents: Agent[]; semanticQuery?: string };
+        setSemanticResults(data.semanticQuery ? data.agents : null);
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setSemanticResults(null);
+      } finally {
+        if (!controller.signal.aborted) setSemanticLoading(false);
+      }
+    }, 700);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
 
   const visible = useMemo(() => {
-    let result = agents;
+    // When semantic results are available, use them directly (already ranked)
+    let result = semanticResults ?? agents;
     if (freeOnly) result = result.filter((a) => !a.price?.trim());
-    if (query.trim()) {
+    // Keyword filter only when NOT in semantic mode and not waiting for semantic results
+    if (!semanticResults && !semanticLoading && query.trim()) {
       const q = query.trim().toLowerCase();
       result = result.filter(
         (a) =>
@@ -134,11 +175,12 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
       );
     }
     return result;
-  }, [agents, query, freeOnly]);
+  }, [agents, query, freeOnly, semanticResults, semanticLoading]);
 
-  // Group by category unless user is searching/filtering
+  // Group by category unless user is searching/filtering (never group semantic results — order matters)
   const grouped = useMemo(() => {
-    if (query.trim() || freeOnly || hasCapabilityFilter) return null;
+    if (query.trim() || freeOnly || hasCapabilityFilter || semanticResults) return null;
+
     const map = new Map<string, Agent[]>();
     for (const agent of visible) {
       const cat = agent.category ?? "General";
@@ -155,33 +197,37 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
       return a.localeCompare(b);
     });
     return sorted;
-  }, [visible, query, freeOnly, hasCapabilityFilter]);
+  }, [visible, query, freeOnly, hasCapabilityFilter, semanticResults]);
 
   return (
     <div>
       {/* Search + free-only toggle */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-3">
         <div className="relative flex-1 max-w-sm">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-          >
-            <circle cx={11} cy={11} r={8} />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
+          {semanticLoading ? (
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-gray-700 animate-spin pointer-events-none" />
+          ) : (
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <circle cx={11} cy={11} r={8} />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+          )}
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, capability…"
+            placeholder="Search by name, or describe what you need…"
             className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:border-gray-400 focus:outline-none transition-colors placeholder:text-gray-400"
           />
           {query && (
             <button
-              onClick={() => setQuery("")}
+              onClick={() => { setQuery(""); setSemanticResults(null); }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 text-lg leading-none"
               aria-label="Clear search"
             >
@@ -204,11 +250,21 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
         </p>
       </div>
 
+      {/* Semantic mode indicator */}
+      <div className="mb-6 h-4">
+        {semanticResults && !semanticLoading && (
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+            Semantic results — ranked by meaning, not keywords
+          </div>
+        )}
+      </div>
+
       {visible.length === 0 ? (
         <div className="text-center py-24 border border-dashed border-gray-200 rounded-2xl">
           <p className="text-gray-400 text-sm mb-4">No agents match your search.</p>
           <button
-            onClick={() => { setQuery(""); setFreeOnly(false); }}
+            onClick={() => { setQuery(""); setFreeOnly(false); setSemanticResults(null); }}
             className="text-sm text-gray-900 underline hover:text-gray-600 transition-colors"
           >
             Clear filters →
