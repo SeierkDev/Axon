@@ -124,32 +124,35 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
   const [query, setQuery] = useState("");
   const [freeOnly, setFreeOnly] = useState(false);
   const [semanticResults, setSemanticResults] = useState<Agent[] | null>(null);
-  const [semanticLoading, setSemanticLoading] = useState(false);
+  const [completedQuery, setCompletedQuery] = useState("");
+
+  // Derived — avoids synchronous setState in the effect body
+  const q = query.trim();
+  const isNL = isNaturalLanguage(q);
+  const semanticLoading = isNL && completedQuery !== q;
+  const activeResults = isNL && !semanticLoading ? semanticResults : null;
 
   useEffect(() => {
-    const q = query.trim();
-    if (!isNaturalLanguage(q)) {
-      setSemanticResults(null);
-      setSemanticLoading(false);
-      return;
-    }
+    const trimmed = query.trim();
+    if (!isNaturalLanguage(trimmed)) return;
 
-    setSemanticLoading(true);
     const controller = new AbortController();
-
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/agents?q=${encodeURIComponent(q)}&limit=50`, {
+        const res = await fetch(`/api/agents?q=${encodeURIComponent(trimmed)}&limit=50`, {
           signal: controller.signal,
         });
-        if (!res.ok) { setSemanticResults(null); return; }
-        const data = await res.json() as { agents: Agent[]; semanticQuery?: string };
-        setSemanticResults(data.semanticQuery ? data.agents : null);
+        if (!res.ok) {
+          setSemanticResults(null);
+        } else {
+          const data = await res.json() as { agents: Agent[]; semanticQuery?: string };
+          setSemanticResults(data.semanticQuery ? data.agents : null);
+        }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setSemanticResults(null);
       } finally {
-        if (!controller.signal.aborted) setSemanticLoading(false);
+        if (!controller.signal.aborted) setCompletedQuery(trimmed);
       }
     }, 700);
 
@@ -161,25 +164,25 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
 
   const visible = useMemo(() => {
     // When semantic results are available, use them directly (already ranked)
-    let result = semanticResults ?? agents;
+    let result = activeResults ?? agents;
     if (freeOnly) result = result.filter((a) => !a.price?.trim());
     // Keyword filter only when NOT in semantic mode and not waiting for semantic results
-    if (!semanticResults && !semanticLoading && query.trim()) {
-      const q = query.trim().toLowerCase();
+    if (!activeResults && !semanticLoading && query.trim()) {
+      const qLower = query.trim().toLowerCase();
       result = result.filter(
         (a) =>
-          a.name.toLowerCase().includes(q) ||
-          a.agentId.toLowerCase().includes(q) ||
-          a.capabilities.some((c) => c.toLowerCase().includes(q)) ||
-          (a.category ?? "").toLowerCase().includes(q)
+          a.name.toLowerCase().includes(qLower) ||
+          a.agentId.toLowerCase().includes(qLower) ||
+          a.capabilities.some((c) => c.toLowerCase().includes(qLower)) ||
+          (a.category ?? "").toLowerCase().includes(qLower)
       );
     }
     return result;
-  }, [agents, query, freeOnly, semanticResults, semanticLoading]);
+  }, [agents, query, freeOnly, activeResults, semanticLoading]);
 
   // Group by category unless user is searching/filtering (never group semantic results — order matters)
   const grouped = useMemo(() => {
-    if (query.trim() || freeOnly || hasCapabilityFilter || semanticResults) return null;
+    if (query.trim() || freeOnly || hasCapabilityFilter || activeResults) return null;
 
     const map = new Map<string, Agent[]>();
     for (const agent of visible) {
@@ -197,7 +200,7 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
       return a.localeCompare(b);
     });
     return sorted;
-  }, [visible, query, freeOnly, hasCapabilityFilter, semanticResults]);
+  }, [visible, query, freeOnly, hasCapabilityFilter, activeResults]);
 
   return (
     <div>
@@ -227,7 +230,7 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
           />
           {query && (
             <button
-              onClick={() => { setQuery(""); setSemanticResults(null); }}
+              onClick={() => setQuery("")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 text-lg leading-none"
               aria-label="Clear search"
             >
@@ -252,7 +255,7 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
 
       {/* Semantic mode indicator */}
       <div className="mb-6 h-4">
-        {semanticResults && !semanticLoading && (
+        {activeResults && !semanticLoading && (
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
             Semantic results — ranked by meaning, not keywords
@@ -264,7 +267,7 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
         <div className="text-center py-24 border border-dashed border-gray-200 rounded-2xl">
           <p className="text-gray-400 text-sm mb-4">No agents match your search.</p>
           <button
-            onClick={() => { setQuery(""); setFreeOnly(false); setSemanticResults(null); }}
+            onClick={() => { setQuery(""); setFreeOnly(false); }}
             className="text-sm text-gray-900 underline hover:text-gray-600 transition-colors"
           >
             Clear filters →
