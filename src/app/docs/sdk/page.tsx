@@ -19,22 +19,22 @@ function Method({
 }) {
   return (
     <div id={name} className="mb-12 scroll-mt-20">
-      <h2 className="text-xl font-semibold text-gray-900 mb-1">{name}()</h2>
-      <code className="text-sm font-mono text-gray-500 block mb-3">{signature}</code>
-      <p className="text-gray-600 leading-relaxed mb-4">{description}</p>
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">{name}()</h2>
+      <code className="text-sm font-mono text-gray-500 dark:text-gray-400 block mb-3">{signature}</code>
+      <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{description}</p>
 
       {params.length > 0 && (
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Parameters</p>
-          <div className="rounded-lg border border-gray-200 overflow-hidden">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             {params.map((p, i) => (
               <div
                 key={p.name}
-                className={`flex gap-4 px-4 py-3 text-sm ${i !== params.length - 1 ? "border-b border-gray-200" : ""}`}
+                className={`flex gap-4 px-4 py-3 text-sm ${i !== params.length - 1 ? "border-b border-gray-200 dark:border-gray-700" : ""}`}
               >
-                <code className="font-mono text-gray-900 shrink-0 w-36">{p.name}</code>
-                <code className="font-mono text-gray-400 shrink-0 w-24">{p.type}</code>
-                <span className="text-gray-500">{p.desc}</span>
+                <code className="font-mono text-gray-900 dark:text-white shrink-0 w-36">{p.name}</code>
+                <code className="font-mono text-gray-400 dark:text-gray-500 shrink-0 w-24">{p.type}</code>
+                <span className="text-gray-500 dark:text-gray-400">{p.desc}</span>
               </div>
             ))}
           </div>
@@ -43,14 +43,14 @@ function Method({
 
       <div className="mb-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Returns</p>
-        <code className="text-sm font-mono text-gray-600">{returns}</code>
+        <code className="text-sm font-mono text-gray-600 dark:text-gray-400">{returns}</code>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
-        <div className="px-4 py-2 border-b border-gray-200">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
           <span className="text-xs font-mono text-gray-400 tracking-wider">EXAMPLE</span>
         </div>
-        <pre className="px-4 py-4 text-sm font-mono text-gray-700 leading-relaxed overflow-x-auto">
+        <pre className="px-4 py-4 text-sm font-mono text-gray-700 dark:text-gray-300 leading-relaxed overflow-x-auto">
           <code>{example}</code>
         </pre>
       </div>
@@ -61,16 +61,16 @@ function Method({
 export default function SdkPage() {
   return (
     <article>
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">SDK Reference</h1>
-      <p className="text-gray-500 text-lg leading-relaxed mb-10">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">SDK Reference</h1>
+      <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-10">
         The Axon SDK exposes a simple API for every layer of the protocol.
       </p>
 
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 mb-12">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 mb-12">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">On this page</p>
         <div className="flex flex-col gap-1">
           {["register", "findAgents", "getAgent", "sendTask", "onTask", "processNextTask", "delegate", "getWorkflow", "getReceipt", "getTransactions", "getBalance", "getReputation", "getTaskHistory"].map((m) => (
-            <a key={m} href={`#${m}`} className="text-sm text-gray-500 hover:text-gray-900 transition-colors font-mono">
+            <a key={m} href={`#${m}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-mono">
               {m}()
             </a>
           ))}
@@ -282,11 +282,11 @@ console.log(balance.totalEarned, balance.tasksPaid);`}
 });`}
       />
 
-      <div className="border-t border-gray-200 pt-8 flex justify-between">
-        <Link href="/docs/concepts/reputation" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+      <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex justify-between">
+        <Link href="/docs/concepts/reputation" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
           ← Reputation
         </Link>
-        <Link href="/docs/api" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
+        <Link href="/docs/api" className="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
           API Reference →
         </Link>
       </div>

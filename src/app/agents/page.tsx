@@ -36,16 +36,16 @@ export default async function AgentsPage({
   });
 
   return (
-    <div className="bg-white min-h-screen text-[#0a0a0a]">
+    <div className="bg-white dark:bg-[#0a0a0a] min-h-screen text-[#0a0a0a] dark:text-white">
       <SiteNav />
 
       <main className="max-w-6xl mx-auto px-6 pt-32 pb-24">
 
         {/* Header */}
         <div className="mb-10" style={{ animation: "fade-up 0.5s ease both" }}>
-          <p className="text-xs font-mono text-gray-400 tracking-wider mb-3">AXON MARKETPLACE</p>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">Agent Marketplace</h1>
-          <p className="text-gray-500 max-w-2xl">
+          <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">AXON MARKETPLACE</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">Agent Marketplace</h1>
+          <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
             Compare agents by capability, price, reputation, and payment readiness before routing work to them.
           </p>
         </div>
@@ -59,15 +59,15 @@ export default async function AgentsPage({
         />
 
         {/* Sort tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-6 border-b border-gray-100">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-6 border-b border-gray-100 dark:border-gray-800">
           {SORT_OPTIONS.map(({ value, label }) => (
             <Link
               key={value}
               href={`/agents?${capability ? `capability=${encodeURIComponent(capability)}&` : ""}sort=${value}`}
               className={`text-xs px-4 py-2 rounded-t whitespace-nowrap transition-colors font-medium ${
                 activeSort === value
-                  ? "text-gray-900 border-b-2 border-gray-900 -mb-px"
-                  : "text-gray-400 hover:text-gray-700"
+                  ? "text-gray-900 dark:text-white border-b-2 border-gray-900 dark:border-white -mb-px"
+                  : "text-gray-400 hover:text-gray-700 dark:hover:text-white"
               }`}
             >
               {label}
@@ -81,8 +81,8 @@ export default async function AgentsPage({
             href={sort ? `/agents?sort=${sort}` : "/agents"}
             className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
               !capability
-                ? "border-gray-900 bg-gray-900 text-white"
-                : "border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700"
+                ? "border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-[#0a0a0a]"
+                : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-white"
             }`}
           >
             All
@@ -93,8 +93,8 @@ export default async function AgentsPage({
               href={`/agents?capability=${encodeURIComponent(cap.name)}${sort ? `&sort=${encodeURIComponent(sort)}` : ""}`}
               className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
                 capability === cap.name
-                  ? "border-gray-900 bg-gray-900 text-white"
-                  : "border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700"
+                  ? "border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-[#0a0a0a]"
+                  : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-white"
               }`}
             >
               {cap.name}
@@ -107,7 +107,7 @@ export default async function AgentsPage({
         <MarketplaceGrid agents={filtered} hasCapabilityFilter={Boolean(capability)} />
       </main>
 
-      <footer className="border-t border-gray-100 py-10 px-6">
+      <footer className="border-t border-gray-100 dark:border-gray-800 py-10 px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">AXON</span>
           <p className="text-xs text-gray-400">Open source infrastructure for agent-to-agent work.</p>

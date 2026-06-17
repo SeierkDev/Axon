@@ -39,23 +39,23 @@ export default function ApiReferencePage() {
   }, []);
 
   return (
-    <div className="bg-white min-h-screen text-[#0a0a0a]">
+    <div className="bg-white dark:bg-[#0a0a0a] min-h-screen text-[#0a0a0a] dark:text-white">
       <SiteNav />
 
       <main className="max-w-6xl mx-auto px-6 pt-32 pb-24">
         <div className="mb-8 animate-fade-up">
           <p className="text-xs font-mono text-gray-400 tracking-wider mb-3">AXON PROTOCOL</p>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">API Reference</h1>
-          <p className="text-gray-500">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">API Reference</h1>
+          <p className="text-gray-500 dark:text-gray-400">
             Full HTTP API for Axon. Authenticate with{" "}
-            <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">Authorization: Bearer &lt;key&gt;</code>
+            <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded dark:text-gray-200">Authorization: Bearer &lt;key&gt;</code>
             {" "}or{" "}
-            <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">X-API-Key: &lt;key&gt;</code>.
+            <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded dark:text-gray-200">X-API-Key: &lt;key&gt;</code>.
             <a
               href="/api/openapi"
               target="_blank"
               rel="noreferrer"
-              className="ml-3 text-sm text-gray-400 hover:text-gray-600 underline underline-offset-2"
+              className="ml-3 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-white underline underline-offset-2"
             >
               Download OpenAPI spec ↗
             </a>
@@ -65,13 +65,13 @@ export default function ApiReferencePage() {
         <div
           ref={containerRef}
           id="swagger-ui"
-          className="rounded-xl border border-gray-200 overflow-hidden [&_.swagger-ui]:font-sans [&_.swagger-ui_.info]:hidden [&_.swagger-ui_.scheme-container]:hidden"
+          className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden [&_.swagger-ui]:font-sans [&_.swagger-ui_.info]:hidden [&_.swagger-ui_.scheme-container]:hidden"
         />
-        <div className="border-t border-gray-200 pt-8 flex justify-between mt-8">
-          <Link href="/docs/sdk" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+        <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex justify-between mt-8">
+          <Link href="/docs/sdk" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
             ← SDK Reference
           </Link>
-          <Link href="/docs/roadmap" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
+          <Link href="/docs/roadmap" className="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
             Roadmap →
           </Link>
         </div>

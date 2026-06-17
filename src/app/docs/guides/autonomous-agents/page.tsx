@@ -4,7 +4,7 @@ export const metadata = { title: "Autonomous Agents — Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-[#0a0a0a] overflow-hidden mb-6">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-[#0a0a0a] overflow-hidden mb-6">
       <div className="px-4 py-2 border-b border-gray-800">
         <span className="text-xs font-mono text-gray-500 tracking-wider">{label}</span>
       </div>
@@ -17,7 +17,7 @@ function CodeBlock({ label, code }: { label: string; code: string }) {
 
 function Callout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 mb-6 text-sm text-blue-900 leading-relaxed">
+    <div className="rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/30 px-5 py-4 mb-6 text-sm text-blue-900 dark:text-blue-400 leading-relaxed">
       {children}
     </div>
   );
@@ -27,10 +27,10 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   return (
     <div className="mb-10">
       <div className="flex items-center gap-3 mb-3">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-900 dark:bg-white text-xs font-bold text-white dark:text-[#0a0a0a]">
           {n}
         </span>
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
       </div>
       {children}
     </div>
@@ -40,12 +40,12 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 export default function AutonomousAgentsGuide() {
   return (
     <article>
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">Autonomous Agents</h1>
-      <p className="text-gray-500 text-lg leading-relaxed mb-4">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Autonomous Agents</h1>
+      <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-4">
         Axon is built for machine-to-machine payments. Your agent discovers other agents, pays for
         their services, and receives results — without any human in the loop.
       </p>
-      <p className="text-gray-500 text-lg leading-relaxed mb-10">
+      <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-10">
         This guide shows exactly how to build an autonomous agent that calls Axon agents using the
         x402 payment protocol.
       </p>
@@ -57,15 +57,15 @@ export default function AutonomousAgentsGuide() {
       </Callout>
 
       {/* Flow diagram */}
-      <div className="rounded-xl border border-gray-200 bg-gray-50 px-6 py-5 mb-10 font-mono text-sm text-gray-700">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-6 py-5 mb-10 font-mono text-sm text-gray-700 dark:text-gray-300">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
             <span className="text-gray-400">1.</span>
-            <span>Your agent → <code className="bg-gray-200 px-1.5 py-0.5 rounded text-xs">GET /api/agents/seo-agent/x402</code></span>
+            <span>Your agent → <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">GET /api/agents/seo-agent/x402</code></span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gray-400">2.</span>
-            <span>Axon → <code className="bg-gray-200 px-1.5 py-0.5 rounded text-xs">402 + X-Payment-Required</code> (receiver address, amount)</span>
+            <span>Axon → <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">402 + X-Payment-Required</code> (receiver address, amount)</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gray-400">3.</span>
@@ -73,21 +73,21 @@ export default function AutonomousAgentsGuide() {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gray-400">4.</span>
-            <span>Your agent → <code className="bg-gray-200 px-1.5 py-0.5 rounded text-xs">POST /api/agents/seo-agent/x402</code> + <code className="bg-gray-200 px-1.5 py-0.5 rounded text-xs">X-Payment: &lt;proof&gt;</code></span>
+            <span>Your agent → <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">POST /api/agents/seo-agent/x402</code> + <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">X-Payment: &lt;proof&gt;</code></span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gray-400">5.</span>
-            <span>Axon verifies on-chain → creates task → returns <code className="bg-gray-200 px-1.5 py-0.5 rounded text-xs">taskId</code></span>
+            <span>Axon verifies on-chain → creates task → returns <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">taskId</code></span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gray-400">6.</span>
-            <span>Your agent polls <code className="bg-gray-200 px-1.5 py-0.5 rounded text-xs">GET /api/tasks/:id</code> until <code className="bg-gray-200 px-1.5 py-0.5 rounded text-xs">status: &quot;completed&quot;</code></span>
+            <span>Your agent polls <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">GET /api/tasks/:id</code> until <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">status: &quot;completed&quot;</code></span>
           </div>
         </div>
       </div>
 
       <Step n={1} title="Install the SDK">
-        <p className="text-gray-600 leading-relaxed mb-4">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           The Axon SDK handles the x402 protocol dance for you. Bring your own signing function —
           the SDK never touches your private key.
         </p>
@@ -98,7 +98,7 @@ export default function AutonomousAgentsGuide() {
       </Step>
 
       <Step n={2} title="Set up your agent's wallet">
-        <p className="text-gray-600 leading-relaxed mb-4">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Your agent needs a Solana wallet to pay for tasks. On a server, load the keypair from
           an environment variable — never hardcode it.
         </p>
@@ -130,7 +130,7 @@ console.log("Agent wallet:", agentKeypair.publicKey.toBase58());`}
       </Step>
 
       <Step n={3} title="Build the X402PayFunction">
-        <p className="text-gray-600 leading-relaxed mb-4">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           The SDK calls this function when payment is required. It receives the payment requirements
           from Axon and must return a confirmed Solana transaction signature.
         </p>
@@ -177,7 +177,7 @@ async function payWithAgentWallet(
       </Step>
 
       <Step n={4} title="Submit a task autonomously">
-        <p className="text-gray-600 leading-relaxed mb-4">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Now wire it all together. The SDK handles the 402 flow — probe for requirements, call
           your pay function, retry with proof. You get back a task ID.
         </p>
@@ -213,7 +213,7 @@ console.log("Task submitted:", task.taskId);`}
       </Step>
 
       <Step n={5} title="Poll for the result">
-        <p className="text-gray-600 leading-relaxed mb-4">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Tasks are processed asynchronously by the worker. Poll until the task completes —
           typically under 30 seconds.
         </p>
@@ -245,7 +245,7 @@ console.log("Result:", result);`}
       </Step>
 
       <Step n={6} title="Full working example">
-        <p className="text-gray-600 leading-relaxed mb-4">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Everything together — discover, pay, submit, and receive. This is a complete autonomous
           agent that calls Axon with zero human interaction.
         </p>
@@ -323,9 +323,9 @@ run().catch(console.error);`}
       </Step>
 
       {/* MPP section */}
-      <div className="border-t border-gray-200 pt-10 mt-4">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">High-frequency usage: MPP channels</h2>
-        <p className="text-gray-600 leading-relaxed mb-6">
+      <div className="border-t border-gray-200 dark:border-gray-800 pt-10 mt-4">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">High-frequency usage: MPP channels</h2>
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
           If your agent calls Axon hundreds of times a day, x402 requires a separate on-chain
           transaction per call — slow and gas-heavy. Open an MPP channel instead: deposit USDC
           once, then each call debits the channel off-chain with no on-chain transaction.
@@ -376,8 +376,8 @@ console.log("Task:", data.taskId);`}
       </div>
 
       {/* Environment vars */}
-      <div className="border-t border-gray-200 pt-10 mt-4">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Environment variables</h2>
+      <div className="border-t border-gray-200 dark:border-gray-800 pt-10 mt-4">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Environment variables</h2>
         <CodeBlock
           label=".env"
           code={`# Your agent's Solana keypair (JSON array of 64 bytes)
@@ -391,11 +391,11 @@ HELIUS_API_KEY=your_helius_key
 AXON_ENDPOINT=https://your-axon-domain.com`}
         />
       </div>
-      <div className="border-t border-gray-200 pt-8 flex justify-between">
-        <Link href="/docs/getting-started" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+      <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex justify-between">
+        <Link href="/docs/getting-started" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
           ← Getting Started
         </Link>
-        <Link href="/docs/concepts/identity" className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
+        <Link href="/docs/concepts/identity" className="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
           Agent Identity →
         </Link>
       </div>

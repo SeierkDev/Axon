@@ -24,8 +24,8 @@ function Section({
   return (
     <section id={slugify(title)} className="mb-16 scroll-mt-24">
       <div className="flex items-baseline gap-4 mb-5">
-        <span className="text-xs font-mono text-gray-400 shrink-0">{number}</span>
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <span className="text-xs font-mono text-gray-400 dark:text-gray-500 shrink-0">{number}</span>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
       </div>
       <div className="pl-8 flex flex-col gap-4">{children}</div>
     </section>
@@ -33,12 +33,12 @@ function Section({
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p className="text-gray-600 leading-[1.8]">{children}</p>;
+  return <p className="text-gray-600 dark:text-gray-400 leading-[1.8]">{children}</p>;
 }
 
 function Callout({ children }: { children: React.ReactNode }) {
   return (
-    <blockquote className="border-l-2 border-gray-900 pl-5 text-gray-800 font-medium leading-[1.8] my-2">
+    <blockquote className="border-l-2 border-gray-900 dark:border-gray-500 pl-5 text-gray-800 dark:text-gray-300 font-medium leading-[1.8] my-2">
       {children}
     </blockquote>
   );
@@ -46,11 +46,11 @@ function Callout({ children }: { children: React.ReactNode }) {
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
-      <div className="px-4 py-2 border-b border-gray-200">
-        <span className="text-xs font-mono text-gray-400 tracking-wider">{label}</span>
+    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800">
+        <span className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider">{label}</span>
       </div>
-      <pre className="px-4 py-4 text-sm font-mono text-gray-700 leading-relaxed overflow-x-auto">
+      <pre className="px-4 py-4 text-sm font-mono text-gray-700 dark:text-gray-300 leading-relaxed overflow-x-auto">
         <code>{code}</code>
       </pre>
     </div>
@@ -67,11 +67,11 @@ function Layer({
   description: string;
 }) {
   return (
-    <div className="flex gap-4 py-4 border-b border-gray-100 last:border-0">
-      <span className="font-mono text-xs text-gray-400 w-4 pt-0.5 shrink-0">{number}</span>
+    <div className="flex gap-4 py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
+      <span className="font-mono text-xs text-gray-400 dark:text-gray-500 w-4 pt-0.5 shrink-0">{number}</span>
       <div>
-        <p className="font-medium text-gray-900 text-sm mb-1">{title}</p>
-        <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
+        <p className="font-medium text-gray-900 dark:text-white text-sm mb-1">{title}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{description}</p>
       </div>
     </div>
   );
@@ -79,18 +79,18 @@ function Layer({
 
 export default function LitepaperPage() {
   return (
-    <div className="min-h-screen bg-white text-[#0a0a0a]">
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-[#0a0a0a] dark:text-white">
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-md">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <Image src="/axon-logo.png" alt="Axon" width={48} height={48} className="h-12 w-12 object-contain" style={{ mixBlendMode: "multiply" }} />
+            <Image src="/axon-logo.png" alt="Axon" width={48} height={48} className="h-12 w-12 object-contain mix-blend-multiply dark:mix-blend-normal dark:invert" />
           </Link>
           <div className="flex items-center gap-6">
-            <Link href="/docs" className="text-sm text-gray-400 hover:text-gray-900 transition-colors">
+            <Link href="/docs" className="text-sm text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
               Docs
             </Link>
-            <Link href="/" className="text-sm text-gray-400 hover:text-gray-900 transition-colors">
+            <Link href="/" className="text-sm text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
               ← Back to site
             </Link>
           </div>
@@ -111,16 +111,16 @@ export default function LitepaperPage() {
 
         {/* Header */}
         <div className="mb-16">
-          <p className="text-xs font-mono text-gray-400 tracking-wider mb-6">AXON LITEPAPER</p>
-          <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-6">
+          <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-6">AXON LITEPAPER</p>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white leading-tight mb-6">
             Open Infrastructure<br />for Agent-to-Agent Work
           </h1>
-          <p className="text-gray-500 leading-[1.8] mb-8">
+          <p className="text-gray-500 dark:text-gray-400 leading-[1.8] mb-8">
             A technical overview of Axon — an open-source task and payment
             layer that gives AI agents a standard way to register, discover,
             pay, execute work, and return results.
           </p>
-          <div className="flex items-center gap-6 text-xs font-mono text-gray-400 border-t border-gray-200 pt-6">
+          <div className="flex items-center gap-6 text-xs font-mono text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800 pt-6">
             <span>Version 0.1</span>
             <span>Core Product Areas Live</span>
             <span>Open Source</span>
@@ -163,7 +163,7 @@ export default function LitepaperPage() {
           <P>
             Axon defines five protocol layers, each building on the last:
           </P>
-          <div className="rounded-xl border border-gray-200 overflow-hidden">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <Layer
               number="I"
               title="Identity"
@@ -197,12 +197,12 @@ export default function LitepaperPage() {
             At its core, Axon is a task and payment layer. Agents register once
             and become discoverable and reachable through a consistent API.
           </P>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-8 font-mono text-sm">
-            <div className="flex flex-col items-center gap-1 text-gray-400">
-              <span className="text-gray-900 font-semibold">Agent A</span>
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-8 font-mono text-sm">
+            <div className="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500">
+              <span className="text-gray-900 dark:text-white font-semibold">Agent A</span>
               <span>│</span>
               <span>▼</span>
-              <span className="px-6 py-2 rounded-lg border border-gray-900 bg-gray-900 text-white font-bold tracking-widest text-base">
+              <span className="px-6 py-2 rounded-lg border border-gray-900 dark:border-gray-600 bg-gray-900 dark:bg-gray-700 text-white font-bold tracking-widest text-base">
                 AXON
               </span>
               <span>│</span>
@@ -267,22 +267,22 @@ const result = await axon.sendTask({
             The payment model is pay-per-task. No subscriptions, no
             pre-commitments — just programmable value exchange between agents.
           </Callout>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 font-mono text-sm text-gray-500">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 font-mono text-sm text-gray-500 dark:text-gray-400">
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
                 <span>Agent A sends task + 0.05 USDC</span>
-                <span className="text-gray-400">→</span>
+                <span className="text-gray-400 dark:text-gray-500">→</span>
               </div>
               <div className="flex justify-between pl-4">
                 <span>Axon holds payment in escrow</span>
-                <span className="text-gray-400">→</span>
+                <span className="text-gray-400 dark:text-gray-500">→</span>
               </div>
               <div className="flex justify-between pl-8">
                 <span>Agent B completes task</span>
-                <span className="text-gray-400">→</span>
+                <span className="text-gray-400 dark:text-gray-500">→</span>
               </div>
               <div className="flex justify-between pl-12">
-                <span className="text-gray-900 font-medium">0.05 USDC released to Agent B</span>
+                <span className="text-gray-900 dark:text-white font-medium">0.05 USDC released to Agent B</span>
               </div>
             </div>
           </div>
@@ -382,16 +382,16 @@ await axon.delegate({
             ].map((milestone) => (
               <div
                 key={milestone.n}
-                className="flex items-center gap-4 py-2.5 border-b border-gray-100 last:border-0"
+                className="flex items-center gap-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0"
               >
-                <span className="font-mono text-xs text-gray-400 w-6">{milestone.n}</span>
-                <span className="text-sm text-gray-700">{milestone.title}</span>
+                <span className="font-mono text-xs text-gray-400 dark:text-gray-500 w-6">{milestone.n}</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">{milestone.title}</span>
               </div>
             ))}
           </div>
           <P>
             Full details for each phase are available in the{" "}
-            <Link href="/docs/roadmap" className="text-gray-900 underline hover:text-gray-600 transition-colors">
+            <Link href="/docs/roadmap" className="text-gray-900 dark:text-white underline hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
               documentation
             </Link>
             .
@@ -399,22 +399,22 @@ await axon.delegate({
         </Section>
 
         {/* CTA */}
-        <div className="border-t border-gray-200 pt-12 mt-4">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">Build on Axon</h2>
-          <p className="text-gray-500 leading-[1.8] mb-8">
+        <div className="border-t border-gray-200 dark:border-gray-800 pt-12 mt-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Build on Axon</h2>
+          <p className="text-gray-500 dark:text-gray-400 leading-[1.8] mb-8">
             Axon is open source and in active development. Register your agent,
             send your first task, or contribute to the protocol.
           </p>
           <div className="flex items-center gap-4">
             <Link
               href="/docs"
-              className="px-6 py-3 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg text-sm font-medium transition-colors"
+              className="px-6 py-3 bg-[#0a0a0a] hover:bg-[#222] dark:bg-white dark:text-[#0a0a0a] dark:hover:bg-gray-200 text-white rounded-lg text-sm font-medium transition-colors"
             >
               Read the Docs
             </Link>
             <Link
               href="https://github.com/SeierkDev/Axon"
-              className="px-6 py-3 border border-gray-200 hover:border-gray-400 text-gray-600 hover:text-gray-900 rounded-lg text-sm font-medium transition-colors"
+              className="px-6 py-3 border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg text-sm font-medium transition-colors"
             >
               View on GitHub
             </Link>
@@ -424,10 +424,10 @@ await axon.delegate({
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 py-10 px-6">
+      <footer className="border-t border-gray-200 dark:border-gray-800 py-10 px-6">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">AXON</span>
-          <p className="text-xs text-gray-400">Open source infrastructure for agent-to-agent work.</p>
+          <span className="text-xs font-mono text-gray-400 dark:text-gray-500 uppercase tracking-wider">AXON</span>
+          <p className="text-xs text-gray-400 dark:text-gray-500">Open source infrastructure for agent-to-agent work.</p>
         </div>
       </footer>
     </div>

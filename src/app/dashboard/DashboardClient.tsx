@@ -127,16 +127,16 @@ type Toast = { id: string; type: "success" | "error"; message: string };
 
 const STORAGE_KEY = "axon.dashboard.apiKey";
 const TASK_STATUS_STYLE = {
-  payment_pending: "border-purple-200 bg-purple-50 text-purple-700",
-  queued: "border-amber-200 bg-amber-50 text-amber-700",
-  running: "border-blue-200 bg-blue-50 text-blue-700",
-  completed: "border-green-200 bg-green-50 text-green-700",
-  failed: "border-red-200 bg-red-50 text-red-700",
+  payment_pending: "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-400",
+  queued: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400",
+  running: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-400",
+  completed: "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-400",
+  failed: "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400",
 };
 const WORKFLOW_STATUS_STYLE = {
-  running: "border-blue-200 bg-blue-50 text-blue-700",
-  completed: "border-green-200 bg-green-50 text-green-700",
-  failed: "border-red-200 bg-red-50 text-red-700",
+  running: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-400",
+  completed: "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-400",
+  failed: "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400",
 };
 
 function short(value: string): string {
@@ -799,8 +799,8 @@ export default function DashboardClient() {
             key={t.id}
             className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium animate-fade-up ${
               t.type === "success"
-                ? "bg-white border-green-200 text-green-800"
-                : "bg-white border-red-200 text-red-700"
+                ? "bg-white dark:bg-gray-900 border-green-200 dark:border-green-800 text-green-800 dark:text-green-400"
+                : "bg-white dark:bg-gray-900 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
             }`}
           >
             <span className={`w-2 h-2 rounded-full shrink-0 ${t.type === "success" ? "bg-green-500" : "bg-red-500"}`} />
@@ -809,10 +809,10 @@ export default function DashboardClient() {
         ))}
       </div>
 
-      <section className="rounded-lg border border-gray-200 bg-gray-50 p-5">
+      <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-5">
         <div className="flex flex-col xl:flex-row xl:items-end gap-4">
           <div className="flex-1">
-            <label htmlFor="api-key" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="api-key" className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
               API key
             </label>
             <input
@@ -821,9 +821,9 @@ export default function DashboardClient() {
               onChange={(event) => setDraftKey(event.target.value)}
               placeholder="axon_..."
               type="password"
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white outline-none focus:border-gray-500 dark:focus:border-gray-500"
             />
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
               Stored in this browser for this dashboard.
             </p>
           </div>
@@ -831,7 +831,7 @@ export default function DashboardClient() {
             <button
               type="button"
               onClick={saveKey}
-              className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-sm font-medium hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors"
             >
               Load
             </button>
@@ -839,42 +839,42 @@ export default function DashboardClient() {
               type="button"
               onClick={() => loadKey(apiKey)}
               disabled={!apiKey || loading}
-              className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-400 disabled:opacity-40 transition-colors"
+              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm font-medium hover:border-gray-400 dark:hover:border-gray-500 disabled:opacity-40 transition-colors"
             >
               Refresh
             </button>
             <button
               type="button"
               onClick={clearKey}
-              className="px-4 py-2 rounded-lg border border-gray-200 text-gray-400 text-sm font-medium hover:text-gray-700 hover:border-gray-400 transition-colors"
+              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 text-sm font-medium hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
             >
               Clear
             </button>
             <Link
               href="/docs/getting-started"
-              className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-sm font-medium hover:border-gray-400 hover:text-gray-900 transition-colors"
+              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 text-sm font-medium hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               API key setup
             </Link>
           </div>
         </div>
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
       </section>
 
       {loading && <DashboardSkeleton />}
 
       {!loading && !data && !error && (
         <section className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
-          <div className="rounded-lg border border-gray-200 bg-white p-8">
-            <p className="text-xs font-mono text-gray-400 tracking-wider mb-3">FIRST RUN</p>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-3">Get to a completed task</h2>
-            <p className="text-sm text-gray-500 max-w-xl mb-6">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8">
+            <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">FIRST RUN</p>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">Get to a completed task</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xl mb-6">
               Create an API key with wallet auth, register one free agent, then process its first queued task from your agent process.
             </p>
             <div className="grid sm:grid-cols-2 gap-3">
               <Link
                 href="/onboarding"
-                className="mb-4 flex items-center justify-between rounded-lg border border-gray-900 bg-gray-900 px-4 py-3 text-white hover:bg-gray-700 transition-colors"
+                className="mb-4 flex items-center justify-between rounded-lg border border-gray-900 bg-gray-900 dark:border-white dark:bg-white px-4 py-3 text-white dark:text-[#0a0a0a] hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors"
               >
                 <span className="text-sm font-medium">Start onboarding wizard</span>
                 <span>→</span>
@@ -888,15 +888,15 @@ export default function DashboardClient() {
                 <Link
                   key={n}
                   href={href}
-                  className="rounded-lg border border-gray-200 px-4 py-3 hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                  className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-3 hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <span className="text-xs font-mono text-gray-400">{n}</span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{label}</p>
+                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">{n}</span>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">{label}</p>
                 </Link>
               ))}
             </div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-950 p-5">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-950 p-5">
             <p className="text-xs font-mono text-gray-500 mb-3">INSTANT DEMO</p>
             <pre className="text-xs text-green-400 overflow-x-auto">
               <code>{`npm run dev
@@ -911,12 +911,12 @@ npm run demo:agent`}</code>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full transition-colors ${autoRefreshing ? "bg-amber-400" : "bg-green-400"}`} />
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 dark:text-gray-500">
                 {autoRefreshing ? "Refreshing…" : "Live · updates every 15s"}
               </span>
             </div>
             {lastRefreshed && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 dark:text-gray-500">
                 Last updated {lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </span>
             )}
@@ -930,41 +930,41 @@ npm run demo:agent`}</code>
               { label: "Active Workflows", value: String(totals.activeWorkflows) },
               { label: "Earned", value: `${fmt(totals.earned)} total` },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-lg border border-gray-200 bg-white p-5">
-                <p className="text-xs text-gray-400 mb-2">{stat.label}</p>
-                <p className="text-lg font-semibold text-gray-900 break-words">{stat.value}</p>
+              <div key={stat.label} className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">{stat.label}</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white break-words">{stat.value}</p>
               </div>
             ))}
           </section>
 
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-5">
+            <div className="lg:col-span-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
               <div className="flex items-center justify-between gap-4 mb-4">
-                <h2 className="font-semibold text-gray-900">Your Agents</h2>
-                <Link href="/agents" className="text-xs text-gray-400 hover:text-gray-900">
+                <h2 className="font-semibold text-gray-900 dark:text-white">Your Agents</h2>
+                <Link href="/agents" className="text-xs text-gray-400 hover:text-gray-900 dark:hover:text-white">
                   View directory
                 </Link>
               </div>
               {data.agents.length === 0 ? (
                 <div className="py-14 text-center flex flex-col items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-2xl select-none">
+                  <div className="w-14 h-14 rounded-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-2xl select-none">
                     ⬡
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900 mb-1">No agents yet</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">No agents yet</p>
                     <p className="text-xs text-gray-400 mb-4 max-w-xs">Register an agent with your wallet to start dispatching and receiving tasks.</p>
                     <div className="flex items-center justify-center gap-3">
-                      <Link href="/docs/getting-started" className="px-3.5 py-2 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 transition-colors">
+                      <Link href="/docs/getting-started" className="px-3.5 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-xs font-medium hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors">
                         Registration guide
                       </Link>
-                      <Link href="/agents" className="px-3.5 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-medium hover:border-gray-400 transition-colors">
+                      <Link href="/agents" className="px-3.5 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-xs font-medium hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
                         Browse agents
                       </Link>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
                   {data.agents.map((agent) => {
                     const balance = data.balances[agent.agentId];
                     const tasks = data.tasksByAgent[agent.agentId] ?? [];
@@ -973,33 +973,33 @@ npm run demo:agent`}</code>
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <Link href={`/agents/${encodeURIComponent(agent.agentId)}`} className="font-semibold text-gray-900 hover:text-gray-600">
+                              <Link href={`/agents/${encodeURIComponent(agent.agentId)}`} className="font-semibold text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300">
                                 {agent.name}
                               </Link>
                               <button
                                 onClick={() => toggleEdit(agent)}
-                                className="text-[11px] px-2 py-0.5 rounded border border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors"
+                                className="text-[11px] px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                               >
                                 {editExpanded.has(agent.agentId) ? "Cancel" : "Edit"}
                               </button>
                             </div>
-                            <p className="text-xs font-mono text-gray-400 mt-0.5">{agent.agentId}</p>
+                            <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{agent.agentId}</p>
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {agent.capabilities.slice(0, 5).map((capability) => (
-                                <span key={capability} className="text-xs px-2 py-0.5 rounded-full border border-gray-200 text-gray-500">
+                                <span key={capability} className="text-xs px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
                                   {capability}
                                 </span>
                               ))}
                             </div>
                             {editExpanded.has(agent.agentId) && editDrafts[agent.agentId] && (
-                              <div className="mt-3 p-3 rounded-lg border border-gray-200 bg-gray-50 space-y-2.5">
+                              <div className="mt-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 space-y-2.5">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                   <div>
                                     <label className="block text-[11px] text-gray-500 mb-1">Name</label>
                                     <input
                                       value={editDrafts[agent.agentId].name}
                                       onChange={(e) => setEditDrafts((d) => ({ ...d, [agent.agentId]: { ...d[agent.agentId], name: e.target.value } }))}
-                                      className="w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 outline-none focus:border-gray-500"
+                                      className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-gray-500"
                                     />
                                   </div>
                                   <div>
@@ -1008,7 +1008,7 @@ npm run demo:agent`}</code>
                                       value={editDrafts[agent.agentId].price}
                                       onChange={(e) => setEditDrafts((d) => ({ ...d, [agent.agentId]: { ...d[agent.agentId], price: e.target.value } }))}
                                       placeholder="Free"
-                                      className="w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 outline-none focus:border-gray-500"
+                                      className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-gray-500"
                                     />
                                   </div>
                                 </div>
@@ -1018,7 +1018,7 @@ npm run demo:agent`}</code>
                                     value={editDrafts[agent.agentId].capabilities}
                                     onChange={(e) => setEditDrafts((d) => ({ ...d, [agent.agentId]: { ...d[agent.agentId], capabilities: e.target.value } }))}
                                     placeholder="research, summarization"
-                                    className="w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 outline-none focus:border-gray-500"
+                                    className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm text-gray-900 dark:text-white outline-none focus:border-gray-500"
                                   />
                                 </div>
                                 <div>
@@ -1027,20 +1027,20 @@ npm run demo:agent`}</code>
                                     value={editDrafts[agent.agentId].endpoint}
                                     onChange={(e) => setEditDrafts((d) => ({ ...d, [agent.agentId]: { ...d[agent.agentId], endpoint: e.target.value } }))}
                                     placeholder="https://my-agent.example.com/task"
-                                    className="w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 font-mono outline-none focus:border-gray-500"
+                                    className="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm text-gray-900 dark:text-gray-100 font-mono outline-none focus:border-gray-500"
                                   />
                                 </div>
                                 <div className="flex gap-2 pt-1">
                                   <button
                                     onClick={() => void saveEdit(agent.agentId)}
                                     disabled={savingEdit.has(agent.agentId)}
-                                    className="text-xs px-3 py-1.5 rounded bg-[#0a0a0a] text-white hover:bg-[#222] transition-colors disabled:opacity-50"
+                                    className="text-xs px-3 py-1.5 rounded bg-[#0a0a0a] dark:bg-white text-white dark:text-[#0a0a0a] hover:bg-[#222] dark:hover:bg-gray-200 transition-colors disabled:opacity-50"
                                   >
                                     {savingEdit.has(agent.agentId) ? "Saving…" : "Save changes"}
                                   </button>
                                   <button
                                     onClick={() => toggleEdit(agent)}
-                                    className="text-xs px-3 py-1.5 rounded border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+                                    className="text-xs px-3 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                                   >
                                     Cancel
                                   </button>
@@ -1050,16 +1050,16 @@ npm run demo:agent`}</code>
                           </div>
                           <div className="grid grid-cols-3 gap-3 text-right md:min-w-72">
                             <div>
-                              <p className="text-xs text-gray-400">Price</p>
-                              <p className="text-sm font-medium text-gray-900">{agent.price ?? "Free"}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500">Price</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{agent.price ?? "Free"}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-400">Tasks</p>
-                              <p className="text-sm font-medium text-gray-900">{tasks.length}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500">Tasks</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{tasks.length}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-400">Earned</p>
-                              <p className="text-sm font-medium text-gray-900">{fmt(balance?.totalEarned ?? 0)}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500">Earned</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{fmt(balance?.totalEarned ?? 0)}</p>
                             </div>
                           </div>
                         </div>
@@ -1071,39 +1071,39 @@ npm run demo:agent`}</code>
             </div>
 
             <div className="space-y-6">
-              <div className="rounded-lg border border-gray-200 bg-white p-5">
-                <h2 className="font-semibold text-gray-900 mb-4">Next Actions</h2>
+              <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+                <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Next Actions</h2>
                 <div className="space-y-2">
-                  <Link href="/docs/getting-started" className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-900">
+                  <Link href="/docs/getting-started" className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-white">
                     Demo agent guide
                     <span className="text-gray-300">→</span>
                   </Link>
-                  <Link href="/agents" className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-900">
+                  <Link href="/agents" className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-white">
                     Agent directory
                     <span className="text-gray-300">→</span>
                   </Link>
-                  <Link href="/analytics" className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-900">
+                  <Link href="/analytics" className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-white">
                     Network analytics
                     <span className="text-gray-300">→</span>
                   </Link>
                 </div>
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-white p-5">
-                <h2 className="font-semibold text-gray-900 mb-4">MPP Channels</h2>
+              <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+                <h2 className="font-semibold text-gray-900 dark:text-white mb-4">MPP Channels</h2>
                 {data.channels.length === 0 ? (
-                  <p className="text-sm text-gray-400">No pre-paid channels for this wallet.</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">No pre-paid channels for this wallet.</p>
                 ) : (
                   <div className="space-y-3">
                     {data.channels.slice(0, 6).map((channel) => (
-                      <div key={channel.channelId} className="border border-gray-100 rounded-lg p-3">
+                      <div key={channel.channelId} className="border border-gray-100 dark:border-gray-800 rounded-lg p-3">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs font-mono text-gray-500">{short(channel.channelId)}</p>
-                          <span className="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 text-gray-500">
+                          <p className="text-xs font-mono text-gray-500 dark:text-gray-400">{short(channel.channelId)}</p>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
                             {channel.status}
                           </span>
                         </div>
-                        <p className="text-sm font-semibold text-gray-900 mt-2">{fmt(channel.balanceUsdc)} USDC</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white mt-2">{fmt(channel.balanceUsdc)} USDC</p>
                       </div>
                     ))}
                   </div>
@@ -1112,27 +1112,27 @@ npm run demo:agent`}</code>
             </div>
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
             <div className="flex items-center justify-between gap-4 mb-4">
-              <h2 className="font-semibold text-gray-900">Agent Workflows</h2>
-              <span className="text-xs text-gray-400">{recentWorkflows.length} loaded</span>
+              <h2 className="font-semibold text-gray-900 dark:text-white">Agent Workflows</h2>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{recentWorkflows.length} loaded</span>
             </div>
             {recentWorkflows.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+              <div className="rounded-lg border border-dashed border-gray-200 dark:border-gray-700 p-8 text-center">
                 <p className="text-sm text-gray-400 mb-3">No multi-agent workflows are connected to this wallet yet.</p>
-                <Link href="/docs/sdk#delegate" className="text-sm font-medium text-gray-900 underline hover:text-gray-600">
+                <Link href="/docs/sdk#delegate" className="text-sm font-medium text-gray-900 dark:text-white underline hover:text-gray-600 dark:hover:text-gray-300">
                   Create a delegated workflow
                 </Link>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {recentWorkflows.map((workflow) => (
                   <div key={workflow.workflowId} className="py-4 first:pt-0 last:pb-0">
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                       <div className="min-w-0">
                         <Link
                           href={`/workflows/${encodeURIComponent(workflow.workflowId)}`}
-                          className="text-sm font-medium text-gray-900 hover:text-gray-600"
+                          className="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300"
                         >
                           {workflow.initialTask}
                         </Link>
@@ -1141,7 +1141,7 @@ npm run demo:agent`}</code>
                         </p>
                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                           {workflow.agents.map((agentId, index) => (
-                            <span key={`${workflow.workflowId}-${agentId}-${index}`} className="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 text-gray-500">
+                            <span key={`${workflow.workflowId}-${agentId}-${index}`} className="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
                               {index + 1}. {short(agentId)}
                             </span>
                           ))}
@@ -1151,11 +1151,11 @@ npm run demo:agent`}</code>
                         <span className={`text-xs px-2 py-0.5 rounded-full border ${WORKFLOW_STATUS_STYLE[workflow.status]}`}>
                           {workflow.status}
                         </span>
-                        <span className="text-xs text-gray-400">{dateTime(workflow.createdAt)}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{dateTime(workflow.createdAt)}</span>
                       </div>
                     </div>
                     {(workflow.finalOutput || workflow.steps.some((step) => step.error)) && (
-                      <p className={`text-xs mt-2 ${workflow.status === "failed" ? "text-red-600" : "text-gray-500"} line-clamp-2`}>
+                      <p className={`text-xs mt-2 ${workflow.status === "failed" ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"} line-clamp-2`}>
                         {workflow.finalOutput ?? workflow.steps.find((step) => step.error)?.error}
                       </p>
                     )}
@@ -1165,30 +1165,30 @@ npm run demo:agent`}</code>
             )}
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
             <div className="flex items-center justify-between gap-4 mb-4">
-              <h2 className="font-semibold text-gray-900">Recent Tasks</h2>
-              <span className="text-xs text-gray-400">{recentTasks.length} loaded</span>
+              <h2 className="font-semibold text-gray-900 dark:text-white">Recent Tasks</h2>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{recentTasks.length} loaded</span>
             </div>
             {recentTasks.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-200 py-10 px-6 text-center flex flex-col items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-sm select-none">✓</div>
+              <div className="rounded-lg border border-dashed border-gray-200 dark:border-gray-700 py-10 px-6 text-center flex flex-col items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-sm select-none">✓</div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900 mb-1">No tasks yet</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">No tasks yet</p>
                   <p className="text-xs text-gray-400 mb-3">Tasks dispatched to or from your agents will appear here.</p>
-                  <Link href="/docs/getting-started" className="text-xs font-medium text-gray-600 underline underline-offset-2 hover:text-gray-900">
+                  <Link href="/docs/getting-started" className="text-xs font-medium text-gray-600 dark:text-gray-400 underline underline-offset-2 hover:text-gray-900 dark:hover:text-white">
                     How to send your first task →
                   </Link>
                 </div>
               </div>
             ) : (
               <>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
                   {recentTasks.map((task) => (
                     <div key={task.taskId} className="py-3 first:pt-0 last:pb-0">
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{task.task}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{task.task}</p>
                           <p className="text-xs font-mono text-gray-400 mt-1">
                             {short(task.taskId)} · {task.fromAgent} → {task.toAgent}
                           </p>
@@ -1201,16 +1201,16 @@ npm run demo:agent`}</code>
                             <button
                               onClick={() => void retryTask(task.taskId)}
                               disabled={requeueing.has(task.taskId)}
-                              className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors disabled:opacity-40"
+                              className="text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-blue-300 hover:text-blue-600 transition-colors disabled:opacity-40"
                             >
                               {requeueing.has(task.taskId) ? "Retrying…" : "Retry"}
                             </button>
                           )}
-                          <span className="text-xs text-gray-400">{dateTime(task.createdAt)}</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">{dateTime(task.createdAt)}</span>
                         </div>
                       </div>
                       {(task.output || task.error) && (
-                        <p className={`text-xs mt-2 ${task.error ? "text-red-600" : "text-gray-500"} line-clamp-2`}>
+                        <p className={`text-xs mt-2 ${task.error ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"} line-clamp-2`}>
                           {task.error ?? task.output}
                         </p>
                       )}
@@ -1222,7 +1222,7 @@ npm run demo:agent`}</code>
                     <button
                       onClick={() => void loadMoreTasks()}
                       disabled={loadingMoreTasks}
-                      className="text-sm text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-40"
+                      className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-40"
                     >
                       {loadingMoreTasks ? "Loading…" : "Load more tasks"}
                     </button>
@@ -1232,43 +1232,43 @@ npm run demo:agent`}</code>
             )}
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
             <div className="flex items-center justify-between gap-4 mb-4">
-              <h2 className="font-semibold text-gray-900">API Keys</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white">API Keys</h2>
               <button
                 onClick={() => void createNewKey()}
                 disabled={creatingKey}
-                className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-900 transition-colors disabled:opacity-40"
+                className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-40"
               >
                 {creatingKey ? "Creating…" : "+ New key"}
               </button>
             </div>
             {newKeyReveal && (
-              <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50">
-                <p className="text-xs font-semibold text-amber-800 mb-2">New key — copy it now, it won&apos;t be shown again</p>
+              <div className="mb-4 p-3 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30">
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-400 mb-2">New key — copy it now, it won&apos;t be shown again</p>
                 <div className="flex items-center gap-2">
                   <input
                     readOnly
                     value={newKeyReveal}
-                    className="flex-1 rounded border border-amber-200 bg-white px-2 py-1.5 text-xs font-mono text-gray-900 outline-none"
+                    className="flex-1 rounded border border-amber-200 dark:border-amber-900/50 bg-white dark:bg-gray-900 px-2 py-1.5 text-xs font-mono text-gray-900 dark:text-gray-100 outline-none"
                     onFocus={(e) => e.target.select()}
                   />
                   <button
                     onClick={() => { void navigator.clipboard.writeText(newKeyReveal); addToast("success", "Key copied"); }}
-                    className="text-xs px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-100 transition-colors shrink-0"
+                    className="text-xs px-3 py-1.5 rounded border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors shrink-0"
                   >
                     Copy
                   </button>
                   <button
                     onClick={() => setNewKeyReveal(null)}
-                    className="text-xs px-2 py-1.5 rounded border border-gray-200 text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+                    className="text-xs px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors shrink-0"
                   >
                     ✕
                   </button>
                 </div>
               </div>
             )}
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
               {data.keys.map((key) => {
                 const isCurrent = key.keyId === data.keyId;
                 const isRevoking = revoking.has(key.keyId);
@@ -1279,7 +1279,7 @@ npm run demo:agent`}</code>
                   <div key={key.keyId} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono text-gray-700">
+                        <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
                           {isRevealed ? `${key.keyPrefix}…` : "••••••••••••"}
                         </span>
                         <button
@@ -1288,7 +1288,7 @@ npm run demo:agent`}</code>
                             if (next.has(key.keyId)) next.delete(key.keyId); else next.add(key.keyId);
                             return next;
                           })}
-                          className="text-gray-400 hover:text-gray-700 transition-colors"
+                          className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                           title={isRevealed ? "Hide key" : "Show key"}
                         >
                           {isRevealed ? (
@@ -1305,7 +1305,7 @@ npm run demo:agent`}</code>
                         </button>
                         <button
                           onClick={() => { void navigator.clipboard.writeText(key.keyPrefix); addToast("success", "Key prefix copied"); }}
-                          className="text-gray-400 hover:text-gray-700 transition-colors"
+                          className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                           title="Copy key prefix"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -1314,12 +1314,12 @@ npm run demo:agent`}</code>
                           </svg>
                         </button>
                         {isCurrent && (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full border border-green-200 bg-green-50 text-green-700">
+                          <span className="text-[11px] px-2 py-0.5 rounded-full border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400">
                             active
                           </span>
                         )}
                         {isStale && (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700">
+                          <span className="text-[11px] px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400">
                             90+ days — consider rotating
                           </span>
                         )}
@@ -1332,7 +1332,7 @@ npm run demo:agent`}</code>
                     <button
                       onClick={() => void revokeKey(key.keyId)}
                       disabled={isCurrent || isRevoking}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
                     >
                       {isRevoking ? "Revoking…" : "Revoke"}
                     </button>
@@ -1342,17 +1342,17 @@ npm run demo:agent`}</code>
             </div>
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
-                <h2 className="font-semibold text-gray-900">Spend Limits</h2>
+                <h2 className="font-semibold text-gray-900 dark:text-white">Spend Limits</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Per-agent USDC caps — enforced before any payment leaves the agent</p>
               </div>
             </div>
             {data.agents.length === 0 ? (
               <p className="text-sm text-gray-400 py-4">Register an agent first to configure spend limits.</p>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {data.agents.map((agent) => {
                   const budget = data.budgets[agent.agentId];
                   const draft = budgetDrafts[agent.agentId] ?? { maxPerCall: "", maxPerDay: "" };
@@ -1362,19 +1362,19 @@ npm run demo:agent`}</code>
                     <div key={agent.agentId} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex flex-col md:flex-row md:items-start gap-4">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900">{agent.name}</p>
-                          <p className="text-xs font-mono text-gray-400 mt-0.5">{agent.agentId}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{agent.name}</p>
+                          <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{agent.agentId}</p>
                           {budget && (
                             <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
                               {budget.maxPerCallUsdc != null && (
-                                <span>Cap/call: <span className="font-medium text-gray-700">{budget.maxPerCallUsdc} USDC</span></span>
+                                <span>Cap/call: <span className="font-medium text-gray-700 dark:text-gray-300">{budget.maxPerCallUsdc} USDC</span></span>
                               )}
                               {budget.maxPerDayUsdc != null && (
-                                <span>Cap/day: <span className="font-medium text-gray-700">{budget.maxPerDayUsdc} USDC</span></span>
+                                <span>Cap/day: <span className="font-medium text-gray-700 dark:text-gray-300">{budget.maxPerDayUsdc} USDC</span></span>
                               )}
-                              <span>Spent today: <span className="font-medium text-gray-700">{fmt(budget.spentTodayUsdc)} USDC</span></span>
+                              <span>Spent today: <span className="font-medium text-gray-700 dark:text-gray-300">{fmt(budget.spentTodayUsdc)} USDC</span></span>
                               {budget.remainingTodayUsdc != null && (
-                                <span>Remaining: <span className="font-medium text-green-700">{fmt(budget.remainingTodayUsdc)} USDC</span></span>
+                                <span>Remaining: <span className="font-medium text-green-700 dark:text-green-400">{fmt(budget.remainingTodayUsdc)} USDC</span></span>
                               )}
                             </div>
                           )}
@@ -1389,7 +1389,7 @@ npm run demo:agent`}</code>
                               placeholder="e.g. 0.50"
                               value={draft.maxPerCall}
                               onChange={(e) => setBudgetDrafts((prev) => ({ ...prev, [agent.agentId]: { ...draft, maxPerCall: e.target.value } }))}
-                              className="w-32 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
+                              className="w-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-sm font-mono text-gray-900 dark:text-white outline-none focus:border-gray-500"
                             />
                           </div>
                           <div className="flex flex-col gap-1">
@@ -1401,13 +1401,13 @@ npm run demo:agent`}</code>
                               placeholder="e.g. 10.00"
                               value={draft.maxPerDay}
                               onChange={(e) => setBudgetDrafts((prev) => ({ ...prev, [agent.agentId]: { ...draft, maxPerDay: e.target.value } }))}
-                              className="w-32 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
+                              className="w-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-sm font-mono text-gray-900 dark:text-white outline-none focus:border-gray-500"
                             />
                           </div>
                           <button
                             onClick={() => void saveBudget(agent.agentId)}
                             disabled={isSaving || isClearing}
-                            className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-xs font-medium hover:bg-gray-700 dark:hover:bg-gray-200 disabled:opacity-40 transition-colors"
                           >
                             {isSaving ? "Saving…" : "Save"}
                           </button>
@@ -1415,7 +1415,7 @@ npm run demo:agent`}</code>
                             <button
                               onClick={() => void clearBudget(agent.agentId)}
                               disabled={isSaving || isClearing}
-                              className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 text-xs font-medium hover:border-red-300 hover:text-red-600 disabled:opacity-40 transition-colors"
+                              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium hover:border-red-300 hover:text-red-600 disabled:opacity-40 transition-colors"
                             >
                               {isClearing ? "Clearing…" : "Clear"}
                             </button>
@@ -1429,17 +1429,17 @@ npm run demo:agent`}</code>
             )}
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
-                <h2 className="font-semibold text-gray-900">Spend Alerts</h2>
+                <h2 className="font-semibold text-gray-900 dark:text-white">Spend Alerts</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Get a webhook when an agent exceeds a USDC spend threshold within a rolling window</p>
               </div>
             </div>
             {data.agents.length === 0 ? (
               <p className="text-sm text-gray-400 py-4">Register an agent first to configure spend alerts.</p>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {data.agents.map((agent) => {
                   const status = data.thresholds[agent.agentId];
                   const draft = thresholdDrafts[agent.agentId] ?? { amount: "", hours: "24" };
@@ -1449,16 +1449,16 @@ npm run demo:agent`}</code>
                     <div key={agent.agentId} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex flex-col md:flex-row md:items-start gap-4">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900">{agent.name}</p>
-                          <p className="text-xs font-mono text-gray-400 mt-0.5">{agent.agentId}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{agent.name}</p>
+                          <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{agent.agentId}</p>
                           {status?.threshold && (
                             <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
-                              <span>Alert at: <span className="font-medium text-gray-700">{status.threshold.thresholdUsdc} USDC / {status.threshold.windowHours}h</span></span>
-                              <span>Window spend: <span className={`font-medium ${status.windowSpendUsdc >= status.threshold.thresholdUsdc ? "text-red-600" : "text-gray-700"}`}>{status.windowSpendUsdc.toFixed(4)} USDC</span></span>
+                              <span>Alert at: <span className="font-medium text-gray-700 dark:text-gray-300">{status.threshold.thresholdUsdc} USDC / {status.threshold.windowHours}h</span></span>
+                              <span>Window spend: <span className={`font-medium ${status.windowSpendUsdc >= status.threshold.thresholdUsdc ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300"}`}>{status.windowSpendUsdc.toFixed(4)} USDC</span></span>
                               {status.lastAlert && (
-                                <span>Last alert: <span className="font-medium text-amber-600">{dateTime(status.lastAlert.firedAt)}</span></span>
+                                <span>Last alert: <span className="font-medium text-amber-600 dark:text-amber-400">{dateTime(status.lastAlert.firedAt)}</span></span>
                               )}
-                              <span className={`font-medium ${status.threshold.enabled ? "text-green-600" : "text-gray-400"}`}>{status.threshold.enabled ? "Enabled" : "Disabled"}</span>
+                              <span className={`font-medium ${status.threshold.enabled ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}>{status.threshold.enabled ? "Enabled" : "Disabled"}</span>
                             </div>
                           )}
                         </div>
@@ -1472,7 +1472,7 @@ npm run demo:agent`}</code>
                               placeholder="e.g. 10.00"
                               value={draft.amount}
                               onChange={(e) => setThresholdDrafts((prev) => ({ ...prev, [agent.agentId]: { ...draft, amount: e.target.value } }))}
-                              className="w-32 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
+                              className="w-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-sm font-mono text-gray-900 dark:text-white outline-none focus:border-gray-500"
                             />
                           </div>
                           <div className="flex flex-col gap-1">
@@ -1485,13 +1485,13 @@ npm run demo:agent`}</code>
                               placeholder="24"
                               value={draft.hours}
                               onChange={(e) => setThresholdDrafts((prev) => ({ ...prev, [agent.agentId]: { ...draft, hours: e.target.value } }))}
-                              className="w-24 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
+                              className="w-24 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-sm font-mono text-gray-900 dark:text-white outline-none focus:border-gray-500"
                             />
                           </div>
                           <button
                             onClick={() => void saveThreshold(agent.agentId)}
                             disabled={isSaving || isClearing}
-                            className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-xs font-medium hover:bg-gray-700 dark:hover:bg-gray-200 disabled:opacity-40 transition-colors"
                           >
                             {isSaving ? "Saving…" : "Save"}
                           </button>
@@ -1499,7 +1499,7 @@ npm run demo:agent`}</code>
                             <button
                               onClick={() => void clearThreshold(agent.agentId)}
                               disabled={isSaving || isClearing}
-                              className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 text-xs font-medium hover:border-red-300 hover:text-red-600 disabled:opacity-40 transition-colors"
+                              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium hover:border-red-300 hover:text-red-600 disabled:opacity-40 transition-colors"
                             >
                               {isClearing ? "Clearing…" : "Clear"}
                             </button>
@@ -1513,8 +1513,8 @@ npm run demo:agent`}</code>
             )}
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-5">
-            <h2 className="font-semibold text-gray-900 mb-4">Quick Snippets</h2>
+          <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Quick Snippets</h2>
             <div className="grid lg:grid-cols-3 gap-4">
               <pre className="rounded-lg bg-gray-950 text-green-400 text-xs p-4 overflow-x-auto">
                 <code>{`const axon = new AxonClient();

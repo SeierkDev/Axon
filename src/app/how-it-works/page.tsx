@@ -128,7 +128,7 @@ export default function HowItWorksPage() {
   const step = STEPS[active];
 
   return (
-    <div className="bg-white min-h-screen text-[#0a0a0a]">
+    <div className="bg-white dark:bg-[#0a0a0a] min-h-screen text-[#0a0a0a] dark:text-white">
       <SiteNav />
 
       <div className="pt-28 pb-24 px-6">
@@ -137,11 +137,11 @@ export default function HowItWorksPage() {
           {/* Header */}
           <FadeIn>
             <div className="text-center mb-14">
-              <p className="text-xs font-mono text-gray-400 tracking-wider mb-3">PROTOCOL FLOW</p>
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+              <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">PROTOCOL FLOW</p>
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
                 How Axon works.
               </h1>
-              <p className="text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">
+              <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto text-lg leading-relaxed">
                 Every agent call follows the same path — discovery, payment, execution, settlement, and trace.
               </p>
             </div>
@@ -354,11 +354,11 @@ export default function HowItWorksPage() {
                   onClick={() => { setActive(i); setPlaying(false); }}
                   className={`text-left px-3 py-3 rounded-xl border transition-all duration-200 ${
                     active === i
-                      ? "border-gray-900 bg-gray-900 text-white"
-                      : "border-gray-200 bg-white hover:border-gray-300 text-gray-500 hover:text-gray-900"
+                      ? "border-gray-900 bg-gray-900 text-white dark:border-gray-600 dark:bg-gray-800"
+                      : "border-gray-200 bg-white hover:border-gray-300 text-gray-500 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:text-gray-400 dark:hover:text-white"
                   }`}
                 >
-                  <span className={`text-[10px] font-mono block mb-1 ${active === i ? "text-white/40" : "text-gray-300"}`}>
+                  <span className={`text-[10px] font-mono block mb-1 ${active === i ? "text-white/40" : "text-gray-300 dark:text-gray-600"}`}>
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <span className="text-xs font-medium leading-snug">{s.label}</span>
@@ -376,15 +376,15 @@ export default function HowItWorksPage() {
                   onClick={() => { setActive(i); setPlaying(false); }}
                   className={`p-5 rounded-xl border transition-colors duration-200 cursor-pointer ${
                     active === i
-                      ? "border-gray-300 bg-gray-50"
-                      : "border-gray-100 bg-white hover:border-gray-200"
+                      ? "border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+                      : "border-gray-100 bg-white hover:border-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-mono text-gray-300">{String(i + 1).padStart(2, "0")}</span>
-                    <span className="text-sm font-semibold text-gray-900">{s.label}</span>
+                    <span className="text-xs font-mono text-gray-300 dark:text-gray-600">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{s.label}</span>
                   </div>
-                  <p className="text-sm text-gray-500 leading-relaxed">{s.desc}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{s.desc}</p>
                 </div>
               ))}
             </div>
@@ -397,7 +397,7 @@ export default function HowItWorksPage() {
                 <Link href="/docs" className="px-6 py-3 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg text-sm font-medium transition-colors">
                   Read the docs
                 </Link>
-                <Link href="/agents" className="text-sm font-medium text-gray-400 hover:text-gray-900 transition-colors">
+                <Link href="/agents" className="text-sm font-medium text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                   Browse agents →
                 </Link>
               </div>
@@ -406,14 +406,14 @@ export default function HowItWorksPage() {
         </div>
       </div>
 
-      <footer className="border-t border-gray-200 py-12 px-6">
+      <footer className="border-t border-gray-200 dark:border-gray-800 py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <span className="text-sm font-semibold tracking-[0.2em] text-gray-400 uppercase">AXON</span>
-          <p className="text-sm text-gray-400">Open source infrastructure for agent-to-agent work.</p>
+          <span className="text-sm font-semibold tracking-[0.2em] text-gray-400 dark:text-gray-500 uppercase">AXON</span>
+          <p className="text-sm text-gray-400 dark:text-gray-500">Open source infrastructure for agent-to-agent work.</p>
           <div className="flex gap-6">
-            <Link href="https://github.com/SeierkDev/Axon" target="_blank" className="text-sm text-gray-400 hover:text-gray-700 transition-colors">GitHub</Link>
-            <Link href="/docs" className="text-sm text-gray-400 hover:text-gray-700 transition-colors">Docs</Link>
-            <Link href="/litepaper" className="text-sm text-gray-400 hover:text-gray-700 transition-colors">Litepaper</Link>
+            <Link href="https://github.com/SeierkDev/Axon" target="_blank" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors">GitHub</Link>
+            <Link href="/docs" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors">Docs</Link>
+            <Link href="/litepaper" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors">Litepaper</Link>
           </div>
         </div>
       </footer>

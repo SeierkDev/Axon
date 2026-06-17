@@ -51,14 +51,14 @@ export default async function AgentProfilePage({
       : agent.publicKey;
 
   return (
-    <div className="bg-white min-h-screen text-[#0a0a0a]">
+    <div className="bg-white dark:bg-[#0a0a0a] min-h-screen text-[#0a0a0a] dark:text-white">
       <SiteNav />
 
       <main className="max-w-3xl mx-auto px-6 pt-32 pb-24">
         {/* Breadcrumb */}
         <Link
           href="/agents"
-          className="text-sm text-gray-400 hover:text-gray-700 transition-colors mb-8 inline-block"
+          className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors mb-8 inline-block"
         >
           ← Agent Marketplace
         </Link>
@@ -68,18 +68,18 @@ export default async function AgentProfilePage({
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-3xl font-bold text-gray-900">{agent.name}</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{agent.name}</h1>
                 {agent.category && (
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 bg-gray-50 mt-1">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 mt-1">
                     {agent.category}
                   </span>
                 )}
               </div>
-              <code className="text-sm font-mono text-gray-400">{agent.agentId}</code>
+              <code className="text-sm font-mono text-gray-400 dark:text-gray-500">{agent.agentId}</code>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-2xl font-bold text-gray-900">{price}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{isPaid ? "per task" : "no payment required"}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{price}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{isPaid ? "per task" : "no payment required"}</p>
             </div>
           </div>
 
@@ -88,7 +88,7 @@ export default async function AgentProfilePage({
             {agent.capabilities.map((cap) => (
               <span
                 key={cap}
-                className="text-sm px-3 py-1 rounded-full border border-gray-200 text-gray-600"
+                className="text-sm px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
               >
                 {cap}
               </span>
@@ -98,44 +98,44 @@ export default async function AgentProfilePage({
 
         {/* Marketplace Signals */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-          <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-            <p className="text-2xl font-bold text-gray-900">
+          <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {reputation.totalTasksCompleted >= 5
                 ? (agent.reputation?.toFixed(1) ?? "0.0")
                 : "New"}
             </p>
-            <p className="text-xs text-gray-400 mt-1">Reputation</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Reputation</p>
           </div>
-          <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-            <p className="text-2xl font-bold text-gray-900">
+          <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {rating.count > 0 ? rating.avgRating.toFixed(1) : "—"}
             </p>
-            <p className="text-xs text-gray-400 mt-1">Avg Rating</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Avg Rating</p>
             {rating.count > 0 && (
-              <p className="text-[10px] text-gray-300 mt-0.5">{rating.count} review{rating.count !== 1 ? "s" : ""}</p>
+              <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">{rating.count} review{rating.count !== 1 ? "s" : ""}</p>
             )}
           </div>
-          <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-            <p className="text-2xl font-bold text-gray-900">{reputation.totalTasksCompleted}</p>
-            <p className="text-xs text-gray-400 mt-1">Completed</p>
+          <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{reputation.totalTasksCompleted}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Completed</p>
           </div>
-          <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-            <p className="text-2xl font-bold text-gray-900">{uptime}</p>
-            <p className="text-xs text-gray-400 mt-1">30d Success</p>
+          <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{uptime}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">30d Success</p>
           </div>
         </div>
 
         {/* Trust */}
-        <div className="rounded-lg border border-gray-200 overflow-hidden mb-10">
-          <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">
+          <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between gap-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
               Trust Signals
             </p>
             <span className={`text-xs px-2 py-0.5 rounded-full border ${trustBadgeClass(agent.reputation ?? 0, reputation.totalTasksCompleted)}`}>
               {trustLabel(agent.reputation ?? 0, reputation.totalTasksCompleted)}
             </span>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
             <Row label="Endpoint" value={verificationLabel(agent)} />
             <Row label="Last Check" value={
               agent.verificationStatus === "platform"
@@ -151,13 +151,13 @@ export default async function AgentProfilePage({
         </div>
 
         {/* Payment and Performance */}
-        <div className="rounded-lg border border-gray-200 overflow-hidden mb-10">
-          <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">
+          <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
               Marketplace Listing
             </p>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
             <Row label="Price" value={price} mono />
             <Row label="Payment" value={isPaid ? "x402 required" : "Free task route"} />
             <Row label="Receiver Wallet" value={
@@ -174,13 +174,13 @@ export default async function AgentProfilePage({
         </div>
 
         {/* Identity */}
-        <div className="rounded-lg border border-gray-200 overflow-hidden mb-10">
-          <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">
+          <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
               Identity
             </p>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
             <Row label="Agent ID" value={agent.agentId} mono />
             <Row label="Public Key" value={truncatedKey} mono />
             {agent.endpoint && <Row label="Endpoint" value={agent.endpoint} mono />}
@@ -205,22 +205,22 @@ export default async function AgentProfilePage({
 
         {/* Call this agent */}
         <div className="mb-3">
-          <p className="text-xs font-mono text-gray-400 tracking-wider mb-1">CALL THIS AGENT</p>
-          <div className={`flex items-start justify-between gap-4 p-4 rounded-lg border ${isPaid ? "border-amber-100 bg-amber-50" : "border-green-100 bg-green-50"}`}>
+          <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-1">CALL THIS AGENT</p>
+          <div className={`flex items-start justify-between gap-4 p-4 rounded-lg border ${isPaid ? "border-amber-100 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20" : "border-green-100 dark:border-green-900/40 bg-green-50 dark:bg-green-950/20"}`}>
             <div>
               {isPaid ? (
                 <>
-                  <p className="text-sm font-semibold text-gray-900 mb-0.5">{price} per task · paid via x402 · settles on Solana</p>
-                  <p className="text-xs text-gray-500">Attach a signed Solana USDC transfer to each request. The SDK handles this automatically — or follow the manual flow below.</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{price} per task · paid via x402 · settles on Solana</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Attach a signed Solana USDC transfer to each request. The SDK handles this automatically — or follow the manual flow below.</p>
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-semibold text-gray-900 mb-0.5">Free route · no payment required</p>
-                  <p className="text-xs text-gray-500">Send tasks directly with your API key. No USDC attachment needed.</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">Free route · no payment required</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Send tasks directly with your API key. No USDC attachment needed.</p>
                 </>
               )}
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full border shrink-0 font-medium ${isPaid ? "border-amber-200 bg-white text-amber-700" : "border-green-200 bg-white text-green-700"}`}>
+            <span className={`text-xs px-2 py-1 rounded-full border shrink-0 font-medium ${isPaid ? "border-amber-200 bg-white dark:bg-gray-900 text-amber-700" : "border-green-200 bg-white dark:bg-gray-900 text-green-700"}`}>
               {isPaid ? "x402" : "Free"}
             </span>
           </div>
@@ -372,34 +372,34 @@ print(task["taskId"], task["status"])`,
         ]} />
 
         {/* Reviews */}
-        <div className="rounded-lg border border-gray-200 overflow-hidden mb-6">
-          <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Reviews</p>
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-6">
+          <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Reviews</p>
             {rating.count > 0 && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 dark:text-gray-500">
                 {"★".repeat(Math.round(rating.avgRating))} {rating.avgRating.toFixed(1)} · {rating.count} review{rating.count !== 1 ? "s" : ""}
               </span>
             )}
           </div>
           {reviews.length === 0 ? (
             <div className="px-5 py-8 text-center">
-              <p className="text-sm text-gray-400">No reviews yet.</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">No reviews yet.</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
               {reviews.map((r: Review) => (
                 <div key={r.reviewId} className="px-5 py-4">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-yellow-400 text-sm tracking-tight">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
-                      <span className="text-xs font-mono text-gray-400">{getAgentById(r.reviewerId)?.name ?? r.reviewerId}</span>
+                      <span className="text-xs font-mono text-gray-400 dark:text-gray-500">{getAgentById(r.reviewerId)?.name ?? r.reviewerId}</span>
                     </div>
-                    <span className="text-xs text-gray-300">
+                    <span className="text-xs text-gray-300 dark:text-gray-600">
                       {new Date(r.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                   {r.comment && (
-                    <p className="text-sm text-gray-600 mt-1">{r.comment}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{r.comment}</p>
                   )}
                 </div>
               ))}
@@ -410,10 +410,10 @@ print(task["taskId"], task["status"])`,
 
       </main>
 
-      <footer className="border-t border-gray-200 py-10 px-6">
+      <footer className="border-t border-gray-200 dark:border-gray-800 py-10 px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">AXON</span>
-          <p className="text-xs text-gray-400">Open source infrastructure for agent-to-agent work.</p>
+          <span className="text-xs font-mono text-gray-400 dark:text-gray-500 uppercase tracking-wider">AXON</span>
+          <p className="text-xs text-gray-400 dark:text-gray-500">Open source infrastructure for agent-to-agent work.</p>
         </div>
       </footer>
     </div>
@@ -423,8 +423,8 @@ print(task["taskId"], task["status"])`,
 function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-center gap-4 px-5 py-3">
-      <span className="text-sm text-gray-400 w-28 shrink-0">{label}</span>
-      <span className={`text-sm text-gray-700 break-all ${mono ? "font-mono" : ""}`}>{value}</span>
+      <span className="text-sm text-gray-400 dark:text-gray-500 w-28 shrink-0">{label}</span>
+      <span className={`text-sm text-gray-700 dark:text-gray-300 break-all ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
   );
 }
@@ -446,10 +446,10 @@ function trustLabel(reputation: number, totalTasks = 0) {
 }
 
 function trustBadgeClass(reputation: number, totalTasks = 0) {
-  if (totalTasks < 5) return "border-gray-200 bg-white text-gray-500";
-  if (reputation >= 8) return "border-green-200 bg-green-50 text-green-700";
-  if (reputation >= 5) return "border-amber-200 bg-amber-50 text-amber-700";
-  return "border-gray-200 bg-white text-gray-500";
+  if (totalTasks < 5) return "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400";
+  if (reputation >= 8) return "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-400";
+  if (reputation >= 5) return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400";
+  return "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400";
 }
 
 function verificationLabel(agent: {

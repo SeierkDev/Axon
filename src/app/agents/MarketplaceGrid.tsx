@@ -53,57 +53,57 @@ function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
   return (
     <Link
       href={`/agents/${encodeURIComponent(agent.agentId)}`}
-      className="block p-5 rounded-xl border border-gray-200 bg-white hover:border-gray-400 hover:shadow-sm transition-all group"
+      className="block p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-700 hover:shadow-sm transition-all group"
       style={{ animation: `fade-up 0.5s ease ${index * 60}ms both` }}
     >
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-[10px] font-mono uppercase tracking-wider text-gray-400">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-gray-400 dark:text-gray-500">
               {listingMode(agent)}
             </p>
             {agent.verificationStatus === "platform" ? (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-900 text-white leading-none">Axon</span>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] leading-none">Axon</span>
             ) : agent.verificationStatus === "modulr" ? (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white leading-none">Modulr</span>
             ) : (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 leading-none">Community</span>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 leading-none">Community</span>
             )}
           </div>
-          <h3 className="font-semibold text-gray-900 group-hover:text-gray-700 transition-colors">
+          <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
             {agent.name}
           </h3>
-          <p className="text-xs font-mono text-gray-400 mt-0.5">{agent.agentId}</p>
+          <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{agent.agentId}</p>
         </div>
-        <span className="text-xs font-mono text-gray-600 bg-gray-50 border border-gray-200 px-2 py-1 rounded-md shrink-0">
+        <span className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-md shrink-0">
           {price}
         </span>
       </div>
       <div className="flex flex-wrap gap-1.5 mb-4">
         {agent.capabilities.map((cap) => (
-          <span key={cap} className="text-[11px] px-2 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-gray-500">
+          <span key={cap} className="text-[11px] px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400">
             {cap}
           </span>
         ))}
       </div>
       <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
         <div>
-          <p className="text-gray-400 text-[11px]">Reputation</p>
-          <p className="font-semibold text-gray-900 mt-0.5">
+          <p className="text-gray-400 dark:text-gray-500 text-[11px]">Reputation</p>
+          <p className="font-semibold text-gray-900 dark:text-white mt-0.5">
             {reputation > 0 ? reputation.toFixed(1) : "New"}
           </p>
         </div>
         <div>
-          <p className="text-gray-400 text-[11px]">Market signal</p>
-          <p className="font-semibold text-gray-900 mt-0.5">{trustLevel(reputation)}</p>
+          <p className="text-gray-400 dark:text-gray-500 text-[11px]">Market signal</p>
+          <p className="font-semibold text-gray-900 dark:text-white mt-0.5">{trustLevel(reputation)}</p>
         </div>
       </div>
-      <div className="flex items-center justify-between gap-3 text-xs text-gray-400 border-t border-gray-50 pt-3">
+      <div className="flex items-center justify-between gap-3 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-50 dark:border-gray-800 pt-3">
         <span className="flex items-center gap-1.5 truncate">
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${healthDot(agent)}`} />
           {paymentLabel(agent)} · {verificationLabel(agent)}
         </span>
-        <span className="group-hover:text-gray-600 transition-colors shrink-0">Send task →</span>
+        <span className="group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors shrink-0">Send task →</span>
       </div>
     </Link>
   );
@@ -208,7 +208,7 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
       <div className="flex items-center gap-3 mb-3">
         <div className="relative flex-1 max-w-sm">
           {semanticLoading ? (
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-gray-700 animate-spin pointer-events-none" />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-gray-300 dark:border-gray-600 border-t-gray-700 dark:border-t-gray-300 animate-spin pointer-events-none" />
           ) : (
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
@@ -226,12 +226,12 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, or describe what you need…"
-            className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 bg-white focus:border-gray-400 focus:outline-none transition-colors placeholder:text-gray-400"
+            className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600"
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 text-lg leading-none"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 text-lg leading-none"
               aria-label="Clear search"
             >
               ×
@@ -242,13 +242,13 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
           onClick={() => setFreeOnly((v) => !v)}
           className={`text-xs px-3 py-2 rounded-lg border transition-colors font-medium ${
             freeOnly
-              ? "border-gray-900 bg-gray-900 text-white"
-              : "border-gray-200 text-gray-500 hover:border-gray-400"
+              ? "border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-[#0a0a0a]"
+              : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500"
           }`}
         >
           Free only
         </button>
-        <p className="text-xs text-gray-400 ml-auto shrink-0">
+        <p className="text-xs text-gray-400 dark:text-gray-500 ml-auto shrink-0">
           {visible.length} agent{visible.length !== 1 ? "s" : ""}
         </p>
       </div>
@@ -256,7 +256,7 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
       {/* Semantic mode indicator */}
       <div className="mb-6 h-4">
         {activeResults && !semanticLoading && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
             Semantic results — ranked by meaning, not keywords
           </div>
@@ -264,11 +264,11 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
       </div>
 
       {visible.length === 0 ? (
-        <div className="text-center py-24 border border-dashed border-gray-200 rounded-2xl">
-          <p className="text-gray-400 text-sm mb-4">No agents match your search.</p>
+        <div className="text-center py-24 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
+          <p className="text-gray-400 dark:text-gray-500 text-sm mb-4">No agents match your search.</p>
           <button
             onClick={() => { setQuery(""); setFreeOnly(false); }}
-            className="text-sm text-gray-900 underline hover:text-gray-600 transition-colors"
+            className="text-sm text-gray-900 dark:text-white underline hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             Clear filters →
           </button>
@@ -279,11 +279,11 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
           {grouped.map(([category, categoryAgents], catIdx) => (
             <div key={category} style={{ animation: `fade-up 0.5s ease ${catIdx * 80}ms both` }}>
               <div className="flex items-center gap-3 mb-5">
-                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
                   {category}
                 </h2>
-                <span className="text-xs text-gray-400">{categoryAgents.length} agent{categoryAgents.length !== 1 ? "s" : ""}</span>
-                <div className="flex-1 h-px bg-gray-100" />
+                <span className="text-xs text-gray-400 dark:text-gray-500">{categoryAgents.length} agent{categoryAgents.length !== 1 ? "s" : ""}</span>
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {categoryAgents.map((agent, i) => (

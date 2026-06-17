@@ -39,7 +39,7 @@ export default function TerminalCode({ code, label, delay = 0 }: Props) {
   }, [started, code, delay]);
 
   return (
-    <div ref={ref} className="rounded-xl border border-gray-200 bg-[#0a0a0a] p-6 overflow-hidden">
+    <div ref={ref} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-[#0a0a0a] p-6 overflow-hidden">
       {label && (
         <div className="flex items-center gap-2 mb-4">
           <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />

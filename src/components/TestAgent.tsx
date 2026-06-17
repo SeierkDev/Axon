@@ -20,7 +20,7 @@ function MarkdownOutput({ text }: { text: string }) {
         i++;
       }
       elements.push(
-        <pre key={i} className="bg-gray-900 text-gray-100 rounded-md p-3 text-xs overflow-x-auto my-3 font-mono">
+        <pre key={i} className="bg-gray-900 dark:bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-x-auto my-3 font-mono">
           {lang && <div className="text-gray-500 text-[10px] mb-2 uppercase tracking-wider">{lang}</div>}
           <code>{codeLines.join("\n")}</code>
         </pre>
@@ -31,11 +31,11 @@ function MarkdownOutput({ text }: { text: string }) {
 
     // Headings
     if (line.startsWith("### ")) {
-      elements.push(<h3 key={i} className="font-semibold text-gray-800 text-sm mt-4 mb-1">{renderInline(line.slice(4))}</h3>);
+      elements.push(<h3 key={i} className="font-semibold text-gray-800 dark:text-gray-200 text-sm mt-4 mb-1">{renderInline(line.slice(4))}</h3>);
     } else if (line.startsWith("## ")) {
-      elements.push(<h2 key={i} className="font-semibold text-gray-900 text-base mt-5 mb-1">{renderInline(line.slice(3))}</h2>);
+      elements.push(<h2 key={i} className="font-semibold text-gray-900 dark:text-white text-base mt-5 mb-1">{renderInline(line.slice(3))}</h2>);
     } else if (line.startsWith("# ")) {
-      elements.push(<h1 key={i} className="font-bold text-gray-900 text-lg mt-5 mb-2">{renderInline(line.slice(2))}</h1>);
+      elements.push(<h1 key={i} className="font-bold text-gray-900 dark:text-white text-lg mt-5 mb-2">{renderInline(line.slice(2))}</h1>);
     }
     // Bullet
     else if (line.match(/^[-*] /)) {
@@ -45,7 +45,7 @@ function MarkdownOutput({ text }: { text: string }) {
         i++;
       }
       elements.push(
-        <ul key={i} className="list-disc list-inside space-y-0.5 my-2 text-gray-700">
+        <ul key={i} className="list-disc list-inside space-y-0.5 my-2 text-gray-700 dark:text-gray-300">
           {items.map((item, idx) => <li key={idx} className="text-sm">{renderInline(item)}</li>)}
         </ul>
       );
@@ -58,8 +58,8 @@ function MarkdownOutput({ text }: { text: string }) {
       const content = line.replace(/^\d+\. /, "");
       elements.push(
         <div key={i} className="flex gap-2 my-1">
-          <span className="text-sm font-semibold text-gray-500 shrink-0 w-5 text-right">{num}.</span>
-          <span className="text-sm text-gray-700">{renderInline(content)}</span>
+          <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 shrink-0 w-5 text-right">{num}.</span>
+          <span className="text-sm text-gray-700 dark:text-gray-300">{renderInline(content)}</span>
         </div>
       );
     }
@@ -69,7 +69,7 @@ function MarkdownOutput({ text }: { text: string }) {
     }
     // Paragraph
     else {
-      elements.push(<p key={i} className="text-sm text-gray-700 leading-relaxed">{renderInline(line)}</p>);
+      elements.push(<p key={i} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{renderInline(line)}</p>);
     }
 
     i++;
@@ -82,10 +82,10 @@ function renderInline(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>;
+      return <strong key={i} className="font-semibold text-gray-900 dark:text-white">{part.slice(2, -2)}</strong>;
     }
     if (part.startsWith("`") && part.endsWith("`")) {
-      return <code key={i} className="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-xs font-mono">{part.slice(1, -1)}</code>;
+      return <code key={i} className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 py-0.5 rounded text-xs font-mono">{part.slice(1, -1)}</code>;
     }
     return part;
   });
@@ -222,10 +222,10 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
   const isRunning = step === "running";
 
   return (
-    <div className="rounded-lg border border-gray-200 overflow-hidden mb-10">
-      <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Try this agent</p>
-        <span className="text-xs text-gray-400">Free demo · {remaining} call{remaining !== 1 ? "s" : ""} remaining</span>
+    <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">
+      <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Try this agent</p>
+        <span className="text-xs text-gray-400 dark:text-gray-500">Free demo · {remaining} call{remaining !== 1 ? "s" : ""} remaining</span>
       </div>
 
       <div className="p-5">
@@ -237,17 +237,17 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
               placeholder={placeholder}
               rows={3}
               maxLength={500}
-              className="w-full text-sm border border-gray-200 rounded-lg p-3 bg-white resize-none focus:outline-none focus:ring-1 focus:ring-gray-400 placeholder:text-gray-300"
+              className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-none focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 placeholder:text-gray-300 dark:placeholder:text-gray-600"
             />
             <div className="mt-3 flex items-center gap-3">
               <button
                 onClick={handleRun}
-                className="text-sm px-4 py-2 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg font-medium transition-colors"
+                className="text-sm px-4 py-2 bg-[#0a0a0a] dark:bg-white hover:bg-[#222] dark:hover:bg-gray-200 text-white dark:text-[#0a0a0a] rounded-lg font-medium transition-colors"
               >
                 Run Test
               </button>
               {step === "error" && error && (
-                <p className="text-xs text-red-500">{error}</p>
+                <p className="text-xs text-red-500 dark:text-red-400">{error}</p>
               )}
             </div>
           </>
@@ -255,17 +255,17 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
 
         {(step === "running" || step === "done") && (
           <div>
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 min-h-16">
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 min-h-16">
               {isRunning && !output && (
-                <span className="text-sm text-gray-300">Calling {agentName}…</span>
+                <span className="text-sm text-gray-300 dark:text-gray-600">Calling {agentName}…</span>
               )}
               {output && <MarkdownOutput text={output} />}
               {isRunning && (
-                <span className="inline-block w-2 h-4 bg-gray-400 ml-0.5 align-text-bottom animate-pulse" />
+                <span className="inline-block w-2 h-4 bg-gray-400 dark:bg-gray-600 ml-0.5 align-text-bottom animate-pulse" />
               )}
             </div>
             <div className="mt-3 flex items-center justify-between">
-              <div className="flex items-center gap-4 text-xs text-gray-400">
+              <div className="flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
                 {step === "done" && latency !== null && (
                   <span>{(latency / 1000).toFixed(1)}s</span>
                 )}
@@ -273,7 +273,7 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
               {step === "done" && (
                 <button
                   onClick={handleReset}
-                  className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
                   Run another →
                 </button>

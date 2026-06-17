@@ -76,6 +76,11 @@ export default function NetworkCanvas() {
       if (!ctx) return;
       ctx.clearRect(0, 0, W, H);
 
+      const dark = document.documentElement.classList.contains("dark");
+      const r = dark ? 220 : 10;
+      const g = dark ? 220 : 10;
+      const b = dark ? 220 : 10;
+
       // Draw edges between nearby nodes
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
@@ -86,7 +91,7 @@ export default function NetworkCanvas() {
           if (dist < maxDist) {
             const alpha = (1 - dist / maxDist) * 0.12;
             ctx.beginPath();
-            ctx.strokeStyle = `rgba(10,10,10,${alpha})`;
+            ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
             ctx.lineWidth = 0.8;
             ctx.moveTo(nodes[i].x, nodes[i].y);
             ctx.lineTo(nodes[j].x, nodes[j].y);
@@ -111,7 +116,7 @@ export default function NetworkCanvas() {
         const alpha = Math.sin(p.progress * Math.PI) * 0.7;
         ctx.beginPath();
         ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(10,10,10,${alpha})`;
+        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
         ctx.fill();
       }
 
@@ -121,14 +126,14 @@ export default function NetworkCanvas() {
         if (node.label === "axon") {
           ctx.beginPath();
           ctx.arc(node.x, node.y, node.radius + 5, 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(10,10,10,0.15)";
+          ctx.strokeStyle = `rgba(${r},${g},${b},0.15)`;
           ctx.lineWidth = 1;
           ctx.stroke();
         }
 
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fillStyle = node.label === "axon" ? "rgba(10,10,10,0.85)" : "rgba(10,10,10,0.2)";
+        ctx.fillStyle = node.label === "axon" ? `rgba(${r},${g},${b},0.85)` : `rgba(${r},${g},${b},0.2)`;
         ctx.fill();
       }
 

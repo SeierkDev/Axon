@@ -21,7 +21,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
         style={{
           position: "fixed",
           inset: 0,
-          background: "white",
+          background: "var(--background)",
           zIndex: 9999,
           pointerEvents: "none",
           animation: "fade-out 0.3s ease forwards",

@@ -51,7 +51,7 @@ function PostContent({ html }: { html: string }) {
     } else if (m[0].startsWith("<a ")) {
       nodes.push(
         <a key={key++} href={m[2]} target="_blank" rel="noopener noreferrer"
-          className="inline-block mt-3 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors">
+          className="inline-block mt-3 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline transition-colors">
           {unescape(m[3])}
         </a>
       );
@@ -61,7 +61,7 @@ function PostContent({ html }: { html: string }) {
   if (last < html.length) nodes.push(unescape(html.slice(last)));
 
   return (
-    <p className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">{nodes}</p>
+    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line leading-relaxed">{nodes}</p>
   );
 }
 
@@ -70,15 +70,15 @@ export default function NetworkFeedPage() {
   const stats = getNetworkStats();
 
   return (
-    <div className="bg-white min-h-screen text-[#0a0a0a]">
+    <div className="bg-white dark:bg-[#0a0a0a] min-h-screen text-[#0a0a0a] dark:text-white">
       <SiteNav />
       <main className="max-w-2xl mx-auto px-6 pt-32 pb-24">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Network Feed</h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Network Feed</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Live updates from the Axon agent network, posted automatically.
               </p>
             </div>
@@ -97,11 +97,11 @@ export default function NetworkFeedPage() {
 
           {/* Bot status */}
           <div className="mt-4 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-1">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-full px-2.5 py-1">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               @AxonNetworkBot active
             </span>
-            <span className="text-xs text-gray-400">{posts.length} posts</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{posts.length} posts</span>
           </div>
         </div>
 
@@ -112,16 +112,16 @@ export default function NetworkFeedPage() {
             { label: "Tasks completed", value: stats.tasks.completed.toLocaleString('en-US') },
             { label: "USDC transacted", value: `$${stats.payments.totalUsdcTransacted.toFixed(2)}` },
           ].map((s) => (
-            <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="text-base font-semibold text-gray-900">{s.value}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+            <div key={s.label} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+              <div className="text-base font-semibold text-gray-900 dark:text-white">{s.value}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{s.label}</div>
             </div>
           ))}
         </div>
 
         {/* Feed */}
         {posts.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 text-sm">
+          <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">
             No posts yet. The bot will start posting once the cron is configured.
           </div>
         ) : (
@@ -129,14 +129,14 @@ export default function NetworkFeedPage() {
             {posts.map((post) => (
               <article
                 key={post.post_id}
-                className="bg-white rounded-xl border border-gray-200 p-5 shrink-0"
+                className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 shrink-0"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`w-2 h-2 rounded-full ${TYPE_DOT[post.type] ?? "bg-gray-400"}`} />
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     {TYPE_LABEL[post.type] ?? post.type}
                   </span>
-                  <span className="ml-auto text-xs text-gray-400">{formatRelative(post.created_at)}</span>
+                  <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">{formatRelative(post.created_at)}</span>
                 </div>
                 <PostContent html={post.content} />
               </article>
@@ -149,7 +149,7 @@ export default function NetworkFeedPage() {
             href="https://t.me/axonnetworkfeed"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-gray-400 hover:text-gray-700 transition-colors"
+            className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             Follow @AxonNetworkBot on Telegram for real-time updates →
           </a>

@@ -33,17 +33,17 @@ type Workflow = {
 const STORAGE_KEY = "axon.dashboard.apiKey";
 
 const STEP_STYLE: Record<TaskStatus, string> = {
-  payment_pending: "border-purple-200 bg-purple-50 text-purple-700",
-  queued: "border-amber-200 bg-amber-50 text-amber-700",
-  running: "border-blue-200 bg-blue-50 text-blue-700",
-  completed: "border-green-200 bg-green-50 text-green-700",
-  failed: "border-red-200 bg-red-50 text-red-700",
+  payment_pending: "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-400",
+  queued: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400",
+  running: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-400",
+  completed: "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-400",
+  failed: "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400",
 };
 
 const WORKFLOW_STYLE: Record<Workflow["status"], string> = {
-  running: "border-blue-200 bg-blue-50 text-blue-700",
-  completed: "border-green-200 bg-green-50 text-green-700",
-  failed: "border-red-200 bg-red-50 text-red-700",
+  running: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-400",
+  completed: "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-400",
+  failed: "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400",
 };
 
 function short(id: string) {
@@ -59,7 +59,7 @@ function dateTime(value: string) {
 
 function StepConnector({ active }: { active: boolean }) {
   return (
-    <div className={`w-px h-6 mx-auto my-1 transition-colors ${active ? "bg-gray-300" : "bg-gray-100"}`} />
+    <div className={`w-px h-6 mx-auto my-1 transition-colors ${active ? "bg-gray-300 dark:bg-gray-600" : "bg-gray-100 dark:bg-gray-800"}`} />
   );
 }
 
@@ -113,8 +113,8 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
     <>
       {/* Auth bar */}
       {!workflow && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-5 mb-8">
-          <p className="text-sm font-medium text-gray-900 mb-3">
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-5 mb-8">
+          <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">
             Workflow data is private — authenticate to view it
           </p>
           <div className="flex gap-2">
@@ -124,21 +124,21 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
               onChange={(e) => setDraftKey(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
               placeholder="axon_sk…"
-              className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-mono text-gray-900 outline-none focus:border-gray-500"
+              className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-mono text-gray-900 dark:text-gray-100 outline-none focus:border-gray-500"
               autoFocus
             />
             <button
               onClick={submit}
               disabled={!draftKey.trim() || loading}
-              className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40 transition-colors"
+              className="px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-sm font-medium hover:bg-gray-700 dark:hover:bg-gray-200 disabled:opacity-40 transition-colors"
             >
               {loading ? "Loading…" : "Load"}
             </button>
           </div>
-          {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
-          <p className="text-xs text-gray-400 mt-2">
+          {error && <p className="text-sm text-red-600 dark:text-red-400 mt-3">{error}</p>}
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
             Your key must belong to the sender or one agent in the chain.{" "}
-            <Link href="/dashboard" className="underline hover:text-gray-700">Go to dashboard</Link>
+            <Link href="/dashboard" className="underline hover:text-gray-700 dark:hover:text-white">Go to dashboard</Link>
           </p>
         </div>
       )}
@@ -158,7 +158,7 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
                 </span>
                 <span className="text-xs font-mono text-gray-400">{shortId}</span>
               </div>
-              <p className="text-sm text-gray-700 max-w-xl">{workflow.initialTask}</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 max-w-xl">{workflow.initialTask}</p>
             </div>
             <div className="text-right text-xs text-gray-400 shrink-0">
               <p>Started {dateTime(workflow.createdAt)}</p>
@@ -173,16 +173,16 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
               { label: "Current step", value: `${Math.min(workflow.currentStep + 1, workflow.agents.length)} / ${workflow.agents.length}` },
               { label: "Sender", value: short(workflow.fromAgent) },
             ].map((s) => (
-              <div key={s.label} className="rounded-lg border border-gray-200 p-4">
-                <p className="text-lg font-semibold text-gray-900 font-mono">{s.value}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+              <div key={s.label} className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+                <p className="text-lg font-semibold text-gray-900 dark:text-white font-mono">{s.value}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{s.label}</p>
               </div>
             ))}
           </div>
 
           {/* Step chain */}
           <div className="mb-8">
-            <h2 className="font-semibold text-gray-900 mb-4">Agent chain</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Agent chain</h2>
             <div className="space-y-0">
               {workflow.agents.map((agentId, idx) => {
                 const step = workflow.steps.find((s) => s.stepIndex === idx);
@@ -190,14 +190,14 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
                 return (
                   <div key={`${agentId}-${idx}`}>
                     <div className={`rounded-lg border p-4 transition-colors ${
-                      isActive ? "border-blue-200 bg-blue-50/40" : "border-gray-200 bg-white"
+                      isActive ? "border-blue-200 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20" : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
                     }`}>
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-mono text-gray-300 w-5">{idx + 1}</span>
                           <Link
                             href={`/agents/${encodeURIComponent(agentId)}`}
-                            className="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors"
+                            className="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                           >
                             {agentId}
                           </Link>
@@ -208,7 +208,7 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
                               {step.status}
                             </span>
                           ) : (
-                            <span className="text-xs px-2 py-0.5 rounded-full border border-gray-200 text-gray-400">
+                            <span className="text-xs px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500">
                               pending
                             </span>
                           )}
@@ -221,19 +221,19 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
                       {step?.input && (
                         <div className="mb-2">
                           <p className="text-[11px] font-mono text-gray-400 mb-1">INPUT</p>
-                          <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed">{step.input}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed">{step.input}</p>
                         </div>
                       )}
 
                       {step?.output && (
                         <div className="mb-2">
                           <p className="text-[11px] font-mono text-gray-400 mb-1">OUTPUT</p>
-                          <p className="text-xs text-gray-700 line-clamp-4 leading-relaxed">{step.output}</p>
+                          <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-4 leading-relaxed">{step.output}</p>
                         </div>
                       )}
 
                       {step?.error && (
-                        <p className="text-xs text-red-600 mt-1">{step.error}</p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-1">{step.error}</p>
                       )}
                     </div>
 
@@ -248,9 +248,9 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
 
           {/* Final output */}
           {workflow.finalOutput && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-5 mb-6">
-              <p className="text-xs font-mono text-green-600 mb-2">FINAL OUTPUT</p>
-              <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{workflow.finalOutput}</p>
+            <div className="rounded-lg border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/30 p-5 mb-6">
+              <p className="text-xs font-mono text-green-600 dark:text-green-400 mb-2">FINAL OUTPUT</p>
+              <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{workflow.finalOutput}</p>
             </div>
           )}
 
@@ -259,7 +259,7 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
             <button
               onClick={() => void load(apiKey)}
               disabled={loading}
-              className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 disabled:opacity-40 transition-colors"
+              className="text-sm px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 disabled:opacity-40 transition-colors"
             >
               {loading ? "Refreshing…" : "Refresh"}
             </button>

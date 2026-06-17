@@ -89,8 +89,8 @@ export default function ReviewForm({ agentId }: Props) {
   if (step === "done") {
     return (
       <div className="px-5 py-6 text-center">
-        <p className="text-sm font-medium text-gray-900">Review submitted</p>
-        <p className="text-xs text-gray-400 mt-1">Thanks — it will appear once the page refreshes.</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-white">Review submitted</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Thanks — it will appear once the page refreshes.</p>
       </div>
     );
   }
@@ -99,8 +99,8 @@ export default function ReviewForm({ agentId }: Props) {
   const loadingLabel = step === "connecting" ? "Connecting…" : step === "signing" ? "Sign in Phantom…" : "Submitting…";
 
   return (
-    <div className="px-5 py-4 border-t border-gray-100">
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Leave a review</p>
+    <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800">
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">Leave a review</p>
       <div className="flex items-center gap-1 mb-3">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
@@ -110,7 +110,7 @@ export default function ReviewForm({ agentId }: Props) {
             onMouseLeave={() => setHovered(0)}
             className="text-2xl leading-none transition-colors"
           >
-            <span className={(hovered || rating) >= star ? "text-yellow-400" : "text-gray-200"}>★</span>
+            <span className={(hovered || rating) >= star ? "text-yellow-400" : "text-gray-200 dark:text-gray-700"}>★</span>
           </button>
         ))}
       </div>
@@ -120,17 +120,17 @@ export default function ReviewForm({ agentId }: Props) {
         placeholder="Share your experience (optional)"
         rows={3}
         maxLength={500}
-        className="w-full text-sm border border-gray-200 rounded-lg p-3 bg-white resize-none focus:outline-none focus:ring-1 focus:ring-gray-400 placeholder:text-gray-300 mb-3"
+        className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-none focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 placeholder:text-gray-300 dark:placeholder:text-gray-600 mb-3"
       />
-      {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+      {error && <p className="text-xs text-red-500 dark:text-red-400 mb-2">{error}</p>}
       <button
         onClick={handleSubmit}
         disabled={isLoading}
-        className="text-sm px-4 py-2 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+        className="text-sm px-4 py-2 bg-[#0a0a0a] dark:bg-white hover:bg-[#222] dark:hover:bg-gray-200 text-white dark:text-[#0a0a0a] rounded-lg font-medium transition-colors disabled:opacity-50"
       >
         {isLoading ? loadingLabel : "Connect Phantom & Submit"}
       </button>
-      <p className="text-[11px] text-gray-300 mt-2">Requires Phantom wallet to prevent spam.</p>
+      <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-2">Requires Phantom wallet to prevent spam.</p>
     </div>
   );
 }

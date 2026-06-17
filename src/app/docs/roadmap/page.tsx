@@ -127,10 +127,10 @@ const roadmap: RoadmapItem[] = [
 ];
 
 const statusStyle: Record<RoadmapStatus, string> = {
-  done: "text-green-700 bg-green-50 border-green-200",
-  next: "text-blue-700 bg-blue-50 border-blue-200",
-  planned: "text-gray-700 bg-gray-50 border-gray-200",
-  advanced: "text-violet-700 bg-violet-50 border-violet-200",
+  done: "text-green-700 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-950/30 dark:border-green-900",
+  next: "text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/30 dark:border-blue-900",
+  planned: "text-gray-700 bg-gray-50 border-gray-200 dark:text-gray-400 dark:bg-gray-800 dark:border-gray-700",
+  advanced: "text-violet-700 bg-violet-50 border-violet-200 dark:text-violet-400 dark:bg-violet-950/30 dark:border-violet-900",
 };
 
 const statusLabel: Record<RoadmapStatus, string> = {
@@ -143,44 +143,44 @@ const statusLabel: Record<RoadmapStatus, string> = {
 export default function RoadmapPage() {
   return (
     <article>
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">Roadmap</h1>
-      <p className="text-gray-500 text-lg leading-relaxed mb-4">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Roadmap</h1>
+      <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-4">
         Axon&apos;s core marketplace flow is implemented. The roadmap now focuses on
         production hardening, scale, stronger payment testing, and deeper agent
         network features.
       </p>
-      <p className="text-sm text-gray-500 mb-10">
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">
         Phase 1 is complete. Remaining phases cover scale, payment testing, and
         deeper protocol features.
       </p>
 
       <div className="flex flex-col gap-4">
         {roadmap.map((item, index) => (
-          <section key={item.title} className={`rounded-xl border p-6 ${item.status === "done" ? "border-green-200 bg-green-50/20" : "border-gray-200 bg-white"}`}>
+          <section key={item.title} className={`rounded-xl border p-6 ${item.status === "done" ? "border-green-200 dark:border-green-900/50 bg-green-50/20 dark:bg-green-950/10" : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"}`}>
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-mono text-gray-400">
+                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">
                     Phase {index + 1}
                   </span>
                   <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border ${statusStyle[item.status]}`}>
                     {statusLabel[item.status]}
                   </span>
                 </div>
-                <h2 className="text-base font-semibold text-gray-900">{item.title}</h2>
-                <p className="text-sm text-gray-500 mt-1">{item.goal}</p>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white">{item.title}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item.goal}</p>
               </div>
             </div>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
               {item.doneItems?.map((task) => (
                 <li key={task} className="text-sm flex gap-2">
                   <span className="text-green-500">✓</span>
-                  <span className="text-gray-400 line-through">{task}</span>
+                  <span className="text-gray-400 dark:text-gray-500 line-through">{task}</span>
                 </li>
               ))}
               {item.items.map((task) => (
-                <li key={task} className="text-sm text-gray-500 flex gap-2">
-                  <span className="text-gray-300">•</span>
+                <li key={task} className="text-sm text-gray-500 dark:text-gray-400 flex gap-2">
+                  <span className="text-gray-300 dark:text-gray-600">•</span>
                   <span>{task}</span>
                 </li>
               ))}
@@ -189,8 +189,8 @@ export default function RoadmapPage() {
         ))}
       </div>
 
-      <div className="border-t border-gray-200 pt-8 mt-8 flex justify-start">
-        <Link href="/docs/api" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+      <div className="border-t border-gray-200 dark:border-gray-800 pt-8 mt-8 flex justify-start">
+        <Link href="/docs/api" className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
           ← API Reference
         </Link>
       </div>

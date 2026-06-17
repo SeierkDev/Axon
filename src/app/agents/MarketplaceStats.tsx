@@ -18,16 +18,16 @@ export function MarketplaceStats({ total, paid, categories, active }: Props) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-gray-100 mb-10">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-gray-100 dark:border-gray-800 mb-10">
       {stats.map((s, i) => (
         <div
           key={s.label}
           style={{ animation: `fade-up 0.5s ease ${i * 80}ms both` }}
         >
-          <p className="text-2xl font-bold text-gray-900">
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
             <AnimatedCounter value={s.value} />
           </p>
-          <p className="text-xs text-gray-400 mt-1">{s.label}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{s.label}</p>
         </div>
       ))}
     </div>

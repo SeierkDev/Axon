@@ -71,18 +71,18 @@ function StepIndicator({ current }: { current: Step }) {
           <div className="flex items-center gap-2">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold border ${
               i < idx
-                ? "bg-gray-900 border-gray-900 text-white"
+                ? "bg-gray-900 dark:bg-gray-100 border-gray-900 dark:border-gray-100 text-white dark:text-gray-900"
                 : i === idx
-                ? "bg-white border-gray-900 text-gray-900"
-                : "bg-white border-gray-200 text-gray-400"
+                ? "bg-white dark:bg-gray-950 border-gray-900 dark:border-white text-gray-900 dark:text-white"
+                : "bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600"
             }`}>
               {i < idx ? "✓" : i + 1}
             </div>
-            <span className={`text-xs ${i === idx ? "text-gray-900 font-medium" : "text-gray-400"}`}>
+            <span className={`text-xs ${i === idx ? "text-gray-900 dark:text-white font-medium" : "text-gray-400 dark:text-gray-600"}`}>
               {s.label}
             </span>
           </div>
-          {i < steps.length - 1 && <div className="w-8 h-px bg-gray-200" />}
+          {i < steps.length - 1 && <div className="w-8 h-px bg-gray-200 dark:bg-gray-700" />}
         </div>
       ))}
     </div>
@@ -98,14 +98,14 @@ function Field({
 }) {
   return (
     <div className="mb-5">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {hint && <p className="text-xs text-gray-400 mb-2">{hint}</p>}
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">{label}</label>
+      {hint && <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">{hint}</p>}
       {children}
     </div>
   );
 }
 
-const inputCls = "w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-gray-400 placeholder:text-gray-300";
+const inputCls = "w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400 placeholder:text-gray-300 dark:placeholder:text-gray-600";
 
 export default function PublishWizard() {
   const [step, setStep] = useState<Step>("auth");
@@ -243,9 +243,9 @@ export default function PublishWizard() {
   if (step === "done" && publishedId) {
     return (
       <div>
-        <div className="rounded-xl border border-green-200 bg-green-50 p-6 mb-8">
-          <p className="text-sm font-semibold text-green-800 mb-1">Agent published</p>
-          <p className="text-sm text-green-700">
+        <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50 p-6 mb-8">
+          <p className="text-sm font-semibold text-green-800 dark:text-green-400 mb-1">Agent published</p>
+          <p className="text-sm text-green-700 dark:text-green-500">
             <span className="font-mono">{publishedId}</span> is now live on the Axon marketplace.
           </p>
         </div>
@@ -253,29 +253,29 @@ export default function PublishWizard() {
         <div className="flex flex-col gap-3 mb-10">
           <Link
             href={`/agents/${encodeURIComponent(publishedId)}`}
-            className="text-sm px-4 py-2.5 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg font-medium transition-colors text-center"
+            className="text-sm px-4 py-2.5 bg-[#0a0a0a] hover:bg-[#222] dark:bg-white dark:text-[#0a0a0a] dark:hover:bg-gray-200 text-white rounded-lg font-medium transition-colors text-center"
           >
             View agent profile →
           </Link>
           <Link
             href="/dashboard"
-            className="text-sm px-4 py-2.5 border border-gray-200 text-gray-600 hover:border-gray-400 rounded-lg font-medium transition-colors text-center"
+            className="text-sm px-4 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 rounded-lg font-medium transition-colors text-center"
           >
             Go to dashboard
           </Link>
           <button
             onClick={() => { setStep("configure"); setForm(EMPTY_FORM); setPublishedId(null); }}
-            className="text-sm text-gray-400 hover:text-gray-700 transition-colors"
+            className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
           >
             Publish another agent
           </button>
         </div>
 
-        <div className="rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Integration snippet</p>
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Integration snippet</p>
           </div>
-          <pre className="px-5 py-4 text-xs font-mono text-gray-700 bg-white overflow-x-auto leading-relaxed">{`await fetch("https://axon-agents.com/api/tasks", {
+          <pre className="px-5 py-4 text-xs font-mono text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 overflow-x-auto leading-relaxed">{`await fetch("https://axon-agents.com/api/tasks", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
@@ -318,14 +318,14 @@ export default function PublishWizard() {
           <button
             onClick={handleAuth}
             disabled={authLoading || !draftKey.trim()}
-            className="text-sm px-5 py-2.5 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-sm px-5 py-2.5 bg-[#0a0a0a] dark:bg-white hover:bg-[#222] dark:hover:bg-gray-200 text-white dark:text-[#0a0a0a] rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {authLoading ? "Verifying…" : "Continue"}
           </button>
 
-          <p className="text-xs text-gray-400 mt-4">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
             No API key?{" "}
-            <Link href="/dashboard" className="underline hover:text-gray-700 transition-colors">
+            <Link href="/dashboard" className="underline hover:text-gray-700 dark:hover:text-white transition-colors">
               Get one from the dashboard
             </Link>
           </p>
@@ -335,9 +335,9 @@ export default function PublishWizard() {
       {/* Step 2: Configure */}
       {step === "configure" && auth && (
         <div>
-          <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 mb-6 flex items-center justify-between">
-            <span className="text-xs text-gray-500">Authenticated as</span>
-            <span className="text-xs font-mono text-gray-700">{auth.walletAddress.slice(0, 8)}…{auth.walletAddress.slice(-6)}</span>
+          <div className="rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-4 py-3 mb-6 flex items-center justify-between">
+            <span className="text-xs text-gray-500 dark:text-gray-400">Authenticated as</span>
+            <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{auth.walletAddress.slice(0, 8)}…{auth.walletAddress.slice(-6)}</span>
           </div>
 
           <Field label="Agent ID" hint="Unique slug — used in API calls. Letters, numbers, hyphens, underscores.">
@@ -446,13 +446,13 @@ export default function PublishWizard() {
           <div className="flex gap-3 mt-6">
             <button
               onClick={() => setStep("auth")}
-              className="text-sm px-4 py-2.5 border border-gray-200 text-gray-600 hover:border-gray-400 rounded-lg font-medium transition-colors"
+              className="text-sm px-4 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 rounded-lg font-medium transition-colors"
             >
               Back
             </button>
             <button
               onClick={handleConfigureNext}
-              className="text-sm px-5 py-2.5 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg font-medium transition-colors"
+              className="text-sm px-5 py-2.5 bg-[#0a0a0a] hover:bg-[#222] dark:bg-white dark:text-[#0a0a0a] dark:hover:bg-gray-200 text-white rounded-lg font-medium transition-colors"
             >
               Review →
             </button>
@@ -463,11 +463,11 @@ export default function PublishWizard() {
       {/* Step 3: Review */}
       {step === "review" && auth && (
         <div>
-          <div className="rounded-lg border border-gray-200 overflow-hidden mb-8">
-            <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Agent summary</p>
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-8">
+            <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Agent summary</p>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
               <ReviewRow label="Agent ID"  value={form.agentId} mono />
               <ReviewRow label="Name"      value={form.name} />
               <ReviewRow label="Capabilities" value={form.capabilities.split(",").map((c) => c.trim()).filter(Boolean).join(", ")} />
@@ -481,8 +481,8 @@ export default function PublishWizard() {
           </div>
 
           {publishError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 mb-6">
-              <p className="text-sm text-red-700">{publishError}</p>
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/50 px-4 py-3 mb-6">
+              <p className="text-sm text-red-700 dark:text-red-400">{publishError}</p>
             </div>
           )}
 
@@ -490,14 +490,14 @@ export default function PublishWizard() {
             <button
               onClick={() => setStep("configure")}
               disabled={publishing}
-              className="text-sm px-4 py-2.5 border border-gray-200 text-gray-600 hover:border-gray-400 rounded-lg font-medium transition-colors disabled:opacity-40"
+              className="text-sm px-4 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 rounded-lg font-medium transition-colors disabled:opacity-40"
             >
               Back
             </button>
             <button
               onClick={handlePublish}
               disabled={publishing}
-              className="text-sm px-5 py-2.5 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-sm px-5 py-2.5 bg-[#0a0a0a] hover:bg-[#222] dark:bg-white dark:text-[#0a0a0a] dark:hover:bg-gray-200 text-white rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {publishing ? "Publishing…" : "Publish agent"}
             </button>
@@ -511,8 +511,8 @@ export default function PublishWizard() {
 function ReviewRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-start gap-4 px-5 py-3">
-      <span className="text-sm text-gray-400 w-32 shrink-0">{label}</span>
-      <span className={`text-sm text-gray-700 ${mono ? "font-mono" : ""}`}>{value}</span>
+      <span className="text-sm text-gray-400 dark:text-gray-500 w-32 shrink-0">{label}</span>
+      <span className={`text-sm text-gray-700 dark:text-gray-300 ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
   );
 }

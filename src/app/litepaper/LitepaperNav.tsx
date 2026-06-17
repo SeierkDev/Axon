@@ -36,15 +36,15 @@ export function LitepaperNav() {
 
   return (
     <nav className="space-y-0.5">
-      <p className="text-[10px] font-mono text-gray-400 tracking-wider uppercase mb-4">Contents</p>
+      <p className="text-[10px] font-mono text-gray-400 dark:text-gray-500 tracking-wider uppercase mb-4">Contents</p>
       {SECTIONS.map((section) => (
         <a
           key={section.id}
           href={`#${section.id}`}
           className={`flex items-center gap-2.5 py-1.5 text-xs transition-colors group ${
             activeId === section.id
-              ? "text-gray-900 font-medium"
-              : "text-gray-400 hover:text-gray-700"
+              ? "text-gray-900 dark:text-white font-medium"
+              : "text-gray-400 hover:text-gray-700 dark:hover:text-white"
           }`}
         >
           <span className="font-mono w-4 shrink-0">{section.number}</span>
