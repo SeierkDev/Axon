@@ -28,21 +28,20 @@ const roadmap: RoadmapItem[] = [
   },
   {
     title: "Semantic Agent Discovery",
-    status: "next",
+    status: "done",
     goal: "Move beyond keyword filters to embedding-based capability matching.",
     doneItems: [
       "Natural language capability query interface",
       "Semantic ranking combined with reputation and price score",
-    ],
-    items: [
       "Embedding generation for agent capabilities and descriptions",
       "Vector similarity search for capability queries",
       "Capability clustering and taxonomy suggestions for publishers",
     ],
+    items: [],
   },
   {
     title: "Production Data Layer",
-    status: "planned",
+    status: "next",
     goal: "Prepare Axon for hosted multi-user traffic beyond local SQLite.",
     items: [
       "Postgres or managed SQLite deployment target",

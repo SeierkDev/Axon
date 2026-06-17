@@ -117,6 +117,9 @@ export default function PublishWizard() {
   const [form, setForm] = useState<AgentForm>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof AgentForm, string>>>({});
 
+  const [allCapabilities, setAllCapabilities] = useState<string[]>([]);
+  const [capSuggestions, setCapSuggestions] = useState<string[]>([]);
+
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishedId, setPublishedId] = useState<string | null>(null);
@@ -137,13 +140,43 @@ export default function PublishWizard() {
         return;
       }
       setAuth({ apiKey: draftKey.trim(), walletAddress: data.walletAddress!, keyId: data.keyId! });
-      setForm((f) => ({ ...f })); // keep form as-is
+      setForm((f) => ({ ...f }));
       setStep("configure");
+      // Fetch existing capabilities for suggestions (fire-and-forget)
+      void fetch("/api/capabilities")
+        .then((r) => r.json() as Promise<{ capabilities: { name: string }[] }>)
+        .then((d) => setAllCapabilities(d.capabilities.map((c) => c.name)))
+        .catch(() => {});
     } catch {
       setAuthError("Could not connect to the API");
     } finally {
       setAuthLoading(false);
     }
+  }
+
+  // ── Capability suggestions ────────────────────────────────────────────────────
+
+  function handleCapabilitiesChange(value: string) {
+    setForm((f) => ({ ...f, capabilities: value }));
+    const tokens = value.split(",");
+    const current = tokens[tokens.length - 1].trim().toLowerCase();
+    const already = new Set(tokens.slice(0, -1).map((t) => t.trim().toLowerCase()));
+    if (!current) {
+      setCapSuggestions([]);
+      return;
+    }
+    const matches = allCapabilities
+      .filter((c) => c.toLowerCase().includes(current) && !already.has(c.toLowerCase()))
+      .slice(0, 8);
+    setCapSuggestions(matches);
+  }
+
+  function applyCapabilitySuggestion(cap: string) {
+    const tokens = form.capabilities.split(",");
+    tokens[tokens.length - 1] = cap;
+    const next = tokens.map((t) => t.trim()).filter(Boolean).join(", ") + ", ";
+    setForm((f) => ({ ...f, capabilities: next }));
+    setCapSuggestions([]);
   }
 
   // ── Step 2: Validate & advance to review ─────────────────────────────────────
@@ -370,10 +403,24 @@ export default function PublishWizard() {
           <Field label="Capabilities" hint="Comma-separated. e.g. research, analysis, summarization">
             <input
               value={form.capabilities}
-              onChange={(e) => setForm((f) => ({ ...f, capabilities: e.target.value }))}
+              onChange={(e) => handleCapabilitiesChange(e.target.value)}
               placeholder="research, analysis, summarization"
               className={inputCls}
             />
+            {capSuggestions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {capSuggestions.map((cap) => (
+                  <button
+                    key={cap}
+                    type="button"
+                    onClick={() => applyCapabilitySuggestion(cap)}
+                    className="text-xs px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  >
+                    + {cap}
+                  </button>
+                ))}
+              </div>
+            )}
             {formErrors.capabilities && <p className="text-xs text-red-500 mt-1">{formErrors.capabilities}</p>}
           </Field>
 
