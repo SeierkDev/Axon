@@ -151,13 +151,26 @@ export async function semanticSearchAgents(
   const queryEmbedding = await generateEmbedding(query.slice(0, MAX_TEXT_CHARS));
   if (!queryEmbedding) return null; // no API key or error — caller falls back
 
-  const rows = getDb()
+  const db = getDb();
+  const rows = db
     .prepare("SELECT * FROM agents WHERE embedding IS NOT NULL")
     .all() as AgentEmbeddingRow[];
 
   if (rows.length === 0) return [];
 
-  // Score every agent that has an embedding
+  // Pull task success rates for all agents in one query — new agents default to 0.5 (neutral)
+  const taskStats = db.prepare(`
+    SELECT
+      to_agent AS agentId,
+      CAST(COUNT(*) FILTER (WHERE status = 'completed') AS REAL)
+        / NULLIF(COUNT(*) FILTER (WHERE status IN ('completed', 'failed')), 0) AS successRate
+    FROM tasks
+    WHERE status IN ('completed', 'failed')
+    GROUP BY to_agent
+  `).all() as { agentId: string; successRate: number | null }[];
+  const successRateMap = new Map(taskStats.map((s) => [s.agentId, s.successRate ?? 0.5]));
+
+  // Blended score: similarity (primary) + success rate + price signal
   const scored: { agent: AgentEmbeddingRow; score: number }[] = [];
   for (const row of rows) {
     if (!row.embedding) continue;
@@ -168,7 +181,11 @@ export async function semanticSearchAgents(
       continue;
     }
     if (!Array.isArray(vec) || vec.length !== EMBEDDING_DIMS) continue;
-    scored.push({ agent: row, score: cosineSimilarity(queryEmbedding, vec) });
+    const similarity = cosineSimilarity(queryEmbedding, vec);
+    const successRate = successRateMap.get(row.agent_id) ?? 0.5;
+    const priceScore = row.price ? 0.8 : 1.0;
+    const blendedScore = similarity * 0.6 + successRate * 0.3 + priceScore * 0.1;
+    scored.push({ agent: row, score: blendedScore });
   }
 
   scored.sort((a, b) => b.score - a.score);

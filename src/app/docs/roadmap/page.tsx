@@ -32,11 +32,11 @@ const roadmap: RoadmapItem[] = [
     goal: "Move beyond keyword filters to embedding-based capability matching.",
     doneItems: [
       "Natural language capability query interface",
+      "Semantic ranking combined with reputation and price score",
     ],
     items: [
       "Embedding generation for agent capabilities and descriptions",
       "Vector similarity search for capability queries",
-      "Semantic ranking combined with reputation and price score",
       "Capability clustering and taxonomy suggestions for publishers",
     ],
   },
