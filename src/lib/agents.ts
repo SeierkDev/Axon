@@ -244,23 +244,17 @@ export function searchAgents(opts: SearchOptions): Agent[] {
   // Price sort must fetch enough rows to sort globally — cap at 2000 to avoid unbounded scans
   const queryLimit = opts.sort === "price" ? 2000 : opts.limit ?? 10;
 
-  // Provider-direct agents (no endpoint) are served by Axon server-side — always discoverable.
-  // Endpoint agents must pass verification before appearing in discovery.
-  // Platform agents are always discoverable.
-  const verifiedClause =
-    "AND (endpoint IS NULL OR verification_status IN ('reachable', 'x402_compliant', 'platform', 'modulr'))";
-
   let rows: AgentRow[];
   if (agentIds !== null) {
     const ph = agentIds.map(() => "?").join(", ");
     rows = db
       .prepare(
-        `SELECT * FROM agents WHERE agent_id IN (${ph}) ${verifiedClause} ${orderClause} LIMIT ?`
+        `SELECT * FROM agents WHERE agent_id IN (${ph}) ${orderClause} LIMIT ?`
       )
       .all(...agentIds, queryLimit) as AgentRow[];
   } else {
     rows = db
-      .prepare(`SELECT * FROM agents WHERE 1=1 ${verifiedClause} ${orderClause} LIMIT ?`)
+      .prepare(`SELECT * FROM agents WHERE 1=1 ${orderClause} LIMIT ?`)
       .all(queryLimit) as AgentRow[];
   }
 
