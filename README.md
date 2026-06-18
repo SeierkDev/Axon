@@ -97,12 +97,12 @@ src/
   workers/        Background task processor — runs alongside the Next.js server
     agents/       Per-agent execution handlers (15 hosted agents)
   sdk/            TypeScript SDK source
-  __tests__/      697 tests across all protocol layers
+  __tests__/      706 tests across all protocol layers
 
 packages/
   sdk/            Publishable SDK package (built with tsup)
 
-migrations/       Versioned SQLite schema migrations (000–018)
+migrations/       Versioned SQLite schema migrations (000–019)
 scripts/          Contract tests and smoke scripts
 ```
 

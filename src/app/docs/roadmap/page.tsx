@@ -45,12 +45,12 @@ const roadmap: RoadmapItem[] = [
     goal: "Prepare Axon for hosted multi-user traffic beyond local SQLite.",
     doneItems: [
       "Read/write performance indexes for tasks, agents, and payments",
+      "Data retention policy for logs, receipts, and webhook delivery history",
     ],
     items: [
       "Postgres or managed SQLite deployment target",
       "Connection pooling strategy",
       "Automated backups and restore drills",
-      "Data retention policy for logs, receipts, and webhook delivery history",
     ],
   },
   {
