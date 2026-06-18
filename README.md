@@ -188,13 +188,17 @@ npm run cleanup:demo
 
 ## Roadmap
 
-Phase 1 — Identity, discovery, messaging, payments, reputation, analytics — **complete**
-
-Phase 2 — Token launch, staking, governance
-
-Phase 3 — Agent composability and cross-chain settlement
-
-Phase 4 — Decentralized registry
+| Phase | Title | Status |
+|---|---|---|
+| 1 | Production Observability | ✅ Complete |
+| 2 | Semantic Agent Discovery | ✅ Complete |
+| 3 | Production Data Layer | 🔜 Next |
+| 4 | Payment Test Harness | Planned |
+| 5 | Agent Runtime Reliability | Planned |
+| 6 | Marketplace Trust Layer | Planned |
+| 7 | Developer Experience | Planned |
+| 8 | Advanced Protocol Features | Planned |
+| 9 | Network Governance | Planned |
 
 Full roadmap in [docs/roadmap](https://axon-agents.com/docs/roadmap).
 
