@@ -38,7 +38,7 @@ export default function SiteNav() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <Image src="/axon-logo.png" alt="Axon" width={48} height={48} className="h-12 w-12 object-contain mix-blend-multiply dark:mix-blend-normal dark:invert" priority />
@@ -66,7 +66,7 @@ export default function SiteNav() {
             <button
               onClick={toggle}
               aria-label="Toggle dark mode"
-              className="hidden sm:flex text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+              className="hidden md:flex text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
             >
               {theme === "dark" ? (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16" aria-hidden="true">
@@ -132,7 +132,8 @@ export default function SiteNav() {
         >
           <div className="absolute inset-0 bg-black/20" />
           <div
-            className="absolute top-14 left-0 right-0 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-lg"
+            className="absolute left-0 right-0 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-lg"
+            style={{ top: "calc(3.5rem + env(safe-area-inset-top, 0px))" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 space-y-1">
@@ -157,6 +158,22 @@ export default function SiteNav() {
                 >
                   Get Started
                 </Link>
+                <button
+                  onClick={toggle}
+                  aria-label="Toggle dark mode"
+                  className="flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-400 transition-colors"
+                >
+                  {theme === "dark" ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16" aria-hidden="true">
+                      <circle cx="12" cy="12" r="5" />
+                      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16" aria-hidden="true">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                  )}
+                </button>
                 <a
                   href="https://x.com/axon402"
                   target="_blank"
