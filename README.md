@@ -102,7 +102,7 @@ src/
 packages/
   sdk/            Publishable SDK package (built with tsup)
 
-migrations/       Versioned SQLite schema migrations (000–017)
+migrations/       Versioned SQLite schema migrations (000–018)
 scripts/          Contract tests and smoke scripts
 ```
 

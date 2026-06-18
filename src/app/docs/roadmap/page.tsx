@@ -43,11 +43,13 @@ const roadmap: RoadmapItem[] = [
     title: "Production Data Layer",
     status: "next",
     goal: "Prepare Axon for hosted multi-user traffic beyond local SQLite.",
+    doneItems: [
+      "Read/write performance indexes for tasks, agents, and payments",
+    ],
     items: [
       "Postgres or managed SQLite deployment target",
       "Connection pooling strategy",
       "Automated backups and restore drills",
-      "Read/write performance indexes for tasks, agents, and payments",
       "Data retention policy for logs, receipts, and webhook delivery history",
     ],
   },
@@ -149,8 +151,8 @@ export default function RoadmapPage() {
         network features.
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">
-        Phase 1 is complete. Remaining phases cover scale, payment testing, and
-        deeper protocol features.
+        Phases 1 and 2 are complete. Phase 3 is in progress. Remaining phases
+        cover payment testing, runtime reliability, and deeper protocol features.
       </p>
 
       <div className="flex flex-col gap-4">
