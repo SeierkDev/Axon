@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { agentExists, createAgent, categoryFromCapabilities } from "@/lib/agents";
 import { verifyAgentEndpoint } from "@/lib/verification";
 import { getDb } from "@/lib/db";
+import { syncToTurso } from "@/lib/db-turso";
 import { logger } from "@/lib/logger";
 import type { InferenceProvider } from "@/sdk/types";
 
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
       getDb()
         .prepare("UPDATE agents SET verification_status = 'modulr' WHERE agent_id = ?")
         .run(raw.agentId);
+      void syncToTurso();
       results.skipped.push(raw.agentId);
       continue;
     }
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest) {
       getDb()
         .prepare("UPDATE agents SET verification_status = 'modulr' WHERE agent_id = ?")
         .run(created.agentId);
+      void syncToTurso();
 
       if (created.endpoint) {
         void verifyAgentEndpoint(created.agentId, created.endpoint);

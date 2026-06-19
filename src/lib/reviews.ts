@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 
 export interface Review {
   reviewId: string;
@@ -69,6 +70,7 @@ export function createReview(
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(reviewId, agentId, reviewerId, rating, comment ?? null, createdAt);
 
+  void syncToTurso();
   return rowToReview(
     db.prepare("SELECT * FROM reviews WHERE review_id = ?").get(reviewId) as ReviewRow
   );

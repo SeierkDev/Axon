@@ -98,4 +98,76 @@ describe("assertReadyConfig", () => {
 
     delete process.env.AXON_PAYMENT_VERIFIER;
   });
+
+  it("requires DATABASE_AUTH_TOKEN when DATABASE_URL is a libsql endpoint", () => {
+    mutableEnv.NODE_ENV = "production";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
+    process.env.HELIUS_API_KEY = "test-key";
+    process.env.SEED_SECRET = "test-secret";
+    process.env.DATABASE_URL = "libsql://my-db.turso.io";
+    process.env.DATABASE_PATH = "/data/axon-replica.db";
+    delete process.env.DATABASE_AUTH_TOKEN;
+
+    expect(() => assertReadyConfig()).toThrow(/DATABASE_AUTH_TOKEN/);
+
+    delete process.env.DATABASE_URL;
+  });
+
+  it("passes with DATABASE_URL and DATABASE_AUTH_TOKEN set for Turso", () => {
+    mutableEnv.NODE_ENV = "production";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
+    process.env.HELIUS_API_KEY = "test-key";
+    process.env.SEED_SECRET = "test-secret";
+    process.env.DATABASE_URL = "libsql://my-db.turso.io";
+    process.env.DATABASE_PATH = "/data/axon-replica.db";
+    process.env.DATABASE_AUTH_TOKEN = "test-token";
+
+    expect(() => assertReadyConfig()).not.toThrow();
+
+    delete process.env.DATABASE_URL;
+    delete process.env.DATABASE_AUTH_TOKEN;
+  });
+
+  it("does not require DATABASE_AUTH_TOKEN when DATABASE_URL is not a libsql endpoint", () => {
+    mutableEnv.NODE_ENV = "production";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
+    process.env.HELIUS_API_KEY = "test-key";
+    process.env.SEED_SECRET = "test-secret";
+    process.env.DATABASE_PATH = "/data/axon.db";
+    delete process.env.DATABASE_URL;
+    delete process.env.DATABASE_AUTH_TOKEN;
+
+    expect(() => assertReadyConfig()).not.toThrow();
+  });
+
+  it("requires absolute DATABASE_PATH when DATABASE_URL is a libsql endpoint", () => {
+    mutableEnv.NODE_ENV = "production";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
+    process.env.HELIUS_API_KEY = "test-key";
+    process.env.SEED_SECRET = "test-secret";
+    process.env.DATABASE_URL = "libsql://my-db.turso.io";
+    process.env.DATABASE_AUTH_TOKEN = "test-token";
+    process.env.DATABASE_PATH = "relative/path.db";
+
+    expect(() => assertReadyConfig()).toThrow(/DATABASE_PATH/);
+
+    delete process.env.DATABASE_URL;
+    delete process.env.DATABASE_AUTH_TOKEN;
+    delete process.env.DATABASE_PATH;
+  });
+
+  it("requires DATABASE_PATH when DATABASE_URL is a libsql endpoint and no path is set", () => {
+    mutableEnv.NODE_ENV = "production";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
+    process.env.HELIUS_API_KEY = "test-key";
+    process.env.SEED_SECRET = "test-secret";
+    process.env.DATABASE_URL = "libsql://my-db.turso.io";
+    process.env.DATABASE_AUTH_TOKEN = "test-token";
+    delete process.env.DATABASE_PATH;
+
+    expect(() => assertReadyConfig()).toThrow(/DATABASE_PATH/);
+
+    delete process.env.DATABASE_URL;
+    delete process.env.DATABASE_AUTH_TOKEN;
+  });
 });

@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { getAgentById } from "./agents";
 import { debitChannel, parseMppUsdcPrice, refundDebitForTask } from "./mpp";
 import { createTask, markTaskPaymentConfirmed } from "./tasks";
@@ -120,6 +121,7 @@ export function createWorkflow(opts: {
     throw err;
   }
 
+  void syncToTurso();
   return getWorkflow(workflowId)!;
 }
 
@@ -232,11 +234,13 @@ export function advanceWorkflow(workflowId: string, stepIndex: number, output: s
       return;
     }
     db.prepare("UPDATE workflows SET current_step = ? WHERE workflow_id = ?").run(nextStep, workflowId);
+    void syncToTurso();
   } else {
     // All steps done — mark workflow completed
     db.prepare(
       "UPDATE workflows SET status='completed', final_output=?, completed_at=? WHERE workflow_id=?"
     ).run(output, new Date().toISOString(), workflowId);
+    void syncToTurso();
   }
 }
 
@@ -244,4 +248,5 @@ export function failWorkflow(workflowId: string): void {
   getDb()
     .prepare("UPDATE workflows SET status='failed', completed_at=? WHERE workflow_id=?")
     .run(new Date().toISOString(), workflowId);
+  void syncToTurso();
 }

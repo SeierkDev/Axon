@@ -33,13 +33,10 @@ export function isTursoConfigured(): boolean {
   return url.startsWith("libsql://") || url.startsWith("libsqls://");
 }
 
-export function getTursoClient(): Client | null {
-  return _tursoClient;
-}
-
 // Call once at startup. Pulls the remote Turso DB into the local replica file.
 export async function initTursoSync(): Promise<void> {
   if (!isTursoConfigured()) return;
+  if (_tursoClient) return; // already initialised (guard against hot-reload double-calls)
 
   const syncUrl = process.env.DATABASE_URL!.trim();
   const authToken = process.env.DATABASE_AUTH_TOKEN?.trim();
@@ -74,22 +71,13 @@ export async function syncToTurso(): Promise<void> {
   }
 }
 
-// Execute a query directly on the Turso client (async).
-// Use this for write-critical paths where you need immediate remote durability.
-export async function tursoExecute(
-  sql: string,
-  args?: (string | number | null | boolean)[]
-): Promise<{ rows: Record<string, unknown>[] }> {
-  if (!_tursoClient) {
-    throw new Error("Turso client not initialised — call initTursoSync() first");
-  }
-  const result = await _tursoClient.execute({ sql, args: args ?? [] });
-  const rows = result.rows.map((row) => {
-    const obj: Record<string, unknown> = {};
-    result.columns.forEach((col, i) => {
-      obj[col] = row[i];
-    });
-    return obj;
-  });
-  return { rows };
+// Close the Turso client and stop its auto-sync interval.
+// Must be called on shutdown AFTER the final syncToTurso() so the interval
+// cannot fire against an already-closed better-sqlite3 file, and so the
+// event loop can drain and the process can exit cleanly.
+export function closeTursoClient(): void {
+  if (!_tursoClient) return;
+  try { _tursoClient.close(); } catch { /* already closed */ }
+  _tursoClient = null;
 }
+

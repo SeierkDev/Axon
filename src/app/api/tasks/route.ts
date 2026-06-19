@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTask, getTaskById, getTaskByIdempotency, markTaskPaymentConfirmed, type Task } from "@/lib/tasks";
+import { syncToTurso } from "@/lib/db-turso";
 import { getAgentById } from "@/lib/agents";
 import { createPayment, getPaymentByIncomingSignature, parsePriceToSol, refundPayment } from "@/lib/payments";
 import { isValidSolanaAddress } from "@/lib/solana";
@@ -169,6 +170,7 @@ async function handlePost(req: NextRequest) {
       // Payment failed — roll back the task
       const { getDb } = await import("@/lib/db");
       getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+      void syncToTurso();
       const msg = err instanceof Error ? err.message : "Payment verification failed";
       // Don't expose internal config details (missing env vars, etc.) to callers
       const safeMsg = /is not set|API_KEY|HELIUS/i.test(msg)
@@ -185,6 +187,7 @@ async function handlePost(req: NextRequest) {
       refundPayment(task.taskId);
       const { getDb } = await import("@/lib/db");
       getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+      void syncToTurso();
       return apiError("INTERNAL_ERROR", "Task payment could not be confirmed", 500);
     }
     task = confirmedTask;

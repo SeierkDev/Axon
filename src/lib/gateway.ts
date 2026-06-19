@@ -3,6 +3,7 @@
 
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { publicHttpFetch } from "./urlSecurity";
 import { encrypt, decrypt } from "./crypto";
 import { logger } from "./logger";
@@ -233,6 +234,7 @@ export function createGatewayProvider(opts: {
     createdAt,
   );
 
+  void syncToTurso();
   return getGatewayProvider(providerId)!;
 }
 
@@ -260,6 +262,7 @@ export function deleteGatewayProvider(providerId: string): void {
     WHERE to_agent = ? AND status IN ('queued', 'running')
   `).run("Gateway provider was deleted", new Date().toISOString(), providerId);
   db.prepare("DELETE FROM gateway_providers WHERE provider_id = ?").run(providerId);
+  void syncToTurso();
 }
 
 export function updateGatewayProviderStatus(
@@ -269,6 +272,7 @@ export function updateGatewayProviderStatus(
   getDb()
     .prepare("UPDATE gateway_providers SET status = ? WHERE provider_id = ?")
     .run(status, providerId);
+  void syncToTurso();
 }
 
 // ── Proxy ─────────────────────────────────────────────────────────────────────

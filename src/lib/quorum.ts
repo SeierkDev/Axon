@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 
 export type QuorumStatus = "pending" | "completed" | "failed";
@@ -67,6 +68,7 @@ export function createQuorumRecord(opts: {
     INSERT INTO quorum_tasks (quorum_id, from_agent, task_content, threshold, agent_count, status, created_at)
     VALUES (?, ?, ?, ?, ?, 'pending', ?)
   `).run(quorumId, opts.fromAgent, opts.taskContent, opts.threshold, opts.agentCount, createdAt);
+  void syncToTurso();
 
   return getQuorumTask(quorumId)!;
 }
@@ -135,6 +137,7 @@ export function onChildTaskCompleted(quorumId: string): void {
     SET status = 'completed', accepted_result = ?, accepted_agent = ?, completed_at = ?
     WHERE quorum_id = ? AND status = 'pending'
   `).run(winner.output, winner.to_agent, now, quorumId);
+  void syncToTurso();
 
   logger.info("quorum.completed", "Quorum reached threshold — result accepted", {
     quorumId,
@@ -167,6 +170,7 @@ export function onChildTaskFailed(quorumId: string): void {
     UPDATE quorum_tasks SET status = 'failed', completed_at = ?
     WHERE quorum_id = ? AND status = 'pending'
   `).run(now, quorumId);
+  void syncToTurso();
 
   logger.warn("quorum.failed", "Quorum failed — too many agent failures to meet threshold", {
     quorumId,

@@ -2,6 +2,8 @@
 // requests are served. Validates required env vars so the process fails fast
 // with a clear checklist instead of crashing mid-request.
 
+import path from "path";
+
 export async function register() {
   // Only run in the Node.js server context, not in the Edge runtime
   if (process.env.NEXT_RUNTIME !== "edge") {
@@ -27,6 +29,8 @@ export function assertReadyConfig(): void {
   if (process.env.NODE_ENV !== "production") return;
 
   const useMockPayments = process.env.AXON_PAYMENT_VERIFIER === "mock";
+  const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
+  const isTurso = databaseUrl.startsWith("libsql://") || databaseUrl.startsWith("libsqls://");
 
   const checks: ConfigCheck[] = [
     {
@@ -55,10 +59,17 @@ export function assertReadyConfig(): void {
     },
     {
       name: "DATABASE_AUTH_TOKEN",
-      required: (process.env.DATABASE_URL?.trim() ?? "").startsWith("libsql://") ||
-                (process.env.DATABASE_URL?.trim() ?? "").startsWith("libsqls://"),
+      required: isTurso,
       present: hasEnv("DATABASE_AUTH_TOKEN"),
       hint: "Required when DATABASE_URL is a Turso libsql endpoint. Get it from the Turso dashboard.",
+    },
+    {
+      name: "DATABASE_PATH (absolute path required for Turso replica)",
+      required: isTurso,
+      present: isTurso
+        ? hasEnv("DATABASE_PATH") && path.isAbsolute(process.env.DATABASE_PATH!.trim())
+        : true,
+      hint: "When using Turso, DATABASE_PATH must be an absolute path for the local replica file (e.g. /data/axon-replica.db).",
     },
   ];
 

@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 
 export interface ReputationMetrics {
   agentId: string;
@@ -119,5 +120,6 @@ export function updateAgentReputation(agentId: string): number {
   getDb()
     .prepare("UPDATE agents SET reputation = ? WHERE agent_id = ?")
     .run(metrics.reputation, agentId);
+  void syncToTurso();
   return metrics.reputation;
 }

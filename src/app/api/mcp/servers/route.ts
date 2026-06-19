@@ -3,6 +3,7 @@ import { withRequestContext } from "@/lib/withRequestContext";
 import { createMcpServer, listMcpServers, getMcpToolsByServer, syncMcpTools } from "@/lib/mcp";
 import { createAgent, agentExists, getAgentById } from "@/lib/agents";
 import { getDb } from "@/lib/db";
+import { syncToTurso } from "@/lib/db-turso";
 import { requireAgentOwner } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
 import { parsePaymentAmount } from "@/lib/solana";
@@ -111,6 +112,7 @@ async function handlePost(req: NextRequest) {
         "INSERT OR IGNORE INTO agent_capabilities (capability, agent_id) VALUES (?, ?)"
       );
       for (const cap of caps) insertCap.run(cap, server.serverId);
+      void syncToTurso();
     }
   } catch (err) {
     syncError = err instanceof Error ? err.message : "Tool sync failed";

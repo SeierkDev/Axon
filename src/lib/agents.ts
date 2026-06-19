@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { parsePaymentAmount } from "./solana";
 import { scheduleAgentEmbedding } from "./embeddings";
 import type { Agent } from "@/sdk/types";
@@ -102,6 +103,7 @@ export function createAgent(agent: Agent): Agent {
       insertCap.run(cap, agent.agentId);
     }
   })();
+  void syncToTurso();
 
   scheduleAgentEmbedding(agent);
   return agent;
@@ -171,6 +173,7 @@ export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent 
       }
     }
   })();
+  void syncToTurso();
 
   const updated = getAgentById(agentId);
   if (updated && (updates.name !== undefined || updates.capabilities !== undefined)) {

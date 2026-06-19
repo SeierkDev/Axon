@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 import { queueWebhookEvent } from "./webhooks";
 
@@ -123,11 +124,13 @@ export function setThreshold(
     `).run(randomUUID(), agentId, thresholdUsdc, windowHours, enabled ? 1 : 0, now, now);
   }
 
+  void syncToTurso();
   return getThreshold(agentId)!;
 }
 
 export function deleteThreshold(agentId: string): void {
   getDb().prepare("DELETE FROM spend_thresholds WHERE agent_id = ?").run(agentId);
+  void syncToTurso();
 }
 
 export function getThresholdStatus(agentId: string): ThresholdStatus | null {
@@ -195,6 +198,7 @@ export function checkThreshold(agentId: string): void {
     windowHours: threshold.windowHours,
     firedAt: now,
   });
+  void syncToTurso(); // covers both the spend_alerts INSERT and the webhook_deliveries INSERT above
 }
 
 export function checkAllThresholds(): void {

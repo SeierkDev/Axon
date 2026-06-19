@@ -11,6 +11,7 @@
 
 import { randomUUID, createHash } from "crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { parsePaymentAmount, parseUsdcAmount, verifyIncomingPayment } from "./solana";
 
 const MICRO_USDC = 1_000_000;
@@ -165,6 +166,7 @@ export function recordDeposit(
        WHERE channel_id = ?`
     ).run(amount.microUsdc, amount.microUsdc, now, channelId);
   })();
+  void syncToTurso();
 }
 
 // ── Channel lifecycle ──────────────────────────────────────────────────────────
@@ -188,11 +190,13 @@ export function createChannel(
   const row = db
     .prepare("SELECT * FROM mpp_channels WHERE channel_id = ?")
     .get(channelId) as ChannelRow;
+  void syncToTurso();
   return { channel: rowToChannel(row), channelKey };
 }
 
 export function deleteChannel(channelId: string): void {
   getDb().prepare("DELETE FROM mpp_channels WHERE channel_id = ?").run(channelId);
+  void syncToTurso();
 }
 
 export function getChannelById(channelId: string): MppChannel | null {
@@ -228,7 +232,7 @@ export function debitChannel(
   const db = getDb();
   const now = new Date().toISOString();
 
-  return db.transaction((): DebitResult => {
+  const result = db.transaction((): DebitResult => {
     const row = db
       .prepare("SELECT * FROM mpp_channels WHERE channel_id = ? AND status = 'open'")
       .get(channelId) as ChannelRow | undefined;
@@ -265,13 +269,15 @@ export function debitChannel(
 
     return { success: true, remainingBalance: microToUsdc(updated.balance_micro_usdc) };
   })();
+  void syncToTurso();
+  return result;
 }
 
 export function refundDebitForTask(taskId: string): DebitResult {
   const db = getDb();
   const now = new Date().toISOString();
 
-  return db.transaction((): DebitResult => {
+  const result = db.transaction((): DebitResult => {
     const debit = db
       .prepare("SELECT debit_id, channel_id, amount_micro_usdc FROM mpp_debits WHERE task_id = ?")
       .get(taskId) as { debit_id: string; channel_id: string; amount_micro_usdc: number } | undefined;
@@ -295,13 +301,15 @@ export function refundDebitForTask(taskId: string): DebitResult {
 
     return { success: true, remainingBalance: updated ? microToUsdc(updated.balance_micro_usdc) : undefined };
   })();
+  void syncToTurso();
+  return result;
 }
 
 export function claimChannelClose(channelId: string): MppChannel | null {
   const db = getDb();
   const now = new Date().toISOString();
 
-  return db.transaction((): MppChannel | null => {
+  const result = db.transaction((): MppChannel | null => {
     const changes = db.prepare(`
       UPDATE mpp_channels
       SET status = 'closing', updated_at = ?
@@ -323,6 +331,8 @@ export function claimChannelClose(channelId: string): MppChannel | null {
       .get(channelId) as ChannelRow | undefined;
     return row ? rowToChannel(row) : null;
   })();
+  void syncToTurso();
+  return result;
 }
 
 export function finalizeChannelClose(channelId: string, zeroBalance: boolean): MppChannel | null {
@@ -338,5 +348,7 @@ export function finalizeChannelClose(channelId: string, zeroBalance: boolean): M
        WHERE channel_id = ? AND status = 'closing'`
     )
     .run(zeroBalance ? 1 : 0, zeroBalance ? 1 : 0, now, channelId).changes;
-  return changes > 0 ? getChannelById(channelId) : null;
+  const result = changes > 0 ? getChannelById(channelId) : null;
+  void syncToTurso();
+  return result;
 }

@@ -23,7 +23,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import { seedBuiltinAgents, backfillAgentHistory } from "./agentSeed";
 import { applyMigrations } from "./migrations";
-import { isTursoConfigured } from "./db-turso";
+import { isTursoConfigured, syncToTurso, closeTursoClient } from "./db-turso";
 
 const DEFAULT_DB_PATH = path.join(process.cwd(), "axon.db");
 
@@ -82,14 +82,17 @@ function assertProductionDatabase(): void {
 
 // Close the DB cleanly when the process exits so WAL is checkpointed and
 // in-flight SQLite transactions are not left dangling (critical for Railway).
-function closeDb(): void {
+// Syncs to Turso first so writes from the last sync window are not lost.
+async function closeDb(): Promise<void> {
+  await syncToTurso();
   if (_db) {
     try { _db.close(); } catch { /* already closed */ }
     _db = null;
   }
+  closeTursoClient(); // stop auto-sync interval so the event loop can drain
 }
-process.once("SIGTERM", closeDb);
-process.once("SIGINT", closeDb);
+process.once("SIGTERM", () => void closeDb());
+process.once("SIGINT", () => void closeDb());
 
 export function getDb(): Database.Database {
   if (_db) return _db;

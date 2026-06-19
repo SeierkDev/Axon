@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 
 export interface Budget {
   budgetId: string;
@@ -72,6 +73,7 @@ export function createBudget(opts: {
     opts.allowedToAgents ? JSON.stringify(opts.allowedToAgents) : null,
     now,
   );
+  void syncToTurso();
 
   return rowToBudget(
     db.prepare("SELECT * FROM agent_budgets WHERE agent_id = ?").get(opts.agentId) as BudgetRow
@@ -164,7 +166,9 @@ export function checkBudget(
 }
 
 export function deleteBudget(agentId: string): boolean {
-  return getDb()
+  const deleted = getDb()
     .prepare("DELETE FROM agent_budgets WHERE agent_id = ?")
     .run(agentId).changes > 0;
+  if (deleted) void syncToTurso();
+  return deleted;
 }

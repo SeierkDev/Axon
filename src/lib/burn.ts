@@ -16,6 +16,7 @@ import {
   getAccount,
 } from "@solana/spl-token";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 import { PAYMENT_RECEIVER_WALLET_ADDRESS, USDC_MINT, USDC_DECIMALS } from "./solana";
 
@@ -151,6 +152,7 @@ export async function executeDailyBurn(): Promise<BurnResult> {
   db.transaction(() => {
     for (const txId of txIds) updateStmt.run(txId);
   })();
+  void syncToTurso();
 
   logger.info("burn.complete", "Daily $AXON burn complete", { pendingUsdc, axonReceived, swapSignature, burnSignature });
 

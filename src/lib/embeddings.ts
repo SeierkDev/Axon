@@ -7,6 +7,7 @@
 // Embeddings are stored as a JSON array in agents.embedding.
 
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 import type { Agent } from "@/sdk/types";
 import type { SearchOptions } from "./agents";
@@ -83,6 +84,7 @@ export function storeAgentEmbedding(agentId: string, embedding: number[]): void 
   getDb()
     .prepare("UPDATE agents SET embedding = ? WHERE agent_id = ?")
     .run(JSON.stringify(embedding), agentId);
+  void syncToTurso();
 }
 
 export function getAgentEmbedding(agentId: string): number[] | null {

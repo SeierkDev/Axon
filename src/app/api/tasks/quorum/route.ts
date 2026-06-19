@@ -13,6 +13,7 @@ import { createTask } from "@/lib/tasks";
 import { getAgentById } from "@/lib/agents";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { isValidSolanaAddress } from "@/lib/solana";
+import { syncToTurso } from "@/lib/db-turso";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
 import { apiError } from "@/lib/apiError";
 import { withRequestContext } from "@/lib/withRequestContext";
@@ -130,6 +131,7 @@ async function handlePost(req: NextRequest) {
     const db = getDb();
     db.prepare("DELETE FROM tasks WHERE quorum_id = ?").run(quorum.quorumId);
     db.prepare("DELETE FROM quorum_tasks WHERE quorum_id = ?").run(quorum.quorumId);
+    void syncToTurso();
     const msg = err instanceof Error ? err.message : "Failed to create child tasks";
     return apiError("INTERNAL_ERROR", msg, 500);
   }

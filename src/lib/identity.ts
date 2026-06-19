@@ -4,6 +4,7 @@ import { createHash, randomBytes, randomUUID, scryptSync } from "crypto";
 import { PublicKey } from "@solana/web3.js";
 import type { NextRequest } from "next/server";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { getAgentById } from "./agents";
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
@@ -50,6 +51,7 @@ export function createChallenge(agentId: string): string {
   db.prepare(
     "INSERT INTO challenges (id, agent_id, value, expires_at) VALUES (?, ?, ?, ?)"
   ).run(id, agentId, value, expiresAt);
+  void syncToTurso();
 
   return value;
 }
@@ -63,6 +65,7 @@ export function consumeChallenge(agentId: string, value: string): boolean {
   const result = getDb()
     .prepare("DELETE FROM challenges WHERE agent_id = ? AND value = ? AND expires_at > ?")
     .run(agentId, value, Date.now());
+  if (result.changes > 0) void syncToTurso();
   return result.changes > 0;
 }
 
@@ -141,6 +144,7 @@ export function createApiKey(walletAddress: string): {
     INSERT INTO api_keys (key_id, wallet_address, key_hash, key_prefix, hash_algorithm, created_at)
     VALUES (?, ?, ?, ?, 'scrypt', ?)
   `).run(keyId, walletAddress, hashApiKeyScrypt(apiKey), keyPrefix, now);
+  void syncToTurso();
 
   return { keyId, apiKey, keyPrefix, walletAddress };
 }
@@ -185,10 +189,15 @@ export function revokeApiKey(req: NextRequest): boolean {
   const db = getDb();
 
   const scryptHash = hashApiKeyScrypt(apiKey);
-  if (db.prepare("DELETE FROM api_keys WHERE key_hash = ? AND hash_algorithm = 'scrypt'").run(scryptHash).changes > 0) return true;
+  if (db.prepare("DELETE FROM api_keys WHERE key_hash = ? AND hash_algorithm = 'scrypt'").run(scryptHash).changes > 0) {
+    void syncToTurso();
+    return true;
+  }
 
   const sha256Hash = hashApiKeySha256Legacy(apiKey);
-  return db.prepare("DELETE FROM api_keys WHERE key_hash = ? AND hash_algorithm = 'sha256'").run(sha256Hash).changes > 0;
+  const deleted = db.prepare("DELETE FROM api_keys WHERE key_hash = ? AND hash_algorithm = 'sha256'").run(sha256Hash).changes > 0;
+  if (deleted) void syncToTurso();
+  return deleted;
 }
 
 export interface ApiKeyInfo {
@@ -216,9 +225,11 @@ export function listApiKeys(walletAddress: string): ApiKeyInfo[] {
 }
 
 export function revokeApiKeyById(keyId: string, walletAddress: string): boolean {
-  return getDb()
+  const deleted = getDb()
     .prepare("DELETE FROM api_keys WHERE key_id = ? AND wallet_address = ?")
     .run(keyId, walletAddress).changes > 0;
+  if (deleted) void syncToTurso();
+  return deleted;
 }
 
 export function isAgentOwner(user: AuthenticatedUser, agentId: string): boolean {

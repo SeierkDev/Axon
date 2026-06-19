@@ -13,6 +13,7 @@
 import { NextRequest } from "next/server";
 import { getAgentById } from "@/lib/agents";
 import { createTask, completeTask, failTask, confirmAndStartTask } from "@/lib/tasks";
+import { syncToTurso } from "@/lib/db-turso";
 import { createPayment, parsePriceToSol, refundPayment, releasePayment } from "@/lib/payments";
 import { logger } from "@/lib/logger";
 import { isValidSolanaAddress } from "@/lib/solana";
@@ -198,12 +199,14 @@ export function POST(req: NextRequest, { params }: Params) {
       if (!price) {
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+        void syncToTurso();
         return jsonError("Agent price is not in USDC — MPP not supported for this agent", "VALIDATION_ERROR", 400);
       }
       const debit = debitChannel(mppChannelId, agentId, price, task.taskId);
       if (!debit.success) {
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+        void syncToTurso();
         return jsonError(debit.error ?? "MPP debit failed", "PAYMENT_FAILED", 402);
       }
       const startedTask = confirmAndStartTask(task.taskId, "stream");
@@ -211,6 +214,7 @@ export function POST(req: NextRequest, { params }: Params) {
         refundDebitForTask(task.taskId);
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+        void syncToTurso();
         return jsonError("Task payment could not be confirmed", "INTERNAL_ERROR", 500);
       }
       task = startedTask;
@@ -231,6 +235,7 @@ export function POST(req: NextRequest, { params }: Params) {
         } catch (err) {
           const { getDb } = await import("@/lib/db");
           getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+          void syncToTurso();
           const msg = err instanceof Error ? err.message : "Payment verification failed";
           const status = /is not set|API_KEY|HELIUS/i.test(msg) ? 503 : 402;
           return jsonError(
@@ -245,6 +250,7 @@ export function POST(req: NextRequest, { params }: Params) {
         refundPayment(task.taskId);
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+        void syncToTurso();
         return jsonError("Task payment could not be confirmed", "INTERNAL_ERROR", 500);
       }
       task = startedTask;

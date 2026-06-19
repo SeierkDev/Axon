@@ -152,6 +152,7 @@ export function createTask(opts: CreateTaskOptions): Task {
 
   const task = getTaskById(taskId)!;
   if (initialStatus === "queued" && opts.queueQueuedWebhook !== false) queueTaskQueuedWebhook(task);
+  void syncToTurso(); // covers task INSERT + any webhook_deliveries INSERT above
   logger.info("task.created", "Task created", {
     taskId: task.taskId,
     traceId: task.traceId,
@@ -187,6 +188,7 @@ export function startTask(taskId: string, startedBy = "api"): Task | null {
     .prepare("UPDATE tasks SET status='running', started_at=?, started_by=? WHERE task_id=? AND status='queued'")
     .run(now, startedBy, taskId).changes;
   if (changes === 0) return null;
+  void syncToTurso();
 
   const task = getTaskById(taskId)!;
   logger.info("task.started", "Task started", {
@@ -206,6 +208,7 @@ export function markTaskPaymentConfirmed(taskId: string): Task | null {
 
   const task = getTaskById(taskId)!;
   queueTaskQueuedWebhook(task);
+  void syncToTurso(); // covers task UPDATE + webhook_deliveries INSERT
   logger.info("task.payment_confirmed", "Task payment confirmed", {
     taskId: task.taskId,
     fromAgent: task.fromAgent,
@@ -221,6 +224,7 @@ export function confirmAndStartTask(taskId: string, startedBy = "api"): Task | n
     .prepare("UPDATE tasks SET status='running', started_at=?, started_by=? WHERE task_id=? AND status='payment_pending'")
     .run(now, startedBy, taskId).changes;
   if (changes === 0) return null;
+  void syncToTurso();
 
   const task = getTaskById(taskId)!;
   logger.info("task.started", "Paid task confirmed and started", {
@@ -368,6 +372,7 @@ export function requeueTask(taskId: string): Task | null {
   if (changes === 0) return null;
   const task = getTaskById(taskId)!;
   queueTaskQueuedWebhook(task);
+  void syncToTurso(); // covers task UPDATE + webhook_deliveries INSERT
   logger.info("task.requeued", "Failed task requeued for retry", { taskId, toAgent: task.toAgent });
   return task;
 }

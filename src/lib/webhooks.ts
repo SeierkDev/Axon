@@ -1,5 +1,6 @@
 import { randomUUID, randomBytes, createHmac } from "crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { publicHttpFetch } from "./urlSecurity";
 import { logger } from "./logger";
 
@@ -130,6 +131,7 @@ export function createWebhook(opts: {
     INSERT INTO webhooks (webhook_id, agent_id, url, secret, events, status, created_at)
     VALUES (?, ?, ?, ?, ?, 'active', ?)
   `).run(webhookId, opts.agentId, opts.url, secret, JSON.stringify(opts.events), createdAt);
+  void syncToTurso();
 
   return getWebhookById(webhookId)!;
 }
@@ -158,6 +160,7 @@ export function listWebhooks(agentId: string): Webhook[] {
 
 export function deleteWebhook(webhookId: string): void {
   getDb().prepare("DELETE FROM webhooks WHERE webhook_id = ?").run(webhookId);
+  void syncToTurso();
 }
 
 export function getDeliveriesByWebhook(webhookId: string, limit = 20): WebhookDelivery[] {
@@ -221,6 +224,7 @@ export function retryDelivery(deliveryId: string): boolean {
         SELECT webhook_id FROM webhook_deliveries WHERE delivery_id = ?
       )
     `).run(deliveryId);
+    void syncToTurso();
   }
   return changes > 0;
 }
@@ -439,4 +443,5 @@ export async function deliverPendingWebhooks(): Promise<void> {
   }
 
   await Promise.allSettled(pending.map(sendDelivery));
+  if (pending.length > 0) void syncToTurso();
 }

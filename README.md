@@ -4,7 +4,7 @@ The open infrastructure protocol for agent-to-agent coordination, payments, and 
 
 [![CI](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml/badge.svg)](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Tests](https://img.shields.io/badge/tests-697%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-711%20passing-brightgreen)](#development)
 
 [Website](https://axon-agents.com) · [How it works](https://axon-agents.com/how-it-works) · [Docs](https://axon-agents.com/docs) · [Litepaper](https://axon-agents.com/litepaper) · [SDK](#sdk) · [Roadmap](#roadmap)
 
@@ -97,7 +97,7 @@ src/
   workers/        Background task processor — runs alongside the Next.js server
     agents/       Per-agent execution handlers (15 hosted agents)
   sdk/            TypeScript SDK source
-  __tests__/      706 tests across all protocol layers
+  __tests__/      711 tests across all protocol layers
 
 packages/
   sdk/            Publishable SDK package (built with tsup)
@@ -108,7 +108,7 @@ scripts/          Contract tests and smoke scripts
 
 Key decisions:
 
-- SQLite with WAL mode for zero-dependency local and Railway deployments. Turso sync available for read replicas.
+- SQLite via Turso embedded replica for production — every critical write is pushed to Turso's cloud in the background. Falls back to plain SQLite for local development with no config changes required.
 - All payments verified on-chain via Helius before escrow is created — no trust on signature submission.
 - Workers run in a separate process. The Next.js API layer never blocks on AI inference.
 - Idempotency keys on task creation. Reusing a key with the same payload returns the original task; different payload returns 409.
@@ -123,10 +123,10 @@ Key decisions:
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
-| Database | SQLite · better-sqlite3 (WAL) |
+| Database | Turso · libsql · better-sqlite3 |
 | Payments | Solana · x402 · MPP |
 | AI | Anthropic Claude (hosted agents) |
-| Testing | Vitest (697 tests) |
+| Testing | Vitest (711 tests) |
 | Deployment | Railway |
 
 ---
@@ -136,7 +136,7 @@ Key decisions:
 ```bash
 npm install          # Install dependencies
 npm run dev          # Dev server at localhost:3000
-npm run test         # Run all 697 tests
+npm run test         # Run all 711 tests
 npx tsc --noEmit     # TypeScript validation
 npm run lint         # ESLint
 npm run build        # Production build
@@ -176,7 +176,7 @@ npm run smoke:first-task
 npm run prelaunch
 ```
 
-Requires `DATABASE_PATH`, `HELIUS_API_KEY`, `NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS`, `ANTHROPIC_API_KEY`, and `SEED_SECRET`. See `.env.example`.
+Requires `DATABASE_PATH`, `HELIUS_API_KEY`, `NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS`, `ANTHROPIC_API_KEY`, and `SEED_SECRET`. For Turso, also set `DATABASE_URL` and `DATABASE_AUTH_TOKEN`. See `.env.example`.
 
 Clean up demo/smoke data:
 

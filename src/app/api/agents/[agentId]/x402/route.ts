@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAgentById } from "@/lib/agents";
 import { createTask, markTaskPaymentConfirmed } from "@/lib/tasks";
+import { syncToTurso } from "@/lib/db-turso";
 import { createPayment, parsePriceToSol, refundPayment } from "@/lib/payments";
 import { isValidSolanaAddress } from "@/lib/solana";
 import {
@@ -154,6 +155,7 @@ export function POST(req: NextRequest, { params }: Params) {
       if (!debit.success) {
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+        void syncToTurso();
         return apiError("PAYMENT_FAILED", debit.error ?? "MPP debit failed", 402);
       }
       const confirmedTask = markTaskPaymentConfirmed(task.taskId);
@@ -161,6 +163,7 @@ export function POST(req: NextRequest, { params }: Params) {
         refundDebitForTask(task.taskId);
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+        void syncToTurso();
         return apiError("INTERNAL_ERROR", "Task payment could not be confirmed", 500);
       }
       task = confirmedTask;
@@ -216,6 +219,7 @@ export function POST(req: NextRequest, { params }: Params) {
       } catch (err) {
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+        void syncToTurso();
         const msg = err instanceof Error ? err.message : "Payment verification failed";
         if (/is not set|API_KEY|HELIUS/i.test(msg)) {
           return apiError("PAYMENT_UNAVAILABLE", "Payment processing unavailable", 503);
@@ -229,6 +233,7 @@ export function POST(req: NextRequest, { params }: Params) {
       if (!refunded) logger.error("payment.refund_failed", "Could not refund payment after confirmation failure", { taskId: task.taskId, agentId });
       const { getDb } = await import("@/lib/db");
       getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+      void syncToTurso();
       return apiError("INTERNAL_ERROR", "Task payment could not be confirmed", 500);
     }
     task = confirmedTask;

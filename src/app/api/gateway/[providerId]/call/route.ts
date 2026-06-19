@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGatewayProvider, proxyToProvider } from "@/lib/gateway";
 import { createTask, startTask, completeTask, failTask, markTaskPaymentConfirmed } from "@/lib/tasks";
+import { syncToTurso } from "@/lib/db-turso";
 import { createPayment, parsePriceToSol, refundPayment, releasePayment } from "@/lib/payments";
 import { isValidSolanaAddress } from "@/lib/solana";
 import { agentExists } from "@/lib/agents";
@@ -131,6 +132,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       } catch (err) {
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+        void syncToTurso();
         const msg = err instanceof Error ? err.message : "Payment verification failed";
         if (/is not set|API_KEY|HELIUS/i.test(msg)) {
           return apiError("PAYMENT_UNAVAILABLE", "Payment processing unavailable", 503);
@@ -142,6 +144,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       refundPayment(task.taskId);
       const { getDb } = await import("@/lib/db");
       getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+      void syncToTurso();
       return apiError("INTERNAL_ERROR", "Task payment could not be confirmed", 500);
     }
   }

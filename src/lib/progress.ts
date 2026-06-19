@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 import { emitAxonEvent } from "./eventBus";
 
@@ -72,6 +73,7 @@ export function emitProgress(taskId: string, message: string): TaskProgressEntry
   });
 
   logger.info("task.progress", "Task progress emitted", { taskId, sequence: entry.sequence, message });
+  void syncToTurso();
 
   return entry;
 }

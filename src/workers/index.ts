@@ -3,6 +3,7 @@ import { refundPayment, releasePayment } from "../lib/payments";
 import { refundDebitForTask } from "../lib/mpp";
 import { getAllAgents } from "../lib/agents";
 import { getDb } from "../lib/db";
+import { syncToTurso } from "../lib/db-turso";
 import { listMcpServers, createMcpAgentHandler } from "../lib/mcp";
 import { deliverPendingWebhooks } from "../lib/webhooks";
 import { recordTaskLatency } from "../lib/metrics";
@@ -52,6 +53,7 @@ async function processTasks() {
   getDb().prepare(
     "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL WHERE status='running' AND started_by='worker' AND started_at < ?"
   ).run(stuckCutoff);
+  void syncToTurso();
 
   // MCP servers have their own execution path (calls an external MCP endpoint)
   const mcpHandlers: Record<string, (task: string) => Promise<string>> = {};
@@ -226,6 +228,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
         timeoutMs: SHUTDOWN_TIMEOUT_MS,
         pollRunning,
       });
+      await syncToTurso(); // best-effort flush before forced exit
       process.exitCode = 1;
       process.exit();
     }
@@ -234,6 +237,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   }
 
   logger.info("worker.shutdown_complete", "Worker shutdown complete", { signal });
+  await syncToTurso(); // flush any writes since the last fire-and-forget sync
   process.exit(0);
 }
 

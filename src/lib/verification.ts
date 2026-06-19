@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { decodeRequirements } from "./x402";
 import { publicHttpFetch } from "./urlSecurity";
 import { logger } from "./logger";
@@ -123,6 +124,7 @@ export async function verifyAgentEndpoint(
     SET verification_status = ?, last_verified_at = ?
     WHERE agent_id = ?
   `).run(status, checkedAt, agentId);
+  void syncToTurso();
 
   const logFields = { agentId, status, latencyMs, detail };
   if (status === "unreachable") {

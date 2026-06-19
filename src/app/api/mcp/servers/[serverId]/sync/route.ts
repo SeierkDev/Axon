@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMcpServer, syncMcpTools } from "@/lib/mcp";
 import { getDb } from "@/lib/db";
+import { syncToTurso } from "@/lib/db-turso";
 import { requireApiKey, canAccessIdentity } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   for (const cap of caps.length > 0 ? caps : ["mcp"]) {
     insertCap.run(cap, serverId);
   }
+  void syncToTurso();
 
   recordAuditEvent({
     req,

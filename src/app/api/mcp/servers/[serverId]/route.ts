@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMcpServer, getMcpToolsByServer, deleteMcpServer } from "@/lib/mcp";
 import { getDb } from "@/lib/db";
+import { syncToTurso } from "@/lib/db-turso";
 import { requireApiKey, canAccessIdentity } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
@@ -32,6 +33,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   deleteMcpServer(serverId);
   // Also remove the auto-created agent entry
   getDb().prepare("DELETE FROM agents WHERE agent_id = ?").run(serverId);
+  void syncToTurso();
   recordAuditEvent({
     req,
     actor: auth.user,

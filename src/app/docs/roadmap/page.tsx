@@ -46,9 +46,9 @@ const roadmap: RoadmapItem[] = [
     doneItems: [
       "Read/write performance indexes for tasks, agents, and payments",
       "Data retention policy for logs, receipts, and webhook delivery history",
+      "Managed SQLite deployment target via Turso embedded replica",
     ],
     items: [
-      "Postgres or managed SQLite deployment target",
       "Connection pooling strategy",
       "Automated backups and restore drills",
     ],

@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { postMemoTransaction } from "./solana";
 import { logger } from "./logger";
 
@@ -31,6 +32,7 @@ export async function commitOutput(taskId: string, output: string): Promise<stri
     getDb()
       .prepare("UPDATE tasks SET output_hash = ?, output_commitment = ? WHERE task_id = ?")
       .run(hash, signature, taskId);
+    void syncToTurso();
     logger.info("output.committed", "Output commitment posted to Solana", {
       taskId,
       hash,
@@ -41,6 +43,7 @@ export async function commitOutput(taskId: string, output: string): Promise<stri
     getDb()
       .prepare("UPDATE tasks SET output_hash = ? WHERE task_id = ?")
       .run(hash, taskId);
+    void syncToTurso();
     logger.warn("output.commitment_skipped", "Output hash stored locally; Solana post failed", {
       taskId,
       hash,

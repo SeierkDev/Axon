@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 import { McpHttpClient } from "./mcp-client";
 import type { McpTool } from "./mcp-client";
 
@@ -99,6 +100,7 @@ export function createMcpServer(opts: {
     pricePerCall, createdAt
   );
 
+  void syncToTurso();
   return getMcpServer(serverId)!;
 }
 
@@ -167,6 +169,7 @@ export async function syncMcpTools(serverId: string): Promise<McpToolRecord[]> {
     tools = await client.listTools();
   } catch (err) {
     updateMcpServerStatus(serverId, "error");
+    void syncToTurso();
     throw new Error(
       `Failed to fetch tools from '${server.name}': ${err instanceof Error ? err.message : "unknown"}`
     );
@@ -208,6 +211,7 @@ export async function syncMcpTools(serverId: string): Promise<McpToolRecord[]> {
   })();
 
   updateMcpServerStatus(serverId, "active");
+  void syncToTurso();
   return getMcpToolsByServer(serverId);
 }
 

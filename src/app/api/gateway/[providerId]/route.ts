@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGatewayProvider, deleteGatewayProvider } from "@/lib/gateway";
 import { getDb } from "@/lib/db";
+import { syncToTurso } from "@/lib/db-turso";
 import { requireApiKey, canAccessIdentity } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
@@ -40,6 +41,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   deleteGatewayProvider(providerId);
   getDb().prepare("DELETE FROM agents WHERE agent_id = ?").run(providerId);
+  void syncToTurso();
   recordAuditEvent({
     req,
     actor: auth.user,
