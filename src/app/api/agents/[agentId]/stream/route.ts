@@ -21,7 +21,7 @@ import { decodePaymentHeader, buildX402Requirements, encodeRequirements } from "
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { debitChannel, verifyChannelKey, getChannelById, refundDebitForTask, parseMppUsdcPrice } from "@/lib/mpp";
 import { formatContext } from "@/lib/formatContext";
-import { getProvider, getAgentSystem } from "@/lib/providers";
+import { getProvider, getAgentSystem, getAgentMaxTokens } from "@/lib/providers";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { withRequestContext } from "@/lib/withRequestContext";
 
@@ -275,7 +275,7 @@ export function POST(req: NextRequest, { params }: Params) {
         try { controller.enqueue(keepalivePing); } catch { /* controller already closed */ }
       }, 20_000);
       try {
-        for await (const text of provider.stream(system, message, 2048)) {
+        for await (const text of provider.stream(system, message, getAgentMaxTokens(agent.agentId))) {
           if (cancelled) break;
           chunks.push(text);
           controller.enqueue(sseEvent({ text }));

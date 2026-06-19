@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAgentById } from "@/lib/agents";
-import { getProvider, getAgentSystem } from "@/lib/providers";
+import { getProvider, getAgentSystem, getAgentMaxTokens } from "@/lib/providers";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { apiError } from "@/lib/apiError";
 
@@ -8,7 +8,6 @@ import { apiError } from "@/lib/apiError";
 const RATE_LIMIT = 3;
 const RATE_WINDOW_MS = 365 * 24 * 60 * 60 * 1000;
 const MAX_INPUT_CHARS = 500;
-const TEST_MAX_TOKENS = 4096;
 
 function sseEvent(data: Record<string, unknown>): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
@@ -51,7 +50,7 @@ export async function POST(
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const text of provider.stream(system, task, TEST_MAX_TOKENS)) {
+        for await (const text of provider.stream(system, task, getAgentMaxTokens(agent.agentId))) {
           controller.enqueue(sseEvent({ text }));
         }
         controller.enqueue(sseEvent({

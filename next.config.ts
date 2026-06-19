@@ -49,7 +49,9 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'", // Tailwind inlines via style attr
               "img-src 'self' data: https:",
               "font-src 'self'",
-              "connect-src 'self'",
+              // Allow the Solana RPC (Helius) for Axon Build's on-chain payment —
+              // the browser fetches the blockhash and confirms the tx over https/wss.
+              "connect-src 'self' https://*.helius-rpc.com wss://*.helius-rpc.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

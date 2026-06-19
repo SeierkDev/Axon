@@ -117,7 +117,7 @@ interface Props {
   hasCapabilityFilter: boolean;
 }
 
-const CATEGORY_ORDER = ["Research", "Development", "Finance", "Content", "General"];
+const CATEGORY_ORDER = ["Build", "Research", "Development", "Finance", "Content", "General"];
 
 function isNaturalLanguage(q: string): boolean {
   return q.trim().split(/\s+/).length >= 3;

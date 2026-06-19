@@ -33,13 +33,18 @@ export interface NetworkStats {
 
 export function getNetworkStats(): NetworkStats {
   const db = getDb();
+  // Each query is wrapped so one failure (e.g. a missing column on an out-of-date
+  // DB) degrades that metric to a default instead of throwing away the whole bar.
+  const safe = <T>(fn: () => T, fallback: T): T => {
+    try { return fn(); } catch { return fallback; }
+  };
 
-  const agentTotal = (db.prepare(`
+  const agentTotal = safe(() => (db.prepare(`
     SELECT COUNT(*) n FROM agents
-  `).get() as { n: number }).n;
+  `).get() as { n: number }).n, 0);
   const agentActive = agentTotal;
 
-  const taskCounts = db.prepare(`
+  const taskCounts = safe(() => db.prepare(`
     SELECT
       COUNT(*) AS total,
       COUNT(*) FILTER (WHERE status = 'completed') AS completed,
@@ -48,26 +53,27 @@ export function getNetworkStats(): NetworkStats {
       COUNT(*) FILTER (WHERE status = 'running')   AS running,
       COUNT(*) FILTER (WHERE status = 'queued')    AS queued
     FROM tasks
-  `).get() as { total: number; completed: number; completed_today: number; failed: number; running: number; queued: number };
+  `).get() as { total: number; completed: number; completed_today: number; failed: number; running: number; queued: number },
+  { total: 0, completed: 0, completed_today: 0, failed: 0, running: 0, queued: 0 });
 
-  const capCount = (db.prepare(
+  const capCount = safe(() => (db.prepare(
     "SELECT COUNT(DISTINCT capability) n FROM agent_capabilities"
-  ).get() as { n: number }).n;
+  ).get() as { n: number }).n, 0);
 
   const settled = taskCounts.completed + taskCounts.failed;
   const successRate = settled > 0 ? taskCounts.completed / settled : 0;
 
-  const weeklyTasks = db.prepare(`
+  const weeklyTasks = safe(() => db.prepare(`
     SELECT
       COUNT(*) FILTER (WHERE status = 'completed') AS completed,
       COUNT(*) FILTER (WHERE status = 'failed')    AS failed
     FROM tasks
     WHERE date(completed_at) >= date('now', '-6 days')
-  `).get() as { completed: number; failed: number };
+  `).get() as { completed: number; failed: number }, { completed: 0, failed: 0 });
   const weeklySettled = weeklyTasks.completed + weeklyTasks.failed;
   const weeklySuccessRate = weeklySettled > 0 ? weeklyTasks.completed / weeklySettled : 0;
 
-  const txStats = db.prepare(`
+  const txStats = safe(() => db.prepare(`
     SELECT
       COUNT(*) AS total,
       COUNT(*) FILTER (WHERE status = 'completed') AS completed,
@@ -75,17 +81,18 @@ export function getNetworkStats(): NetworkStats {
       COALESCE(SUM(amount_sol) FILTER (WHERE status = 'completed' AND currency = 'USDC'), 0) AS usdc_transacted,
       COALESCE(SUM(amount_sol) FILTER (WHERE status = 'completed' AND currency = 'SOL'),  0) AS sol_transacted
     FROM transactions
-  `).get() as { total: number; completed: number; refunded: number; usdc_transacted: number; sol_transacted: number };
+  `).get() as { total: number; completed: number; refunded: number; usdc_transacted: number; sol_transacted: number },
+  { total: 0, completed: 0, refunded: 0, usdc_transacted: 0, sol_transacted: 0 });
 
-  const weeklyTx = db.prepare(`
+  const weeklyTx = safe(() => db.prepare(`
     SELECT
       COUNT(*) AS total,
       COALESCE(SUM(amount_sol) FILTER (WHERE status = 'completed' AND currency = 'USDC'), 0) AS usdc
     FROM transactions
     WHERE date(settled_at) >= date('now', '-6 days')
-  `).get() as { total: number; usdc: number };
+  `).get() as { total: number; usdc: number }, { total: 0, usdc: 0 });
 
-  const topAgents = db.prepare(`
+  const topAgents = safe(() => db.prepare(`
     SELECT a.agent_id AS agentId, a.name, a.reputation,
       COUNT(t.task_id) FILTER (WHERE t.status = 'completed') AS tasksCompleted
     FROM agents a
@@ -93,17 +100,17 @@ export function getNetworkStats(): NetworkStats {
     GROUP BY a.agent_id
     ORDER BY a.reputation DESC, tasksCompleted DESC
     LIMIT 5
-  `).all() as { agentId: string; name: string; reputation: number; tasksCompleted: number }[];
+  `).all() as { agentId: string; name: string; reputation: number; tasksCompleted: number }[], []);
 
-  const topCapabilities = db.prepare(`
+  const topCapabilities = safe(() => db.prepare(`
     SELECT capability, COUNT(*) AS agentCount
     FROM agent_capabilities
     GROUP BY capability
     ORDER BY agentCount DESC, capability ASC
     LIMIT 8
-  `).all() as { capability: string; agentCount: number }[];
+  `).all() as { capability: string; agentCount: number }[], []);
 
-  const activityByDay = db.prepare(`
+  const activityByDay = safe(() => db.prepare(`
     WITH days AS (
       SELECT date('now', '-6 days') AS date UNION ALL
       SELECT date('now', '-5 days') UNION ALL
@@ -121,7 +128,7 @@ export function getNetworkStats(): NetworkStats {
     LEFT JOIN tasks t ON date(t.completed_at) = d.date
     GROUP BY d.date
     ORDER BY d.date ASC
-  `).all() as { date: string; completed: number; failed: number }[];
+  `).all() as { date: string; completed: number; failed: number }[], []);
 
   return {
     agents: { total: agentTotal, active: agentActive },

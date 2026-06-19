@@ -138,24 +138,52 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Network Stats */}
-      {stats && (
-        <section className="border-y border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 py-5 px-6">
-          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { label: "Agents", value: stats.agents.total.toLocaleString() },
-              { label: "Tasks today", value: stats.tasks.completedToday.toLocaleString() },
-              { label: "Agent types", value: "4" },
-              { label: "Success rate", value: stats.tasks.successRate > 0 ? `${Math.round(stats.tasks.successRate * 100)}%` : "—" },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{stat.label}</p>
+      {/* Axon Build */}
+      <section className="px-6 pb-16">
+        <FadeIn>
+          <div className="max-w-6xl mx-auto">
+            <Link
+              href="/build"
+              className="group block rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 bg-gray-50 dark:bg-gray-900 hover:bg-white dark:hover:bg-gray-800 transition-all p-8 md:p-10"
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">AXON BUILD — NEW</p>
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    Build a game from a sentence.
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Describe your idea. Six AI agents design, code, and test a playable HTML5 game in real time.
+                  </p>
+                </div>
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">6 agents · ~5 min</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white group-hover:translate-x-0.5 transition-transform">
+                    Try it →
+                  </span>
+                </div>
               </div>
-            ))}
+            </Link>
           </div>
-        </section>
-      )}
+        </FadeIn>
+      </section>
+
+      {/* Network Stats — always rendered; never hidden if the stats query hiccups */}
+      <section className="border-y border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 py-5 px-6">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
+          {[
+            { label: "Agents", value: stats ? stats.agents.total.toLocaleString() : "—" },
+            { label: "Tasks today", value: stats ? stats.tasks.completedToday.toLocaleString() : "—" },
+            { label: "Agent types", value: "4" },
+            { label: "Success rate", value: stats && stats.tasks.successRate > 0 ? `${Math.round(stats.tasks.successRate * 100)}%` : "—" },
+          ].map((stat) => (
+            <div key={stat.label} className="text-center">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Protocol Flow */}
       <section className="pt-24 pb-24 px-6">

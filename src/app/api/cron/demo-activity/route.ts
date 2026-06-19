@@ -73,7 +73,8 @@ export async function POST(req: NextRequest) {
 
   for (const item of batch) {
     // Use a different registered agent as the sender so it looks like real agent-to-agent traffic.
-    const senders = [...registeredIds].filter((id) => id !== item.toAgent);
+    // Exclude build pipeline agents — they are not general-purpose senders.
+    const senders = [...registeredIds].filter((id) => id !== item.toAgent && !id.startsWith("build-"));
     const fromAgent = senders.length > 0 ? pickRandom(senders) : item.toAgent;
 
     try {

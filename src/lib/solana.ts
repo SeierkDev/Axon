@@ -230,28 +230,54 @@ export function formatSol(sol: number): string {
 // ── Verify incoming payment ───────────────────────────────────────────────────
 // Verifies SOL or USDC payment reached PAYMENT_RECEIVER_WALLET_ADDRESS on-chain.
 
+// Thin boolean wrapper kept for existing callers (x402, mpp, payments).
 export async function verifyIncomingPayment(
   signature: string,
   expected: ParsedPayment,
   expectedSigner?: string
 ): Promise<boolean> {
+  return (await checkIncomingPayment(signature, expected, expectedSigner)).ok;
+}
+
+// Same verification as verifyIncomingPayment, but returns WHY it failed so
+// callers (e.g. the Build payment gate) can surface an actionable reason
+// instead of a generic "not confirmed".
+export async function checkIncomingPayment(
+  signature: string,
+  expected: ParsedPayment,
+  expectedSigner?: string
+): Promise<{ ok: boolean; reason: string }> {
   if (!PAYMENT_RECEIVER_WALLET_ADDRESS) {
     throw new Error("PAYMENT_RECEIVER_WALLET_ADDRESS is not set");
   }
 
   if (process.env.AXON_PAYMENT_VERIFIER === "mock") {
-    return verifyMockIncomingPayment(signature, expected, expectedSigner);
+    const ok = verifyMockIncomingPayment(signature, expected, expectedSigner);
+    return { ok, reason: ok ? "ok" : "mock verification failed" };
   }
 
-  const tx = await withHelius(conn => conn.getTransaction(signature, {
-    commitment: "confirmed",
-    maxSupportedTransactionVersion: 0,
-  }));
+  // getTransaction lags signature confirmation by a few seconds: the client
+  // confirms the signature and immediately submits, but the RPC often can't
+  // return the full transaction yet (it returns null). Poll briefly instead of
+  // failing on the first miss — otherwise a perfectly good payment 402s.
+  let tx: Awaited<ReturnType<Connection["getTransaction"]>> = null;
+  const ATTEMPTS = 16;
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    tx = await withHelius(conn => conn.getTransaction(signature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    }));
+    if (tx) break;
+    if (attempt < ATTEMPTS - 1) await new Promise((r) => setTimeout(r, 2000));
+  }
 
-  if (!tx || !tx.meta || tx.meta.err) return false;
-  if (expectedSigner && !transactionHasSigner(tx, expectedSigner)) return false;
+  if (!tx) return { ok: false, reason: "transaction not found on-chain (not yet confirmed, or wrong signature/RPC)" };
+  if (!tx.meta || tx.meta.err) return { ok: false, reason: "transaction failed on-chain" };
+  if (expectedSigner && !transactionHasSigner(tx, expectedSigner)) {
+    return { ok: false, reason: "transaction was not signed by the expected payer" };
+  }
   const expectedUnits = paymentAmountToUnits(expected);
-  if (expectedUnits <= BigInt(0)) return false;
+  if (expectedUnits <= BigInt(0)) return { ok: false, reason: "expected payment amount is invalid" };
 
   if (expected.currency === "SOL") {
     const keys =
@@ -260,12 +286,13 @@ export async function verifyIncomingPayment(
         : (tx.transaction.message as { accountKeys: PublicKey[] }).accountKeys;
 
     const walletIdx = keys.findIndex((k) => k.toBase58() === PAYMENT_RECEIVER_WALLET_ADDRESS);
-    if (walletIdx === -1) return false;
+    if (walletIdx === -1) return { ok: false, reason: "treasury wallet is not a participant in the transaction" };
 
     const lamportsReceived = BigInt(
       (tx.meta.postBalances[walletIdx] ?? 0) - (tx.meta.preBalances[walletIdx] ?? 0)
     );
-    return lamportsReceived >= expectedUnits;
+    if (lamportsReceived >= expectedUnits) return { ok: true, reason: "ok" };
+    return { ok: false, reason: `received ${lamportsReceived} lamports, expected ${expectedUnits}` };
   }
 
   // USDC: look up by the receiver's ATA account index rather than by owner field.
@@ -282,7 +309,9 @@ export async function verifyIncomingPayment(
       : (tx.transaction.message as { accountKeys: PublicKey[] }).accountKeys;
 
   const ataIndex = txKeys.findIndex((k) => k.toBase58() === receiverAtaStr);
-  if (ataIndex === -1) return false; // receiver's ATA not in transaction — no USDC sent
+  if (ataIndex === -1) {
+    return { ok: false, reason: "treasury USDC account not in transaction (wrong treasury address, or no USDC was sent)" };
+  }
 
   const preTokenBalances = tx.meta.preTokenBalances ?? [];
   const postTokenBalances = tx.meta.postTokenBalances ?? [];
@@ -296,7 +325,8 @@ export async function verifyIncomingPayment(
       ?.uiTokenAmount.amount ?? "0";
 
   const received = BigInt(postAmount) - BigInt(preAmount);
-  return received >= expectedUnits;
+  if (received >= expectedUnits) return { ok: true, reason: "ok" };
+  return { ok: false, reason: `received ${received} USDC units, expected ${expectedUnits} (mint match required)` };
 }
 
 function verifyMockIncomingPayment(

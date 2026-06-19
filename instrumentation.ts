@@ -7,6 +7,25 @@ export async function register() {
   // Only run in the Node.js runtime (not Edge), and only once per process.
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
+  // Global crash guard. A background Axon Build makes 6+ long streaming LLM calls
+  // over several minutes; a single stray unhandled promise rejection (e.g. a socket
+  // hiccup mid-stream) would otherwise crash the entire Node process on Node 15+,
+  // killing every in-flight build with a 502. Log it — so the root cause is still
+  // visible in the Railway logs — but keep the server (and the build) alive.
+  const g = globalThis as typeof globalThis & { __axonCrashGuard?: boolean };
+  if (!g.__axonCrashGuard) {
+    g.__axonCrashGuard = true;
+    process.on("unhandledRejection", (reason) => {
+      console.error(
+        "[process] unhandledRejection (kept alive):",
+        reason instanceof Error ? (reason.stack ?? reason.message) : reason,
+      );
+    });
+    process.on("uncaughtException", (err) => {
+      console.error("[process] uncaughtException (kept alive):", err.stack ?? err.message);
+    });
+  }
+
   const { isTursoConfigured, initTursoSync } = await import("./src/lib/db-turso");
 
   if (isTursoConfigured()) {

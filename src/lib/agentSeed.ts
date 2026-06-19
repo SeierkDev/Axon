@@ -1,7 +1,8 @@
-// Seeds the 15 built-in Axon agents into the agents table on first run.
+// Seeds the built-in Axon agents into the agents table on first run.
 // Called once from the DB migration — safe to call multiple times (INSERT OR IGNORE).
 
 import type { Database } from "better-sqlite3";
+import type { Agent } from "@/sdk/types";
 
 interface BuiltinAgent {
   agentId: string;
@@ -9,6 +10,7 @@ interface BuiltinAgent {
   capabilities: string[];
   category: string;
   price: string | null;
+  providerModel?: string;
 }
 
 const BUILTIN_AGENTS: BuiltinAgent[] = [
@@ -26,8 +28,37 @@ const BUILTIN_AGENTS: BuiltinAgent[] = [
   { agentId: "social-agent",   name: "Social Agent",    capabilities: ["writing", "social", "creative"],                   category: "Content",      price: "0.10 USDC" },
   { agentId: "email-agent",    name: "Email Agent",     capabilities: ["writing", "email", "creative"],                    category: "Content",      price: "0.10 USDC" },
   { agentId: "report-agent",   name: "Report Agent",    capabilities: ["writing", "analysis", "research"],                 category: "Research",     price: "0.25 USDC" },
-  { agentId: "web-agent",      name: "Web Agent",       capabilities: ["research", "search", "web"],                       category: "Research",     price: "0.10 USDC" },
+  { agentId: "web-agent",          name: "Web Agent",          capabilities: ["research", "search", "web"],                 category: "Research", price: "0.10 USDC" },
+  { agentId: "build-orchestrator", name: "Build Orchestrator", capabilities: ["game-build", "orchestration", "planning"],    category: "Build", price: "0.05 USDC", providerModel: "claude-opus-4-8" },
+  { agentId: "build-designer",     name: "Build Designer",     capabilities: ["game-build", "game-design", "planning"],     category: "Build", price: "0.15 USDC", providerModel: "claude-opus-4-8" },
+  { agentId: "build-world",        name: "Build World",        capabilities: ["game-build", "world-design", "level-design"], category: "Build", price: "0.15 USDC", providerModel: "claude-opus-4-8" },
+  { agentId: "build-coder",        name: "Build Coder",        capabilities: ["game-build", "coding", "html5", "canvas"],   category: "Build", price: "0.25 USDC", providerModel: "claude-opus-4-8" },
+  { agentId: "build-artist",       name: "Build Artist",       capabilities: ["game-build", "art", "visual-design"],        category: "Build", price: "0.10 USDC", providerModel: "claude-opus-4-8" },
+  { agentId: "build-qa",           name: "Build QA",           capabilities: ["game-build", "qa", "testing"],               category: "Build", price: "0.10 USDC", providerModel: "claude-opus-4-8" },
 ];
+
+// Static fallback definition for a built-in platform agent, built from the
+// BUILTIN_AGENTS table above. Lets internal callers (notably the Build pipeline)
+// resolve an agent's provider/model config WITHOUT a DB row — important because
+// separate web/worker processes can transiently clear each other's platform rows
+// on boot, which would otherwise make Build fail with "agent not registered".
+export function getBuiltinAgent(agentId: string): Agent | null {
+  const def = BUILTIN_AGENTS.find((a) => a.agentId === agentId);
+  if (!def) return null;
+  return {
+    agentId: def.agentId,
+    name: def.name,
+    capabilities: def.capabilities,
+    publicKey: "axon-platform",
+    price: def.price ?? undefined,
+    reputation: 0,
+    category: def.category,
+    provider: "anthropic",
+    providerModel: def.providerModel ?? undefined,
+    verificationStatus: "platform",
+    createdAt: "1970-01-01T00:00:00.000Z",
+  };
+}
 
 export function seedBuiltinAgents(db: Database): void {
   const treasuryWallet =
@@ -46,14 +77,15 @@ export function seedBuiltinAgents(db: Database): void {
 
   const upsertAgent = db.prepare(`
     INSERT INTO agents
-      (agent_id, name, capabilities, public_key, price, reputation, category, provider, wallet_address, verification_status, created_at)
-    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, 'anthropic', ?, 'platform', ?)
+      (agent_id, name, capabilities, public_key, price, reputation, category, provider, provider_model, wallet_address, verification_status, created_at)
+    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, 'anthropic', ?, ?, 'platform', ?)
     ON CONFLICT(agent_id) DO UPDATE SET
       name                = excluded.name,
       capabilities        = excluded.capabilities,
       price               = excluded.price,
       category            = excluded.category,
       provider            = excluded.provider,
+      provider_model      = excluded.provider_model,
       wallet_address      = excluded.wallet_address,
       verification_status = 'platform'
   `);
@@ -71,6 +103,7 @@ export function seedBuiltinAgents(db: Database): void {
         JSON.stringify(agent.capabilities),
         agent.price,
         agent.category,
+        agent.providerModel ?? null,
         treasuryWallet,
         now,
       );
@@ -109,6 +142,17 @@ const HISTORICAL_TASKS: Record<string, string[]> = {
   security:            ["Audit API authentication flow for timing attacks", "Review rate limiting implementation for bypass risks", "Check JWT validation logic for edge cases", "Assess SSRF risk in external endpoint verification", "Review input validation across task submission routes"],
   development:         ["Set up CI pipeline for agent worker service", "Write integration tests for payment settlement flow", "Configure Docker build for production deployment", "Refactor task queue to support priority lanes", "Add OpenTelemetry tracing to API routes"],
   debugging:           ["Trace root cause of intermittent task timeout", "Debug race condition in concurrent task processing", "Investigate memory growth in long-running worker", "Fix edge case in idempotency key collision handler", "Resolve 429 rate limit false positive in gateway"],
+  "game-build":        ["Generate game brief for top-down dungeon crawler", "Design mechanics for a browser-based platformer", "Build world layout for 2D puzzle game", "Write HTML5 canvas shooter game from design spec", "Apply visual style pass to dungeon crawler prototype", "QA review of platformer for collision and win condition bugs"],
+  orchestration:       ["Break down game prompt into structured build pipeline", "Coordinate 5-agent game generation from single user prompt", "Parse user prompt and produce game brief for build agents"],
+  "game-design":       ["Design enemy types and mechanics for dungeon crawler", "Define win conditions and scoring for browser puzzle game", "Spec player stats and item effects for top-down shooter"],
+  "world-design":      ["Generate level layout for dungeon crawler with 8 rooms", "Design enemy spawn positions for top-down shooter map", "Create wall and floor layout for browser platformer level"],
+  "level-design":      ["Place enemies and items for balanced dungeon crawler level", "Design multi-room layout with clear navigation paths"],
+  html5:               ["Write complete HTML5 canvas game from design document", "Implement 60fps game loop with requestAnimationFrame", "Build collision detection system for canvas-based game"],
+  canvas:              ["Render player, enemies and items using Canvas API", "Implement sprite animation using Canvas drawImage", "Build HUD overlay with Canvas text and shapes"],
+  "visual-design":     ["Apply cohesive color palette to HTML5 game", "Style game UI and HUD for polished presentation", "Add visual effects and animations to canvas game"],
+  art:                 ["Design color scheme for top-down dungeon crawler", "Create visual style for browser-based puzzle game", "Apply retro pixel aesthetic to HTML5 canvas game"],
+  qa:                  ["Verify HTML5 game implements all design spec mechanics", "Check collision detection and win condition in canvas game", "Review game loop for performance issues and edge cases"],
+  testing:             ["Test enemy AI behavior in dungeon crawler build", "Verify item collection and scoring logic in browser game", "Validate game over and restart flow in HTML5 game"],
 };
 
 const REVIEW_COMMENTS = [
@@ -155,8 +199,11 @@ function parseUsdcAmount(price: string | null): number {
 }
 
 export function backfillAgentHistory(db: Database): void {
-  const agentIds = BUILTIN_AGENTS.map((a) => a.agentId);
-  const priceMap = new Map(BUILTIN_AGENTS.map((a) => [a.agentId, parseUsdcAmount(a.price)]));
+  // Build pipeline agents are not standalone discovery agents — skip their backfill
+  // so they don't inflate reputation counts or crowd out search results.
+  const backfillAgents = BUILTIN_AGENTS.filter((a) => a.category !== "Build");
+  const agentIds = backfillAgents.map((a) => a.agentId);
+  const priceMap = new Map(backfillAgents.map((a) => [a.agentId, parseUsdcAmount(a.price)]));
 
   const insertTask = db.prepare(`
     INSERT OR IGNORE INTO tasks
@@ -203,7 +250,7 @@ export function backfillAgentHistory(db: Database): void {
     const shuffledForFailure = [...agentIds].sort(() => Math.random() - 0.5);
     const agentsWithFailure = new Set(shuffledForFailure.slice(0, 5));
 
-    for (const agent of BUILTIN_AGENTS) {
+    for (const agent of backfillAgents) {
       const existing = (getSeedCount.get(agent.agentId) as { n: number }).n;
       if (existing >= 3) continue; // already seeded
 

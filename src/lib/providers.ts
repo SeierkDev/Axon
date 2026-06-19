@@ -15,21 +15,27 @@ import { publicHttpFetch } from "./urlSecurity";
 
 // System prompts — imported from each handler so the provider uses the real
 // domain-specific prompt, not a generic fallback.
-import { SYSTEM as researchSystem }  from "../workers/agents/research";
-import { SYSTEM as cryptoSystem }    from "../workers/agents/crypto";
-import { SYSTEM as tradingSystem }   from "../workers/agents/trading";
-import { SYSTEM as auditSystem }     from "../workers/agents/audit";
-import { SYSTEM as defiSystem }      from "../workers/agents/defi";
-import { SYSTEM as dataSystem }      from "../workers/agents/data";
-import { SYSTEM as contentSystem }   from "../workers/agents/content";
-import { SYSTEM as codeSystem }      from "../workers/agents/code";
-import { SYSTEM as onchainSystem }   from "../workers/agents/onchain";
-import { SYSTEM as strategySystem }  from "../workers/agents/strategy";
-import { SYSTEM as seoSystem }       from "../workers/agents/seo";
-import { SYSTEM as socialSystem }    from "../workers/agents/social";
-import { SYSTEM as emailSystem }     from "../workers/agents/email";
-import { SYSTEM as reportSystem }    from "../workers/agents/report";
-import { SYSTEM as webSystem }       from "../workers/agents/web";
+import { SYSTEM as researchSystem }          from "../workers/agents/research";
+import { SYSTEM as cryptoSystem }            from "../workers/agents/crypto";
+import { SYSTEM as tradingSystem }           from "../workers/agents/trading";
+import { SYSTEM as auditSystem }             from "../workers/agents/audit";
+import { SYSTEM as defiSystem }              from "../workers/agents/defi";
+import { SYSTEM as dataSystem }              from "../workers/agents/data";
+import { SYSTEM as contentSystem }           from "../workers/agents/content";
+import { SYSTEM as codeSystem }              from "../workers/agents/code";
+import { SYSTEM as onchainSystem }           from "../workers/agents/onchain";
+import { SYSTEM as strategySystem }          from "../workers/agents/strategy";
+import { SYSTEM as seoSystem }               from "../workers/agents/seo";
+import { SYSTEM as socialSystem }            from "../workers/agents/social";
+import { SYSTEM as emailSystem }             from "../workers/agents/email";
+import { SYSTEM as reportSystem }            from "../workers/agents/report";
+import { SYSTEM as webSystem }               from "../workers/agents/web";
+import { SYSTEM as buildOrchestratorSystem } from "../workers/agents/build-orchestrator";
+import { SYSTEM as buildDesignerSystem }     from "../workers/agents/build-designer";
+import { SYSTEM as buildWorldSystem }        from "../workers/agents/build-world";
+import { SYSTEM as buildCoderSystem }        from "../workers/agents/build-coder";
+import { SYSTEM as buildArtistSystem }       from "../workers/agents/build-artist";
+import { SYSTEM as buildQaSystem }           from "../workers/agents/build-qa";
 
 // ── Retry utility ─────────────────────────────────────────────────────────────
 
@@ -67,26 +73,28 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3, baseDelayMs =
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function getAgentMaxTokens(_agentId: string): number {
-  return 2048;
-}
-
 const AGENT_SYSTEMS: Record<string, string> = {
-  "research-agent":  researchSystem,
-  "crypto-agent":    cryptoSystem,
-  "trading-agent":   tradingSystem,
-  "audit-agent":     auditSystem,
-  "defi-agent":      defiSystem,
-  "data-agent":      dataSystem,
-  "content-agent":   contentSystem,
-  "code-agent":      codeSystem,
-  "onchain-agent":   onchainSystem,
-  "strategy-agent":  strategySystem,
-  "seo-agent":       seoSystem,
-  "social-agent":    socialSystem,
-  "email-agent":     emailSystem,
-  "report-agent":    reportSystem,
-  "web-agent":       webSystem,
+  "research-agent":       researchSystem,
+  "crypto-agent":         cryptoSystem,
+  "trading-agent":        tradingSystem,
+  "audit-agent":          auditSystem,
+  "defi-agent":           defiSystem,
+  "data-agent":           dataSystem,
+  "content-agent":        contentSystem,
+  "code-agent":           codeSystem,
+  "onchain-agent":        onchainSystem,
+  "strategy-agent":       strategySystem,
+  "seo-agent":            seoSystem,
+  "social-agent":         socialSystem,
+  "email-agent":          emailSystem,
+  "report-agent":         reportSystem,
+  "web-agent":            webSystem,
+  "build-orchestrator":   buildOrchestratorSystem,
+  "build-designer":       buildDesignerSystem,
+  "build-world":          buildWorldSystem,
+  "build-coder":          buildCoderSystem,
+  "build-artist":         buildArtistSystem,
+  "build-qa":             buildQaSystem,
 };
 
 // Appended to every agent system prompt to enforce consistent, expert behavior
@@ -101,6 +109,21 @@ Behavior:
 - Omit disclaimers about not being a financial, legal, or medical advisor unless the task specifically and genuinely requires one
 - Never pad responses with generic closing lines like "Let me know if you need anything else"
 - You are a specialist agent deployed on the Axon network — respond with the precision and directness of a domain expert, not a general-purpose assistant`;
+
+// Per-agent token limits — build agents need much higher limits to produce
+// complete HTML5 games. All other agents use the default 2048.
+const AGENT_MAX_TOKENS: Record<string, number> = {
+  "build-orchestrator": 1024,
+  "build-designer":     1024,
+  "build-world":        2048,
+  "build-coder":        28000,
+  "build-artist":       28000,
+  "build-qa":           1024,
+};
+
+export function getAgentMaxTokens(agentId: string): number {
+  return AGENT_MAX_TOKENS[agentId] ?? 2048;
+}
 
 // Returns the agent's real system prompt, or a strong generic fallback
 // for community agents registered with their own endpoint.
@@ -124,6 +147,19 @@ export interface ProviderClient {
   stream(system: string, message: string, maxTokens?: number): AsyncIterable<string>;
 }
 
+// Joins a continuation onto a truncated output. The model may resume a few
+// characters before where it stopped, so trim the longest overlap between the
+// end of what we have and the start of the continuation before concatenating.
+function stitchContinuation(soFar: string, continuation: string): string {
+  const maxOverlap = Math.min(soFar.length, continuation.length, 400);
+  for (let len = maxOverlap; len > 0; len--) {
+    if (soFar.slice(soFar.length - len) === continuation.slice(0, len)) {
+      return soFar + continuation.slice(len);
+    }
+  }
+  return soFar + continuation;
+}
+
 // ── Anthropic ─────────────────────────────────────────────────────────────────
 
 class AnthropicProvider implements ProviderClient {
@@ -139,14 +175,42 @@ class AnthropicProvider implements ProviderClient {
 
   async complete(system: string, message: string, maxTokens = 2048): Promise<string> {
     const timeoutMs = Math.max(120_000, maxTokens * 30);
-    return withRetry(() => this.client.messages.create(
-      { model: this.model, max_tokens: maxTokens, system, messages: [{ role: "user", content: message }] },
-      { timeout: timeoutMs }
-    ).then((msg) => {
+    // If the model hits the token ceiling mid-output, ask it to continue from
+    // where it stopped — as a normal follow-up turn, since this model doesn't
+    // allow assistant prefill (the conversation must end with a user message).
+    // Stitch the pieces (trimming any repeated boundary overlap) so a long file
+    // completes across chunks instead of failing. The ceiling is a chunk size.
+    const MAX_CONTINUATIONS = 5;
+    let full = "";
+    for (let round = 0; round <= MAX_CONTINUATIONS; round++) {
+      const messages: Anthropic.MessageParam[] =
+        round === 0
+          ? [{ role: "user", content: message }]
+          : [
+              { role: "user", content: message },
+              { role: "assistant", content: full },
+              {
+                role: "user",
+                content:
+                  "Your previous response was cut off because it was too long. Continue from EXACTLY where it stopped and output ONLY the remaining content — do not repeat anything you already wrote, do not restate the file, and do not add any explanation or markdown fences.",
+              },
+            ];
+      const msg = await withRetry(
+        () =>
+          this.client.messages
+            .stream({ model: this.model, max_tokens: maxTokens, system, messages }, { timeout: timeoutMs })
+            .finalMessage(),
+        3,
+        1000,
+        `anthropic:${this.model}`,
+      );
       const block = msg.content.find((b) => b.type === "text");
       if (!block || block.type !== "text") throw new Error("No text response from Anthropic");
-      return block.text;
-    }), 3, 1000, `anthropic:${this.model}`);
+      full = round === 0 ? block.text : stitchContinuation(full, block.text);
+      if (msg.stop_reason !== "max_tokens") return full; // finished cleanly
+    }
+    // Continuation cap reached — return the best effort rather than failing the build.
+    return full;
   }
 
   async *stream(system: string, message: string, maxTokens = 4096): AsyncIterable<string> {
@@ -196,7 +260,9 @@ class OpenAICompatibleProvider implements ProviderClient {
 
       if (!res.ok) {
         const errText = await res.text().catch(() => res.statusText);
-        throw new Error(`Provider ${this.baseUrl} error ${res.status}: ${errText}`);
+        const err = new Error(`Provider ${this.baseUrl} error ${res.status}: ${errText}`);
+        (err as Error & { status?: number }).status = res.status;
+        throw err;
       }
 
       const data = await res.json() as { choices: { message: { content: string } }[] };

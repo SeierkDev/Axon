@@ -57,25 +57,39 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 
 describe("AnthropicProvider.complete: happy path", () => {
   it("returns the text block from the API response", async () => {
-    mockCreate.mockResolvedValueOnce({
-      content: [{ type: "text", text: "Hello from Claude" }],
+    mockStream.mockReturnValueOnce({
+      finalMessage: () => Promise.resolve({ content: [{ type: "text", text: "Hello from Claude" }] }),
     });
     const provider = getProvider(makeAgent({ provider: "anthropic" }));
     expect(await provider.complete("system", "hello")).toBe("Hello from Claude");
   });
 });
 
+describe("AnthropicProvider.complete: continues past max_tokens truncation", () => {
+  it("stitches chunks until the model stops cleanly", async () => {
+    mockStream
+      .mockReturnValueOnce({
+        finalMessage: () => Promise.resolve({ content: [{ type: "text", text: "<html>chunk1" }], stop_reason: "max_tokens" }),
+      })
+      .mockReturnValueOnce({
+        finalMessage: () => Promise.resolve({ content: [{ type: "text", text: "chunk2</html>" }], stop_reason: "end_turn" }),
+      });
+    const provider = getProvider(makeAgent({ provider: "anthropic" }));
+    expect(await provider.complete("system", "message")).toBe("<html>chunk1chunk2</html>");
+  });
+});
+
 describe("AnthropicProvider.complete: no text block in response", () => {
   it("throws when response has only a tool_use block", async () => {
-    mockCreate.mockResolvedValueOnce({
-      content: [{ type: "tool_use", id: "tu_1", name: "search", input: {} }],
+    mockStream.mockReturnValueOnce({
+      finalMessage: () => Promise.resolve({ content: [{ type: "tool_use", id: "tu_1", name: "search", input: {} }] }),
     });
     const provider = getProvider(makeAgent({ provider: "anthropic" }));
     await expect(provider.complete("system", "message")).rejects.toThrow(/No text response/);
   });
 
   it("throws when response content array is empty", async () => {
-    mockCreate.mockResolvedValueOnce({ content: [] });
+    mockStream.mockReturnValueOnce({ finalMessage: () => Promise.resolve({ content: [] }) });
     const provider = getProvider(makeAgent({ provider: "anthropic" }));
     await expect(provider.complete("system", "message")).rejects.toThrow(/No text response/);
   });
@@ -83,7 +97,7 @@ describe("AnthropicProvider.complete: no text block in response", () => {
 
 describe("AnthropicProvider.complete: API error propagates", () => {
   it("rethrows errors from the Anthropic API", async () => {
-    mockCreate.mockRejectedValueOnce(new Error("Rate limit exceeded"));
+    mockStream.mockReturnValueOnce({ finalMessage: () => Promise.reject(new Error("Rate limit exceeded")) });
     const provider = getProvider(makeAgent({ provider: "anthropic" }));
     await expect(provider.complete("system", "message")).rejects.toThrow(/Rate limit/);
   });
@@ -113,8 +127,8 @@ describe("AnthropicProvider.stream: yields text_delta events and skips others", 
 
 describe("runWithProvider: delegates to provider.complete", () => {
   it("returns the provider output for an anthropic agent", async () => {
-    mockCreate.mockResolvedValueOnce({
-      content: [{ type: "text", text: "Research result" }],
+    mockStream.mockReturnValueOnce({
+      finalMessage: () => Promise.resolve({ content: [{ type: "text", text: "Research result" }] }),
     });
     const result = await runWithProvider(
       makeAgent({ provider: "anthropic", agentId: "research-agent" }),
