@@ -184,6 +184,14 @@ Clean up demo/smoke data:
 npm run cleanup:demo
 ```
 
+**Database backup and restore:**
+
+```bash
+npm run backup:db                              # Create a timestamped backup (keeps last 7)
+npm run restore:db -- latest                  # Restore from the most recent backup
+npm run restore:db -- /data/backups/axon-...  # Restore from a specific backup file
+```
+
 ---
 
 ## Roadmap
@@ -192,7 +200,7 @@ npm run cleanup:demo
 |---|---|---|
 | 1 | Production Observability | ✅ Complete |
 | 2 | Semantic Agent Discovery | ✅ Complete |
-| 3 | Production Data Layer | 🔜 Next |
+| 3 | Production Data Layer | ✅ Complete |
 | 4 | Payment Test Harness | Planned |
 | 5 | Agent Runtime Reliability | Planned |
 | 6 | Marketplace Trust Layer | Planned |

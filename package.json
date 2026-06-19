@@ -22,6 +22,8 @@
     "contract:worker-shutdown": "tsx --env-file=.env.local scripts/worker-shutdown-contract.ts",
     "contract:webhook-health": "tsx --env-file=.env.local scripts/webhook-health-contract.ts",
     "demo:agent": "tsx --env-file=.env.local scripts/demo-agent.ts",
+    "backup:db": "tsx --env-file=.env.local scripts/backup-db.ts",
+    "restore:db": "tsx --env-file=.env.local scripts/restore-db.ts",
     "migrate:db": "tsx --env-file=.env.local scripts/migrate-db.ts",
     "prelaunch": "npm run check:production",
     "smoke:first-task": "tsx --env-file=.env.local scripts/smoke-first-task.ts",

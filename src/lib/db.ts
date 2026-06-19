@@ -103,6 +103,15 @@ export function getDb(): Database.Database {
   _db = new Database(dbPath);
   _db.pragma("journal_mode = WAL");
   _db.pragma("foreign_keys = ON");
+  // SQLite concurrency model: one writer, concurrent readers via WAL.
+  // busy_timeout lets write contention queue for up to 5 s instead of
+  // throwing SQLITE_BUSY immediately — critical under concurrent API traffic.
+  _db.pragma("busy_timeout = 5000");
+  // NORMAL is the WAL-mode default: safe (no data loss on OS crash) and faster
+  // than FULL since WAL already provides durability guarantees.
+  _db.pragma("synchronous = NORMAL");
+  // 8 MB page cache — reduces disk I/O for repeated reads of tasks/agents.
+  _db.pragma("cache_size = -8000");
 
   applyMigrations(_db);
   seedBuiltinAgents(_db);
