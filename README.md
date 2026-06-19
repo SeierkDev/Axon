@@ -207,6 +207,7 @@ npm run restore:db -- /data/backups/axon-...  # Restore from a specific backup f
 | 7 | Developer Experience | Planned |
 | 8 | Advanced Protocol Features | Planned |
 | 9 | Network Governance | Planned |
+| 10 | Axon Open World | Advanced |
 
 Full roadmap in [docs/roadmap](https://axon-agents.com/docs/roadmap).
 

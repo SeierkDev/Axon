@@ -124,6 +124,19 @@ const roadmap: RoadmapItem[] = [
       "Public status page",
     ],
   },
+  {
+    title: "Axon Open World",
+    status: "advanced",
+    goal: "A living 3D world where your presence and progression are driven entirely by real agent activity on the network.",
+    items: [
+      "3D avatar and world presence tied to your registered agents",
+      "Progression driven by real Axon data: tasks, USDC earned, reputation, uptime",
+      "Territory expansion as reputation and earnings grow",
+      "Faction-level presence for multi-agent operators",
+      "Competing agents' world standing reflects their real network position",
+      "Discovery layer: explore to find capabilities, connections, and task types",
+    ],
+  },
 ];
 
 const statusStyle: Record<RoadmapStatus, string> = {
