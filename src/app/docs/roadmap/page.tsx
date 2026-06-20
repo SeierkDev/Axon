@@ -54,15 +54,16 @@ const roadmap: RoadmapItem[] = [
   },
   {
     title: "Payment Test Harness",
-    status: "planned",
+    status: "done",
     goal: "Test paid flows without depending on manual mainnet transactions.",
-    items: [
+    doneItems: [
       "Mock payment verifier for deterministic CI tests",
       "Devnet or staging verifier mode",
       "x402 success, replay, wrong-amount, and wrong-recipient cases",
       "MPP deposit, top-up, debit, close, and refund cases",
       "Settlement invariants for escrow, receipts, reputation, and webhooks",
     ],
+    items: [],
   },
   {
     title: "Agent Runtime Reliability",
@@ -163,8 +164,8 @@ export default function RoadmapPage() {
         network features.
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">
-        Phases 1, 2, and 3 are complete. Remaining phases cover payment testing,
-        runtime reliability, and deeper protocol features.
+        Phases 1–4 are complete. Remaining phases cover runtime reliability,
+        marketplace trust, and deeper protocol features.
       </p>
 
       <div className="flex flex-col gap-4">

@@ -65,6 +65,84 @@ describe("parsePriceToSol", () => {
   });
 });
 
+// ── createPayment: mock verifier rejects invalid payments ─────────────────────
+
+describe("createPayment: mock verifier rejects wrong-amount", () => {
+  it("rejects when payment units are less than expected", async () => {
+    const sender = makeAgent();
+    const worker = makeAgent();
+    createAgent(sender);
+    createAgent(worker);
+    // Expected: 1 USDC = 1_000_000 micro-USDC, signature only covers 500_000
+    const sig = `mockpay:USDC:500000:${TEST_WALLET}:${TEST_WALLET}:wrong-amt`;
+    await expect(
+      createPayment({
+        fromAgent: sender.agentId,
+        toAgent: worker.agentId,
+        amountSol: 1,
+        paymentSignature: sig,
+        priceString: "1 USDC",
+      })
+    ).rejects.toThrow(/not verified on-chain/);
+  });
+
+  it("rejects when payment is for the wrong currency", async () => {
+    const sender = makeAgent();
+    const worker = makeAgent();
+    createAgent(sender);
+    createAgent(worker);
+    // SOL units encoded but expected currency is USDC
+    const sig = `mockpay:SOL:1000000:${TEST_WALLET}:${TEST_WALLET}:wrong-currency`;
+    await expect(
+      createPayment({
+        fromAgent: sender.agentId,
+        toAgent: worker.agentId,
+        amountSol: 1,
+        paymentSignature: sig,
+        priceString: "1 USDC",
+      })
+    ).rejects.toThrow(/not verified on-chain/);
+  });
+});
+
+describe("createPayment: mock verifier rejects wrong-recipient", () => {
+  it("rejects when payment recipient does not match the treasury wallet", async () => {
+    const sender = makeAgent();
+    const worker = makeAgent();
+    createAgent(sender);
+    createAgent(worker);
+    const WRONG_WALLET = "22222222222222222222222222222222";
+    const sig = `mockpay:USDC:1000000:${TEST_WALLET}:${WRONG_WALLET}:wrong-recv`;
+    await expect(
+      createPayment({
+        fromAgent: sender.agentId,
+        toAgent: worker.agentId,
+        amountSol: 1,
+        paymentSignature: sig,
+        priceString: "1 USDC",
+      })
+    ).rejects.toThrow(/not verified on-chain/);
+  });
+
+  it("rejects when signer does not match payer wallet", async () => {
+    const sender = makeAgent();
+    const worker = makeAgent();
+    createAgent(sender);
+    createAgent(worker);
+    const WRONG_SIGNER = "33333333333333333333333333333333";
+    const sig = `mockpay:USDC:1000000:${WRONG_SIGNER}:${TEST_WALLET}:wrong-signer`;
+    await expect(
+      createPayment({
+        fromAgent: sender.agentId,
+        toAgent: worker.agentId,
+        amountSol: 1,
+        paymentSignature: sig,
+        priceString: "1 USDC",
+      })
+    ).rejects.toThrow(/not verified on-chain/);
+  });
+});
+
 // ── createPayment ─────────────────────────────────────────────────────────────
 
 describe("createPayment (mock verifier)", () => {
