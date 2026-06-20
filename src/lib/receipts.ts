@@ -53,6 +53,7 @@ export function getReceipt(taskId: string): Receipt {
         completedAt: taskRow.completed_at as string ?? undefined,
         outputHash: taskRow.output_hash as string ?? undefined,
         outputCommitment: taskRow.output_commitment as string ?? undefined,
+        stuckCount: (taskRow.stuck_count as number) ?? 0,
       }
     : null;
 

@@ -72,10 +72,10 @@ const roadmap: RoadmapItem[] = [
     doneItems: [
       "Retry policy for transient provider failures",
       "Per-agent timeout and concurrency limits",
-    ],
-    items: [
       "Dead-letter queue for stuck tasks",
       "Circuit breaker for repeatedly failing external agents with automatic cooldown",
+    ],
+    items: [
       "Worker recovery tests for process restarts mid-task",
     ],
   },

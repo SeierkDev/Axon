@@ -34,6 +34,7 @@ export interface Task {
   outputHash?: string;
   outputCommitment?: string;
   traceId?: string;
+  stuckCount: number;
 }
 
 interface TaskRow {
@@ -60,6 +61,7 @@ interface TaskRow {
   output_hash: string | null;
   output_commitment: string | null;
   trace_id: string | null;
+  stuck_count: number;
 }
 
 function rowToTask(row: TaskRow): Task {
@@ -84,6 +86,7 @@ function rowToTask(row: TaskRow): Task {
     outputHash: row.output_hash ?? undefined,
     outputCommitment: row.output_commitment ?? undefined,
     traceId: row.trace_id ?? undefined,
+    stuckCount: row.stuck_count ?? 0,
   };
 }
 
@@ -367,7 +370,7 @@ export function failTask(taskId: string, error: string): Task | null {
 export function requeueTask(taskId: string): Task | null {
   const db = getDb();
   const changes = db
-    .prepare("UPDATE tasks SET status='queued', error=NULL, started_at=NULL, started_by=NULL, completed_at=NULL WHERE task_id=? AND status='failed'")
+    .prepare("UPDATE tasks SET status='queued', error=NULL, started_at=NULL, started_by=NULL, completed_at=NULL, stuck_count=0 WHERE task_id=? AND status='failed'")
     .run(taskId).changes;
   if (changes === 0) return null;
   const task = getTaskById(taskId)!;

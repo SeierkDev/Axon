@@ -23,6 +23,57 @@ const THRESHOLD_INTERVAL_MS = 5 * 60 * 1000;
 const SHUTDOWN_TIMEOUT_MS = Number.parseInt(process.env.AXON_WORKER_SHUTDOWN_TIMEOUT_MS ?? "25000", 10);
 const TASK_TIMEOUT_MS = Number.parseInt(process.env.AXON_TASK_TIMEOUT_MS ?? "600000", 10); // 10 min — allows up to 3 retries × 120 s provider timeout
 const MAX_CONCURRENT_PER_AGENT = Number.parseInt(process.env.AXON_MAX_CONCURRENT_PER_AGENT ?? "1", 10);
+const MAX_STUCK_RESETS = Number.parseInt(process.env.AXON_MAX_STUCK_RESETS ?? "3", 10);
+const CIRCUIT_FAILURE_THRESHOLD = Number.parseInt(process.env.AXON_CIRCUIT_FAILURE_THRESHOLD ?? "5", 10);
+const CIRCUIT_RECOVERY_WINDOW_MS = Number.parseInt(process.env.AXON_CIRCUIT_RECOVERY_WINDOW_MS ?? "300000", 10); // 5 min
+
+// ── Per-agent circuit breaker ──────────────────────────────────────────────────
+type CircuitState = "closed" | "open" | "half-open";
+interface Circuit { state: CircuitState; failures: number; openedAt: number; }
+const circuits = new Map<string, Circuit>();
+
+function getCircuit(agentId: string): Circuit {
+  let c = circuits.get(agentId);
+  if (!c) { c = { state: "closed", failures: 0, openedAt: 0 }; circuits.set(agentId, c); }
+  return c;
+}
+
+function isCircuitOpen(agentId: string): boolean {
+  const c = getCircuit(agentId);
+  if (c.state === "closed") return false;
+  if (c.state === "open" && Date.now() - c.openedAt >= CIRCUIT_RECOVERY_WINDOW_MS) {
+    c.state = "half-open";
+    logger.info("worker.circuit_half_open", "Circuit breaker half-open — allowing probe task", { agentId });
+  }
+  return c.state === "open";
+}
+
+function recordCircuitSuccess(agentId: string): void {
+  const c = getCircuit(agentId);
+  if (c.state !== "closed") logger.info("worker.circuit_closed", "Circuit breaker closed after successful task", { agentId });
+  c.state = "closed";
+  c.failures = 0;
+}
+
+function recordCircuitFailure(agentId: string): void {
+  const c = getCircuit(agentId);
+  if (c.state === "half-open") {
+    c.state = "open";
+    c.openedAt = Date.now();
+    c.failures++;
+    logger.error("worker.circuit_opened", "Circuit breaker re-opened after failed probe", { agentId, recoveryWindowMs: CIRCUIT_RECOVERY_WINDOW_MS });
+    return;
+  }
+  c.failures++;
+  if (c.state === "closed" && c.failures >= CIRCUIT_FAILURE_THRESHOLD) {
+    c.state = "open";
+    c.openedAt = Date.now();
+    logger.error("worker.circuit_opened", "Circuit breaker opened — agent failing repeatedly", {
+      agentId, consecutiveFailures: c.failures, recoveryWindowMs: CIRCUIT_RECOVERY_WINDOW_MS,
+    });
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 let pollRunning = false;
 let shutdownRequested = false;
 let pollTimer: NodeJS.Timeout | null = null;
@@ -52,9 +103,27 @@ async function processTasks() {
   // Reset worker-claimed tasks stuck in running longer than the task timeout.
   // HTTP streaming/gateway/manual tasks can legitimately run outside this worker.
   const stuckCutoff = new Date(Date.now() - TASK_TIMEOUT_MS).toISOString();
+
+  // Dead-letter tasks that have hit the stuck-reset limit — they won't recover on their own.
+  const deadLettered = getDb().prepare(
+    "SELECT task_id FROM tasks WHERE status='running' AND started_by='worker' AND started_at < ? AND stuck_count >= ?"
+  ).all(stuckCutoff, MAX_STUCK_RESETS) as { task_id: string }[];
+  for (const { task_id } of deadLettered) {
+    logger.warn("worker.task_dead_lettered", "Task dead-lettered after too many stuck resets", {
+      taskId: task_id,
+      maxStuckResets: MAX_STUCK_RESETS,
+    });
+    if (failTask(task_id, `Task dead-lettered after ${MAX_STUCK_RESETS} stuck resets`)) {
+      refundPayment(task_id);
+      refundDebitForTask(task_id);
+    }
+  }
+
+  // Re-queue remaining stuck tasks and increment their reset counter.
   getDb().prepare(
-    "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL WHERE status='running' AND started_by='worker' AND started_at < ?"
-  ).run(stuckCutoff);
+    "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL, stuck_count=stuck_count+1 WHERE status='running' AND started_by='worker' AND started_at < ? AND stuck_count < ?"
+  ).run(stuckCutoff, MAX_STUCK_RESETS);
+
   void syncToTurso();
 
   // MCP servers have their own execution path (calls an external MCP endpoint)
@@ -82,6 +151,11 @@ async function processTasks() {
   for (const agent of agents) {
     const mcpHandler = mcpHandlers[agent.agentId];
     if (agent.endpoint && !mcpHandler) continue;
+
+    if (isCircuitOpen(agent.agentId)) {
+      logger.info("worker.circuit_skipped", "Skipping agent — circuit breaker open", { agentId: agent.agentId });
+      continue;
+    }
 
     const queued = getTasksByAgent({
       agentId: agent.agentId,
@@ -132,6 +206,7 @@ async function processTasks() {
           if (completeTask(task.taskId, output)) {
             releasePayment(task.taskId);
           }
+          recordCircuitSuccess(agent.agentId);
           logger.info("worker.task_processed", "Worker processed task", {
             agentId: agent.agentId,
             taskId: task.taskId,
@@ -142,6 +217,7 @@ async function processTasks() {
             refundPayment(task.taskId);
             refundDebitForTask(task.taskId);
           }
+          recordCircuitFailure(agent.agentId);
           logger.error("worker.task_failed", "Worker task execution failed", {
             err,
             agentId: agent.agentId,
