@@ -8,7 +8,7 @@ import { listMcpServers, createMcpAgentHandler } from "../lib/mcp";
 import { deliverPendingWebhooks } from "../lib/webhooks";
 import { recordTaskLatency } from "../lib/metrics";
 import { formatContext } from "../lib/formatContext";
-import { runWithProvider } from "../lib/providers";
+import { runWithProvider, getAgentMaxTokens } from "../lib/providers";
 import { verifyAgentEndpoint } from "../lib/verification";
 import { logger } from "../lib/logger";
 import { runWithTraceId } from "../lib/tracing";
@@ -21,6 +21,8 @@ const POLL_INTERVAL_MS = 15_000;
 const HEALTH_INTERVAL_MS = 5 * 60 * 1000;
 const THRESHOLD_INTERVAL_MS = 5 * 60 * 1000;
 const SHUTDOWN_TIMEOUT_MS = Number.parseInt(process.env.AXON_WORKER_SHUTDOWN_TIMEOUT_MS ?? "25000", 10);
+const TASK_TIMEOUT_MS = Number.parseInt(process.env.AXON_TASK_TIMEOUT_MS ?? "600000", 10); // 10 min — allows up to 3 retries × 120 s provider timeout
+const MAX_CONCURRENT_PER_AGENT = Number.parseInt(process.env.AXON_MAX_CONCURRENT_PER_AGENT ?? "1", 10);
 let pollRunning = false;
 let shutdownRequested = false;
 let pollTimer: NodeJS.Timeout | null = null;
@@ -47,9 +49,9 @@ async function fetchLivePrices(): Promise<string> {
 }
 
 async function processTasks() {
-  // Reset only worker-claimed tasks stuck in 'running' for over 5 minutes.
+  // Reset worker-claimed tasks stuck in running longer than the task timeout.
   // HTTP streaming/gateway/manual tasks can legitimately run outside this worker.
-  const stuckCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const stuckCutoff = new Date(Date.now() - TASK_TIMEOUT_MS).toISOString();
   getDb().prepare(
     "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL WHERE status='running' AND started_by='worker' AND started_at < ?"
   ).run(stuckCutoff);
@@ -88,7 +90,21 @@ async function processTasks() {
       limit: 5,
     });
 
+    const getActiveCount = getDb().prepare(
+      "SELECT COUNT(*) AS n FROM tasks WHERE to_agent = ? AND status = 'running'"
+    );
     for (const task of queued) {
+      // Concurrency guard: skip if agent already has too many running tasks
+      const activeCount = (getActiveCount.get(agent.agentId) as { n: number }).n;
+      if (activeCount >= MAX_CONCURRENT_PER_AGENT) {
+        logger.info("worker.concurrency_limit", "Agent at concurrency limit, skipping task", {
+          agentId: agent.agentId,
+          activeCount,
+          limit: MAX_CONCURRENT_PER_AGENT,
+        });
+        break;
+      }
+
       await runWithTraceId(task.traceId ?? task.taskId, async () => {
         const started = startTask(task.taskId, "worker");
         if (!started) return;
@@ -99,13 +115,19 @@ async function processTasks() {
         });
 
         try {
-          // Combine task text, user-supplied context, and live prices into one message
           const prices = PRICE_AGENTS.has(agent.agentId) ? livePrices : "";
           const fullMessage = task.task + formatContext(task.context) + prices;
 
-          const output = mcpHandler
-            ? await mcpHandler(fullMessage)
-            : await runWithProvider(agent, fullMessage);
+          const taskTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Task timed out after ${TASK_TIMEOUT_MS / 1000}s`)), TASK_TIMEOUT_MS).unref()
+          );
+
+          const output = await Promise.race([
+            mcpHandler
+              ? mcpHandler(fullMessage)
+              : runWithProvider(agent, fullMessage, getAgentMaxTokens(agent.agentId)),
+            taskTimeout,
+          ]);
 
           if (completeTask(task.taskId, output)) {
             releasePayment(task.taskId);

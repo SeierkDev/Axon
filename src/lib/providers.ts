@@ -31,6 +31,46 @@ import { SYSTEM as emailSystem }     from "../workers/agents/email";
 import { SYSTEM as reportSystem }    from "../workers/agents/report";
 import { SYSTEM as webSystem }       from "../workers/agents/web";
 
+// ── Retry utility ─────────────────────────────────────────────────────────────
+
+const TRANSIENT_HTTP_CODES = new Set([429, 500, 503, 529]);
+
+function isTransient(err: unknown): boolean {
+  try {
+    if (err instanceof Anthropic.RateLimitError) return true;
+    if (err instanceof Anthropic.InternalServerError) return true;
+    if (err instanceof Anthropic.APIConnectionError) return true;
+    if (err instanceof Anthropic.APIConnectionTimeoutError) return true;
+    if (err instanceof Anthropic.APIError && TRANSIENT_HTTP_CODES.has(err.status)) return true;
+  } catch {
+    // Anthropic SDK mocked in tests — fall through to message-based detection
+  }
+  if (err instanceof Error && (err.name === "AbortError" || /ECONNRESET|ETIMEDOUT|ENOTFOUND/i.test(err.message))) return true;
+  return false;
+}
+
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3, baseDelayMs = 1000, label = "provider"): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isTransient(err) || attempt === maxAttempts) throw err;
+      const delay = baseDelayMs * Math.pow(2, attempt - 1) + Math.random() * 200;
+      console.warn(`[${label}] transient error on attempt ${attempt}/${maxAttempts}, retrying in ${Math.round(delay)}ms`, err instanceof Error ? err.message : err);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastErr;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function getAgentMaxTokens(_agentId: string): number {
+  return 2048;
+}
+
 const AGENT_SYSTEMS: Record<string, string> = {
   "research-agent":  researchSystem,
   "crypto-agent":    cryptoSystem,
@@ -98,13 +138,15 @@ class AnthropicProvider implements ProviderClient {
   }
 
   async complete(system: string, message: string, maxTokens = 2048): Promise<string> {
-    const msg = await this.client.messages.create(
+    const timeoutMs = Math.max(120_000, maxTokens * 30);
+    return withRetry(() => this.client.messages.create(
       { model: this.model, max_tokens: maxTokens, system, messages: [{ role: "user", content: message }] },
-      { timeout: 120_000 }
-    );
-    const block = msg.content.find((b) => b.type === "text");
-    if (!block || block.type !== "text") throw new Error("No text response from Anthropic");
-    return block.text;
+      { timeout: timeoutMs }
+    ).then((msg) => {
+      const block = msg.content.find((b) => b.type === "text");
+      if (!block || block.type !== "text") throw new Error("No text response from Anthropic");
+      return block.text;
+    }), 3, 1000, `anthropic:${this.model}`);
   }
 
   async *stream(system: string, message: string, maxTokens = 4096): AsyncIterable<string> {
@@ -136,30 +178,32 @@ class OpenAICompatibleProvider implements ProviderClient {
   }
 
   async complete(system: string, message: string, maxTokens = 2048): Promise<string> {
-    const res = await publicHttpFetch(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({
-        model: this.model,
-        max_tokens: maxTokens,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: message },
-        ],
-      }),
-      signal: AbortSignal.timeout(60_000),
-      maxResponseBytes: 5_000_000,
-    });
+    return withRetry(async () => {
+      const res = await publicHttpFetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify({
+          model: this.model,
+          max_tokens: maxTokens,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: message },
+          ],
+        }),
+        signal: AbortSignal.timeout(60_000),
+        maxResponseBytes: 5_000_000,
+      });
 
-    if (!res.ok) {
-      const err = await res.text().catch(() => res.statusText);
-      throw new Error(`Provider ${this.baseUrl} error ${res.status}: ${err}`);
-    }
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText);
+        throw new Error(`Provider ${this.baseUrl} error ${res.status}: ${errText}`);
+      }
 
-    const data = await res.json() as { choices: { message: { content: string } }[] };
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error("No content in provider response");
-    return content;
+      const data = await res.json() as { choices: { message: { content: string } }[] };
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error("No content in provider response");
+      return content;
+    }, 3, 1000, `openai-compat:${this.model}`);
   }
 
   async *stream(system: string, message: string, maxTokens = 4096): AsyncIterable<string> {
