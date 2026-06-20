@@ -35,6 +35,15 @@ export function seedBuiltinAgents(db: Database): void {
     process.env.NEXT_PUBLIC_WALLET_ADDRESS ??
     null;
 
+  // Remove any platform agents no longer in BUILTIN_AGENTS (cleans up stale seeds after deploys)
+  const currentIds = BUILTIN_AGENTS.map((a) => a.agentId);
+  if (currentIds.length > 0) {
+    const placeholders = currentIds.map(() => "?").join(",");
+    db.prepare(
+      `DELETE FROM agents WHERE verification_status = 'platform' AND agent_id NOT IN (${placeholders})`
+    ).run(...currentIds);
+  }
+
   const upsertAgent = db.prepare(`
     INSERT INTO agents
       (agent_id, name, capabilities, public_key, price, reputation, category, provider, wallet_address, verification_status, created_at)
