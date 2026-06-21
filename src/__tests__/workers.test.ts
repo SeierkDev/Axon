@@ -112,32 +112,42 @@ describe("worker task lifecycle: queued → running → failed", () => {
 });
 
 // ── stuck task recovery ───────────────────────────────────────────────────────
+// SQL mirrors the exact re-queue pass in src/workers/index.ts.
+// See worker-recovery.test.ts for dead-letter and multi-cycle coverage.
+
+const TASK_TIMEOUT_MS = 600_000; // 10 min — matches AXON_TASK_TIMEOUT_MS default
+const MAX_STUCK_RESETS = 3;
+
+function workerStuckCutoff() {
+  return new Date(Date.now() - TASK_TIMEOUT_MS).toISOString();
+}
+
+function runWorkerRequeue(cutoff: string) {
+  getDb()
+    .prepare(
+      "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL, stuck_count=stuck_count+1 WHERE status='running' AND started_by='worker' AND started_at < ? AND stuck_count < ?"
+    )
+    .run(cutoff, MAX_STUCK_RESETS);
+}
 
 describe("stuck task recovery", () => {
-  it("resets running worker tasks older than 5 minutes back to queued", () => {
+  it("resets running worker tasks older than the task timeout back to queued", () => {
     const a = makeAgent();
     createAgent(a);
     const task = createTask({ fromAgent: a.agentId, toAgent: a.agentId, task: "stuck task" });
     startTask(task.taskId, "worker");
 
-    // Simulate the task being stuck: backdate started_at by 6 minutes
-    const stuckTime = new Date(Date.now() - 6 * 60 * 1000).toISOString();
     getDb()
       .prepare("UPDATE tasks SET started_at = ? WHERE task_id = ?")
-      .run(stuckTime, task.taskId);
+      .run(new Date(Date.now() - TASK_TIMEOUT_MS - 60_000).toISOString(), task.taskId);
 
-    // This is the exact SQL the worker runs on each poll to recover stuck tasks
-    const stuckCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    getDb()
-      .prepare(
-        "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL WHERE status='running' AND started_by='worker' AND started_at < ?"
-      )
-      .run(stuckCutoff);
+    runWorkerRequeue(workerStuckCutoff());
 
     const recovered = getTaskById(task.taskId)!;
     expect(recovered.status).toBe("queued");
     expect(recovered.startedAt).toBeUndefined();
     expect(recovered.startedBy).toBeUndefined();
+    expect(recovered.stuckCount).toBe(1);
   });
 
   it("does NOT reset tasks started by the API — only worker-claimed tasks are recovered", () => {
@@ -146,21 +156,12 @@ describe("stuck task recovery", () => {
     const task = createTask({ fromAgent: a.agentId, toAgent: a.agentId, task: "api-started running" });
     startTask(task.taskId, "api");
 
-    // Backdate by 6 minutes
-    const stuckTime = new Date(Date.now() - 6 * 60 * 1000).toISOString();
     getDb()
       .prepare("UPDATE tasks SET started_at = ? WHERE task_id = ?")
-      .run(stuckTime, task.taskId);
+      .run(new Date(Date.now() - TASK_TIMEOUT_MS - 60_000).toISOString(), task.taskId);
 
-    // Run stuck task recovery
-    const stuckCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    getDb()
-      .prepare(
-        "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL WHERE status='running' AND started_by='worker' AND started_at < ?"
-      )
-      .run(stuckCutoff);
+    runWorkerRequeue(workerStuckCutoff());
 
-    // API-started task should NOT be reset
     const unchanged = getTaskById(task.taskId)!;
     expect(unchanged.status).toBe("running");
     expect(unchanged.startedBy).toBe("api");
@@ -192,25 +193,19 @@ describe("requeueTask: failed task recovery", () => {
 
 // ── stuck task recovery edge cases ───────────────────────────────────────────
 
-describe("stuck task recovery: task just under 5-minute threshold is NOT reset", () => {
-  it("leaves a running task untouched when it started less than 5 minutes ago", () => {
+describe("stuck task recovery: task under the timeout threshold is NOT reset", () => {
+  it("leaves a running task untouched when it started less than the timeout ago", () => {
     const a = makeAgent();
     createAgent(a);
     const task = createTask({ fromAgent: a.agentId, toAgent: a.agentId, task: "recent task" });
     startTask(task.taskId, "worker");
 
-    // Backdate by only 4 minutes — under the 5-minute recovery threshold
-    const recentTime = new Date(Date.now() - 4 * 60 * 1000).toISOString();
+    // Backdate by half the timeout — still within the recovery window
     getDb()
       .prepare("UPDATE tasks SET started_at = ? WHERE task_id = ?")
-      .run(recentTime, task.taskId);
+      .run(new Date(Date.now() - TASK_TIMEOUT_MS / 2).toISOString(), task.taskId);
 
-    const stuckCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    getDb()
-      .prepare(
-        "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL WHERE status='running' AND started_by='worker' AND started_at < ?"
-      )
-      .run(stuckCutoff);
+    runWorkerRequeue(workerStuckCutoff());
 
     const unchanged = getTaskById(task.taskId)!;
     expect(unchanged.status).toBe("running");
@@ -229,12 +224,7 @@ describe("stuck task recovery: payment_pending tasks are immune to recovery SQL"
       initialStatus: "payment_pending",
     });
 
-    const stuckCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    getDb()
-      .prepare(
-        "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL WHERE status='running' AND started_by='worker' AND started_at < ?"
-      )
-      .run(stuckCutoff);
+    runWorkerRequeue(workerStuckCutoff());
 
     expect(getTaskById(task.taskId)!.status).toBe("payment_pending");
   });
@@ -248,17 +238,11 @@ describe("stuck task recovery: completed and failed tasks are never reset", () =
     startTask(task.taskId, "worker");
     completeTask(task.taskId, "result");
 
-    // Backdate to look stuck even though it's completed
     getDb()
       .prepare("UPDATE tasks SET started_at = ? WHERE task_id = ?")
-      .run(new Date(Date.now() - 10 * 60 * 1000).toISOString(), task.taskId);
+      .run(new Date(Date.now() - TASK_TIMEOUT_MS * 2).toISOString(), task.taskId);
 
-    const stuckCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    getDb()
-      .prepare(
-        "UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL WHERE status='running' AND started_by='worker' AND started_at < ?"
-      )
-      .run(stuckCutoff);
+    runWorkerRequeue(workerStuckCutoff());
 
     expect(getTaskById(task.taskId)!.status).toBe("completed");
   });

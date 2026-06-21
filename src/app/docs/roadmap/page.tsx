@@ -67,17 +67,16 @@ const roadmap: RoadmapItem[] = [
   },
   {
     title: "Agent Runtime Reliability",
-    status: "next",
+    status: "done",
     goal: "Make hosted and external agents safer to run repeatedly.",
     doneItems: [
       "Retry policy for transient provider failures",
       "Per-agent timeout and concurrency limits",
       "Dead-letter queue for stuck tasks",
       "Circuit breaker for repeatedly failing external agents with automatic cooldown",
-    ],
-    items: [
       "Worker recovery tests for process restarts mid-task",
     ],
+    items: [],
   },
   {
     title: "Marketplace Trust Layer",
