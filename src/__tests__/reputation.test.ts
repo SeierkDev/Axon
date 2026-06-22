@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeReputation } from "@/lib/reputation";
+import { computeReputation, recomputeAllReputations } from "@/lib/reputation";
 import { createAgent } from "@/lib/agents";
 import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
 import { getDb } from "@/lib/db";
@@ -147,5 +147,75 @@ describe("computeReputation: reviewScore with a review", () => {
     const metrics = computeReputation(worker.agentId);
     // reviewScore = (5 - 1) / 4 = 1.0 → contributes to reputation
     expect(metrics.reputation).toBeGreaterThan(0);
+  });
+});
+
+// ── staleness decay (Phase 6: Marketplace Trust Layer) ──────────────────────────
+
+describe("computeReputation: staleness decay", () => {
+  it("does not decay a recently active agent (within the grace window)", () => {
+    const worker = makeAgent();
+    createAgent(worker);
+    createTimedTask(worker, 10); // completed just now
+
+    const metrics = computeReputation(worker.agentId);
+    expect(metrics.decayFactor).toBe(1);
+    expect(metrics.staleDays).not.toBeNull();
+    expect(metrics.staleDays as number).toBeLessThanOrEqual(1);
+  });
+
+  it("applies no decay to an agent with no completed tasks", () => {
+    const worker = makeAgent();
+    createAgent(worker);
+
+    const metrics = computeReputation(worker.agentId);
+    expect(metrics.staleDays).toBeNull();
+    expect(metrics.decayFactor).toBe(1);
+  });
+
+  it("decays a long-stale agent to the floor, below an identical fresh agent", () => {
+    const fresh = makeAgent();
+    createAgent(fresh);
+    createTimedTask(fresh, 10);
+    const freshRep = computeReputation(fresh.agentId).reputation;
+
+    const stale = makeAgent();
+    createAgent(stale);
+    const task = createTimedTask(stale, 10);
+    // Backdate the completed task ~200 days into the past (well past grace+span).
+    getDb()
+      .prepare(
+        "UPDATE tasks SET completed_at = datetime('now', '-200 days'), started_at = datetime('now', '-200 days', '-10 seconds') WHERE task_id = ?",
+      )
+      .run(task.taskId);
+
+    const metrics = computeReputation(stale.agentId);
+    expect(metrics.staleDays as number).toBeGreaterThan(120);
+    expect(metrics.decayFactor).toBeCloseTo(0.6, 3); // DECAY_FLOOR
+    // Same underlying stats, but decayed → strictly lower than the fresh agent.
+    expect(metrics.reputation).toBeLessThan(freshRep);
+  });
+
+  it("recomputeAllReputations persists decay into the cached ranking column", () => {
+    const stale = makeAgent();
+    createAgent(stale);
+    const task = createTimedTask(stale, 10);
+    getDb()
+      .prepare(
+        "UPDATE tasks SET completed_at = datetime('now', '-200 days'), started_at = datetime('now', '-200 days', '-10 seconds') WHERE task_id = ?",
+      )
+      .run(task.taskId);
+    // Simulate a stale cached score from when the agent was last active.
+    getDb().prepare("UPDATE agents SET reputation = 9 WHERE agent_id = ?").run(stale.agentId);
+
+    recomputeAllReputations();
+
+    const row = getDb()
+      .prepare("SELECT reputation FROM agents WHERE agent_id = ?")
+      .get(stale.agentId) as { reputation: number };
+    // Discovery ranks by this column — it now reflects the decayed value, not the
+    // stale 9 it would otherwise have kept while the agent sat idle.
+    expect(row.reputation).toBe(computeReputation(stale.agentId).reputation);
+    expect(row.reputation).toBeLessThan(9);
   });
 });

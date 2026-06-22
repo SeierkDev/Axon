@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { runRetentionCleanup } from "@/lib/retention";
+import { recomputeAllReputations } from "@/lib/reputation";
 import { logger } from "@/lib/logger";
 
 function authorized(req: NextRequest): boolean {
@@ -21,8 +22,15 @@ export async function POST(req: NextRequest) {
   try {
     const start = Date.now();
     const deleted = runRetentionCleanup();
-    logger.info("cron.retention_complete", "Retention cleanup complete", { ...deleted });
-    return NextResponse.json({ ok: true, deleted, durationMs: Date.now() - start });
+    // Recompute reputations daily so staleness decay reaches idle agents' cached
+    // scores (discovery ranks by the column, which is otherwise only updated on
+    // task completion).
+    const reputationsRecomputed = recomputeAllReputations();
+    logger.info("cron.retention_complete", "Retention cleanup complete", {
+      ...deleted,
+      reputationsRecomputed,
+    });
+    return NextResponse.json({ ok: true, deleted, reputationsRecomputed, durationMs: Date.now() - start });
   } catch (err) {
     logger.error("cron.retention_failed", "Retention cleanup failed", {
       err: err instanceof Error ? err.message : String(err),
