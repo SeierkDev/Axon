@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
+import { getAgentById } from "./agents";
 
 export interface Review {
   reviewId: string;
@@ -47,6 +48,38 @@ function hasCompletedTaskWith(reviewerId: string, agentId: string): boolean {
   return !!row;
 }
 
+// Phase 6 (Marketplace Trust Layer): catch the two main ways agent ratings get
+// gamed before a review is written — self-reviews (an agent, or its operator's
+// wallet, rating itself) and review stuffing (one reviewer padding an agent with
+// repeat ratings). Returns a rejection reason, or null when the review is clean.
+export function detectReviewFraud(agentId: string, reviewerId: string): string | null {
+  // An agent cannot review itself.
+  if (reviewerId === agentId) {
+    return "SELF_REVIEW: an agent cannot review itself";
+  }
+  // An operator cannot review their own agent. The reviewer may be a wallet
+  // directly, or one of the operator's own agents — resolve both sides to an
+  // owner wallet and reject when they match (this also catches a sibling agent
+  // on the same wallet being used to self-review).
+  const target = getAgentById(agentId);
+  if (target?.walletAddress) {
+    const reviewerAgent = getAgentById(reviewerId);
+    const reviewerWallet = reviewerAgent?.walletAddress ?? reviewerId;
+    if (reviewerWallet === target.walletAddress) {
+      return "SELF_REVIEW: an operator cannot review their own agent";
+    }
+  }
+  // One review per reviewer per agent — block rating inflation by repeat reviews
+  // (also enforced by a UNIQUE (agent_id, reviewer_id) constraint).
+  const existing = getDb()
+    .prepare("SELECT 1 FROM reviews WHERE agent_id = ? AND reviewer_id = ? LIMIT 1")
+    .get(agentId, reviewerId);
+  if (existing) {
+    return "DUPLICATE_REVIEW: this reviewer has already reviewed this agent";
+  }
+  return null;
+}
+
 export function createReview(
   agentId: string,
   reviewerId: string,
@@ -55,6 +88,11 @@ export function createReview(
 ): Review {
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     throw new Error("Rating must be an integer between 1 and 5");
+  }
+
+  const fraud = detectReviewFraud(agentId, reviewerId);
+  if (fraud) {
+    throw new Error(fraud);
   }
 
   if (!hasCompletedTaskWith(reviewerId, agentId)) {

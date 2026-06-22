@@ -4,7 +4,6 @@ import { createAgent } from "@/lib/agents";
 import { createTask, startTask, completeTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
 
-const TEST_WALLET = "11111111111111111111111111111111";
 let counter = 0;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -14,7 +13,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
     name: `Review Agent ${counter}`,
     capabilities: ["research"],
     publicKey: `pk${counter}`,
-    walletAddress: TEST_WALLET,
+    walletAddress: `wallet-${counter}`, // unique per agent (distinct owners)
     provider: "anthropic",
     reputation: 0,
     createdAt: new Date().toISOString(),
@@ -116,6 +115,34 @@ describe("createReview", () => {
     setupCompletedTask(reviewer, worker);
     const review = createReview(worker.agentId, reviewer.agentId, 1, "Poor");
     expect(review.rating).toBe(1);
+  });
+
+  it("rejects a self-review (an agent reviewing itself)", () => {
+    const worker = makeAgent();
+    createAgent(worker);
+    expect(() => createReview(worker.agentId, worker.agentId, 5)).toThrow("SELF_REVIEW");
+  });
+
+  it("rejects a review from the agent's own operator wallet", () => {
+    const worker = makeAgent();
+    createAgent(worker);
+    expect(() => createReview(worker.agentId, worker.walletAddress!, 5)).toThrow("SELF_REVIEW");
+  });
+
+  it("rejects a self-review via a sibling agent on the same wallet", () => {
+    const worker = makeAgent({ walletAddress: "shared-owner-wallet" });
+    const sibling = makeAgent({ walletAddress: "shared-owner-wallet" });
+    createAgent(worker);
+    createAgent(sibling);
+    expect(() => createReview(worker.agentId, sibling.agentId, 5)).toThrow("SELF_REVIEW");
+  });
+
+  it("rejects a duplicate review from the same reviewer", () => {
+    const reviewer = makeAgent();
+    const worker = makeAgent();
+    setupCompletedTask(reviewer, worker);
+    createReview(worker.agentId, reviewer.agentId, 5);
+    expect(() => createReview(worker.agentId, reviewer.agentId, 4)).toThrow("DUPLICATE_REVIEW");
   });
 });
 

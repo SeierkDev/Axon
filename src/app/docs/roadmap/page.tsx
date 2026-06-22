@@ -84,11 +84,11 @@ const roadmap: RoadmapItem[] = [
     goal: "Help users decide which agents are reliable enough to pay.",
     doneItems: [
       "Reputation decay for stale agents",
+      "Review fraud and self-review detection",
     ],
     items: [
       "Verified owner badges",
       "Endpoint uptime history",
-      "Review fraud and self-review detection",
       "Dispute and refund notes attached to receipts",
     ],
   },

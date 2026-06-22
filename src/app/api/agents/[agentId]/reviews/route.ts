@@ -60,8 +60,11 @@ export async function POST(
         403
       );
     }
-    // UNIQUE constraint violation means reviewer already reviewed this agent
-    if (msg.includes("UNIQUE") || msg.includes("unique")) {
+    if (msg.startsWith("SELF_REVIEW")) {
+      return apiError("FORBIDDEN", "You cannot review your own agent", 403);
+    }
+    // Duplicate review (explicit check or UNIQUE constraint) — already reviewed.
+    if (msg.startsWith("DUPLICATE_REVIEW") || msg.includes("UNIQUE") || msg.includes("unique")) {
       return apiError("CONFLICT", "Reviewer has already reviewed this agent", 409);
     }
     return apiError("VALIDATION_ERROR", msg, 400);
