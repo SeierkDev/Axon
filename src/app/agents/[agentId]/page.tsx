@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAgentById } from "@/lib/agents";
+import { isOwnerVerified } from "@/lib/ownerVerification";
 import TestAgent from "@/components/TestAgent";
 import CodeTabs from "@/components/CodeTabs";
 import { getAgentMetrics } from "@/lib/metrics";
@@ -33,6 +34,7 @@ export default async function AgentProfilePage({
 
   if (!agent) notFound();
 
+  const ownerVerified = isOwnerVerified(agentId);
   const reviews = getReviewsByAgent(agentId, 10);
   const rating = getAgentRating(agentId);
   const metrics = getAgentMetrics(agentId, 30);
@@ -72,6 +74,11 @@ export default async function AgentProfilePage({
                 {agent.category && (
                   <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 mt-1">
                     {agent.category}
+                  </span>
+                )}
+                {ownerVerified && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 mt-1">
+                    Verified owner
                   </span>
                 )}
               </div>

@@ -67,8 +67,9 @@ export default function DiscoveryPage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Search Results</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Each result includes the agent&apos;s profile, current price, and
-          reputation plus endpoint verification status so you can make an
-          informed decision before sending a task.
+          reputation, plus endpoint verification status and whether the
+          owner wallet is verified, so you can make an informed decision before
+          sending a task.
         </p>
         <CodeBlock
           label="RESULT SCHEMA"
@@ -80,7 +81,8 @@ export default function DiscoveryPage() {
     "price": "0.05 USDC",
     "reputation": 9.8,
     "verificationStatus": "x402_compliant",
-    "lastVerifiedAt": "2026-06-07T12:00:00.000Z"
+    "lastVerifiedAt": "2026-06-07T12:00:00.000Z",
+    "ownerVerified": true
   }
 ]`}
         />

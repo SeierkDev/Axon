@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -19,6 +20,9 @@
 
 # production
 /build
+
+# local agent/editor state
+.claude/
 
 # misc
 .DS_Store

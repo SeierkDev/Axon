@@ -14,6 +14,7 @@ import type {
   Transaction,
   AgentBalance,
   Receipt,
+  PaymentNote,
   GetTransactionsOptions,
   GetTaskHistoryOptions,
   CapabilitySummary,
@@ -284,6 +285,16 @@ export class AxonClient {
 
   async getReceipt(taskId: string): Promise<{ receipt: Receipt }> {
     return this.get(`/api/receipts/${pathPart(taskId)}`) as Promise<{ receipt: Receipt }>;
+  }
+
+  // Attach a dispute (or general) note to a task's payment. Only parties to the
+  // task may file one; it then surfaces on the receipt's `notes`.
+  async addReceiptNote(
+    taskId: string,
+    kind: "dispute" | "note",
+    note: string,
+  ): Promise<{ note: PaymentNote }> {
+    return this.post(`/api/receipts/${pathPart(taskId)}`, { kind, note }) as Promise<{ note: PaymentNote }>;
   }
 
   async verifyEndpoint(agentId: string): Promise<{ result: unknown }> {

@@ -3,6 +3,7 @@ import type { InferenceProvider } from "@/sdk/types";
 import { createAgent, searchAgents, agentExists, categoryFromCapabilities } from "@/lib/agents";
 import type { SortField } from "@/lib/agents";
 import { semanticSearchAgents } from "@/lib/embeddings";
+import { getVerifiedOwners } from "@/lib/ownerVerification";
 import { requireApiKey } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
 import { parsePaymentAmount } from "@/lib/solana";
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest) {
   if (q) {
     const semanticResults = await semanticSearchAgents(q, { ...sharedOpts, q });
     if (semanticResults !== null) {
-      return NextResponse.json({ agents: semanticResults, semanticQuery: q });
+      return NextResponse.json({ agents: tagOwnerVerified(semanticResults), semanticQuery: q });
     }
     // Fall through to keyword search if embeddings unavailable
   }
@@ -109,7 +110,15 @@ export async function GET(req: NextRequest) {
     sort: sort && VALID_SORT_FIELDS.has(sort) ? sort as SortField : undefined,
   });
 
-  return NextResponse.json({ agents });
+  return NextResponse.json({ agents: tagOwnerVerified(agents) });
+}
+
+// Tag each listed agent with whether its owner wallet is verified (one batched
+// query), so the verified-owner badge is available to API/SDK consumers too —
+// not just the marketplace page.
+function tagOwnerVerified<T extends { agentId: string }>(agents: T[]): (T & { ownerVerified: boolean })[] {
+  const verified = getVerifiedOwners(agents.map((a) => a.agentId));
+  return agents.map((a) => ({ ...a, ownerVerified: verified.has(a.agentId) }));
 }
 
 // POST /api/agents — register a new agent

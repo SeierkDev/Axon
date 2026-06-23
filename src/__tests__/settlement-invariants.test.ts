@@ -5,6 +5,7 @@ process.env.AXON_PAYMENT_VERIFIER = "mock";
 
 import { vi, describe, it, expect, afterEach } from "vitest";
 import { createPayment, releasePayment, refundPayment, getAgentBalance } from "@/lib/payments";
+import { getPaymentNotes } from "@/lib/paymentNotes";
 import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
 import { createAgent, getAgentById } from "@/lib/agents";
 import * as webhooksModule from "@/lib/webhooks";
@@ -157,6 +158,31 @@ describe("settlement invariants: refund path", () => {
 
     const events = webhookSpy.mock.calls.map((c) => c[1]);
     expect(events).toContain("payment.refunded");
+  });
+
+  it("a refund attaches a refund note carrying the task's failure reason", async () => {
+    const sender = makeAgent();
+    const worker = makeAgent();
+    createAgent(sender);
+    createAgent(worker);
+
+    const task = createTask({ fromAgent: sender.agentId, toAgent: worker.agentId, task: "x" });
+    startTask(task.taskId);
+    await createPayment({
+      taskId: task.taskId,
+      fromAgent: sender.agentId,
+      toAgent: worker.agentId,
+      amountSol: 1,
+      paymentSignature: mockSig(1_000_000, "si-refund-note"),
+      priceString: "1 USDC",
+    });
+
+    failTask(task.taskId, "Provider exploded");
+    refundPayment(task.taskId);
+
+    const notes = getPaymentNotes(task.taskId);
+    expect(notes.some((nt) => nt.kind === "refund" && nt.note.includes("Provider exploded"))).toBe(true);
+    expect(notes.every((nt) => nt.author === null)).toBe(true); // system-generated
   });
 
   it("cannot double-refund the same task", async () => {

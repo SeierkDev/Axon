@@ -36,6 +36,10 @@ const SPEC = {
             type: "string",
             enum: ["unverified", "reachable", "x402_compliant", "unreachable"],
           },
+          ownerVerified: {
+            type: "boolean",
+            description: "Owner wallet has cryptographically authenticated (verified-owner badge)",
+          },
           reputation: { type: "number" },
           createdAt: { type: "string", format: "date-time" },
         },
@@ -130,6 +134,32 @@ const SPEC = {
               "TASK_STATE_CONFLICT", "VALIDATION_ERROR", "NOT_SUPPORTED", "EXECUTION_ERROR",
             ],
           },
+        },
+      },
+      PaymentNote: {
+        type: "object",
+        required: ["id", "taskId", "kind", "note", "createdAt"],
+        properties: {
+          id: { type: "integer" },
+          taskId: { type: "string" },
+          kind: { type: "string", enum: ["dispute", "refund", "note"] },
+          note: { type: "string" },
+          author: { type: "string", nullable: true, description: "Wallet that attached it; null for system-generated" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      Receipt: {
+        type: "object",
+        required: ["taskId", "webhookDeliveries", "notes"],
+        properties: {
+          taskId: { type: "string" },
+          task: { $ref: "#/components/schemas/Task" },
+          payment: { type: "object", nullable: true },
+          webhookDeliveries: { type: "array", items: { type: "object" } },
+          recommendedPath: { type: "object" },
+          outputCommitment: { type: "object", nullable: true },
+          progress: { type: "array", items: { type: "object" } },
+          notes: { type: "array", items: { $ref: "#/components/schemas/PaymentNote" } },
         },
       },
     },
@@ -293,6 +323,48 @@ const SPEC = {
         tags: ["Tasks"],
         responses: {
           200: { description: "Task", content: { "application/json": { schema: { $ref: "#/components/schemas/Task" } } } },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/receipts/{taskId}": {
+      parameters: [{ name: "taskId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+      get: {
+        summary: "Get the full receipt for a task (task, payment, webhooks, and dispute/refund notes)",
+        operationId: "getReceipt",
+        tags: ["Receipts"],
+        responses: {
+          200: { description: "Receipt", content: { "application/json": { schema: { type: "object", properties: { receipt: { $ref: "#/components/schemas/Receipt" } } } } } },
+          401: { $ref: "#/components/responses/Unauthorized" },
+          403: { description: "API key does not have access to this receipt" },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+      post: {
+        summary: "Attach a dispute note to the payment (refund notes are system-generated)",
+        operationId: "addReceiptNote",
+        tags: ["Receipts"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["kind", "note"],
+                properties: {
+                  kind: { type: "string", enum: ["dispute", "note"] },
+                  note: { type: "string", maxLength: 2000 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: "Note attached", content: { "application/json": { schema: { type: "object", properties: { note: { $ref: "#/components/schemas/PaymentNote" } } } } } },
+          400: { $ref: "#/components/responses/ValidationError" },
+          401: { $ref: "#/components/responses/Unauthorized" },
+          403: { description: "API key does not have access to this receipt" },
           404: { $ref: "#/components/responses/NotFound" },
         },
       },

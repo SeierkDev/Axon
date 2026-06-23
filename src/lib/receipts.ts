@@ -5,6 +5,7 @@ import type { WebhookDelivery } from "./webhooks";
 import { recommendPaymentPath, type PaymentPathRecommendation } from "./paymentPath";
 import { getOutputCommitment, type OutputCommitment } from "./outputCommitment";
 import { getTaskProgress, type TaskProgressEntry } from "./progress";
+import { getPaymentNotes, type PaymentNote } from "./paymentNotes";
 
 export interface Receipt {
   taskId: string;
@@ -14,6 +15,7 @@ export interface Receipt {
   recommendedPath: PaymentPathRecommendation;
   outputCommitment: OutputCommitment | null;
   progress: TaskProgressEntry[];
+  notes: PaymentNote[]; // dispute/refund notes attached to this payment
 }
 
 export function getReceipt(taskId: string): Receipt {
@@ -103,5 +105,6 @@ export function getReceipt(taskId: string): Receipt {
     recommendedPath,
     outputCommitment: getOutputCommitment(taskId),
     progress: getTaskProgress(taskId),
+    notes: getPaymentNotes(taskId),
   };
 }

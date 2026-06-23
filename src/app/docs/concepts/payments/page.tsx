@@ -124,7 +124,9 @@ const { channel, channelKey } = await res.json();`}
           Paid tasks start as payment-confirmed work. When the recipient
           completes the task, Axon marks the transaction completed, updates
           reputation, and emits webhooks. If the task fails, the payment record
-          is marked refunded.
+          is marked refunded. The receipt also carries any dispute or refund
+          notes attached to the payment — a refund auto-records its reason, and
+          either party can file a dispute note with <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">addReceiptNote()</code>.
         </p>
         <CodeBlock
           label="GET RECEIPT"
@@ -133,7 +135,11 @@ const { channel, channelKey } = await res.json();`}
 console.log(receipt.task?.status);
 console.log(receipt.payment?.status);
 console.log(receipt.payment?.incomingSignature);
-console.log(receipt.webhookDeliveries);`}
+console.log(receipt.webhookDeliveries);
+console.log(receipt.notes); // dispute / refund notes on this payment
+
+// File a dispute note (either party to the task):
+await axon.addReceiptNote(task.taskId, "dispute", "output did not match the spec");`}
         />
       </section>
 

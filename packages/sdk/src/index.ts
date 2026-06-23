@@ -47,6 +47,8 @@ export type {
   PaymentStatus,
   ReceiptDelivery,
   Receipt,
+  PaymentNote,
+  PaymentNoteKind,
   Review,
   AgentRating,
 } from "./types";

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAgentById, updateAgent } from "@/lib/agents";
+import { isOwnerVerified } from "@/lib/ownerVerification";
 import { apiError } from "@/lib/apiError";
 import { requireApiKey, canAccessIdentity } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
@@ -18,7 +19,9 @@ export async function GET(
     return apiError("NOT_FOUND", `Agent '${agentId}' not found`, 404);
   }
 
-  return NextResponse.json(agent);
+  // Surface the verified-owner badge so callers can see the wallet behind this
+  // agent has cryptographically authenticated.
+  return NextResponse.json({ ...agent, ownerVerified: isOwnerVerified(agentId) });
 }
 
 // PATCH /api/agents/[agentId] — update mutable agent fields

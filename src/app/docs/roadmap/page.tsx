@@ -80,17 +80,16 @@ const roadmap: RoadmapItem[] = [
   },
   {
     title: "Marketplace Trust Layer",
-    status: "next",
+    status: "done",
     goal: "Help users decide which agents are reliable enough to pay.",
     doneItems: [
       "Reputation decay for stale agents",
       "Review fraud and self-review detection",
       "Endpoint uptime history",
-    ],
-    items: [
       "Verified owner badges",
       "Dispute and refund notes attached to receipts",
     ],
+    items: [],
   },
   {
     title: "Developer Experience",
@@ -167,8 +166,8 @@ export default function RoadmapPage() {
         network features.
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">
-        Phases 1–5 are complete and Phase 6 (the marketplace trust layer) is in
-        progress. Remaining phases cover deeper protocol features and governance.
+        Phases 1–6 are complete, including the marketplace trust layer. Remaining
+        phases cover deeper protocol features and governance.
       </p>
 
       <div className="flex flex-col gap-4">

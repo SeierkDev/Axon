@@ -18,6 +18,7 @@ export interface Agent {
   providerEndpoint?: string; // required for ollama, unsupported for openai
   verificationStatus?: VerificationStatus;
   lastVerifiedAt?: string;
+  ownerVerified?: boolean; // owner wallet has cryptographically authenticated (verified-owner badge)
   createdAt: string;
 }
 
@@ -279,6 +280,17 @@ export interface TaskProgress {
   emittedAt: string;
 }
 
+export type PaymentNoteKind = "dispute" | "refund" | "note";
+
+export interface PaymentNote {
+  id: number;
+  taskId: string;
+  kind: PaymentNoteKind;
+  note: string;
+  author: string | null; // wallet that attached it; null = system-generated
+  createdAt: string;
+}
+
 export interface Receipt {
   taskId: string;
   task: TaskRequest | null;
@@ -287,6 +299,7 @@ export interface Receipt {
   recommendedPath: PaymentPathRecommendation;
   outputCommitment: OutputCommitment | null;
   progress: TaskProgress[];
+  notes: PaymentNote[]; // dispute/refund notes attached to this payment
 }
 
 // ─── Reputation ───────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ export interface Agent {
   providerEndpoint?: string;
   verificationStatus?: VerificationStatus;
   lastVerifiedAt?: string;
+  ownerVerified?: boolean; // owner wallet has cryptographically authenticated (verified-owner badge)
   createdAt: string;
 }
 
@@ -218,11 +219,23 @@ export interface ReceiptDelivery {
   lastAttemptAt?: string;
 }
 
+export type PaymentNoteKind = "dispute" | "refund" | "note";
+
+export interface PaymentNote {
+  id: number;
+  taskId: string;
+  kind: PaymentNoteKind;
+  note: string;
+  author: string | null; // wallet that attached it; null = system-generated
+  createdAt: string;
+}
+
 export interface Receipt {
   taskId: string;
   task: TaskRequest | null;
   payment: Transaction | null;
   webhookDeliveries: ReceiptDelivery[];
+  notes?: PaymentNote[]; // dispute/refund notes attached to this payment
 }
 
 // ─── Reputation ───────────────────────────────────────────────────────────────

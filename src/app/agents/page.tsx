@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { searchAgents, getAgentCounts } from "@/lib/agents";
+import { getVerifiedOwners } from "@/lib/ownerVerification";
 import { getAllCapabilities } from "@/lib/capabilities";
 import type { SortField } from "@/lib/agents";
 import SiteNav from "@/components/SiteNav";
@@ -34,6 +35,9 @@ export default async function AgentsPage({
     sort: (activeSort as SortField),
     limit: 200,
   });
+  // Tag each agent with whether its owner wallet is verified (one batched query).
+  const verifiedOwners = getVerifiedOwners(filtered.map((a) => a.agentId));
+  const agents = filtered.map((a) => ({ ...a, ownerVerified: verifiedOwners.has(a.agentId) }));
 
   return (
     <div className="bg-white dark:bg-[#0a0a0a] min-h-screen text-[#0a0a0a] dark:text-white">
@@ -104,7 +108,7 @@ export default async function AgentsPage({
         </div>
 
         {/* Grid — adds text search + free-only toggle client-side */}
-        <MarketplaceGrid agents={filtered} hasCapabilityFilter={Boolean(capability)} />
+        <MarketplaceGrid agents={agents} hasCapabilityFilter={Boolean(capability)} />
       </main>
 
       <footer className="border-t border-gray-100 dark:border-gray-800 py-10 px-6">

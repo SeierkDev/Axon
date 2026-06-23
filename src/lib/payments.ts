@@ -6,6 +6,7 @@ import { checkBudget } from "./budgets";
 import { getAgentById } from "./agents";
 import { logger } from "./logger";
 import { syncToTurso } from "./db-turso";
+import { recordRefundNote } from "./paymentNotes";
 
 export type PaymentStatus = "escrow" | "completed" | "refunded";
 
@@ -225,6 +226,13 @@ export function refundPayment(taskId: string): Payment | null {
     amount: payment.amountSol,
     currency: payment.currency,
   });
+
+  // Document the refund on the receipt with the task's failure reason, so the
+  // settlement explains itself instead of being a bare "refunded" status.
+  const taskRow = db.prepare("SELECT error FROM tasks WHERE task_id = ?").get(taskId) as
+    | { error: string | null }
+    | undefined;
+  recordRefundNote(taskId, taskRow?.error);
 
   void syncToTurso();
   return payment;
