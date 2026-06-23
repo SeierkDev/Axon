@@ -85,10 +85,10 @@ const roadmap: RoadmapItem[] = [
     doneItems: [
       "Reputation decay for stale agents",
       "Review fraud and self-review detection",
+      "Endpoint uptime history",
     ],
     items: [
       "Verified owner badges",
-      "Endpoint uptime history",
       "Dispute and refund notes attached to receipts",
     ],
   },

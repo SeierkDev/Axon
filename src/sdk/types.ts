@@ -361,6 +361,16 @@ export interface CallMcpToolOptions {
 
 // ─── Gateway ──────────────────────────────────────────────────────────────────
 
+// Recorded endpoint reliability over a trailing window. lastCheckedAt/lastStatus
+// are present on the single-provider GET and omitted from the (batched) list.
+export interface EndpointUptime {
+  checks: number;
+  up: number;
+  uptime: number; // 0..1
+  lastCheckedAt?: string | null;
+  lastStatus?: "up" | "down" | null;
+}
+
 export interface GatewayProvider {
   providerId: string;
   name: string;
@@ -374,6 +384,7 @@ export interface GatewayProvider {
   timeoutMs: number;
   status: "active" | "inactive";
   createdAt: string;
+  uptime?: EndpointUptime; // omitted at registration, present on GET responses
 }
 
 export interface RegisterGatewayProviderOptions {

@@ -34,6 +34,7 @@ export type {
   WebhookEventType,
   RegisterWebhookOptions,
   GatewayProvider,
+  EndpointUptime,
   RegisterGatewayProviderOptions,
   GatewayCallOptions,
   GatewayCallResult,

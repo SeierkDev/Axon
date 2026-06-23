@@ -9,6 +9,7 @@ import { createAgent, agentExists, getAgentById } from "@/lib/agents";
 import { requireAgentOwner } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
 import { parsePaymentAmount } from "@/lib/solana";
+import { getEndpointUptimeMap } from "@/lib/endpointUptime";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
 import type { GatewayProvider } from "@/sdk/types";
@@ -24,7 +25,13 @@ function withoutInjectedHeaders(provider: GatewayProvider): Omit<GatewayProvider
 // GET /api/gateway — list all active providers (injectHeaders omitted — may contain API keys)
 export async function GET() {
   const providers = listGatewayProviders("active").map(withoutInjectedHeaders);
-  return NextResponse.json({ providers });
+  // Attach recorded uptime so callers can compare endpoint reliability (one batched query).
+  const uptimes = getEndpointUptimeMap(providers.map((p) => p.providerId));
+  const withUptime = providers.map((p) => ({
+    ...p,
+    uptime: uptimes.get(p.providerId) ?? { checks: 0, up: 0, uptime: 0 },
+  }));
+  return NextResponse.json({ providers: withUptime });
 }
 
 // POST /api/gateway — register a new provider

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGatewayProvider, deleteGatewayProvider } from "@/lib/gateway";
+import { getEndpointUptime } from "@/lib/endpointUptime";
 import { getDb } from "@/lib/db";
 import { syncToTurso } from "@/lib/db-turso";
 import { requireApiKey, canAccessIdentity } from "@/lib/apiAuth";
@@ -20,7 +21,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { providerId } = await params;
   const provider = getGatewayProvider(providerId);
   if (!provider) return apiError("NOT_FOUND", "Provider not found", 404);
-  return NextResponse.json({ provider: withoutInjectedHeaders(provider) });
+  // Surface the endpoint's recorded reliability so callers can judge it before paying.
+  // Embedded in the provider (matching the list response) so SDK getters return it.
+  return NextResponse.json({
+    provider: { ...withoutInjectedHeaders(provider), uptime: getEndpointUptime(providerId) },
+  });
 }
 
 // DELETE /api/gateway/:providerId

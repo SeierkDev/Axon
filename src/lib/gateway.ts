@@ -7,6 +7,7 @@ import { syncToTurso } from "./db-turso";
 import { publicHttpFetch } from "./urlSecurity";
 import { encrypt, decrypt } from "./crypto";
 import { logger } from "./logger";
+import { recordEndpointCheck } from "./endpointUptime";
 
 // ── Per-provider circuit breaker ──────────────────────────────────────────────
 // Each gateway provider gets its own circuit. One broken upstream cannot block
@@ -324,6 +325,7 @@ export async function proxyToProvider(
     });
   } catch (err) {
     recordGatewayFailure(provider.providerId, provider.name);
+    recordEndpointCheck(provider.providerId, false);
     throw new Error(
       `Gateway upstream error: ${err instanceof Error ? err.message : "network error"}`
     );
@@ -336,12 +338,14 @@ export async function proxyToProvider(
     responseBody = await res.text();
   } catch (err) {
     recordGatewayFailure(provider.providerId, provider.name);
+    recordEndpointCheck(provider.providerId, false);
     throw new Error(
       `Gateway upstream response error: ${err instanceof Error ? err.message : "body read failed"}`
     );
   }
 
   recordGatewaySuccess(provider.providerId);
+  recordEndpointCheck(provider.providerId, true);
   const durationMs = Date.now() - startMs;
 
   // Build a safe set of response headers to return — strip hop-by-hop headers
