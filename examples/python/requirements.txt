@@ -1,0 +1,5 @@
+requests>=2.31
+
+# Install only the framework you actually use:
+# langchain>=0.2
+# crewai>=0.40

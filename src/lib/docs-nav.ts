@@ -13,6 +13,7 @@ export const docsNav: NavSection[] = [
     section: "Guides",
     items: [
       { label: "Autonomous Agents", href: "/docs/guides/autonomous-agents" },
+      { label: "Framework Integrations", href: "/docs/guides/integrations" },
     ],
   },
   {

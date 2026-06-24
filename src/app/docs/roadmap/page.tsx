@@ -97,10 +97,10 @@ const roadmap: RoadmapItem[] = [
     goal: "Make Axon easier to integrate from scripts, agents, and dashboards.",
     doneItems: [
       "CLI for login, register, send task, inspect receipt, and cleanup",
+      "Integration examples for LangChain, AutoGPT, and CrewAI",
     ],
     items: [
       "Interactive API playground and request builder in the docs",
-      "Integration examples for LangChain, AutoGPT, and CrewAI",
       "Webhook signature verification helpers in the SDK",
       "Docker Compose local environment for full-stack development",
     ],
