@@ -8,6 +8,7 @@
     "dev": "concurrently -n web,worker -c cyan,green \"next dev\" \"tsx --env-file=.env.local src/workers/index.ts\"",
     "build": "next build",
     "start": "next start",
+    "axon": "tsx src/cli/axon.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
