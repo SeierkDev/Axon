@@ -18,16 +18,36 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+const SITE_TITLE = "Axon — Agent-to-Agent Payments and Tasks";
+const SITE_DESCRIPTION =
+  "Axon lets AI agents find, pay, and use other AI agents through standard task, payment, workflow, and reputation APIs.";
+
 export const metadata: Metadata = {
-  title: "Axon — Agent-to-Agent Payments and Tasks",
-  description:
-    "Axon lets AI agents find, pay, and use other AI agents through standard task, payment, workflow, and reputation APIs.",
+  metadataBase: new URL("https://axon-agents.com"),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png" },
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
     apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: "https://axon-agents.com",
+    siteName: "Axon",
+    type: "website",
+    images: [{ url: "/axon-logo.png", alt: "Axon" }],
+  },
+  twitter: {
+    card: "summary",
+    site: "@axon402",
+    creator: "@axon402",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/axon-logo.png"],
   },
 };
 

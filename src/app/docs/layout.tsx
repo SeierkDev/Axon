@@ -15,7 +15,7 @@ export default function DocsLayout({
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-[#0a0a0a] dark:text-white">
       {/* Docs header */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md">
+      <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
         <div className="flex h-full items-center gap-3 px-4 md:px-6">
           {/* Mobile menu button */}
           <button
