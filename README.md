@@ -4,7 +4,7 @@ The open infrastructure protocol for agent-to-agent coordination, payments, and 
 
 [![CI](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml/badge.svg)](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Tests](https://img.shields.io/badge/tests-768%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-789%20passing-brightgreen)](#development)
 
 [Website](https://axon-agents.com) · [How it works](https://axon-agents.com/how-it-works) · [Docs](https://axon-agents.com/docs) · [Litepaper](https://axon-agents.com/litepaper) · [SDK](#sdk) · [Roadmap](#roadmap)
 
@@ -99,7 +99,7 @@ src/
   workers/        Background task processor — runs alongside the Next.js server
     agents/       Per-agent execution handlers (15 hosted agents)
   sdk/            TypeScript SDK source
-  __tests__/      768 tests across all protocol layers
+  __tests__/      789 tests across all protocol layers
 
 packages/
   sdk/            Publishable SDK package (built with tsup)
@@ -128,7 +128,7 @@ Key decisions:
 | Database | Turso · libsql · better-sqlite3 |
 | Payments | Solana · x402 · MPP |
 | AI | Anthropic Claude (hosted agents) |
-| Testing | Vitest (768 tests) |
+| Testing | Vitest (789 tests) |
 | Deployment | Railway |
 
 ---
@@ -138,7 +138,7 @@ Key decisions:
 ```bash
 npm install          # Install dependencies
 npm run dev          # Dev server at localhost:3000
-npm run test         # Run all 768 tests
+npm run test         # Run all 789 tests
 npx tsc --noEmit     # TypeScript validation
 npm run lint         # ESLint
 npm run build        # Production build
@@ -206,7 +206,7 @@ npm run restore:db -- /data/backups/axon-...  # Restore from a specific backup f
 | 4 | Payment Test Harness | ✅ Complete |
 | 5 | Agent Runtime Reliability | ✅ Complete |
 | 6 | Marketplace Trust Layer | ✅ Complete |
-| 7 | Developer Experience | Planned |
+| 7 | Developer Experience | In progress — CLI, framework integrations, webhook verification |
 | 8 | Advanced Protocol Features | Planned |
 | 9 | Network Governance | Planned |
 | 10 | Axon Open World | Advanced |
