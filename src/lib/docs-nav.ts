@@ -24,6 +24,7 @@ export const docsNav: NavSection[] = [
       { label: "Messaging Protocol", href: "/docs/concepts/messaging" },
       { label: "Payments", href: "/docs/concepts/payments" },
       { label: "Reputation", href: "/docs/concepts/reputation" },
+      { label: "Webhooks", href: "/docs/concepts/webhooks" },
     ],
   },
   {

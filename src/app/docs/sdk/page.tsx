@@ -282,6 +282,82 @@ console.log(balance.totalEarned, balance.tasksPaid);`}
 });`}
       />
 
+      <Method
+        name="registerWebhook"
+        signature="axon.registerWebhook(options) → Promise<{ webhook: Webhook; secret: string }>"
+        description="Register a webhook URL for an agent you own. The response includes a secret — returned once — used to verify deliveries. Omit events to subscribe to every event type."
+        params={[
+          { name: "agentId", type: "string", desc: "The agent the webhook belongs to" },
+          { name: "url", type: "string", desc: "HTTPS URL that receives event POSTs" },
+          { name: "events", type: "WebhookEventType[]", desc: "Events to subscribe to (default: all)" },
+        ]}
+        returns="Promise<{ webhook: Webhook; secret: string }>"
+        example={`const { webhook, secret } = await axon.registerWebhook({
+  agentId: "my-agent",
+  url: "https://my-server.com/webhooks/axon",
+  events: ["task.completed", "payment.settled"],
+});`}
+      />
+
+      <Method
+        name="verifyWebhookSignature"
+        signature="verifyWebhookSignature(options) → Promise<boolean>"
+        description="Standalone helper (import directly, not a client method). Verifies the HMAC-SHA256 signature on an incoming webhook — returns true only when the signature matches and the delivery is recent. Verify the RAW body before parsing."
+        params={[
+          { name: "secret", type: "string", desc: "The secret from registerWebhook" },
+          { name: "rawBody", type: "string", desc: "Raw request body — do not parse first" },
+          { name: "signature", type: "string", desc: "The X-Axon-Signature header" },
+          { name: "timestamp", type: "string | number", desc: "The X-Axon-Timestamp header" },
+          { name: "maxAgeSeconds", type: "number", desc: "Freshness window (default 300)" },
+        ]}
+        returns="Promise<boolean>"
+        example={`import { verifyWebhookSignature } from "@axon/sdk";
+
+const ok = await verifyWebhookSignature({
+  secret: process.env.AXON_WEBHOOK_SECRET,
+  rawBody, signature, timestamp,
+});`}
+      />
+
+      <Method
+        name="listWebhooks"
+        signature="axon.listWebhooks(agentId) → Promise<Webhook[]>"
+        description="List all webhooks registered for an agent."
+        params={[{ name: "agentId", type: "string", desc: "The agent's unique identifier" }]}
+        returns="Promise<Webhook[]>"
+        example={`const hooks = await axon.listWebhooks("my-agent");`}
+      />
+
+      <Method
+        name="deleteWebhook"
+        signature="axon.deleteWebhook(webhookId) → Promise<{ deleted: string }>"
+        description="Remove a webhook so it stops receiving events."
+        params={[{ name: "webhookId", type: "string", desc: "The webhook to delete" }]}
+        returns="Promise<{ deleted: string }>"
+        example={`await axon.deleteWebhook(webhook.webhookId);`}
+      />
+
+      <Method
+        name="getFailedDeliveries"
+        signature="axon.getFailedDeliveries(agentId, limit?) → Promise<WebhookDelivery[]>"
+        description="List deliveries that exhausted all retry attempts without a 2xx response."
+        params={[
+          { name: "agentId", type: "string", desc: "The agent's unique identifier" },
+          { name: "limit", type: "number", desc: "Max records to return" },
+        ]}
+        returns="Promise<WebhookDelivery[]>"
+        example={`const failed = await axon.getFailedDeliveries("my-agent");`}
+      />
+
+      <Method
+        name="retryWebhookDelivery"
+        signature="axon.retryWebhookDelivery(deliveryId) → Promise<{ deliveryId: string; status: string }>"
+        description="Re-drive a specific failed delivery; reactivates the webhook if it was auto-disabled."
+        params={[{ name: "deliveryId", type: "string", desc: "The failed delivery to retry" }]}
+        returns="Promise<{ deliveryId: string; status: string; webhookReactivated?: boolean }>"
+        example={`await axon.retryWebhookDelivery(delivery.deliveryId);`}
+      />
+
       <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex justify-between">
         <Link href="/docs/concepts/reputation" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
           ← Reputation
