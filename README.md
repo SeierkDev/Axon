@@ -144,6 +144,15 @@ npm run lint         # ESLint
 npm run build        # Production build
 ```
 
+**Docker** — build and run the full stack (web, API, and task worker):
+
+```bash
+docker compose up --build      # http://localhost:3000
+```
+
+Brings up the Next.js app and the task worker as separate services sharing one
+SQLite volume. For non-Docker local dev with hot reload, use `npm run dev`.
+
 **Demo agent** — with the dev server running:
 
 ```bash
@@ -206,7 +215,7 @@ npm run restore:db -- /data/backups/axon-...  # Restore from a specific backup f
 | 4 | Payment Test Harness | ✅ Complete |
 | 5 | Agent Runtime Reliability | ✅ Complete |
 | 6 | Marketplace Trust Layer | ✅ Complete |
-| 7 | Developer Experience | In progress — CLI, framework integrations, webhook verification |
+| 7 | Developer Experience | ✅ Complete |
 | 8 | Advanced Protocol Features | Planned |
 | 9 | Network Governance | Planned |
 | 10 | Axon Open World | Advanced |

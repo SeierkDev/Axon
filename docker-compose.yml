@@ -27,6 +27,29 @@ services:
       retries: 3
       start_period: 20s
 
+  # Task worker — processes queued tasks. Runs from the build stage (which has
+  # the worker source + tsx) and shares the same SQLite volume as the web app.
+  worker:
+    build:
+      context: .
+      target: builder
+    command: ["npx", "tsx", "src/workers/index.ts"]
+    environment:
+      NODE_ENV: production
+      DATABASE_PATH: /data/axon.db
+      LOG_LEVEL: info
+      AXON_ALLOW_EPHEMERAL_DB: "false"
+      # Mirror the same provider/payment keys you set on the axon service:
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      # HELIUS_API_KEY: ${HELIUS_API_KEY}
+      # SOLANA_NETWORK: mainnet-beta
+    volumes:
+      - axon_data:/data
+    depends_on:
+      axon:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   axon_data:
     driver: local

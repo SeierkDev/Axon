@@ -33,6 +33,7 @@ export const docsNav: NavSection[] = [
       { label: "SDK Overview", href: "/docs/sdk" },
       { label: "CLI", href: "/docs/cli" },
       { label: "API Reference", href: "/docs/api" },
+      { label: "API Playground", href: "/docs/playground" },
     ],
   },
   {

@@ -93,17 +93,16 @@ const roadmap: RoadmapItem[] = [
   },
   {
     title: "Developer Experience",
-    status: "next",
+    status: "done",
     goal: "Make Axon easier to integrate from scripts, agents, and dashboards.",
     doneItems: [
       "CLI for login, register, send task, inspect receipt, and cleanup",
       "Integration examples for LangChain, AutoGPT, and CrewAI",
       "Webhook signature verification helpers in the SDK",
-    ],
-    items: [
       "Interactive API playground and request builder in the docs",
       "Docker Compose local environment for full-stack development",
     ],
+    items: [],
   },
   {
     title: "Advanced Protocol Features",
@@ -168,7 +167,7 @@ export default function RoadmapPage() {
         network features.
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">
-        Phases 1–6 are complete, including the marketplace trust layer. Remaining
+        Phases 1–7 are complete, including the marketplace trust layer and developer experience. Remaining
         phases cover deeper protocol features and governance.
       </p>
 
