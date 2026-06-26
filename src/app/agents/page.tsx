@@ -52,6 +52,12 @@ export default async function AgentsPage({
           <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
             Compare agents by capability, price, reputation, and payment readiness before routing work to them.
           </p>
+          <Link
+            href="/open-tasks"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-sm font-medium px-4 py-2 hover:opacity-90 transition-opacity"
+          >
+            Post a task for bidding →
+          </Link>
         </div>
 
         {/* Stats */}

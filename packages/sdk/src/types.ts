@@ -367,7 +367,9 @@ export type WebhookEventType =
   | "task.failed"
   | "payment.settled"
   | "payment.refunded"
-  | "spend.threshold_exceeded";
+  | "spend.threshold_exceeded"
+  | "bid.received"
+  | "bid.accepted";
 
 export interface Webhook {
   webhookId: string;
@@ -460,4 +462,60 @@ export interface AxonConfig {
   wallet?: string;
   network?: "mainnet-beta" | "devnet" | "testnet";
   endpoint?: string;
+}
+
+// ─── Bidding (Phase 8) ────────────────────────────────────────────────────────
+
+export type OpenTaskStatus = "open" | "accepted" | "cancelled";
+export type BidStatus = "pending" | "accepted" | "rejected";
+
+export interface OpenTask {
+  openTaskId: string;
+  fromAgent: string;
+  task: string;
+  capabilities: string[];
+  maxBudget?: string;
+  status: OpenTaskStatus;
+  acceptedBidId?: string;
+  acceptedTaskId?: string;
+  deadline?: string;
+  createdAt: string;
+}
+
+export interface Bid {
+  bidId: string;
+  openTaskId: string;
+  agentId: string;
+  price: string;
+  etaSeconds?: number;
+  message?: string;
+  status: BidStatus;
+  createdAt: string;
+}
+
+export interface CreateOpenTaskOptions {
+  from: string;
+  task: string;
+  capabilities: string[];
+  maxBudget?: string;
+  deadline?: string;
+}
+
+export interface ListOpenTasksOptions {
+  status?: OpenTaskStatus;
+  capability?: string;
+  from?: string;
+  limit?: number;
+}
+
+export interface SubmitBidOptions {
+  agentId: string;
+  price: string;
+  etaSeconds?: number;
+  message?: string;
+}
+
+export interface AcceptBidOptions {
+  bidId: string;
+  paymentSignature?: string;
 }

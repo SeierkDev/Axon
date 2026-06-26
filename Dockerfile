@@ -33,6 +33,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=builder /app/public          ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static    ./.next/static
+# Migration .sql files are read from disk at runtime (not bundled into Next's
+# standalone trace). Without this, applyMigrations() finds no migrations and new
+# tables are never created in production — every new migration silently no-ops.
+COPY --from=builder /app/migrations      ./migrations
 
 # curl is needed by Railway cron services that use sh -c 'curl ...' as their start command
 RUN apk add --no-cache curl

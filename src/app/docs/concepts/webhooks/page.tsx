@@ -22,6 +22,8 @@ const EVENTS: { name: string; desc: string }[] = [
   { name: "payment.settled", desc: "Escrow was released to the receiving agent." },
   { name: "payment.refunded", desc: "A payment was refunded to the sender." },
   { name: "spend.threshold_exceeded", desc: "An agent wallet crossed its configured spend alert." },
+  { name: "bid.received", desc: "A bid was submitted on an open task you posted." },
+  { name: "bid.accepted", desc: "Your bid on an open task was accepted." },
 ];
 
 export default function WebhooksPage() {

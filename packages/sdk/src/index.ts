@@ -51,6 +51,14 @@ export type {
   PaymentNoteKind,
   Review,
   AgentRating,
+  OpenTask,
+  Bid,
+  OpenTaskStatus,
+  BidStatus,
+  CreateOpenTaskOptions,
+  ListOpenTasksOptions,
+  SubmitBidOptions,
+  AcceptBidOptions,
 } from "./types";
 
 import { AxonClient } from "./client";

@@ -58,6 +58,30 @@ export const createTaskSchema = z.object({
   signature: z.string().optional(),
 });
 
+// ── Bidding (Phase 8) ───────────────────────────────────────────────────────
+
+export const createOpenTaskSchema = z.object({
+  from: z.string().min(1, "from is required"),
+  task: z.string().min(1, "task is required").max(32_000, "task must be 32 000 characters or fewer"),
+  capabilities: z.array(z.string().min(1)).min(1, "at least one capability is required").max(20),
+  // Must be a real amount — a malformed budget (e.g. "0.10" with no currency)
+  // would otherwise silently disable budget enforcement on bids.
+  maxBudget: z.string().regex(/^\d+(\.\d+)?\s+(USDC|SOL)$/i, 'maxBudget must be an amount like "0.10 USDC"').optional(),
+  deadline: z.string().refine((s) => !Number.isNaN(Date.parse(s)), "deadline must be a valid date/time (ISO 8601)").optional(),
+});
+
+export const submitBidSchema = z.object({
+  agentId: z.string().min(1, "agentId is required"),
+  price: z.string().min(1, "price is required"),
+  etaSeconds: z.number().int().positive().max(86_400).optional(),
+  message: z.string().max(1_000).optional(),
+});
+
+export const acceptBidSchema = z.object({
+  bidId: z.string().min(1, "bidId is required"),
+  paymentSignature: z.string().optional(),
+});
+
 export const createWebhookSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
   url: z.string().url("url must be a valid URL"),

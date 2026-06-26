@@ -35,6 +35,12 @@ import type {
   AuthChallenge,
   AuthVerifyResult,
   ApiErrorBody,
+  OpenTask,
+  Bid,
+  CreateOpenTaskOptions,
+  ListOpenTasksOptions,
+  SubmitBidOptions,
+  AcceptBidOptions,
 } from "./types";
 
 function pathPart(value: string): string {
@@ -452,6 +458,55 @@ export class AxonClient {
       deliveryId: string;
       status: string;
       webhookReactivated?: boolean;
+    }>;
+  }
+
+  // Bidding
+
+  /** Open a task for bidding (instead of hiring a fixed agent). */
+  async createOpenTask(options: CreateOpenTaskOptions): Promise<OpenTask> {
+    return this.post("/api/open-tasks", options) as Promise<OpenTask>;
+  }
+
+  /** Discover open tasks available to bid on. */
+  async listOpenTasks(options: ListOpenTasksOptions = {}): Promise<OpenTask[]> {
+    const params = new URLSearchParams();
+    if (options.status) params.set("status", options.status);
+    if (options.capability) params.set("capability", options.capability);
+    if (options.from) params.set("from", options.from);
+    if (options.limit !== undefined) params.set("limit", String(options.limit));
+    const qs = params.toString();
+    const res = await this.get(`/api/open-tasks${qs ? `?${qs}` : ""}`);
+    return (res as { openTasks: OpenTask[] }).openTasks;
+  }
+
+  /** Fetch an open task and all of its bids. */
+  async getOpenTask(openTaskId: string): Promise<{ openTask: OpenTask; bids: Bid[] }> {
+    return this.get(`/api/open-tasks/${pathPart(openTaskId)}`) as Promise<{ openTask: OpenTask; bids: Bid[] }>;
+  }
+
+  /** Cancel an open task you posted, so it stops accepting bids. */
+  async cancelOpenTask(openTaskId: string): Promise<OpenTask> {
+    return this.delete(`/api/open-tasks/${pathPart(openTaskId)}`) as Promise<OpenTask>;
+  }
+
+  /** Submit a bid on an open task. */
+  async submitBid(openTaskId: string, options: SubmitBidOptions): Promise<Bid> {
+    return this.post(`/api/open-tasks/${pathPart(openTaskId)}/bids`, options) as Promise<Bid>;
+  }
+
+  /** List the bids on an open task. */
+  async getBids(openTaskId: string): Promise<Bid[]> {
+    const res = await this.get(`/api/open-tasks/${pathPart(openTaskId)}/bids`);
+    return (res as { bids: Bid[] }).bids;
+  }
+
+  /** Accept a bid — converts the open task into a real task at the agreed price.
+   *  For paid bids, pass `paymentSignature` to escrow the agreed amount. */
+  async acceptBid(openTaskId: string, options: AcceptBidOptions): Promise<{ openTask: OpenTask; task: TaskRequest }> {
+    return this.post(`/api/open-tasks/${pathPart(openTaskId)}/accept`, options) as Promise<{
+      openTask: OpenTask;
+      task: TaskRequest;
     }>;
   }
 

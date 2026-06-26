@@ -54,3 +54,6 @@ next-env.d.ts
 # python (examples/)
 __pycache__/
 *.pyc
+
+# Local demo bidder wallets (throwaway keys)
+scripts/.demo-bidders.json

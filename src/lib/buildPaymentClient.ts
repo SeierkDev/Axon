@@ -4,6 +4,7 @@
 
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import {
+  createAssociatedTokenAccountInstruction,
   createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
@@ -67,19 +68,34 @@ export async function payForBuild(opts: {
     throw new Error(`INSUFFICIENT_USDC:${payerUsdc}`);
   }
 
+  // If the recipient has never held USDC, their associated token account does
+  // not exist yet — a transfer to a missing account reverts on-chain. Create it
+  // in the same transaction (the payer covers the ~0.002 SOL rent). The treasury
+  // already has one, so Build is unaffected; this only adds an instruction when
+  // paying a fresh wallet (e.g. a newly registered agent winning a bid).
+  const recipientAtaMissing = (await connection.getAccountInfo(treasuryAta)) === null;
+
   // The wallet also needs a little SOL to pay the Solana network fee. USDC can't
   // cover it — a wallet with 0 SOL produces a transaction that can never land,
-  // which otherwise surfaces as a baffling "transaction not found".
+  // which otherwise surfaces as a baffling "transaction not found". When we also
+  // create the recipient's token account, budget for its rent on top of the fee.
+  const minLamports = recipientAtaMissing ? 3_000_000 : 1_000_000;
   const solLamports = await connection.getBalance(payer);
-  if (solLamports < 1_000_000) {
+  if (solLamports < minLamports) {
     throw new Error("INSUFFICIENT_SOL");
   }
 
-  // Exactly the transfer that worked before — just the USDC transfer, nothing
-  // else. Phantom attaches its own priority fee when it sends. We do NOT add our
-  // own ComputeBudget instructions: they collide with Phantom's, which makes the
-  // transaction invalid so it never lands (and trips Phantom's risk scanner).
-  const tx = new Transaction().add(
+  // Keep instructions minimal — Phantom attaches its own priority fee when it
+  // sends, and we do NOT add ComputeBudget instructions (they collide with
+  // Phantom's and trip its risk scanner). The optional ATA-creation instruction
+  // is a standard, expected one that Phantom handles cleanly.
+  const tx = new Transaction();
+  if (recipientAtaMissing) {
+    tx.add(
+      createAssociatedTokenAccountInstruction(payer, treasuryAta, treasuryPk, USDC_MINT),
+    );
+  }
+  tx.add(
     createTransferCheckedInstruction(
       payerAta,
       USDC_MINT,

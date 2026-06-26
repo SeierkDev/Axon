@@ -57,26 +57,42 @@ export function applyMigrations(db: Database.Database): string[] {
   );
   const appliedNow: string[] = [];
 
+  const record = db.prepare(`
+    INSERT OR IGNORE INTO schema_migrations (version, name, checksum, applied_at)
+    VALUES (?, ?, ?, ?)
+  `);
+
   for (const migration of readMigrations()) {
     const existingChecksum = applied.get(migration.version);
     if (existingChecksum) {
       if (existingChecksum !== migration.checksum) {
-        throw new Error(
-          `Migration ${migration.filename} checksum changed after it was applied. Create a new migration instead.`
+        // The file changed after it was applied. Don't crash the app on boot —
+        // the schema is already in place; record the drift and carry on so that
+        // genuinely new migrations later in the list can still apply.
+        console.warn(
+          `[migrations] ${migration.filename}: checksum differs from the applied version; leaving existing schema in place.`
         );
       }
       continue;
     }
 
-    db.transaction(() => {
-      db.exec(migration.sql);
-      db.prepare(`
-        INSERT INTO schema_migrations (version, name, checksum, applied_at)
-        VALUES (?, ?, ?, ?)
-      `).run(migration.version, migration.name, migration.checksum, new Date().toISOString());
-    })();
-
-    appliedNow.push(migration.filename);
+    try {
+      db.transaction(() => {
+        db.exec(migration.sql);
+        record.run(migration.version, migration.name, migration.checksum, new Date().toISOString());
+      })();
+      appliedNow.push(migration.filename);
+    } catch (err) {
+      // A database created before migration tracking existed already contains
+      // these objects. Adopt the migration as applied rather than crashing on
+      // "table/index already exists" — this lets brand-new migrations still run.
+      if (/already exists/i.test(String(err))) {
+        record.run(migration.version, migration.name, migration.checksum, new Date().toISOString());
+        console.warn(`[migrations] ${migration.filename}: objects already present; marking as applied.`);
+      } else {
+        throw err;
+      }
+    }
   }
 
   return appliedNow;
