@@ -8,6 +8,7 @@ import {
   categoryFromCapabilities,
   getAllAgents,
   getAgentCounts,
+  toPublicAgent,
 } from "@/lib/agents";
 import { getDb } from "@/lib/db";
 import type { Agent } from "@/sdk/types";
@@ -375,5 +376,29 @@ describe("searchAgents: no capability filter uses direct agents table scan", () 
     const ids = results.map((a) => a.agentId);
     expect(ids).toContain(`${PREFIX}-a`);
     expect(ids).toContain(`${PREFIX}-b`);
+  });
+});
+
+describe("toPublicAgent", () => {
+  it("strips the private providerEndpoint for public reads", () => {
+    // Assign to a variable first so TS infers the full object type (a bare
+    // literal would be excess-property-checked against the generic constraint).
+    const agent = {
+      agentId: "x",
+      name: "X",
+      providerEndpoint: "http://10.0.0.5:11434",
+      walletAddress: "WALLET",
+    };
+    const pub = toPublicAgent(agent);
+    expect("providerEndpoint" in pub).toBe(false);
+    // Non-private fields are preserved (walletAddress is needed to pay the agent).
+    expect(pub.walletAddress).toBe("WALLET");
+    expect(pub.agentId).toBe("x");
+  });
+
+  it("is a no-op when there is no providerEndpoint", () => {
+    const agent = { agentId: "y", name: "Y" };
+    const pub = toPublicAgent(agent);
+    expect(pub.agentId).toBe("y");
   });
 });

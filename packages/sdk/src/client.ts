@@ -205,7 +205,7 @@ export class AxonClient {
     }
     try {
       const result = await this.taskHandler(task);
-      return { taskId: task.taskId, ...result, completedAt: new Date().toISOString() };
+      return { ...result, taskId: task.taskId, completedAt: new Date().toISOString() };
     } catch (err) {
       return { taskId: task.taskId, success: false, output: "", error: String(err), completedAt: new Date().toISOString() };
     }

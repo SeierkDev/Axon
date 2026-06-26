@@ -344,8 +344,17 @@ export async function proxyToProvider(
     );
   }
 
-  recordGatewaySuccess(provider.providerId);
-  recordEndpointCheck(provider.providerId, true);
+  // fetch() does not throw on HTTP error status, so a provider that responds but
+  // with a 5xx is still a failure for circuit-breaker and uptime purposes —
+  // otherwise the breaker never opens for an up-but-broken upstream. The response
+  // (including the 5xx body) is still proxied back to the caller below.
+  if (res.status >= 500) {
+    recordGatewayFailure(provider.providerId, provider.name);
+    recordEndpointCheck(provider.providerId, false);
+  } else {
+    recordGatewaySuccess(provider.providerId);
+    recordEndpointCheck(provider.providerId, true);
+  }
   const durationMs = Date.now() - startMs;
 
   // Build a safe set of response headers to return — strip hop-by-hop headers

@@ -340,6 +340,21 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
 }
 
 async function main() {
+  // Crash guard. The worker does a lot of fire-and-forget async work (void
+  // syncToTurso, interval polls, threshold checks); on Node 15+ a single stray
+  // unhandled rejection would kill the worker process. Log and keep it alive —
+  // mirrors the guard in instrumentation.ts (which only covers the web process).
+  process.on("unhandledRejection", (reason) => {
+    logger.error("worker.unhandled_rejection", "unhandled rejection (kept alive)", {
+      err: reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
+    });
+  });
+  process.on("uncaughtException", (err) => {
+    logger.error("worker.uncaught_exception", "uncaught exception (kept alive)", {
+      err: err.stack ?? err.message,
+    });
+  });
+
   process.once("SIGINT", () => {
     void shutdown("SIGINT");
   });

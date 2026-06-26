@@ -232,6 +232,12 @@ export async function POST(req: NextRequest) {
   if (!paymentSignature) {
     return jsonError("Payment required — pay with your wallet before generating.", "PAYMENT_REQUIRED", 402);
   }
+  // Payer is required so the on-chain signer check actually runs. Without it,
+  // checkIncomingPayment skips signer verification (expectedSigner undefined),
+  // letting anyone replay a public treasury payment signature to claim a build.
+  if (!payer) {
+    return jsonError("Payer wallet address is required.", "PAYMENT_REQUIRED", 402);
+  }
 
   // Resume/reconnect: if this payment already produced a game, or a build for it
   // is still running in this process, return THAT build instead of starting a

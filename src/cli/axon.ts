@@ -134,7 +134,13 @@ export function buildTaskBody(flags: Record<string, string | boolean>): Record<s
   const payment = str(flags, "payment");
   const context = str(flags, "context");
   if (payment) body.payment = payment;
-  if (context) body.context = JSON.parse(context);
+  if (context) {
+    try {
+      body.context = JSON.parse(context);
+    } catch {
+      throw new Error("--context must be valid JSON");
+    }
+  }
   return body;
 }
 

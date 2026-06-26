@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import type { InferenceProvider } from "@/sdk/types";
-import { createAgent, searchAgents, agentExists, categoryFromCapabilities } from "@/lib/agents";
+import { createAgent, searchAgents, agentExists, categoryFromCapabilities, toPublicAgent } from "@/lib/agents";
 import type { SortField } from "@/lib/agents";
 import { semanticSearchAgents } from "@/lib/embeddings";
 import { getVerifiedOwners } from "@/lib/ownerVerification";
@@ -116,9 +116,11 @@ export async function GET(req: NextRequest) {
 // Tag each listed agent with whether its owner wallet is verified (one batched
 // query), so the verified-owner badge is available to API/SDK consumers too —
 // not just the marketplace page.
-function tagOwnerVerified<T extends { agentId: string }>(agents: T[]): (T & { ownerVerified: boolean })[] {
+// Adds the owner-verified badge AND strips owner-private fields (providerEndpoint)
+// — these are unauthenticated discovery responses.
+function tagOwnerVerified<T extends { agentId: string; providerEndpoint?: string }>(agents: T[]) {
   const verified = getVerifiedOwners(agents.map((a) => a.agentId));
-  return agents.map((a) => ({ ...a, ownerVerified: verified.has(a.agentId) }));
+  return agents.map((a) => ({ ...toPublicAgent(a), ownerVerified: verified.has(a.agentId) }));
 }
 
 // POST /api/agents — register a new agent

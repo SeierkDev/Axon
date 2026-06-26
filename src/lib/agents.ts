@@ -57,6 +57,14 @@ function rowToAgent(row: AgentRow): Agent {
   };
 }
 
+// Strip owner-private fields for unauthenticated discovery responses.
+// `providerEndpoint` is the owner's private inference backend URL (often a
+// self-hosted/internal host) and must never be exposed on public reads.
+export function toPublicAgent<T extends object>(agent: T): Omit<T, "providerEndpoint"> {
+  const { providerEndpoint: _omit, ...rest } = agent as T & { providerEndpoint?: unknown };
+  return rest as Omit<T, "providerEndpoint">;
+}
+
 const CATEGORY_MAP: [string[], string][] = [
   [["crypto", "defi", "finance", "trading"], "Finance"],
   [["research", "analysis", "summarization", "search"], "Research"],

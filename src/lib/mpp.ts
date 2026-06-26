@@ -284,6 +284,17 @@ export function refundDebitForTask(taskId: string): DebitResult {
 
     if (!debit) return { success: true };
 
+    // If the channel is no longer open, it already settled its full balance
+    // on-chain at close. A late refund (e.g. a completed task later requeued/
+    // failed) must be a complete no-op: crediting would recreate phantom funds,
+    // and marking the transaction refunded would be false. Leave it untouched.
+    const channel = db
+      .prepare("SELECT status FROM mpp_channels WHERE channel_id = ?")
+      .get(debit.channel_id) as { status: string } | undefined;
+    if (!channel || channel.status !== "open") {
+      return { success: true };
+    }
+
     db.prepare(
       `UPDATE mpp_channels
        SET balance_micro_usdc = balance_micro_usdc + ?,

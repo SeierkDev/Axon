@@ -246,6 +246,21 @@ describe("refundDebitForTask", () => {
     const result = refundDebitForTask("nonexistent-task");
     expect(result.success).toBe(true);
   });
+
+  it("does NOT re-credit a closed channel (no phantom funds)", () => {
+    const { channel } = openFundedChannel(TEST_WALLET, 5_000_000);
+    debitChannel(channel.channelId, "agent-x", { amountUsdc: 2, microUsdc: 2_000_000 }, "task-closed-refund");
+    // Close + settle the channel: balance is zeroed on-chain at close.
+    claimChannelClose(channel.channelId);
+    finalizeChannelClose(channel.channelId, true);
+    expect(getChannelById(channel.channelId)!.status).toBe("closed");
+    expect(getChannelById(channel.channelId)!.balanceUsdc).toBe(0);
+
+    // A late refund (e.g. the completed task is requeued/failed) must not credit
+    // the already-settled, closed channel.
+    refundDebitForTask("task-closed-refund");
+    expect(getChannelById(channel.channelId)!.balanceUsdc).toBe(0);
+  });
 });
 
 // ── claimChannelClose / finalizeChannelClose ──────────────────────────────────
