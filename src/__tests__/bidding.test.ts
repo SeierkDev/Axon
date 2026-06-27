@@ -89,6 +89,16 @@ describe("bidding", () => {
     if (!r.success) expect(r.code).toBe("INVALID");
   });
 
+  it("rejects a bid priced in a different currency than the max budget", () => {
+    const poster = makeAgent();
+    const worker = makeAgent();
+    const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"], maxBudget: "0.10 USDC" });
+    // A SOL bid must not bypass a USDC budget by being incomparable.
+    const r = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.01 SOL" });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.code).toBe("INVALID");
+  });
+
   it("rejects an unknown bidder agent", () => {
     const poster = makeAgent();
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"] });

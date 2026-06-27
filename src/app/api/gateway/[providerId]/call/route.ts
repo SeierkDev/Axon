@@ -20,6 +20,11 @@ import {
   decodePaymentHeader,
 } from "@/lib/x402";
 import { apiError } from "@/lib/apiError";
+import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
+import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
+
+const RATE_LIMIT = 60;
+const RATE_WINDOW_MS = 60_000;
 
 type Params = { params: Promise<{ providerId: string }> };
 
@@ -44,6 +49,10 @@ function requiresPayment(
 
 export async function POST(req: NextRequest, { params }: Params) {
   const { providerId } = await params;
+
+  const ip = getClientIp(req);
+  const rl = checkRateLimit(`gateway-call:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!rl.allowed) return tooManyRequests(rl);
 
   const provider = getGatewayProvider(providerId);
   if (!provider) return apiError("NOT_FOUND", "Provider not found", 404);
@@ -84,6 +93,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // We only create a task once the caller has provided payment proof or the
   // provider is free. Paid tasks stay hidden as payment_pending until verified.
   let paymentSignature: string | undefined;
+  let fromX402 = false;
 
   if (isPaid) {
     const rawX402 = req.headers.get("x-payment");
@@ -102,8 +112,21 @@ export async function POST(req: NextRequest, { params }: Params) {
       }
       from = paymentHeader.payload.from;
       paymentSignature = paymentHeader.payload.signature;
+      fromX402 = true; // identity derived from a verified payment, not the body
     } else {
       paymentSignature = bodySignature!;
+    }
+  }
+
+  // Authenticate the claimed identity for body-supplied `from` (mirrors
+  // /api/tasks). The x402 path above derives `from` from a verified payment, so
+  // that path doesn't need an API key; everything else must prove ownership of
+  // the identity it bills the task to.
+  if (from !== "anonymous" && !fromX402) {
+    const auth = requireApiKey(req);
+    if (!auth.ok) return auth.response;
+    if (!canAccessIdentity(auth.user, from)) {
+      return apiError("FORBIDDEN", "from must be your wallet address or an agent you own", 403);
     }
   }
 

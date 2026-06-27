@@ -336,10 +336,19 @@ async function sendDelivery(
   const signature = sign(delivery.secret, timestamp, delivery.payload);
   const now = new Date().toISOString();
 
-  // Record the attempt immediately before the HTTP call
-  db.prepare(
-    "UPDATE webhook_deliveries SET attempts = attempts + 1, last_attempt_at = ? WHERE delivery_id = ?"
-  ).run(now, delivery.delivery_id);
+  // Atomically claim this delivery so the two callers of deliverPendingWebhooks
+  // (the worker poll loop and the /api/cron/webhooks route) can't both send it.
+  // We lease it by pushing next_attempt_at into the future; if this process dies
+  // mid-send, the lease expires and the row becomes eligible again. The retry/
+  // success/failure UPDATEs below overwrite next_attempt_at with the real value.
+  const CLAIM_LEASE_MS = 120_000;
+  const leaseUntil = new Date(Date.now() + CLAIM_LEASE_MS).toISOString();
+  const claimed = db.prepare(
+    `UPDATE webhook_deliveries
+     SET attempts = attempts + 1, last_attempt_at = ?, next_attempt_at = ?
+     WHERE delivery_id = ? AND status = 'pending' AND next_attempt_at <= ?`
+  ).run(now, leaseUntil, delivery.delivery_id, now);
+  if (claimed.changes !== 1) return; // another poller already claimed this row
 
   let responseStatus: number | undefined;
   let responseBody: string | undefined;

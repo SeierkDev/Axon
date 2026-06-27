@@ -84,9 +84,11 @@ export function applyMigrations(db: Database.Database): string[] {
       appliedNow.push(migration.filename);
     } catch (err) {
       // A database created before migration tracking existed already contains
-      // these objects. Adopt the migration as applied rather than crashing on
-      // "table/index already exists" — this lets brand-new migrations still run.
-      if (/already exists/i.test(String(err))) {
+      // these objects. Adopt the migration as applied rather than crashing —
+      // tables/indexes re-declare as "already exists", and ALTER TABLE ADD COLUMN
+      // re-runs throw "duplicate column name". Both mean the object is in place;
+      // adopting lets genuinely new migrations further down the list still run.
+      if (/already exists|duplicate column name/i.test(String(err))) {
         record.run(migration.version, migration.name, migration.checksum, new Date().toISOString());
         console.warn(`[migrations] ${migration.filename}: objects already present; marking as applied.`);
       } else {

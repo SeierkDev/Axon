@@ -212,8 +212,16 @@ export function submitBid(input: SubmitBidInput): BidResult {
   }
   if (openTask.maxBudget) {
     const budget = parsePaymentAmount(openTask.maxBudget);
-    if (budget && parsedPrice.currency === budget.currency && parsedPrice.amount > budget.amount) {
-      return { success: false, error: `Bid exceeds the max budget of ${openTask.maxBudget}`, code: "INVALID" };
+    if (budget) {
+      // Enforce the ceiling in the budget's own currency. A mismatched currency
+      // (e.g. a SOL bid against a USDC budget) can't be compared, so reject it
+      // rather than silently letting it bypass the budget entirely.
+      if (parsedPrice.currency !== budget.currency) {
+        return { success: false, error: `Bid must be priced in ${budget.currency} to match the task's budget`, code: "INVALID" };
+      }
+      if (parsedPrice.amount > budget.amount) {
+        return { success: false, error: `Bid exceeds the max budget of ${openTask.maxBudget}`, code: "INVALID" };
+      }
     }
   }
 
