@@ -7,8 +7,12 @@ import { getAgentById } from "./agents";
 import { logger } from "./logger";
 import { syncToTurso } from "./db-turso";
 import { recordRefundNote } from "./paymentNotes";
+import { getSplitsForTask, computeSplitAmounts, type TaskSplit } from "./escrowSplits";
 
-export type PaymentStatus = "escrow" | "completed" | "refunded";
+// 'split' marks an escrow that was settled by distribution: the original row is
+// kept intact (total amount, recipient, on-chain signature) for the audit trail,
+// and one 'completed' payout row is written per split recipient.
+export type PaymentStatus = "escrow" | "completed" | "refunded" | "split";
 
 export interface Payment {
   txId: string;
@@ -141,6 +145,13 @@ export function releasePayment(taskId: string): Payment | null {
 
   const settledAt = new Date().toISOString();
 
+  // Multi-agent escrow split: if the payer defined a split for this task,
+  // distribute the escrowed amount across the recipients by their shares.
+  const splits = getSplitsForTask(taskId);
+  if (splits.length > 0) {
+    return releaseWithSplits(db, row, splits, settledAt);
+  }
+
   // Platform agent payments are queued for $AXON token burn instead of going to treasury
   const toAgent = getAgentById(row.to_agent);
   const isBurn = toAgent?.verificationStatus === "platform";
@@ -182,6 +193,61 @@ export function releasePayment(taskId: string): Payment | null {
 
   void syncToTurso();
   return payment;
+}
+
+// Settle a split escrow: distribute the escrowed amount across recipients by
+// share. The original escrow row is kept intact (its total amount, recipient,
+// and on-chain incoming signature) and marked 'split' for the audit trail; each
+// recipient gets a new 'completed' payout row that credits their balance. The
+// payout rows sum to exactly the escrowed total, so no value is created or lost.
+function releaseWithSplits(
+  db: ReturnType<typeof getDb>,
+  escrow: PaymentRow,
+  splits: TaskSplit[],
+  settledAt: string
+): Payment {
+  const payouts = computeSplitAmounts(escrow.amount_sol, splits);
+
+  db.transaction(() => {
+    db.prepare("UPDATE transactions SET status='split', settled_at=? WHERE tx_id=?").run(settledAt, escrow.tx_id);
+    const insert = db.prepare(
+      `INSERT INTO transactions
+         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status)
+       VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?, ?)`
+    );
+    for (const p of payouts) {
+      const burn = getAgentById(p.agentId)?.verificationStatus === "platform" ? "pending" : null;
+      insert.run(randomUUID(), escrow.task_id, escrow.from_agent, p.agentId, p.amount, escrow.currency, settledAt, settledAt, burn);
+    }
+  })();
+
+  for (const p of payouts) {
+    try {
+      queueWebhookEvent(p.agentId, "payment.settled", {
+        taskId: escrow.task_id,
+        fromAgent: escrow.from_agent,
+        toAgent: p.agentId,
+        amount: p.amount,
+        currency: escrow.currency,
+        settledAt,
+        split: true,
+      });
+    } catch (err) {
+      logger.error("webhook.queue_failed", "Failed to queue split payment.settled webhook", {
+        err, taskId: escrow.task_id, toAgent: p.agentId,
+      });
+    }
+  }
+
+  logger.info("payment.settled_split", "Escrow split settled", {
+    taskId: escrow.task_id,
+    recipients: payouts.length,
+    total: escrow.amount_sol,
+    currency: escrow.currency,
+  });
+
+  void syncToTurso();
+  return getPaymentById(escrow.tx_id)!;
 }
 
 export function refundPayment(taskId: string): Payment | null {
@@ -248,8 +314,13 @@ export function getPaymentById(txId: string): Payment | null {
 }
 
 export function getPaymentByTaskId(taskId: string): Payment | null {
+  // A split task has one parent row (the original escrow/payment, carrying the
+  // on-chain signature and full amount) plus a payout row per recipient. Prefer
+  // the parent so callers see the task's actual payment, not one recipient share.
   const row = getDb()
-    .prepare("SELECT * FROM transactions WHERE task_id = ?")
+    .prepare(
+      "SELECT * FROM transactions WHERE task_id = ? ORDER BY (incoming_signature IS NULL) ASC, created_at ASC LIMIT 1"
+    )
     .get(taskId) as PaymentRow | undefined;
   return row ? rowToPayment(row) : null;
 }

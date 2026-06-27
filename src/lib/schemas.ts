@@ -82,6 +82,22 @@ export const acceptBidSchema = z.object({
   paymentSignature: z.string().optional(),
 });
 
+export const defineSplitsSchema = z.object({
+  recipients: z
+    .array(
+      z.object({
+        agentId: z.string().min(1, "agentId is required"),
+        shareBps: z
+          .number()
+          .int("shareBps must be a whole number of basis points")
+          .min(1, "shareBps must be at least 1")
+          .max(10_000, "shareBps must be at most 10000"),
+      })
+    )
+    .min(2, "a split needs at least two recipients")
+    .max(20, "a split supports at most 20 recipients"),
+});
+
 export const createWebhookSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
   url: z.string().url("url must be a valid URL"),

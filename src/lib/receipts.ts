@@ -6,6 +6,7 @@ import { recommendPaymentPath, type PaymentPathRecommendation } from "./paymentP
 import { getOutputCommitment, type OutputCommitment } from "./outputCommitment";
 import { getTaskProgress, type TaskProgressEntry } from "./progress";
 import { getPaymentNotes, type PaymentNote } from "./paymentNotes";
+import { getSplitsForTask, type TaskSplit } from "./escrowSplits";
 
 export interface Receipt {
   taskId: string;
@@ -16,13 +17,18 @@ export interface Receipt {
   outputCommitment: OutputCommitment | null;
   progress: TaskProgressEntry[];
   notes: PaymentNote[]; // dispute/refund notes attached to this payment
+  splits: TaskSplit[]; // escrow split recipients, if the payment is divided across agents
 }
 
 export function getReceipt(taskId: string): Receipt {
   const db = getDb();
 
   const taskRow = db.prepare("SELECT * FROM tasks WHERE task_id = ?").get(taskId) as Record<string, unknown> | undefined;
-  const paymentRow = db.prepare("SELECT * FROM transactions WHERE task_id = ?").get(taskId) as Record<string, unknown> | undefined;
+  // A split task has a parent row (full amount + on-chain signature) plus a payout
+  // row per recipient. Prefer the parent so the receipt shows the actual payment.
+  const paymentRow = db
+    .prepare("SELECT * FROM transactions WHERE task_id = ? ORDER BY (incoming_signature IS NULL) ASC, created_at ASC LIMIT 1")
+    .get(taskId) as Record<string, unknown> | undefined;
 
   const deliveryRows = db.prepare(`
     SELECT delivery_id, webhook_id, event_type, status, attempts, response_status, last_attempt_at
@@ -106,5 +112,6 @@ export function getReceipt(taskId: string): Receipt {
     outputCommitment: getOutputCommitment(taskId),
     progress: getTaskProgress(taskId),
     notes: getPaymentNotes(taskId),
+    splits: getSplitsForTask(taskId),
   };
 }

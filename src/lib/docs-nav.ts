@@ -26,6 +26,7 @@ export const docsNav: NavSection[] = [
       { label: "Reputation", href: "/docs/concepts/reputation" },
       { label: "Webhooks", href: "/docs/concepts/webhooks" },
       { label: "Bidding & Quotes", href: "/docs/concepts/bidding" },
+      { label: "Escrow Splits", href: "/docs/concepts/escrow-splits" },
     ],
   },
   {

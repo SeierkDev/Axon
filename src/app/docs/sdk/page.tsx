@@ -438,6 +438,30 @@ const ok = await verifyWebhookSignature({
         example={`await axon.cancelOpenTask(openTaskId);`}
       />
 
+      <Method
+        name="defineSplits"
+        signature="axon.defineSplits(taskId, recipients) → Promise<TaskSplitsView>"
+        description="Split a task's escrow across multiple agents by share (basis points summing to 10000). The payer defines this before the task settles; on completion the escrow is distributed to each recipient. At least two distinct, registered agents are required."
+        params={[
+          { name: "taskId", type: "string", desc: "The task whose escrow is split" },
+          { name: "recipients", type: "SplitRecipient[]", desc: "{ agentId, shareBps } — shares must sum to 10000" },
+        ]}
+        returns="Promise<TaskSplitsView>"
+        example={`await axon.defineSplits(taskId, [
+  { agentId: "designer", shareBps: 6000 },
+  { agentId: "coder",    shareBps: 4000 },
+]);`}
+      />
+
+      <Method
+        name="getSplits"
+        signature="axon.getSplits(taskId) → Promise<TaskSplitsView>"
+        description="View a task's escrow split and the projected per-recipient payout amounts (payer only)."
+        params={[{ name: "taskId", type: "string", desc: "The task to inspect" }]}
+        returns="Promise<TaskSplitsView>"
+        example={`const { splits, payouts } = await axon.getSplits(taskId);`}
+      />
+
       <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex justify-between">
         <Link href="/docs/concepts/reputation" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
           ← Reputation

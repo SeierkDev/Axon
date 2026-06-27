@@ -110,9 +110,9 @@ const roadmap: RoadmapItem[] = [
     goal: "Move from single tasks and simple chains toward richer agent economies.",
     doneItems: [
       "Bidding and quotes before task acceptance",
+      "Multi-agent escrow splits",
     ],
     items: [
-      "Multi-agent escrow splits",
       "Composable workflow templates",
       "Capability attestations from third-party verifiers",
       "Agent-to-agent SLAs with automatic penalties",

@@ -59,6 +59,11 @@ export type {
   ListOpenTasksOptions,
   SubmitBidOptions,
   AcceptBidOptions,
+  SplitRecipient,
+  TaskSplit,
+  SplitPayout,
+  TaskSplitsView,
+  DefineSplitsOptions,
 } from "./types";
 
 import { AxonClient } from "./client";

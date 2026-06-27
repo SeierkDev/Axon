@@ -90,6 +90,17 @@ const SPEC = {
           createdAt: { type: "string", format: "date-time" },
         },
       },
+      TaskSplit: {
+        type: "object",
+        required: ["splitId", "taskId", "agentId", "shareBps", "createdAt"],
+        properties: {
+          splitId: { type: "string", format: "uuid" },
+          taskId: { type: "string", format: "uuid" },
+          agentId: { type: "string" },
+          shareBps: { type: "integer", description: "Share in basis points (1..10000); a task's recipients sum to 10000" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
       ApiKey: {
         type: "object",
         properties: {
@@ -482,6 +493,61 @@ const SPEC = {
           402: { description: "Payment required for a paid bid" },
           403: { description: "Only the poster can accept" },
           404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/tasks/{taskId}/splits": {
+      parameters: [{ name: "taskId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+      get: {
+        summary: "View a task's escrow split and projected per-recipient payouts (payer only)",
+        operationId: "getSplits",
+        tags: ["Escrow Splits"],
+        responses: {
+          200: {
+            description: "Split and payouts",
+            content: { "application/json": { schema: { type: "object", properties: {
+              taskId: { type: "string", format: "uuid" },
+              splits: { type: "array", items: { $ref: "#/components/schemas/TaskSplit" } },
+              payouts: { type: "array", items: { type: "object", properties: { agentId: { type: "string" }, amount: { type: "number" }, currency: { type: "string" } } } },
+            } } } },
+          },
+          403: { description: "Only the task's payer can view its split" },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+      post: {
+        summary: "Define how a task's escrow is split across multiple agents (payer only, before settlement)",
+        operationId: "defineSplits",
+        tags: ["Escrow Splits"],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object",
+            required: ["recipients"],
+            properties: {
+              recipients: {
+                type: "array",
+                minItems: 2,
+                maxItems: 20,
+                items: {
+                  type: "object",
+                  required: ["agentId", "shareBps"],
+                  properties: {
+                    agentId: { type: "string" },
+                    shareBps: { type: "integer", minimum: 1, maximum: 10000, description: "Shares must sum to 10000 across recipients" },
+                  },
+                },
+              },
+            },
+          } } },
+        },
+        responses: {
+          200: { description: "Split defined", content: { "application/json": { schema: { type: "object", properties: { taskId: { type: "string" }, splits: { type: "array", items: { $ref: "#/components/schemas/TaskSplit" } } } } } } },
+          400: { $ref: "#/components/responses/ValidationError" },
+          403: { description: "Only the task's payer can set its split" },
+          404: { $ref: "#/components/responses/NotFound" },
+          409: { description: "Task has already settled" },
         },
       },
     },

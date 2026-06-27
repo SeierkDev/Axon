@@ -179,7 +179,7 @@ export interface DelegationResult {
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
 
-export type PaymentStatus = "escrow" | "completed" | "refunded";
+export type PaymentStatus = "escrow" | "completed" | "refunded" | "split";
 
 export interface Transaction {
   txId: string;
@@ -518,4 +518,35 @@ export interface SubmitBidOptions {
 export interface AcceptBidOptions {
   bidId: string;
   paymentSignature?: string;
+}
+
+// ─── Escrow splits (Phase 8) ──────────────────────────────────────────────────
+
+export interface SplitRecipient {
+  agentId: string;
+  /** Share in basis points (1..10000); a task's recipients sum to 10000. */
+  shareBps: number;
+}
+
+export interface TaskSplit extends SplitRecipient {
+  splitId: string;
+  taskId: string;
+  createdAt: string;
+}
+
+export interface SplitPayout {
+  agentId: string;
+  amount: number;
+  currency: string;
+}
+
+export interface TaskSplitsView {
+  taskId: string;
+  splits: TaskSplit[];
+  /** Projected per-recipient amounts, present once the task has a payment. */
+  payouts: SplitPayout[];
+}
+
+export interface DefineSplitsOptions {
+  recipients: SplitRecipient[];
 }

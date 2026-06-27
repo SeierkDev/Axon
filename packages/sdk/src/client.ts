@@ -41,6 +41,8 @@ import type {
   ListOpenTasksOptions,
   SubmitBidOptions,
   AcceptBidOptions,
+  SplitRecipient,
+  TaskSplitsView,
 } from "./types";
 
 function pathPart(value: string): string {
@@ -488,6 +490,16 @@ export class AxonClient {
   /** Cancel an open task you posted, so it stops accepting bids. */
   async cancelOpenTask(openTaskId: string): Promise<OpenTask> {
     return this.delete(`/api/open-tasks/${pathPart(openTaskId)}`) as Promise<OpenTask>;
+  }
+
+  /** Split a task's escrow across multiple agents by share (basis points summing to 10000). */
+  async defineSplits(taskId: string, recipients: SplitRecipient[]): Promise<TaskSplitsView> {
+    return this.post(`/api/tasks/${pathPart(taskId)}/splits`, { recipients }) as Promise<TaskSplitsView>;
+  }
+
+  /** View a task's escrow split and the projected per-recipient payouts. */
+  async getSplits(taskId: string): Promise<TaskSplitsView> {
+    return this.get(`/api/tasks/${pathPart(taskId)}/splits`) as Promise<TaskSplitsView>;
   }
 
   /** Submit a bid on an open task. */
