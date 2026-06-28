@@ -5,6 +5,7 @@ import {
   getPaymentByIncomingSignature,
   parsePriceToSol,
   refundPayment,
+  isTransientPaymentError,
 } from "@/lib/payments";
 import { markTaskPaymentConfirmed, getTaskById } from "@/lib/tasks";
 import { queueWebhookEvent } from "@/lib/webhooks";
@@ -101,11 +102,12 @@ async function handlePost(
     } catch (err) {
       revertAccept(openTaskId, result.task.taskId);
       const msg = err instanceof Error ? err.message : "payment verification failed";
-      // An infrastructure/RPC outage (Helius down, circuit open, missing key) is
-      // not a payment rejection — return 503 so the caller retries instead of
-      // treating it as "failed" and being pushed to pay a second time.
-      if (/is not set|API_KEY|HELIUS|circuit|Payment processing unavailable/i.test(msg)) {
-        return apiError("PAYMENT_UNAVAILABLE", "Payment processing temporarily unavailable — please retry", 503);
+      // A transient failure (RPC lag, circuit open, tx not yet indexed) is NOT a
+      // payment rejection — the on-chain payment may have landed. Return 503 so
+      // the caller retries the SAME signature instead of being told it failed and
+      // paying a second time.
+      if (isTransientPaymentError(err)) {
+        return apiError("PAYMENT_UNAVAILABLE", "Payment is still being confirmed — retry shortly with the same payment; do not pay again", 503);
       }
       return apiError("PAYMENT_FAILED", msg, 402);
     }

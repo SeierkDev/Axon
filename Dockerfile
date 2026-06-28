@@ -2,8 +2,11 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Required for better-sqlite3 native compilation via node-gyp
-RUN apk add --no-cache python3 make g++
+# Required for better-sqlite3 native compilation via node-gyp. Retried for the
+# same reason as the curl step below — transient Alpine index errors.
+RUN apk add --no-cache python3 make g++ \
+    || (echo "apk build-deps retry 1 (transient Alpine index)…" && sleep 8 && apk add --no-cache python3 make g++) \
+    || (echo "apk build-deps retry 2…" && sleep 20 && apk add --no-cache python3 make g++)
 
 COPY package.json package-lock.json ./
 # Install production + dev deps (needed for Next.js build)
@@ -38,8 +41,13 @@ COPY --from=builder /app/.next/static    ./.next/static
 # tables are never created in production — every new migration silently no-ops.
 COPY --from=builder /app/migrations      ./migrations
 
-# curl is needed by Railway cron services that use sh -c 'curl ...' as their start command
-RUN apk add --no-cache curl
+# curl is needed by Railway cron services that use sh -c 'curl ...' as their
+# start command. Retried — this step has repeatedly failed the build on transient
+# Alpine CDN/index errors (e.g. "v2 database format error"). Each --no-cache
+# attempt re-fetches the index, so a brief upstream blip self-heals.
+RUN apk add --no-cache curl \
+    || (echo "apk curl retry 1 (transient Alpine index)…" && sleep 8 && apk add --no-cache curl) \
+    || (echo "apk curl retry 2…" && sleep 20 && apk add --no-cache curl)
 
 # SQLite data directory — mount a Railway Volume at /data in production
 RUN mkdir -p /data

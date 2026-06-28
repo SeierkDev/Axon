@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
-import { parsePaymentAmount, verifyIncomingPayment, isValidSolanaAddress } from "./solana";
+import { parsePaymentAmount, checkIncomingPayment, CircuitOpenError, isValidSolanaAddress } from "./solana";
 import { queueWebhookEvent } from "./webhooks";
 import { checkBudget } from "./budgets";
 import { getAgentById } from "./agents";
@@ -13,6 +13,19 @@ import { getSplitsForTask, computeSplitAmounts, type TaskSplit } from "./escrowS
 // kept intact (total amount, recipient, on-chain signature) for the audit trail,
 // and one 'completed' payout row is written per split recipient.
 export type PaymentStatus = "escrow" | "completed" | "refunded" | "split";
+
+// A payment error flagged transient (RPC lag, circuit open, or a tx not yet
+// indexed) — the caller should retry the SAME signature rather than re-pay, so a
+// payment that actually landed isn't reported as failed and charged twice.
+type PaymentError = Error & { transient?: boolean };
+
+export function isTransientPaymentError(err: unknown): boolean {
+  if (err instanceof CircuitOpenError) return true;
+  if ((err as PaymentError)?.transient) return true;
+  return /is not set|API_KEY|HELIUS|unavailable|timeout|rate.?limit|circuit/i.test(
+    err instanceof Error ? err.message : ""
+  );
+}
 
 export interface Payment {
   txId: string;
@@ -93,10 +106,26 @@ export async function createPayment(opts: {
     throw new Error("Payment payer must be a wallet address or an agent with a walletAddress");
   }
 
-  const verified = await verifyIncomingPayment(opts.paymentSignature, base, payerWallet);
-  if (!verified) throw new Error(
-    `Payment not verified on-chain. Expected ${base.amount.toFixed(base.currency === "USDC" ? 2 : 4)} ${base.currency} signed by ${payerWallet}`
-  );
+  let verification: { ok: boolean; reason: string };
+  try {
+    verification = await checkIncomingPayment(opts.paymentSignature, base, payerWallet);
+  } catch (err) {
+    // RPC outage / circuit open — the payment may well have landed on-chain, so
+    // this is transient: the caller should retry the SAME signature, not re-pay.
+    const e = (err instanceof Error ? err : new Error(String(err))) as PaymentError;
+    e.transient = true;
+    throw e;
+  }
+  if (!verification.ok) {
+    const e = new Error(
+      `Payment not verified on-chain. Expected ${base.amount.toFixed(base.currency === "USDC" ? 2 : 4)} ${base.currency} signed by ${payerWallet} (${verification.reason})`
+    ) as PaymentError;
+    // "Not found / not yet confirmed" can be RPC lag for a payment that did land.
+    // Treat it as transient (retry the same signature) rather than a hard failure
+    // — telling the caller it failed risks a double-charge when they re-pay.
+    e.transient = /not found on-chain|not yet confirmed/i.test(verification.reason);
+    throw e;
+  }
 
   // Atomic write: replay check + budget check + insert in one serialized transaction.
   // This closes the race window where two concurrent requests both pass the pre-checks

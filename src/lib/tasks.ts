@@ -210,7 +210,17 @@ export function markTaskPaymentConfirmed(taskId: string): Task | null {
   if (changes === 0) return null;
 
   const task = getTaskById(taskId)!;
-  queueTaskQueuedWebhook(task);
+  // Best-effort notification — a webhook failure must never leave a paid task
+  // stuck in payment_pending.
+  try {
+    queueTaskQueuedWebhook(task);
+  } catch (err) {
+    logger.error("webhook.queue_failed", "Failed to queue task.queued webhook", {
+      err,
+      taskId: task.taskId,
+      toAgent: task.toAgent,
+    });
+  }
   void syncToTurso(); // covers task UPDATE + webhook_deliveries INSERT
   logger.info("task.payment_confirmed", "Task payment confirmed", {
     taskId: task.taskId,
@@ -242,33 +252,40 @@ export function confirmAndStartTask(taskId: string, startedBy = "api"): Task | n
 export function completeTask(taskId: string, output: string): Task | null {
   const db = getDb();
   const now = new Date().toISOString();
-  const changes = db
-    .prepare(
-      "UPDATE tasks SET status='completed', output=?, completed_at=? WHERE task_id=? AND status='running'"
-    )
-    .run(output, now, taskId).changes;
 
-  if (changes === 0) return null;
+  // The status flip and its synchronous DB side-effects (latency, workflow/quorum
+  // bookkeeping, reputation, webhook queue) run in ONE transaction, so a crash
+  // can't leave a task 'completed' with stale reputation, an un-advanced
+  // workflow/quorum, or no webhook queued. Async/network work (commitOutput,
+  // Turso sync) and pure events stay outside.
+  const task = db.transaction((): Task | null => {
+    const changes = db
+      .prepare(
+        "UPDATE tasks SET status='completed', output=?, completed_at=? WHERE task_id=? AND status='running'"
+      )
+      .run(output, now, taskId).changes;
+    if (changes === 0) return null;
 
-  const task = getTaskById(taskId)!;
+    const t = getTaskById(taskId)!;
 
-  // Record latency metric
-  if (task.startedAt && task.completedAt) {
-    const latencyMs = new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime();
-    recordTaskLatency(task.toAgent, latencyMs, true);
-  }
+    if (t.startedAt && t.completedAt) {
+      const latencyMs = new Date(t.completedAt).getTime() - new Date(t.startedAt).getTime();
+      recordTaskLatency(t.toAgent, latencyMs, true);
+    }
+    if (t.workflowId !== undefined && t.stepIndex !== undefined) {
+      runWithTraceId(t.traceId ?? t.taskId, () => advanceWorkflow(t.workflowId!, t.stepIndex!, output));
+    }
+    if (t.quorumId !== undefined) {
+      onChildTaskCompleted(t.quorumId);
+    }
+    updateAgentReputation(t.toAgent);
+    return t;
+  })();
 
-  if (task.workflowId !== undefined && task.stepIndex !== undefined) {
-    runWithTraceId(task.traceId ?? task.taskId, () => advanceWorkflow(task.workflowId!, task.stepIndex!, output));
-  }
+  if (!task) return null;
 
-  if (task.quorumId !== undefined) {
-    onChildTaskCompleted(task.quorumId);
-  }
-
-  // Recompute and persist reputation for the recipient
-  updateAgentReputation(task.toAgent);
-
+  // Webhook delivery is a best-effort notification — a queue failure must not
+  // roll back an already-settled task, so it runs outside the transaction.
   try {
     queueWebhookEvent(task.toAgent, "task.completed", {
       taskId: task.taskId,
@@ -307,33 +324,36 @@ export function completeTask(taskId: string, output: string): Task | null {
 export function failTask(taskId: string, error: string): Task | null {
   const db = getDb();
   const now = new Date().toISOString();
-  const changes = db
-    .prepare(
-      "UPDATE tasks SET status='failed', error=?, completed_at=? WHERE task_id=? AND status IN ('queued','running','payment_pending')"
-    )
-    .run(error, now, taskId).changes;
 
-  if (changes === 0) return null;
+  // Same atomicity as completeTask: the status flip and its synchronous DB
+  // side-effects commit together or not at all.
+  const task = db.transaction((): Task | null => {
+    const changes = db
+      .prepare(
+        "UPDATE tasks SET status='failed', error=?, completed_at=? WHERE task_id=? AND status IN ('queued','running','payment_pending')"
+      )
+      .run(error, now, taskId).changes;
+    if (changes === 0) return null;
 
-  const task = getTaskById(taskId)!;
+    const t = getTaskById(taskId)!;
 
-  // Record latency metric for failed tasks too
-  if (task.startedAt && task.completedAt) {
-    const latencyMs = new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime();
-    recordTaskLatency(task.toAgent, latencyMs, false);
-  }
+    if (t.startedAt && t.completedAt) {
+      const latencyMs = new Date(t.completedAt).getTime() - new Date(t.startedAt).getTime();
+      recordTaskLatency(t.toAgent, latencyMs, false);
+    }
+    if (t.workflowId !== undefined) {
+      failWorkflow(t.workflowId);
+    }
+    if (t.quorumId !== undefined) {
+      onChildTaskFailed(t.quorumId);
+    }
+    updateAgentReputation(t.toAgent);
+    return t;
+  })();
 
-  if (task.workflowId !== undefined) {
-    failWorkflow(task.workflowId);
-  }
+  if (!task) return null;
 
-  if (task.quorumId !== undefined) {
-    onChildTaskFailed(task.quorumId);
-  }
-
-  // Recompute and persist reputation for the recipient
-  updateAgentReputation(task.toAgent);
-
+  // Best-effort notification, outside the transaction (see completeTask).
   try {
     queueWebhookEvent(task.toAgent, "task.failed", {
       taskId: task.taskId,

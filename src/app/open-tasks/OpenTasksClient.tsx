@@ -122,13 +122,29 @@ export default function OpenTasksClient({ rpcUrl, treasury }: { rpcUrl: string; 
         paymentSignature = signature;
       }
 
-      const res = await fetch(`/api/open-tasks/${openTaskId}/accept`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ bidId: bid.bidId, paymentSignature }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      // Submit the (already-paid) signature. A 503 means the payment is still
+      // confirming on-chain — retry the SAME signature rather than paying again,
+      // so RPC lag can never cause a double-charge.
+      let data: { error?: string; task?: { taskId?: string } } = {};
+      let accepted = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const res = await fetch(`/api/open-tasks/${openTaskId}/accept`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ bidId: bid.bidId, paymentSignature }),
+        });
+        data = await res.json().catch(() => ({}));
+        if (res.ok) { accepted = true; break; }
+        if (res.status === 503) { await new Promise((r) => setTimeout(r, 2500)); continue; }
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      if (!accepted) {
+        throw new Error(
+          paymentSignature
+            ? "Your payment is still confirming on-chain — it'll go through shortly. Do not pay again."
+            : (data.error ?? "Accept failed")
+        );
+      }
       setAcceptedTaskId(data.task?.taskId ?? null);
       setStatus("accepted");
     } catch (e) {
