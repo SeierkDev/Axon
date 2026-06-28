@@ -101,6 +101,20 @@ const SPEC = {
           createdAt: { type: "string", format: "date-time" },
         },
       },
+      WorkflowTemplate: {
+        type: "object",
+        required: ["templateId", "fromAgent", "name", "agents", "taskTemplate", "parameters", "createdAt"],
+        properties: {
+          templateId: { type: "string", format: "uuid" },
+          fromAgent: { type: "string" },
+          name: { type: "string" },
+          description: { type: "string", nullable: true },
+          agents: { type: "array", items: { type: "string" }, description: "Ordered agent chain" },
+          taskTemplate: { type: "string", description: "Task text, may contain {{placeholders}}" },
+          parameters: { type: "array", items: { type: "string" }, description: "Placeholder names derived from taskTemplate" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
       ApiKey: {
         type: "object",
         properties: {
@@ -548,6 +562,95 @@ const SPEC = {
           403: { description: "Only the task's payer can set its split" },
           404: { $ref: "#/components/responses/NotFound" },
           409: { description: "Task has already settled" },
+        },
+      },
+    },
+
+    "/workflow-templates": {
+      get: {
+        summary: "Discover reusable workflow templates",
+        operationId: "listWorkflowTemplates",
+        tags: ["Workflow Templates"],
+        parameters: [
+          { name: "from", in: "query", description: "Filter to one owner", schema: { type: "string" } },
+          { name: "limit", in: "query", schema: { type: "integer" } },
+        ],
+        responses: {
+          200: { description: "Templates", content: { "application/json": { schema: { type: "object", properties: { templates: { type: "array", items: { $ref: "#/components/schemas/WorkflowTemplate" } } } } } } },
+        },
+      },
+      post: {
+        summary: "Create a reusable workflow template",
+        operationId: "createWorkflowTemplate",
+        tags: ["Workflow Templates"],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object",
+            required: ["from", "name", "agents", "taskTemplate"],
+            properties: {
+              from: { type: "string", description: "Owner (must be yours)" },
+              name: { type: "string", description: "Unique per owner" },
+              description: { type: "string" },
+              agents: { type: "array", minItems: 1, maxItems: 20, items: { type: "string" }, description: "Ordered agent chain" },
+              taskTemplate: { type: "string", description: "May contain {{placeholders}}" },
+            },
+          } } },
+        },
+        responses: {
+          201: { description: "Template created", content: { "application/json": { schema: { $ref: "#/components/schemas/WorkflowTemplate" } } } },
+          400: { $ref: "#/components/responses/ValidationError" },
+          403: { description: "You don't own the posting identity" },
+          409: { description: "A template with that name already exists" },
+        },
+      },
+    },
+
+    "/workflow-templates/{templateId}": {
+      parameters: [{ name: "templateId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+      get: {
+        summary: "Get a workflow template",
+        operationId: "getWorkflowTemplate",
+        tags: ["Workflow Templates"],
+        responses: {
+          200: { description: "Template", content: { "application/json": { schema: { $ref: "#/components/schemas/WorkflowTemplate" } } } },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+      delete: {
+        summary: "Delete a workflow template (owner only)",
+        operationId: "deleteWorkflowTemplate",
+        tags: ["Workflow Templates"],
+        responses: {
+          200: { description: "Deleted" },
+          403: { description: "Only the owner can delete it" },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/workflow-templates/{templateId}/instantiate": {
+      parameters: [{ name: "templateId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+      post: {
+        summary: "Instantiate a template — resolve its task and start a real workflow",
+        operationId: "instantiateWorkflowTemplate",
+        tags: ["Workflow Templates"],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object",
+            required: ["from"],
+            properties: {
+              from: { type: "string", description: "Your identity — the workflow runs as this" },
+              params: { type: "object", additionalProperties: { type: "string" }, description: "Values for every {{placeholder}}" },
+            },
+          } } },
+        },
+        responses: {
+          201: { description: "Workflow started", content: { "application/json": { schema: { type: "object", properties: { workflow: { type: "object" } } } } } },
+          400: { $ref: "#/components/responses/ValidationError" },
+          403: { description: "You don't own the identity" },
+          404: { $ref: "#/components/responses/NotFound" },
         },
       },
     },

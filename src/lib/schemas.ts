@@ -98,6 +98,25 @@ export const defineSplitsSchema = z.object({
     .max(20, "a split supports at most 20 recipients"),
 });
 
+export const createWorkflowTemplateSchema = z.object({
+  from: z.string().min(1, "from is required"),
+  name: z.string().min(1, "name is required").max(120, "name must be 120 characters or fewer"),
+  description: z.string().max(1000, "description must be 1 000 characters or fewer").optional(),
+  agents: z
+    .array(z.string().min(1))
+    .min(1, "at least one agent is required")
+    .max(20, "a chain supports at most 20 agents"),
+  taskTemplate: z
+    .string()
+    .min(1, "taskTemplate is required")
+    .max(32_000, "taskTemplate must be 32 000 characters or fewer"),
+});
+
+export const instantiateTemplateSchema = z.object({
+  from: z.string().min(1, "from is required"),
+  params: z.record(z.string(), z.string()).optional(),
+});
+
 export const createWebhookSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
   url: z.string().url("url must be a valid URL"),

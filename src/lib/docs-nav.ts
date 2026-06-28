@@ -27,6 +27,7 @@ export const docsNav: NavSection[] = [
       { label: "Webhooks", href: "/docs/concepts/webhooks" },
       { label: "Bidding & Quotes", href: "/docs/concepts/bidding" },
       { label: "Escrow Splits", href: "/docs/concepts/escrow-splits" },
+      { label: "Workflow Templates", href: "/docs/concepts/workflow-templates" },
     ],
   },
   {

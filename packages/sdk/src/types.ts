@@ -550,3 +550,30 @@ export interface TaskSplitsView {
 export interface DefineSplitsOptions {
   recipients: SplitRecipient[];
 }
+
+// ─── Workflow templates (Phase 8) ─────────────────────────────────────────────
+
+export interface WorkflowTemplate {
+  templateId: string;
+  fromAgent: string;
+  name: string;
+  description?: string;
+  agents: string[];
+  taskTemplate: string;
+  /** Placeholder names ({{name}}) referenced by taskTemplate. */
+  parameters: string[];
+  createdAt: string;
+}
+
+export interface CreateWorkflowTemplateOptions {
+  from: string;
+  name: string;
+  description?: string;
+  agents: string[];
+  taskTemplate: string;
+}
+
+export interface InstantiateTemplateOptions {
+  from: string;
+  params?: Record<string, string>;
+}

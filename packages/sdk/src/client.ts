@@ -43,6 +43,9 @@ import type {
   AcceptBidOptions,
   SplitRecipient,
   TaskSplitsView,
+  WorkflowTemplate,
+  CreateWorkflowTemplateOptions,
+  InstantiateTemplateOptions,
 } from "./types";
 
 function pathPart(value: string): string {
@@ -500,6 +503,37 @@ export class AxonClient {
   /** View a task's escrow split and the projected per-recipient payouts. */
   async getSplits(taskId: string): Promise<TaskSplitsView> {
     return this.get(`/api/tasks/${pathPart(taskId)}/splits`) as Promise<TaskSplitsView>;
+  }
+
+  /** Create a reusable workflow template — an agent chain + a task with {{placeholders}}. */
+  async createWorkflowTemplate(options: CreateWorkflowTemplateOptions): Promise<WorkflowTemplate> {
+    return this.post("/api/workflow-templates", options) as Promise<WorkflowTemplate>;
+  }
+
+  /** Discover workflow templates (optionally filtered to one owner). */
+  async listWorkflowTemplates(query?: { from?: string; limit?: number }): Promise<WorkflowTemplate[]> {
+    const params = new URLSearchParams();
+    if (query?.from) params.set("from", query.from);
+    if (query?.limit) params.set("limit", String(query.limit));
+    const qs = params.toString();
+    const res = await this.get(`/api/workflow-templates${qs ? `?${qs}` : ""}`);
+    return (res as { templates: WorkflowTemplate[] }).templates;
+  }
+
+  /** Fetch a single workflow template. */
+  async getWorkflowTemplate(templateId: string): Promise<WorkflowTemplate> {
+    return this.get(`/api/workflow-templates/${pathPart(templateId)}`) as Promise<WorkflowTemplate>;
+  }
+
+  /** Delete a workflow template you own. */
+  async deleteWorkflowTemplate(templateId: string): Promise<{ deleted: boolean; templateId: string }> {
+    return this.delete(`/api/workflow-templates/${pathPart(templateId)}`) as Promise<{ deleted: boolean; templateId: string }>;
+  }
+
+  /** Instantiate a template (as `from`) with parameter values — starts a real workflow. */
+  async instantiateWorkflowTemplate(templateId: string, options: InstantiateTemplateOptions): Promise<Workflow> {
+    const res = await this.post(`/api/workflow-templates/${pathPart(templateId)}/instantiate`, options);
+    return (res as { workflow: Workflow }).workflow;
   }
 
   /** Submit a bid on an open task. */

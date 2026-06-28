@@ -64,6 +64,9 @@ export type {
   SplitPayout,
   TaskSplitsView,
   DefineSplitsOptions,
+  WorkflowTemplate,
+  CreateWorkflowTemplateOptions,
+  InstantiateTemplateOptions,
 } from "./types";
 
 import { AxonClient } from "./client";
