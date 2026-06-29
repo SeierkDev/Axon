@@ -46,6 +46,8 @@ import type {
   WorkflowTemplate,
   CreateWorkflowTemplateOptions,
   InstantiateTemplateOptions,
+  CapabilityAttestation,
+  AttestCapabilityOptions,
 } from "./types";
 
 function pathPart(value: string): string {
@@ -536,6 +538,32 @@ export class AxonClient {
     return (res as { workflow: Workflow }).workflow;
   }
 
+  /** The canonical message a verifier signs to attest an agent's capability. */
+  attestationMessage(agentId: string, capability: string): string {
+    return `axon-attest:${agentId}:${capability}`;
+  }
+
+  /** The canonical message a verifier signs to revoke one of their attestations. */
+  attestationRevokeMessage(attestationId: string): string {
+    return `axon-attest-revoke:${attestationId}`;
+  }
+
+  /** Submit a signed third-party attestation that an agent has a capability. */
+  async attestCapability(agentId: string, options: AttestCapabilityOptions): Promise<CapabilityAttestation> {
+    return this.post(`/api/agents/${pathPart(agentId)}/attestations`, options) as Promise<CapabilityAttestation>;
+  }
+
+  /** List an agent's capability attestations. */
+  async getAttestations(agentId: string): Promise<CapabilityAttestation[]> {
+    const res = await this.get(`/api/agents/${pathPart(agentId)}/attestations`);
+    return (res as { attestations: CapabilityAttestation[] }).attestations;
+  }
+
+  /** Revoke an attestation — sign attestationRevokeMessage(attestationId) with the verifier wallet. */
+  async revokeAttestation(agentId: string, attestationId: string, signature: string): Promise<{ revoked: boolean; attestationId: string }> {
+    return this.delete(`/api/agents/${pathPart(agentId)}/attestations/${pathPart(attestationId)}`, { signature }) as Promise<{ revoked: boolean; attestationId: string }>;
+  }
+
   /** Submit a bid on an open task. */
   async submitBid(openTaskId: string, options: SubmitBidOptions): Promise<Bid> {
     return this.post(`/api/open-tasks/${pathPart(openTaskId)}/bids`, options) as Promise<Bid>;
@@ -682,10 +710,11 @@ export class AxonClient {
     return res.json();
   }
 
-  private async delete(path: string): Promise<unknown> {
+  private async delete(path: string, body?: unknown): Promise<unknown> {
     const res = await fetch(`${this.baseUrl()}${path}`, {
       method: "DELETE",
-      headers: this.headers(),
+      headers: this.headers(body !== undefined ? { "Content-Type": "application/json" } : undefined),
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
     if (!res.ok) throw await this.apiErrorFromResponse(res, "DELETE", path);
     return res.json();

@@ -67,6 +67,8 @@ export type {
   WorkflowTemplate,
   CreateWorkflowTemplateOptions,
   InstantiateTemplateOptions,
+  CapabilityAttestation,
+  AttestCapabilityOptions,
 } from "./types";
 
 import { AxonClient } from "./client";

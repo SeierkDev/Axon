@@ -115,6 +115,17 @@ const SPEC = {
           createdAt: { type: "string", format: "date-time" },
         },
       },
+      CapabilityAttestation: {
+        type: "object",
+        required: ["attestationId", "agentId", "capability", "verifier", "createdAt"],
+        properties: {
+          attestationId: { type: "string", format: "uuid" },
+          agentId: { type: "string" },
+          capability: { type: "string" },
+          verifier: { type: "string", description: "Wallet address that signed the attestation" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
       ApiKey: {
         type: "object",
         properties: {
@@ -650,6 +661,67 @@ const SPEC = {
           201: { description: "Workflow started", content: { "application/json": { schema: { type: "object", properties: { workflow: { type: "object" } } } } } },
           400: { $ref: "#/components/responses/ValidationError" },
           403: { description: "You don't own the identity" },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/agents/{agentId}/attestations": {
+      parameters: [{ name: "agentId", in: "path", required: true, schema: { type: "string" } }],
+      get: {
+        summary: "List an agent's capability attestations",
+        operationId: "getAttestations",
+        tags: ["Capability Attestations"],
+        responses: {
+          200: { description: "Attestations", content: { "application/json": { schema: { type: "object", properties: { attestations: { type: "array", items: { $ref: "#/components/schemas/CapabilityAttestation" } } } } } } },
+        },
+      },
+      post: {
+        summary: "Submit a signed capability attestation (the verifier signature is the auth — no API key)",
+        operationId: "attestCapability",
+        tags: ["Capability Attestations"],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object",
+            required: ["capability", "verifier", "signature"],
+            properties: {
+              capability: { type: "string", description: "A capability the agent lists" },
+              verifier: { type: "string", description: "Verifier wallet address (the signer)" },
+              signature: { type: "string", description: "Base64 signature over axon-attest:{agentId}:{capability}" },
+            },
+          } } },
+        },
+        responses: {
+          201: { description: "Attestation created", content: { "application/json": { schema: { $ref: "#/components/schemas/CapabilityAttestation" } } } },
+          400: { $ref: "#/components/responses/ValidationError" },
+          403: { description: "An agent's owner cannot attest its own capabilities" },
+          404: { $ref: "#/components/responses/NotFound" },
+          409: { description: "This verifier already attested this capability" },
+        },
+      },
+    },
+
+    "/agents/{agentId}/attestations/{attestationId}": {
+      parameters: [
+        { name: "agentId", in: "path", required: true, schema: { type: "string" } },
+        { name: "attestationId", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+      ],
+      delete: {
+        summary: "Revoke an attestation (only the original verifier, proven by signature)",
+        operationId: "revokeAttestation",
+        tags: ["Capability Attestations"],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object",
+            required: ["signature"],
+            properties: { signature: { type: "string", description: "Base64 signature over axon-attest-revoke:{attestationId}" } },
+          } } },
+        },
+        responses: {
+          200: { description: "Revoked" },
+          400: { $ref: "#/components/responses/ValidationError" },
           404: { $ref: "#/components/responses/NotFound" },
         },
       },

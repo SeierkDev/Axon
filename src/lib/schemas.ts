@@ -117,6 +117,16 @@ export const instantiateTemplateSchema = z.object({
   params: z.record(z.string(), z.string()).optional(),
 });
 
+export const createAttestationSchema = z.object({
+  capability: z.string().min(1, "capability is required").max(120, "capability must be 120 characters or fewer"),
+  verifier: solanaAddressField,
+  signature: z.string().min(1, "signature is required"),
+});
+
+export const revokeAttestationSchema = z.object({
+  signature: z.string().min(1, "signature is required"),
+});
+
 export const createWebhookSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
   url: z.string().url("url must be a valid URL"),

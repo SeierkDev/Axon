@@ -577,3 +577,22 @@ export interface InstantiateTemplateOptions {
   from: string;
   params?: Record<string, string>;
 }
+
+// ─── Capability attestations (Phase 8) ────────────────────────────────────────
+
+export interface CapabilityAttestation {
+  attestationId: string;
+  agentId: string;
+  capability: string;
+  /** Wallet address of the verifier that signed the attestation. */
+  verifier: string;
+  createdAt: string;
+}
+
+export interface AttestCapabilityOptions {
+  capability: string;
+  /** Verifier wallet address (the signer). */
+  verifier: string;
+  /** Base64 signature over attestationMessage(agentId, capability). */
+  signature: string;
+}

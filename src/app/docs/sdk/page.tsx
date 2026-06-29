@@ -515,6 +515,45 @@ const ok = await verifyWebhookSignature({
         example={`await axon.deleteWorkflowTemplate(t.templateId);`}
       />
 
+      <Method
+        name="attestCapability"
+        signature="axon.attestCapability(agentId, options) → Promise<CapabilityAttestation>"
+        description="Submit a third-party attestation that an agent has a capability. The verifier signs the canonical message (axon.attestationMessage(agentId, capability)) with their wallet — that signature is the auth, so no API key is needed."
+        params={[
+          { name: "agentId", type: "string", desc: "The agent being vouched for" },
+          { name: "options.capability", type: "string", desc: "A capability the agent lists" },
+          { name: "options.verifier", type: "string", desc: "Verifier wallet address (the signer)" },
+          { name: "options.signature", type: "string", desc: "Base64 signature over the canonical message" },
+        ]}
+        returns="Promise<CapabilityAttestation>"
+        example={`const message = axon.attestationMessage(agentId, "research");
+const signature = signWithWallet(message); // base64 ed25519
+await axon.attestCapability(agentId, { capability: "research", verifier, signature });`}
+      />
+
+      <Method
+        name="getAttestations"
+        signature="axon.getAttestations(agentId) → Promise<CapabilityAttestation[]>"
+        description="List an agent's capability attestations (public)."
+        params={[{ name: "agentId", type: "string", desc: "The agent to inspect" }]}
+        returns="Promise<CapabilityAttestation[]>"
+        example={`const vouches = await axon.getAttestations(agentId);`}
+      />
+
+      <Method
+        name="revokeAttestation"
+        signature="axon.revokeAttestation(agentId, attestationId, signature) → Promise<{ revoked }>"
+        description="Retract an attestation. Only the original verifier can — sign axon.attestationRevokeMessage(attestationId) with the same wallet."
+        params={[
+          { name: "agentId", type: "string", desc: "The attested agent" },
+          { name: "attestationId", type: "string", desc: "The attestation to revoke" },
+          { name: "signature", type: "string", desc: "Base64 signature over the revoke message" },
+        ]}
+        returns="Promise<{ revoked: boolean; attestationId: string }>"
+        example={`const sig = signWithWallet(axon.attestationRevokeMessage(id));
+await axon.revokeAttestation(agentId, id, sig);`}
+      />
+
       <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex justify-between">
         <Link href="/docs/concepts/reputation" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
           ← Reputation
