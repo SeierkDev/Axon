@@ -11,7 +11,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getGatewayProvider, proxyToProvider } from "@/lib/gateway";
 import { createTask, startTask, completeTask, failTask, markTaskPaymentConfirmed } from "@/lib/tasks";
 import { syncToTurso } from "@/lib/db-turso";
-import { createPayment, parsePriceToSol, refundPayment, releasePayment, isTransientPaymentError } from "@/lib/payments";
+import { createPayment, parsePriceToSol, refundPayment, isTransientPaymentError } from "@/lib/payments";
+import { settleCompletedTask } from "@/lib/sla";
 import { isValidSolanaAddress } from "@/lib/solana";
 import { agentExists } from "@/lib/agents";
 import {
@@ -197,7 +198,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   if (completeTask(task.taskId, result.body.slice(0, 1000))) {
-    releasePayment(task.taskId);
+    settleCompletedTask(task.taskId);
   }
 
   return new NextResponse(result.body, {

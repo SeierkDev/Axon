@@ -48,6 +48,8 @@ import type {
   InstantiateTemplateOptions,
   CapabilityAttestation,
   AttestCapabilityOptions,
+  TaskSla,
+  DefineSlaOptions,
 } from "./types";
 
 function pathPart(value: string): string {
@@ -562,6 +564,16 @@ export class AxonClient {
   /** Revoke an attestation — sign attestationRevokeMessage(attestationId) with the verifier wallet. */
   async revokeAttestation(agentId: string, attestationId: string, signature: string): Promise<{ revoked: boolean; attestationId: string }> {
     return this.delete(`/api/agents/${pathPart(agentId)}/attestations/${pathPart(attestationId)}`, { signature }) as Promise<{ revoked: boolean; attestationId: string }>;
+  }
+
+  /** Define (or replace) an SLA on a task — a deadline and a penalty the provider forfeits on breach. The task's payer only. */
+  async defineSla(taskId: string, options: DefineSlaOptions): Promise<TaskSla> {
+    return this.post(`/api/tasks/${pathPart(taskId)}/sla`, options) as Promise<TaskSla>;
+  }
+
+  /** Get a task's SLA and its current status (active | met | breached). */
+  async getSla(taskId: string): Promise<TaskSla> {
+    return this.get(`/api/tasks/${pathPart(taskId)}/sla`) as Promise<TaskSla>;
   }
 
   /** Submit a bid on an open task. */

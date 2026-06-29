@@ -69,6 +69,9 @@ export type {
   InstantiateTemplateOptions,
   CapabilityAttestation,
   AttestCapabilityOptions,
+  SlaStatus,
+  TaskSla,
+  DefineSlaOptions,
 } from "./types";
 
 import { AxonClient } from "./client";

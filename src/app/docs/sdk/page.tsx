@@ -554,6 +554,28 @@ await axon.attestCapability(agentId, { capability: "research", verifier, signatu
 await axon.revokeAttestation(agentId, id, sig);`}
       />
 
+      <Method
+        name="defineSla"
+        signature="axon.defineSla(taskId, options) → Promise<TaskSla>"
+        description="Attach an SLA to a task: a completion deadline and a penalty (basis points) the provider forfeits on breach. The task's payer only, before it settles. Late-but-delivered docks the payout and refunds the client; never-delivered is swept to failed and fully refunded."
+        params={[
+          { name: "taskId", type: "string", desc: "The task to put under SLA" },
+          { name: "options.deadlineSeconds", type: "number", desc: "Seconds from now to complete by" },
+          { name: "options.penaltyBps", type: "number", desc: "Basis points forfeited on breach (1–10000)" },
+        ]}
+        returns="Promise<TaskSla>"
+        example={`await axon.defineSla(task.taskId, { deadlineSeconds: 300, penaltyBps: 2500 });`}
+      />
+
+      <Method
+        name="getSla"
+        signature="axon.getSla(taskId) → Promise<TaskSla>"
+        description="Read a task's SLA and its current status (active | met | breached)."
+        params={[{ name: "taskId", type: "string", desc: "The task to inspect" }]}
+        returns="Promise<TaskSla>"
+        example={`const sla = await axon.getSla(task.taskId);`}
+      />
+
       <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex justify-between">
         <Link href="/docs/concepts/reputation" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
           ← Reputation

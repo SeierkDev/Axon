@@ -596,3 +596,25 @@ export interface AttestCapabilityOptions {
   /** Base64 signature over attestationMessage(agentId, capability). */
   signature: string;
 }
+
+// ─── Task SLAs (Phase 8) ──────────────────────────────────────────────────────
+
+export type SlaStatus = "active" | "met" | "breached";
+
+export interface TaskSla {
+  slaId: string;
+  taskId: string;
+  deadlineAt: string;
+  /** Basis points of the payment the provider forfeits on breach (1..10000). */
+  penaltyBps: number;
+  status: SlaStatus;
+  resolvedAt?: string;
+  createdAt: string;
+}
+
+export interface DefineSlaOptions {
+  /** Seconds from now by which the task must complete. */
+  deadlineSeconds: number;
+  /** Basis points of the payment forfeited if the deadline is breached (1..10000). */
+  penaltyBps: number;
+}

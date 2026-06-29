@@ -7,6 +7,7 @@ import { getOutputCommitment, type OutputCommitment } from "./outputCommitment";
 import { getTaskProgress, type TaskProgressEntry } from "./progress";
 import { getPaymentNotes, type PaymentNote } from "./paymentNotes";
 import { getSplitsForTask, type TaskSplit } from "./escrowSplits";
+import { getSlaForTask, type TaskSla } from "./sla";
 
 export interface Receipt {
   taskId: string;
@@ -18,6 +19,7 @@ export interface Receipt {
   progress: TaskProgressEntry[];
   notes: PaymentNote[]; // dispute/refund notes attached to this payment
   splits: TaskSplit[]; // escrow split recipients, if the payment is divided across agents
+  sla: TaskSla | null; // service-level agreement and its status, if one was set
 }
 
 export function getReceipt(taskId: string): Receipt {
@@ -113,5 +115,6 @@ export function getReceipt(taskId: string): Receipt {
     progress: getTaskProgress(taskId),
     notes: getPaymentNotes(taskId),
     splits: getSplitsForTask(taskId),
+    sla: getSlaForTask(taskId),
   };
 }

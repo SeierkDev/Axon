@@ -29,6 +29,7 @@ export const docsNav: NavSection[] = [
       { label: "Escrow Splits", href: "/docs/concepts/escrow-splits" },
       { label: "Workflow Templates", href: "/docs/concepts/workflow-templates" },
       { label: "Capability Attestations", href: "/docs/concepts/capability-attestations" },
+      { label: "Task SLAs & Penalties", href: "/docs/concepts/slas" },
     ],
   },
   {

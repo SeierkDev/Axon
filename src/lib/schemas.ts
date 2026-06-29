@@ -127,6 +127,18 @@ export const revokeAttestationSchema = z.object({
   signature: z.string().min(1, "signature is required"),
 });
 
+export const defineSlaSchema = z.object({
+  deadlineSeconds: z
+    .number()
+    .positive("deadlineSeconds must be positive")
+    .max(30 * 24 * 3600, "deadlineSeconds must be at most 30 days"),
+  penaltyBps: z
+    .number()
+    .int("penaltyBps must be an integer")
+    .min(1, "penaltyBps must be at least 1")
+    .max(10000, "penaltyBps must be at most 10000"),
+});
+
 export const createWebhookSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
   url: z.string().url("url must be a valid URL"),

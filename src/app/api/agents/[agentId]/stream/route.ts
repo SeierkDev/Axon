@@ -14,7 +14,8 @@ import { NextRequest } from "next/server";
 import { getAgentById } from "@/lib/agents";
 import { createTask, completeTask, failTask, confirmAndStartTask } from "@/lib/tasks";
 import { syncToTurso } from "@/lib/db-turso";
-import { createPayment, parsePriceToSol, refundPayment, releasePayment } from "@/lib/payments";
+import { createPayment, parsePriceToSol, refundPayment } from "@/lib/payments";
+import { settleCompletedTask } from "@/lib/sla";
 import { logger } from "@/lib/logger";
 import { isValidSolanaAddress } from "@/lib/solana";
 import { decodePaymentHeader, buildX402Requirements, encodeRequirements } from "@/lib/x402";
@@ -283,7 +284,7 @@ export function POST(req: NextRequest, { params }: Params) {
         if (!cancelled) {
           const fullText = chunks.join("");
           if (completeTask(task.taskId, fullText)) {
-            releasePayment(task.taskId);
+            settleCompletedTask(task.taskId);
           }
           controller.enqueue(sseEvent({ done: true, taskId: task.taskId, fullText }));
         }

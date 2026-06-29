@@ -1,5 +1,6 @@
 import { getTasksByAgent, startTask, completeTask, failTask } from "../lib/tasks";
-import { refundPayment, releasePayment } from "../lib/payments";
+import { refundPayment } from "../lib/payments";
+import { settleCompletedTask } from "../lib/sla";
 import { refundDebitForTask } from "../lib/mpp";
 import { getAllAgents } from "../lib/agents";
 import { getDb } from "../lib/db";
@@ -204,7 +205,7 @@ async function processTasks() {
           ]);
 
           if (completeTask(task.taskId, output)) {
-            releasePayment(task.taskId);
+            settleCompletedTask(task.taskId);
           }
           recordCircuitSuccess(agent.agentId);
           logger.info("worker.task_processed", "Worker processed task", {

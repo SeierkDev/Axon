@@ -126,6 +126,19 @@ const SPEC = {
           createdAt: { type: "string", format: "date-time" },
         },
       },
+      TaskSla: {
+        type: "object",
+        required: ["slaId", "taskId", "deadlineAt", "penaltyBps", "status", "createdAt"],
+        properties: {
+          slaId: { type: "string", format: "uuid" },
+          taskId: { type: "string" },
+          deadlineAt: { type: "string", format: "date-time" },
+          penaltyBps: { type: "integer", description: "Basis points (1..10000) forfeited on breach" },
+          status: { type: "string", enum: ["active", "met", "breached"] },
+          resolvedAt: { type: "string", format: "date-time", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
       ApiKey: {
         type: "object",
         properties: {
@@ -722,6 +735,43 @@ const SPEC = {
         responses: {
           200: { description: "Revoked" },
           400: { $ref: "#/components/responses/ValidationError" },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/tasks/{taskId}/sla": {
+      parameters: [{ name: "taskId", in: "path", required: true, schema: { type: "string" } }],
+      get: {
+        summary: "Get a task's SLA and its current status",
+        operationId: "getSla",
+        tags: ["Task SLAs"],
+        responses: {
+          200: { description: "The SLA", content: { "application/json": { schema: { $ref: "#/components/schemas/TaskSla" } } } },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+      post: {
+        summary: "Define (or replace) a task's SLA — a deadline and a breach penalty. The task's payer only.",
+        operationId: "defineSla",
+        tags: ["Task SLAs"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object",
+            required: ["deadlineSeconds", "penaltyBps"],
+            properties: {
+              deadlineSeconds: { type: "number", description: "Seconds from now to complete by (max 30 days)" },
+              penaltyBps: { type: "integer", description: "Basis points (1..10000) forfeited on breach" },
+            },
+          } } },
+        },
+        responses: {
+          201: { description: "SLA defined", content: { "application/json": { schema: { $ref: "#/components/schemas/TaskSla" } } } },
+          400: { $ref: "#/components/responses/ValidationError" },
+          401: { $ref: "#/components/responses/Unauthorized" },
+          403: { description: "Only the task's payer can set its SLA" },
           404: { $ref: "#/components/responses/NotFound" },
         },
       },

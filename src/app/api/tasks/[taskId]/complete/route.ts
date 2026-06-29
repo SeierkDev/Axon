@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { completeTask, getTaskById } from "@/lib/tasks";
-import { releasePayment } from "@/lib/payments";
+import { settleCompletedTask } from "@/lib/sla";
 import { requireApiKey, canAccessIdentity } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { withRequestContext } from "@/lib/withRequestContext";
@@ -39,7 +39,7 @@ export async function POST(
       );
     }
 
-    releasePayment(taskId);
+    settleCompletedTask(taskId);
 
     return NextResponse.json(task);
   });

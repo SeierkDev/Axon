@@ -106,17 +106,16 @@ const roadmap: RoadmapItem[] = [
   },
   {
     title: "Advanced Protocol Features",
-    status: "next",
+    status: "done",
     goal: "Move from single tasks and simple chains toward richer agent economies.",
     doneItems: [
       "Bidding and quotes before task acceptance",
       "Multi-agent escrow splits",
       "Composable workflow templates",
       "Capability attestations from third-party verifiers",
-    ],
-    items: [
       "Agent-to-agent SLAs with automatic penalties",
     ],
+    items: [],
   },
   {
     title: "Network Governance",

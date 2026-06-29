@@ -7,7 +7,7 @@ import { getAgentById } from "./agents";
 import { logger } from "./logger";
 import { syncToTurso } from "./db-turso";
 import { recordRefundNote } from "./paymentNotes";
-import { getSplitsForTask, computeSplitAmounts, type TaskSplit } from "./escrowSplits";
+import { getSplitsForTask, computeSplitAmounts, TOTAL_BPS, type TaskSplit } from "./escrowSplits";
 
 // 'split' marks an escrow that was settled by distribution: the original row is
 // kept intact (total amount, recipient, on-chain signature) for the audit trail,
@@ -277,6 +277,101 @@ function releaseWithSplits(
 
   void syncToTurso();
   return getPaymentById(escrow.tx_id)!;
+}
+
+// Settle a breached SLA: the provider's payout is docked by penaltyBps and that
+// portion is refunded to the client. Like releaseWithSplits, the original escrow
+// row is kept intact and marked 'split' for the audit trail; the reduced payout
+// is credited via 'completed' rows and a 'refunded' row records the penalty
+// returned to the client. The parts sum to exactly the escrowed total, so no
+// value is created or lost. If the task also has an escrow split, the reduced
+// payout is distributed across the split recipients by share (so a late split
+// task still pays the whole team, just less) — matching releasePayment, which
+// honours splits on the on-time path. A zero penalty is a normal release; a full
+// (100%) penalty is a full refund.
+export function releaseWithPenalty(taskId: string, penaltyBps: number): Payment | null {
+  if (penaltyBps <= 0) return releasePayment(taskId);
+  if (penaltyBps >= TOTAL_BPS) return refundPayment(taskId);
+
+  const db = getDb();
+  const row = db
+    .prepare("SELECT * FROM transactions WHERE task_id = ? AND status = 'escrow'")
+    .get(taskId) as PaymentRow | undefined;
+  if (!row) return null;
+
+  const settledAt = new Date().toISOString();
+  // Integer micro-unit math (USDC has 6 decimals) so payouts + penalty sum back
+  // to exactly the escrowed total — no dust.
+  const micro = Math.round(row.amount_sol * 1_000_000);
+  const penaltyUnits = Math.floor((micro * penaltyBps) / TOTAL_BPS);
+  const providerAmount = (micro - penaltyUnits) / 1_000_000;
+  const penaltyAmount = penaltyUnits / 1_000_000;
+
+  // Distribute the reduced payout: across the split recipients if a split exists,
+  // otherwise the whole reduced amount to the single recipient.
+  const splits = getSplitsForTask(taskId);
+  const payouts =
+    splits.length > 0
+      ? computeSplitAmounts(providerAmount, splits)
+      : [{ agentId: row.to_agent, amount: providerAmount }];
+
+  db.transaction(() => {
+    db.prepare("UPDATE transactions SET status='split', settled_at=? WHERE tx_id=?").run(settledAt, row.tx_id);
+    const insert = db.prepare(
+      `INSERT INTO transactions
+         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status)
+       VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?, ?)`
+    );
+    for (const p of payouts) {
+      const burn = getAgentById(p.agentId)?.verificationStatus === "platform" ? "pending" : null;
+      insert.run(randomUUID(), row.task_id, row.from_agent, p.agentId, p.amount, row.currency, settledAt, settledAt, burn);
+    }
+    // Penalty returned to the client (from_agent). A 'refunded' row documents the
+    // return without crediting it as agent earnings.
+    db.prepare(
+      `INSERT INTO transactions
+         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status)
+       VALUES (?, ?, ?, ?, ?, 'refunded', NULL, 0, ?, ?, ?, NULL)`
+    ).run(randomUUID(), row.task_id, row.to_agent, row.from_agent, penaltyAmount, row.currency, settledAt, settledAt);
+  })();
+
+  recordRefundNote(
+    taskId,
+    `SLA penalty: ${penaltyAmount} ${row.currency} (${penaltyBps} bps) refunded to client for late delivery`
+  );
+
+  for (const p of payouts) {
+    try {
+      queueWebhookEvent(p.agentId, "payment.settled", {
+        taskId: row.task_id,
+        fromAgent: row.from_agent,
+        toAgent: p.agentId,
+        amount: p.amount,
+        currency: row.currency,
+        settledAt,
+        slaPenaltyBps: penaltyBps,
+        split: splits.length > 0,
+      });
+    } catch (err) {
+      logger.error("webhook.queue_failed", "Failed to queue SLA-penalty payment.settled webhook", {
+        err,
+        taskId: row.task_id,
+        toAgent: p.agentId,
+      });
+    }
+  }
+
+  logger.warn("payment.settled_penalty", "Settled with SLA penalty", {
+    taskId: row.task_id,
+    recipients: payouts.length,
+    penaltyBps,
+    providerAmount,
+    penaltyAmount,
+    currency: row.currency,
+  });
+
+  void syncToTurso();
+  return getPaymentById(row.tx_id)!;
 }
 
 export function refundPayment(taskId: string): Payment | null {
