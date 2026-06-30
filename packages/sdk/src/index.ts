@@ -72,6 +72,12 @@ export type {
   SlaStatus,
   TaskSla,
   DefineSlaOptions,
+  AbuseReason,
+  AbuseStatus,
+  AbuseReport,
+  FileAbuseReportOptions,
+  FeeTier,
+  FeePolicy,
 } from "./types";
 
 import { AxonClient } from "./client";

@@ -25,6 +25,7 @@
     "contract:workflow-templates": "tsx --env-file=.env.local scripts/workflow-templates-contract.ts",
     "contract:attestations": "tsx --env-file=.env.local scripts/attestations-contract.ts",
     "contract:sla": "tsx --env-file=.env.local scripts/sla-contract.ts",
+    "contract:abuse": "tsx --env-file=.env.local scripts/abuse-contract.ts",
     "contract:worker-shutdown": "tsx --env-file=.env.local scripts/worker-shutdown-contract.ts",
     "contract:webhook-health": "tsx --env-file=.env.local scripts/webhook-health-contract.ts",
     "demo:agent": "tsx --env-file=.env.local scripts/demo-agent.ts",

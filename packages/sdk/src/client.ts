@@ -50,6 +50,9 @@ import type {
   AttestCapabilityOptions,
   TaskSla,
   DefineSlaOptions,
+  AbuseReport,
+  FileAbuseReportOptions,
+  FeePolicy,
 } from "./types";
 
 function pathPart(value: string): string {
@@ -574,6 +577,16 @@ export class AxonClient {
   /** Get a task's SLA and its current status (active | met | breached). */
   async getSla(taskId: string): Promise<TaskSla> {
     return this.get(`/api/tasks/${pathPart(taskId)}/sla`) as Promise<TaskSla>;
+  }
+
+  /** Report an agent for abuse (spam, scam, non-delivery, etc.). */
+  async fileAbuseReport(options: FileAbuseReportOptions): Promise<AbuseReport> {
+    return this.post(`/api/abuse-reports`, options) as Promise<AbuseReport>;
+  }
+
+  /** Get the platform's published fee policy. */
+  async getFeePolicy(): Promise<FeePolicy> {
+    return this.get(`/api/fee-policy`) as Promise<FeePolicy>;
   }
 
   /** Submit a bid on an open task. */

@@ -618,3 +618,41 @@ export interface DefineSlaOptions {
   /** Basis points of the payment forfeited if the deadline is breached (1..10000). */
   penaltyBps: number;
 }
+
+// ─── Abuse reporting & fee policy (Phase 9) ───────────────────────────────────
+
+export type AbuseReason = "spam" | "scam" | "non_delivery" | "abuse" | "other";
+export type AbuseStatus = "open" | "reviewing" | "resolved" | "dismissed";
+
+export interface AbuseReport {
+  reportId: string;
+  targetAgent: string;
+  reporter?: string;
+  reason: AbuseReason;
+  details?: string;
+  status: AbuseStatus;
+  resolution?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface FileAbuseReportOptions {
+  targetAgent: string;
+  reason: AbuseReason;
+  details?: string;
+}
+
+export interface FeeTier {
+  platformFeeBps: number;
+  note: string;
+}
+
+export interface FeePolicy {
+  version: string;
+  effectiveDate: string;
+  currency: string;
+  rails: string[];
+  peerToPeer: FeeTier;
+  hostedAgents: FeeTier;
+  notes: string[];
+}

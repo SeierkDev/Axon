@@ -139,6 +139,17 @@ export const defineSlaSchema = z.object({
     .max(10000, "penaltyBps must be at most 10000"),
 });
 
+export const fileAbuseReportSchema = z.object({
+  targetAgent: z.string().min(1, "targetAgent is required"),
+  reason: z.enum(["spam", "scam", "non_delivery", "abuse", "other"]),
+  details: z.string().max(2000, "details must be 2000 characters or fewer").optional(),
+});
+
+export const resolveAbuseReportSchema = z.object({
+  status: z.enum(["open", "reviewing", "resolved", "dismissed"]),
+  resolution: z.string().max(2000, "resolution must be 2000 characters or fewer").optional(),
+});
+
 export const createWebhookSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
   url: z.string().url("url must be a valid URL"),

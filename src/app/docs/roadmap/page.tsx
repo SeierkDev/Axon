@@ -119,13 +119,15 @@ const roadmap: RoadmapItem[] = [
   },
   {
     title: "Network Governance",
-    status: "advanced",
+    status: "next",
     goal: "Define how a larger Axon network handles trust, abuse, and protocol upgrades.",
-    items: [
+    doneItems: [
       "Abuse reporting and moderation queue",
+      "Transparent fee policy",
+    ],
+    items: [
       "Protocol version negotiation",
       "Public network explorer for tasks, payments, and settlement history",
-      "Transparent fee policy",
       "Public status page",
     ],
   },

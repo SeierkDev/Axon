@@ -30,6 +30,8 @@ export const docsNav: NavSection[] = [
       { label: "Workflow Templates", href: "/docs/concepts/workflow-templates" },
       { label: "Capability Attestations", href: "/docs/concepts/capability-attestations" },
       { label: "Task SLAs & Penalties", href: "/docs/concepts/slas" },
+      { label: "Abuse Reporting", href: "/docs/concepts/abuse-reporting" },
+      { label: "Fee Policy", href: "/docs/concepts/fees" },
     ],
   },
   {

@@ -139,6 +139,34 @@ const SPEC = {
           createdAt: { type: "string", format: "date-time" },
         },
       },
+      AbuseReport: {
+        type: "object",
+        required: ["reportId", "targetAgent", "reason", "status", "createdAt"],
+        properties: {
+          reportId: { type: "string", format: "uuid" },
+          targetAgent: { type: "string" },
+          reporter: { type: "string", nullable: true },
+          reason: { type: "string", enum: ["spam", "scam", "non_delivery", "abuse", "other"] },
+          details: { type: "string", nullable: true },
+          status: { type: "string", enum: ["open", "reviewing", "resolved", "dismissed"] },
+          resolution: { type: "string", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+          resolvedAt: { type: "string", format: "date-time", nullable: true },
+        },
+      },
+      FeePolicy: {
+        type: "object",
+        required: ["version", "effectiveDate", "currency", "rails", "peerToPeer", "hostedAgents", "notes"],
+        properties: {
+          version: { type: "string" },
+          effectiveDate: { type: "string" },
+          currency: { type: "string" },
+          rails: { type: "array", items: { type: "string" } },
+          peerToPeer: { type: "object", properties: { platformFeeBps: { type: "integer" }, note: { type: "string" } } },
+          hostedAgents: { type: "object", properties: { platformFeeBps: { type: "integer" }, note: { type: "string" } } },
+          notes: { type: "array", items: { type: "string" } },
+        },
+      },
       ApiKey: {
         type: "object",
         properties: {
@@ -773,6 +801,84 @@ const SPEC = {
           401: { $ref: "#/components/responses/Unauthorized" },
           403: { description: "Only the task's payer can set its SLA" },
           404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/abuse-reports": {
+      get: {
+        summary: "The moderation queue (moderator only)",
+        operationId: "listAbuseReports",
+        tags: ["Governance"],
+        parameters: [
+          { name: "status", in: "query", required: false, schema: { type: "string", enum: ["open", "reviewing", "resolved", "dismissed"] } },
+          { name: "targetAgent", in: "query", required: false, schema: { type: "string" } },
+          { name: "limit", in: "query", required: false, schema: { type: "integer" } },
+        ],
+        responses: {
+          200: { description: "Reports", content: { "application/json": { schema: { type: "object", properties: { reports: { type: "array", items: { $ref: "#/components/schemas/AbuseReport" } } } } } } },
+          403: { description: "Moderator access required" },
+        },
+      },
+      post: {
+        summary: "File an abuse report against an agent",
+        operationId: "fileAbuseReport",
+        tags: ["Governance"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object",
+            required: ["targetAgent", "reason"],
+            properties: {
+              targetAgent: { type: "string" },
+              reason: { type: "string", enum: ["spam", "scam", "non_delivery", "abuse", "other"] },
+              details: { type: "string" },
+            },
+          } } },
+        },
+        responses: {
+          201: { description: "Report filed", content: { "application/json": { schema: { $ref: "#/components/schemas/AbuseReport" } } } },
+          400: { $ref: "#/components/responses/ValidationError" },
+          401: { $ref: "#/components/responses/Unauthorized" },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/abuse-reports/{reportId}/resolve": {
+      parameters: [{ name: "reportId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+      post: {
+        summary: "Resolve or dismiss a report (moderator only)",
+        operationId: "resolveAbuseReport",
+        tags: ["Governance"],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object",
+            required: ["status"],
+            properties: {
+              status: { type: "string", enum: ["open", "reviewing", "resolved", "dismissed"] },
+              resolution: { type: "string" },
+            },
+          } } },
+        },
+        responses: {
+          200: { description: "Updated", content: { "application/json": { schema: { $ref: "#/components/schemas/AbuseReport" } } } },
+          400: { $ref: "#/components/responses/ValidationError" },
+          403: { description: "Moderator access required" },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/fee-policy": {
+      get: {
+        summary: "The platform's published fee policy",
+        operationId: "getFeePolicy",
+        tags: ["Governance"],
+        responses: {
+          200: { description: "Fee policy", content: { "application/json": { schema: { $ref: "#/components/schemas/FeePolicy" } } } },
         },
       },
     },
