@@ -371,6 +371,18 @@ async function main() {
     pollIntervalSeconds: POLL_INTERVAL_MS / 1000,
   });
 
+  await startWorkerLoops();
+}
+
+// Starts the poll/health/threshold loops. Idempotent. Used by both the standalone
+// worker process (main) and the web server's instrumentation hook — so a
+// single-container deployment runs the worker in-process, sharing the same DB,
+// without needing a separate worker service.
+let loopsStarted = false;
+export async function startWorkerLoops(): Promise<void> {
+  if (loopsStarted) return;
+  loopsStarted = true;
+
   await runPoll("startup");
   pollTimer = setInterval(() => {
     void runPoll("interval");
@@ -387,4 +399,10 @@ async function main() {
   }, THRESHOLD_INTERVAL_MS);
 }
 
-main().catch((err) => logger.error("worker.crashed", "Axon worker crashed", { err }));
+// Run the full standalone worker (own signal + crash handling) only when launched
+// directly via `npm run worker`. When the module is imported (e.g. by the web
+// server's instrumentation hook) nothing auto-starts — the caller invokes
+// startWorkerLoops() so there's no duplicate process or signal-handler conflict.
+if (process.env.AXON_WORKER_STANDALONE === "1") {
+  main().catch((err) => logger.error("worker.crashed", "Axon worker crashed", { err }));
+}

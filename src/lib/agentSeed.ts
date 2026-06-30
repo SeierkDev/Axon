@@ -83,6 +83,29 @@ export function seedBuiltinAgents(db: Database): void {
     db.prepare(`DELETE FROM agents WHERE agent_id IN (${leaked.map(() => "?").join(",")})`).run(...leaked);
   }
 
+  // Also drop any tasks/transactions referencing a contract-test agent id (even
+  // if the agent row is already gone), so they never surface in the public
+  // explorer. The pattern requires the 12+ digit timestamp, so it can't match a
+  // real or generated agent.
+  const refs = [
+    ...new Set(
+      (
+        db
+          .prepare(
+            "SELECT from_agent AS a FROM tasks UNION SELECT to_agent FROM tasks UNION SELECT from_agent FROM transactions UNION SELECT to_agent FROM transactions"
+          )
+          .all() as { a: string }[]
+      )
+        .map((r) => r.a)
+        .filter((id) => testIdPattern.test(id))
+    ),
+  ];
+  if (refs.length > 0) {
+    const ph = refs.map(() => "?").join(",");
+    db.prepare(`DELETE FROM tasks WHERE from_agent IN (${ph}) OR to_agent IN (${ph})`).run(...refs, ...refs);
+    db.prepare(`DELETE FROM transactions WHERE from_agent IN (${ph}) OR to_agent IN (${ph})`).run(...refs, ...refs);
+  }
+
   const upsertAgent = db.prepare(`
     INSERT INTO agents
       (agent_id, name, capabilities, public_key, price, reputation, category, provider, provider_model, wallet_address, verification_status, created_at)

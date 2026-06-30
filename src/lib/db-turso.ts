@@ -60,15 +60,41 @@ export async function initTursoSync(): Promise<void> {
   await _tursoClient.sync();
 }
 
+// Last sync outcome, so the status page can surface replica-sync health (a
+// failing sync is invisible to a plain local-replica read).
+let _lastSyncAt: number | null = null;
+let _lastSyncError: string | null = null;
+
 // Push local writes to Turso. Safe to call fire-and-forget; errors are logged but not thrown.
 export async function syncToTurso(): Promise<void> {
   if (!_tursoClient) return;
   try {
     await _tursoClient.sync();
+    _lastSyncAt = Date.now();
+    _lastSyncError = null;
   } catch (err) {
     // Non-fatal: local replica still has the data; will sync on next interval
-    console.warn("[turso] Background sync failed:", err instanceof Error ? err.message : err);
+    _lastSyncError = err instanceof Error ? err.message : String(err);
+    console.warn("[turso] Background sync failed:", _lastSyncError);
   }
+}
+
+export interface SyncHealth {
+  configured: boolean;
+  lastSyncAgeSeconds: number | null;
+  lastError: string | null;
+}
+
+// Replica-sync health for the status page. `lastError` is the most recent
+// syncToTurso() failure (cleared on the next success), so a stalled/failing sync
+// is detectable even while the local replica still reads fine.
+export function getSyncHealth(): SyncHealth {
+  if (!isTursoConfigured()) return { configured: false, lastSyncAgeSeconds: null, lastError: null };
+  return {
+    configured: true,
+    lastSyncAgeSeconds: _lastSyncAt === null ? null : Math.floor((Date.now() - _lastSyncAt) / 1000),
+    lastError: _lastSyncError,
+  };
 }
 
 // Close the Turso client and stop its auto-sync interval.

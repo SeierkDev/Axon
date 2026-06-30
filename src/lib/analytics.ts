@@ -31,7 +31,21 @@ export interface NetworkStats {
   activityByDay: { date: string; completed: number; failed: number }[];
 }
 
+let _statsCache: { at: number; data: NetworkStats } | null = null;
+// Memoize the heavy aggregate (~9 queries) so the unauthenticated public
+// endpoints (/explorer, /status) can't hammer the DB under a flood. Disabled in
+// tests so assertions see fresh data immediately after mutations.
+const STATS_CACHE_MS = process.env.VITEST ? 0 : 5_000;
+
 export function getNetworkStats(): NetworkStats {
+  const now = Date.now();
+  if (_statsCache && now - _statsCache.at < STATS_CACHE_MS) return _statsCache.data;
+  const data = computeNetworkStats();
+  _statsCache = { at: now, data };
+  return data;
+}
+
+function computeNetworkStats(): NetworkStats {
   const db = getDb();
   // Each query is wrapped so one failure (e.g. a missing column on an out-of-date
   // DB) degrades that metric to a default instead of throwing away the whole bar.

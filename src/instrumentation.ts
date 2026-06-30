@@ -2,14 +2,21 @@
 // requests are served. Validates required env vars so the process fails fast
 // with a clear checklist instead of crashing mid-request.
 
-import path from "path";
-
 export async function register() {
   // Only run in the Node.js server context, not in the Edge runtime
   if (process.env.NEXT_RUNTIME !== "edge") {
     assertReadyConfig();
     const { initTursoSync } = await import("./lib/db-turso");
     await initTursoSync();
+
+    // Run the background worker in-process (unless explicitly disabled), so a
+    // single-container deployment processes queued tasks and reports its
+    // heartbeat without a separate worker service. Fire-and-forget so it doesn't
+    // block the server from serving requests.
+    if (process.env.AXON_DISABLE_INLINE_WORKER !== "1") {
+      const { startWorkerLoops } = await import("./workers/index");
+      void startWorkerLoops();
+    }
   }
 }
 
@@ -67,7 +74,7 @@ export function assertReadyConfig(): void {
       name: "DATABASE_PATH (absolute path required for Turso replica)",
       required: isTurso,
       present: isTurso
-        ? hasEnv("DATABASE_PATH") && path.isAbsolute(process.env.DATABASE_PATH!.trim())
+        ? hasEnv("DATABASE_PATH") && process.env.DATABASE_PATH!.trim().startsWith("/")
         : true,
       hint: "When using Turso, DATABASE_PATH must be an absolute path for the local replica file (e.g. /data/axon-replica.db).",
     },

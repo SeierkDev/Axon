@@ -32,6 +32,9 @@ export const docsNav: NavSection[] = [
       { label: "Task SLAs & Penalties", href: "/docs/concepts/slas" },
       { label: "Abuse Reporting", href: "/docs/concepts/abuse-reporting" },
       { label: "Fee Policy", href: "/docs/concepts/fees" },
+      { label: "Protocol Versioning", href: "/docs/concepts/protocol-version" },
+      { label: "Network Explorer", href: "/docs/concepts/network-explorer" },
+      { label: "Status Page", href: "/docs/concepts/status" },
     ],
   },
   {

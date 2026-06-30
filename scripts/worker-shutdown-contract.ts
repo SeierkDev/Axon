@@ -25,6 +25,7 @@ async function main() {
       LOG_LEVEL: "info",
       AXON_ALLOW_EPHEMERAL_DB: "true",
       AXON_WORKER_SHUTDOWN_TIMEOUT_MS: "5000",
+      AXON_WORKER_STANDALONE: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

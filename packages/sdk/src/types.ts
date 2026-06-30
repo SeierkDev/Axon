@@ -656,3 +656,63 @@ export interface FeePolicy {
   hostedAgents: FeeTier;
   notes: string[];
 }
+
+// ─── Protocol negotiation (Phase 9) ───────────────────────────────────────────
+
+export interface ProtocolInfo {
+  version: string;
+  minVersion: string;
+  supported: string[];
+  capabilities: string[];
+}
+
+export interface ProtocolNegotiation {
+  version: string;
+  capabilities: string[];
+}
+
+// ─── Network explorer (Phase 9) ───────────────────────────────────────────────
+
+export interface ExplorerTask {
+  taskId: string;
+  fromAgent: string;
+  toAgent: string;
+  status: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface ExplorerSettlement {
+  txId: string;
+  taskId?: string;
+  fromAgent: string;
+  toAgent: string;
+  amount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  settledAt?: string;
+}
+
+export interface ExplorerFeed {
+  totals: { agents: number; tasksCompleted: number; usdcTransacted: number; successRate: number };
+  recentTasks: ExplorerTask[];
+  recentSettlements: ExplorerSettlement[];
+}
+
+// ─── Status (Phase 9) ─────────────────────────────────────────────────────────
+
+export type ComponentStatus = "operational" | "degraded" | "down";
+
+export interface SystemStatus {
+  status: ComponentStatus;
+  components: { name: string; status: ComponentStatus; detail?: string }[];
+  metrics: {
+    queueDepth: number;
+    runningTasks: number;
+    tasksCompleted: number;
+    successRate: number;
+    workerLastSeenAgeSeconds: number | null;
+  };
+  updatedAt: string;
+}

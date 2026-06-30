@@ -53,6 +53,10 @@ import type {
   AbuseReport,
   FileAbuseReportOptions,
   FeePolicy,
+  ProtocolInfo,
+  ProtocolNegotiation,
+  ExplorerFeed,
+  SystemStatus,
 } from "./types";
 
 function pathPart(value: string): string {
@@ -587,6 +591,27 @@ export class AxonClient {
   /** Get the platform's published fee policy. */
   async getFeePolicy(): Promise<FeePolicy> {
     return this.get(`/api/fee-policy`) as Promise<FeePolicy>;
+  }
+
+  /** Get the protocol versions and capabilities this server speaks. */
+  async getProtocol(): Promise<ProtocolInfo> {
+    return this.get(`/api/protocol`) as Promise<ProtocolInfo>;
+  }
+
+  /** Negotiate a common protocol version — offer the versions you speak, get the highest both share. */
+  async negotiateProtocol(clientVersions: string[]): Promise<ProtocolNegotiation> {
+    return this.post(`/api/protocol`, { clientVersions }) as Promise<ProtocolNegotiation>;
+  }
+
+  /** Get the public network explorer feed: recent tasks, settlements, and headline totals. */
+  async getExplorer(limit?: number): Promise<ExplorerFeed> {
+    const q = limit ? `?limit=${encodeURIComponent(limit)}` : "";
+    return this.get(`/api/explorer${q}`) as Promise<ExplorerFeed>;
+  }
+
+  /** Get the public platform status: components, overall health, and live metrics. */
+  async getStatus(): Promise<SystemStatus> {
+    return this.get(`/api/status`) as Promise<SystemStatus>;
   }
 
   /** Submit a bid on an open task. */

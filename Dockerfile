@@ -23,6 +23,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DOCKER_BUILD=1
 
+# `npm run build` uses `next build --webpack` on purpose. Turbopack's standalone
+# output does NOT copy instrumentation.js into .next/standalone, so the
+# instrumentation register() hook never runs in production — and that hook is what
+# starts the in-process background worker. Webpack includes it. Do not drop --webpack.
 RUN npm run build
 
 # ── Stage 3: runtime ───────────────────────────────────────────────────────────

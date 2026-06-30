@@ -150,6 +150,13 @@ export const resolveAbuseReportSchema = z.object({
   resolution: z.string().max(2000, "resolution must be 2000 characters or fewer").optional(),
 });
 
+export const negotiateProtocolSchema = z.object({
+  clientVersions: z
+    .array(z.string().regex(/^\d+\.\d+$/, 'each version must look like "1.0"'))
+    .min(1, "clientVersions must list at least one version")
+    .max(20, "clientVersions must contain 20 or fewer items"),
+});
+
 export const createWebhookSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
   url: z.string().url("url must be a valid URL"),

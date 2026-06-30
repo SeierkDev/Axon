@@ -5,8 +5,8 @@
   "author": "Seierk",
   "license": "AGPL-3.0-only",
   "scripts": {
-    "dev": "concurrently -n web,worker -c cyan,green \"next dev\" \"tsx --env-file=.env.local src/workers/index.ts\"",
-    "build": "next build",
+    "dev": "next dev",
+    "build": "next build --webpack",
     "start": "next start",
     "axon": "tsx src/cli/axon.ts",
     "test": "vitest run",
@@ -26,6 +26,7 @@
     "contract:attestations": "tsx --env-file=.env.local scripts/attestations-contract.ts",
     "contract:sla": "tsx --env-file=.env.local scripts/sla-contract.ts",
     "contract:abuse": "tsx --env-file=.env.local scripts/abuse-contract.ts",
+    "contract:governance": "tsx --env-file=.env.local scripts/governance-contract.ts",
     "contract:worker-shutdown": "tsx --env-file=.env.local scripts/worker-shutdown-contract.ts",
     "contract:webhook-health": "tsx --env-file=.env.local scripts/webhook-health-contract.ts",
     "demo:agent": "tsx --env-file=.env.local scripts/demo-agent.ts",
@@ -37,8 +38,8 @@
     "smoke:first-task": "tsx --env-file=.env.local scripts/smoke-first-task.ts",
     "smoke:devnet-payment": "SOLANA_NETWORK=devnet tsx --env-file=.env.local scripts/smoke-payment-devnet.ts",
     "verify:local": "tsx --env-file=.env.local scripts/verify-local.ts",
-    "worker": "tsx src/workers/index.ts",
-    "worker:local": "tsx --env-file=.env.local src/workers/index.ts"
+    "worker": "AXON_WORKER_STANDALONE=1 tsx src/workers/index.ts",
+    "worker:local": "AXON_WORKER_STANDALONE=1 tsx --env-file=.env.local src/workers/index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

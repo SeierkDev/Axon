@@ -78,6 +78,13 @@ export type {
   FileAbuseReportOptions,
   FeeTier,
   FeePolicy,
+  ProtocolInfo,
+  ProtocolNegotiation,
+  ExplorerTask,
+  ExplorerSettlement,
+  ExplorerFeed,
+  ComponentStatus,
+  SystemStatus,
 } from "./types";
 
 import { AxonClient } from "./client";

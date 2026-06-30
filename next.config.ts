@@ -6,6 +6,22 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Enable standalone output for Docker — copies only the minimal files needed
   output: process.env.DOCKER_BUILD === "1" ? "standalone" : undefined,
+  // libsql loads its native binding via a computed `require(`@libsql/${target}`)`
+  // (see node_modules/libsql/index.js), which Next's file tracing can't follow —
+  // so the platform package is dropped from the standalone bundle and the server
+  // crashes at startup when instrumentation imports the Turso client. Force the
+  // platform binaries into the trace: musl Linux for the Alpine runtime, plus the
+  // darwin variants so a standalone build is also runnable locally. Globs that
+  // match no installed package (the build host only installs its own platform's
+  // binary) are simply ignored.
+  outputFileTracingIncludes: {
+    "/*": [
+      "./node_modules/@libsql/linux-x64-musl/**/*",
+      "./node_modules/@libsql/linux-arm64-musl/**/*",
+      "./node_modules/@libsql/darwin-x64/**/*",
+      "./node_modules/@libsql/darwin-arm64/**/*",
+    ],
+  },
   async headers() {
     return [
       {

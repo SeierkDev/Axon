@@ -167,6 +167,53 @@ const SPEC = {
           notes: { type: "array", items: { type: "string" } },
         },
       },
+      ProtocolInfo: {
+        type: "object",
+        required: ["version", "minVersion", "supported", "capabilities"],
+        properties: {
+          version: { type: "string" },
+          minVersion: { type: "string" },
+          supported: { type: "array", items: { type: "string" } },
+          capabilities: { type: "array", items: { type: "string" } },
+        },
+      },
+      ExplorerFeed: {
+        type: "object",
+        required: ["totals", "recentTasks", "recentSettlements"],
+        properties: {
+          totals: {
+            type: "object",
+            properties: {
+              agents: { type: "integer" },
+              tasksCompleted: { type: "integer" },
+              usdcTransacted: { type: "number" },
+              successRate: { type: "number" },
+            },
+          },
+          recentTasks: { type: "array", items: { type: "object" } },
+          recentSettlements: { type: "array", items: { type: "object" } },
+        },
+      },
+      SystemStatus: {
+        type: "object",
+        required: ["status", "components", "metrics", "updatedAt"],
+        properties: {
+          status: { type: "string", enum: ["operational", "degraded", "down"] },
+          components: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                status: { type: "string", enum: ["operational", "degraded", "down"] },
+                detail: { type: "string" },
+              },
+            },
+          },
+          metrics: { type: "object" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
       ApiKey: {
         type: "object",
         properties: {
@@ -879,6 +926,58 @@ const SPEC = {
         tags: ["Governance"],
         responses: {
           200: { description: "Fee policy", content: { "application/json": { schema: { $ref: "#/components/schemas/FeePolicy" } } } },
+        },
+      },
+    },
+
+    "/protocol": {
+      get: {
+        summary: "The protocol versions and capabilities this server speaks",
+        operationId: "getProtocol",
+        tags: ["Governance"],
+        responses: {
+          200: { description: "Protocol info", content: { "application/json": { schema: { $ref: "#/components/schemas/ProtocolInfo" } } } },
+        },
+      },
+      post: {
+        summary: "Negotiate a common protocol version",
+        operationId: "negotiateProtocol",
+        tags: ["Governance"],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object",
+            required: ["clientVersions"],
+            properties: { clientVersions: { type: "array", items: { type: "string" }, description: 'Versions the client speaks, e.g. ["1.0"]' } },
+          } } },
+        },
+        responses: {
+          200: { description: "Agreed version", content: { "application/json": { schema: { type: "object", properties: { version: { type: "string" }, capabilities: { type: "array", items: { type: "string" } } } } } } },
+          400: { $ref: "#/components/responses/ValidationError" },
+          409: { description: "No common protocol version" },
+        },
+      },
+    },
+
+    "/explorer": {
+      get: {
+        summary: "Public network explorer: recent tasks, settlements, and totals (metadata only)",
+        operationId: "getExplorer",
+        tags: ["Governance"],
+        parameters: [{ name: "limit", in: "query", required: false, schema: { type: "integer" } }],
+        responses: {
+          200: { description: "Explorer feed", content: { "application/json": { schema: { $ref: "#/components/schemas/ExplorerFeed" } } } },
+        },
+      },
+    },
+
+    "/status": {
+      get: {
+        summary: "Public platform status: components, overall health, and live metrics",
+        operationId: "getStatus",
+        tags: ["Governance"],
+        responses: {
+          200: { description: "System status", content: { "application/json": { schema: { $ref: "#/components/schemas/SystemStatus" } } } },
         },
       },
     },
