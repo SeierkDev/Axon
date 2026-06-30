@@ -68,11 +68,16 @@ const nextConfig: NextConfig = {
               // Next.js hydration requires 'unsafe-inline'; Turbopack dev also needs 'unsafe-eval'
               isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'", // Tailwind inlines via style attr
-              "img-src 'self' data: https:",
+              "img-src 'self' data: https: blob:",
               "font-src 'self'",
+              // The Phase 10 Open World (React Three Fiber / drei) spins up blob
+              // workers and loads generated textures from blob/data URLs.
+              "worker-src 'self' blob:",
               // Allow the Solana RPC (Helius) for Axon Build's on-chain payment —
               // the browser fetches the blockhash and confirms the tx over https/wss.
-              "connect-src 'self' https://*.helius-rpc.com wss://*.helius-rpc.com",
+              // ws:/wss: also cover the Phase 10 realtime presence server, whose
+              // host is configured per-deploy via NEXT_PUBLIC_PRESENCE_URL.
+              "connect-src 'self' https://*.helius-rpc.com wss://*.helius-rpc.com ws: wss:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

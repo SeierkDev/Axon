@@ -26,6 +26,9 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://axon-agents.com"),
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
+  // iOS "Add to Home Screen" → standalone, no Safari chrome (the only true
+  // fullscreen a web page can get on iPhone).
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Axon" },
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png" },

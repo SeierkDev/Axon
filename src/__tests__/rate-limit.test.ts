@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkRateLimit, getClientIp, rateLimitHeaders, tooManyRequests } from "@/lib/rateLimit";
+import { checkRateLimit, getClientIp, rateLimitHeaders, refundRateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { getDb } from "@/lib/db";
 import { NextRequest } from "next/server";
 
@@ -184,5 +184,30 @@ describe("maybePurgeExpired: purge trigger at 100 calls", () => {
     }
     // If the purge fires without error the test passes — no assertion needed beyond not throwing
     expect(true).toBe(true);
+  });
+});
+
+// ── Refunds ───────────────────────────────────────────────────────────────────
+
+describe("refundRateLimit", () => {
+  it("hands a consumed slot back so failures don't burn the quota", () => {
+    const key = "rl-refund-1";
+    checkRateLimit(key, 2, 60_000); // slot 1 — request fails, refunded below
+    refundRateLimit(key);
+    checkRateLimit(key, 2, 60_000); // slot 1 again
+    const last = checkRateLimit(key, 2, 60_000); // slot 2
+    expect(last.allowed).toBe(true);
+    expect(last.remaining).toBe(0);
+  });
+
+  it("never drives the count below zero", () => {
+    const key = "rl-refund-2";
+    refundRateLimit(key); // nothing consumed — no-op
+    checkRateLimit(key, 1, 60_000);
+    refundRateLimit(key);
+    refundRateLimit(key); // extra refund must not create negative headroom
+    checkRateLimit(key, 1, 60_000);
+    const over = checkRateLimit(key, 1, 60_000);
+    expect(over.allowed).toBe(false);
   });
 });

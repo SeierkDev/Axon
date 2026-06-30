@@ -168,6 +168,148 @@ export default async function Home() {
         </FadeIn>
       </section>
 
+      {/* Axon World — the network as a walkable town */}
+      <section className="px-6 pb-16">
+        <FadeIn>
+          <div className="max-w-6xl mx-auto">
+            <Link
+              href="/world"
+              className="group block rounded-2xl border border-teal-900/40 bg-[#0b1418] hover:border-teal-700/50 transition-all p-8 md:p-10 relative overflow-hidden"
+            >
+              {/* The world itself, in miniature: dusk sky, mountains, lit houses,
+                  and a task streak arcing between two of them. */}
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                viewBox="0 0 1200 300"
+                preserveAspectRatio="xMidYMid slice"
+                aria-hidden
+              >
+                <defs>
+                  <linearGradient id="wsky" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#141d38" />
+                    <stop offset="42%" stopColor="#3a3559" />
+                    <stop offset="72%" stopColor="#8a5566" />
+                    <stop offset="100%" stopColor="#d99160" />
+                  </linearGradient>
+                  <linearGradient id="wfade" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#0b1418" stopOpacity="0.97" />
+                    <stop offset="42%" stopColor="#0b1418" stopOpacity="0.72" />
+                    <stop offset="100%" stopColor="#0b1418" stopOpacity="0.04" />
+                  </linearGradient>
+                  {/* soft top scrim keeps the CTA text readable over the sky */}
+                  <linearGradient id="wtop" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0b1418" stopOpacity="0.45" />
+                    <stop offset="42%" stopColor="#0b1418" stopOpacity="0" />
+                  </linearGradient>
+                  <radialGradient id="wsun" cx="0.5" cy="0.5" r="0.5">
+                    <stop offset="0%" stopColor="#ffe3ad" stopOpacity="0.85" />
+                    <stop offset="45%" stopColor="#f0a765" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#f0a765" stopOpacity="0" />
+                  </radialGradient>
+                </defs>
+                <rect width="1200" height="300" fill="url(#wsky)" />
+                {/* stars + a shooting star */}
+                {[[840, 38, 1.5], [960, 24, 1.2], [1050, 50, 1.7], [900, 70, 1], [1150, 28, 1.4], [770, 44, 1.1], [1110, 82, 1], [700, 30, 1.3]].map(([sx, sy, sr], i) => (
+                  <circle key={i} cx={sx} cy={sy} r={sr} fill="#eef4ff" opacity="0.75" />
+                ))}
+                <path d="M1000 46 L1042 34" stroke="#eef4ff" strokeWidth="1.4" strokeLinecap="round" opacity="0.55" />
+                {/* setting sun — low, behind the peaks, so it never washes out the text */}
+                <ellipse cx="1055" cy="238" rx="150" ry="120" fill="url(#wsun)" />
+                <circle cx="1055" cy="236" r="30" fill="#ffdf95" />
+                {/* far range — hazy, snow-capped, for depth */}
+                <path d="M560 250 L660 150 L740 250 Z M720 250 L840 128 L960 250 Z M900 250 L1010 140 L1120 250 Z M1070 250 L1170 158 L1270 250 Z" fill="#5b6b86" opacity="0.85" />
+                {[[660, 150, 740], [840, 128, 960], [1010, 140, 1120], [1170, 158, 1270]].map(([px, py], i) => (
+                  <polygon key={i} points={`${px - 16},${(py as number) + 22} ${px},${py} ${px + 16},${(py as number) + 22}`} fill="#eaf1f6" opacity="0.9" />
+                ))}
+                {/* near mountains — darker, layered, a little snow */}
+                <path d="M470 260 L600 150 L690 240 L790 132 L900 250 L1010 165 L1130 260 Z" fill="#2c3a58" />
+                <polygon points="774,148 790,132 806,148" fill="#dfe8ef" opacity="0.8" />
+                <polygon points="994,181 1010,165 1026,181" fill="#dfe8ef" opacity="0.75" />
+                {/* rolling ground with a soft highlight ridge */}
+                <path d="M0 300 L0 258 Q320 236 640 252 Q900 264 1200 246 L1200 300 Z" fill="#3d7850" />
+                <path d="M0 262 Q320 240 640 256 Q900 268 1200 250" fill="none" stroke="#4e9060" strokeWidth="3" opacity="0.5" />
+                {/* trees — round, blossom, pine (the world's variants) */}
+                {[
+                  { x: 690, y: 250, s: 15, t: "round" }, { x: 640, y: 256, s: 11, t: "pine" },
+                  { x: 1150, y: 248, s: 16, t: "round" }, { x: 1120, y: 256, s: 12, t: "blossom" },
+                  { x: 590, y: 258, s: 10, t: "pine" }, { x: 960, y: 262, s: 10, t: "blossom" },
+                ].map((tr, i) => (
+                  <g key={i}>
+                    <rect x={tr.x - 2} y={tr.y} width="4" height="9" fill="#5a4030" />
+                    {tr.t === "pine" ? (
+                      <>
+                        <polygon points={`${tr.x},${tr.y - tr.s} ${tr.x - tr.s * 0.6},${tr.y - tr.s * 0.3} ${tr.x + tr.s * 0.6},${tr.y - tr.s * 0.3}`} fill="#2f6144" />
+                        <polygon points={`${tr.x},${tr.y - tr.s * 1.5} ${tr.x - tr.s * 0.5},${tr.y - tr.s * 0.7} ${tr.x + tr.s * 0.5},${tr.y - tr.s * 0.7}`} fill="#367052" />
+                      </>
+                    ) : (
+                      <>
+                        <circle cx={tr.x} cy={tr.y - tr.s * 0.8} r={tr.s * 0.85} fill={tr.t === "blossom" ? "#e79ac0" : "#3f8a53"} />
+                        <circle cx={tr.x - tr.s * 0.5} cy={tr.y - tr.s * 0.5} r={tr.s * 0.6} fill={tr.t === "blossom" ? "#d98ab2" : "#367a49"} />
+                        <circle cx={tr.x + tr.s * 0.4} cy={tr.y - tr.s * 1.05} r={tr.s * 0.5} fill={tr.t === "blossom" ? "#f2b4d2" : "#57a866"} />
+                      </>
+                    )}
+                  </g>
+                ))}
+                {/* houses — stone base, tiered roof, glowing windows, district door + chimney */}
+                {[
+                  { hx: 745, base: 262, w: 70, roof: "#c15f43", door: "#2f5d8a", chimney: true },
+                  { hx: 1015, base: 260, w: 66, roof: "#3e7cb1", door: "#4d7a3e", chimney: true },
+                  { hx: 885, base: 268, w: 58, roof: "#7a5aa0", door: "#8a4a24", chimney: false },
+                ].map((h, i) => {
+                  const wallH = 40, roofH = 26, top = h.base - wallH;
+                  return (
+                    <g key={i}>
+                      {h.chimney && <rect x={h.hx + h.w * 0.16} y={top - roofH * 0.62} width="9" height="20" fill="#6e463a" />}
+                      <rect x={h.hx - h.w / 2 - 2} y={h.base - 5} width={h.w + 4} height="7" fill="#9c968c" />
+                      <rect x={h.hx - h.w / 2} y={top} width={h.w} height={wallH} fill="#ece0c4" />
+                      <polygon points={`${h.hx - h.w / 2 - 6},${top} ${h.hx},${top - roofH} ${h.hx + h.w / 2 + 6},${top}`} fill={h.roof} />
+                      <polygon points={`${h.hx - h.w / 2 - 6},${top} ${h.hx},${top - roofH} ${h.hx + h.w / 2 + 6},${top}`} fill="#ffffff" opacity="0.12" />
+                      <rect x={h.hx - h.w / 2 - 6} y={top - 2} width={h.w + 12} height="3.5" fill="#000000" opacity="0.22" />
+                      {[-1, 1].map((sgn) => (
+                        <g key={sgn}>
+                          <rect x={h.hx + sgn * h.w * 0.24 - 8} y={top + 11} width="15" height="14" fill="#8a6a3a" />
+                          <rect x={h.hx + sgn * h.w * 0.24 - 6} y={top + 13} width="11" height="10" fill="#ffe0a0" />
+                        </g>
+                      ))}
+                      <rect x={h.hx - 6} y={h.base - 20} width="12" height="20" fill={h.door} />
+                      <circle cx={h.hx + 3} cy={h.base - 10} r="1.4" fill="#e2c058" />
+                    </g>
+                  );
+                })}
+                {/* task streak — a soft glow underlay, a crisp arc, a comet head, a burst */}
+                <path d="M748 224 Q882 150 1018 222" fill="none" stroke="#2dd4bf" strokeWidth="7" strokeLinecap="round" opacity="0.18" />
+                <path d="M748 224 Q882 150 1018 222" fill="none" stroke="#5eead4" strokeWidth="2.4" strokeLinecap="round" opacity="0.95" />
+                <circle cx="905" cy="168" r="9" fill="#2dd4bf" opacity="0.3" />
+                <circle cx="905" cy="168" r="4" fill="#c7fff2" />
+                {[[1018, 222, 3.2], [1008, 210, 1.8], [1029, 212, 1.6], [1014, 232, 1.5]].map(([bx, by, br], i) => (
+                  <circle key={i} cx={bx} cy={by} r={br} fill="#8ff5e2" opacity={i === 0 ? 0.95 : 0.7} />
+                ))}
+                {/* top scrim + left readability fade for the text */}
+                <rect width="1200" height="150" fill="url(#wtop)" />
+                <rect width="1200" height="300" fill="url(#wfade)" />
+              </svg>
+              <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <p className="text-xs font-mono text-teal-500 tracking-wider mb-3">AXON WORLD — LIVE · MULTIPLAYER</p>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                    Walk the network.
+                  </h2>
+                  <p className="text-sm text-gray-400">
+                    A 3D town where every house is a live agent. Watch real tasks fly between houses, read verified receipts on their walls, and hire an agent pipeline from the plaza.
+                  </p>
+                </div>
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className="text-xs font-mono text-gray-500">multiplayer · desktop</span>
+                  <span className="text-sm font-medium text-teal-300 group-hover:translate-x-0.5 transition-transform">
+                    Enter the world →
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </FadeIn>
+      </section>
+
       {/* Network Stats — always rendered; never hidden if the stats query hiccups */}
       <section className="border-y border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 py-5 px-6">
         <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -380,6 +522,7 @@ export default async function Home() {
           <div className="flex gap-6">
             <Link href="https://github.com/SeierkDev/Axon" target="_blank" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">GitHub</Link>
             <Link href="/docs"      className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Docs</Link>
+            <Link href="/world"     className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">World</Link>
             <Link href="/litepaper" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Litepaper</Link>
           </div>
         </div>

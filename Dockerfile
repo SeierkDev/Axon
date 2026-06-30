@@ -23,6 +23,22 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DOCKER_BUILD=1
 
+# NEXT_PUBLIC_* values are inlined into the client bundle DURING `next build`,
+# so they must be declared as build args here. Declaring them also makes their
+# values part of Docker's layer-cache key — without this, changing a variable
+# on Railway silently reuses the old cached build (which is exactly what
+# swallowed NEXT_PUBLIC_PRESENCE_URL).
+ARG NEXT_PUBLIC_PRESENCE_URL
+ARG NEXT_PUBLIC_HELIUS_URL
+ARG NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS
+ARG NEXT_PUBLIC_WALLET_ADDRESS
+ARG NEXT_PUBLIC_AXON_REWARDS_ENABLED
+ENV NEXT_PUBLIC_PRESENCE_URL=$NEXT_PUBLIC_PRESENCE_URL
+ENV NEXT_PUBLIC_HELIUS_URL=$NEXT_PUBLIC_HELIUS_URL
+ENV NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS=$NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS
+ENV NEXT_PUBLIC_WALLET_ADDRESS=$NEXT_PUBLIC_WALLET_ADDRESS
+ENV NEXT_PUBLIC_AXON_REWARDS_ENABLED=$NEXT_PUBLIC_AXON_REWARDS_ENABLED
+
 # `npm run build` uses `next build --webpack` on purpose. Turbopack's standalone
 # output does NOT copy instrumentation.js into .next/standalone, so the
 # instrumentation register() hook never runs in production — and that hook is what

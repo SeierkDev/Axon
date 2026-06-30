@@ -1,0 +1,14 @@
+# Minimal image for the Axon World presence server (axon-presence service).
+# The server needs exactly one dependency (ws) — none of the app, none of the
+# native modules. Built via railway.presence.toml's dockerfilePath.
+FROM node:20-alpine
+WORKDIR /app
+
+RUN npm init -y >/dev/null \
+    && npm pkg set scripts.presence="tsx src/server/presence.ts" \
+    && npm install --no-audit --no-fund ws@^8 tsx@^4 >/dev/null
+
+COPY src/server/presence.ts ./src/server/presence.ts
+
+ENV NODE_ENV=production
+CMD ["npx", "tsx", "src/server/presence.ts"]

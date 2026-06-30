@@ -18,7 +18,9 @@ import { checkAllThresholds } from "../lib/spendThreshold";
 // Agents that append live market prices to their task message
 const PRICE_AGENTS = new Set(["crypto-agent", "trading-agent"]);
 
-const POLL_INTERVAL_MS = 15_000;
+// 3s: a workflow step only exists after the previous one completes, so the
+// poll gap is paid per step — at 15s a 3-step pipeline wasted ~45s just waiting.
+const POLL_INTERVAL_MS = 3_000;
 const HEALTH_INTERVAL_MS = 5 * 60 * 1000;
 const THRESHOLD_INTERVAL_MS = 5 * 60 * 1000;
 const SHUTDOWN_TIMEOUT_MS = Number.parseInt(process.env.AXON_WORKER_SHUTDOWN_TIMEOUT_MS ?? "25000", 10);
@@ -149,13 +151,13 @@ async function processTasks() {
   );
   const livePrices = needsPrices ? await fetchLivePrices() : "";
 
-  for (const agent of agents) {
+  const processAgent = async (agent: (typeof agents)[number]) => {
     const mcpHandler = mcpHandlers[agent.agentId];
-    if (agent.endpoint && !mcpHandler) continue;
+    if (agent.endpoint && !mcpHandler) return;
 
     if (isCircuitOpen(agent.agentId)) {
       logger.info("worker.circuit_skipped", "Skipping agent — circuit breaker open", { agentId: agent.agentId });
-      continue;
+      return;
     }
 
     const queued = getTasksByAgent({
@@ -177,7 +179,7 @@ async function processTasks() {
           activeCount,
           limit: MAX_CONCURRENT_PER_AGENT,
         });
-        break;
+        return;
       }
 
       await runWithTraceId(task.traceId ?? task.taskId, async () => {
@@ -227,7 +229,11 @@ async function processTasks() {
         }
       });
     }
-  }
+  };
+
+  // Agents run CONCURRENTLY (each agent's own queue stays sequential): one
+  // slow inference must never serialize the whole network behind it.
+  await Promise.allSettled(agents.map((a) => processAgent(a)));
 }
 
 async function poll() {
@@ -382,6 +388,17 @@ let loopsStarted = false;
 export async function startWorkerLoops(): Promise<void> {
   if (loopsStarted) return;
   loopsStarted = true;
+
+  // A fresh boot means every worker-claimed 'running' task is an orphan of the
+  // previous process (deploys kill inference mid-flight). Requeue them NOW —
+  // waiting for the 10-minute stuck timeout blocks their agents completely at
+  // concurrency 1, which reads as "pipeline frozen on step N" after a deploy.
+  const reclaimed = getDb()
+    .prepare("UPDATE tasks SET status='queued', started_at=NULL, started_by=NULL WHERE status='running' AND started_by='worker'")
+    .run().changes;
+  if (reclaimed > 0) {
+    logger.info("worker.boot_reclaim", "Requeued running tasks orphaned by the previous process", { reclaimed });
+  }
 
   await runPoll("startup");
   pollTimer = setInterval(() => {

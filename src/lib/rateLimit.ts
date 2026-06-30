@@ -50,6 +50,15 @@ export function checkRateLimit(
   };
 }
 
+// Give back a consumed slot — for endpoints where the limit should count
+// SUCCESSFUL uses, not attempts (e.g. the world pipeline showcase: a failed
+// validation shouldn't burn the visitor's hourly runs).
+export function refundRateLimit(key: string): void {
+  getDb()
+    .prepare("UPDATE rate_limit_windows SET count = MAX(0, count - 1) WHERE key = ? AND reset_at > ?")
+    .run(key, Date.now());
+}
+
 export function getClientIp(req: Request): string {
   if (process.env.TRUST_PROXY_HEADERS === "true") {
     const cf = req.headers.get("cf-connecting-ip")?.trim();

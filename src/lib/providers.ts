@@ -190,7 +190,9 @@ class AnthropicProvider implements ProviderClient {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
     this.client = new Anthropic({ apiKey });
-    this.model = model ?? "claude-haiku-4-5-20251001";
+    // Opus-tier default: agents must know CURRENT tech (Haiku 4.5's early-2025
+    // cutoff predates things like x402, turning research tasks into dead ends).
+    this.model = model ?? "claude-opus-4-8";
   }
 
   async complete(system: string, message: string, maxTokens = 2048): Promise<string> {

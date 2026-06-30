@@ -182,7 +182,12 @@ describe("advanceWorkflow: creates the next step", () => {
     expect(updated.status).toBe("running");
     expect(updated.steps).toHaveLength(2);
     expect(updated.steps[1].agentId).toBe(b.agentId);
-    expect(updated.steps[1].input).toBe("step 0 output");
+    // The next step gets a FRAMED task: the original job + the previous
+    // output as working material + a clear continue instruction — a bare
+    // output alone confuses the receiving agent into meta-questions.
+    expect(updated.steps[1].input).toContain("step 0 output");
+    expect(updated.steps[1].input).toContain("The original job: step 0 input");
+    expect(updated.steps[1].input).toContain("step 2 of 3");
     expect(updated.steps[1].status).toBe("queued");
   });
 });

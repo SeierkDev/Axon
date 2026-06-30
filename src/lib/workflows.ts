@@ -213,12 +213,24 @@ export function advanceWorkflow(workflowId: string, stepIndex: number, output: s
   const nextStep = stepIndex + 1;
 
   if (nextStep < agents.length) {
-    // Create the next step task — output of this step becomes the input
+    // Create the next step task. The previous output alone is NOT a task — an
+    // agent handed a bare wall of text has no idea what's being asked and
+    // answers with meta-questions instead of work. Frame it: original job +
+    // the material so far + a clear instruction to produce the next deliverable.
+    const framedTask = [
+      `You are step ${nextStep + 1} of ${agents.length} in a multi-agent pipeline. Each agent improves on the last one's work.`,
+      `The original job: ${row.initial_task}`,
+      `The previous agent's output (your working material):`,
+      `---`,
+      output,
+      `---`,
+      `Apply your specialty to this material and produce the next deliverable for the original job. Reply with the deliverable only — no meta commentary, no questions back. Keep it SHORT and dense — under ~300 words. End cleanly with a conclusion; a tight complete deliverable beats a long one.`,
+    ].join("\n\n");
     try {
       createWorkflowStepTask({
         fromAgent: agents[stepIndex],
         toAgent: agents[nextStep],
-        task: output,
+        task: framedTask,
         workflowId,
         stepIndex: nextStep,
         mppChannelId: row.mpp_channel_id,

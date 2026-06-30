@@ -1,0 +1,17 @@
+# Railway config for the axon-presence service ONLY.
+# Set the service's Settings → Config-as-code file path to this file.
+# Builds the dedicated minimal presence image (Dockerfile.presence) — the
+# repo-root Dockerfile is the standalone Next.js web image and doesn't contain
+# the presence server at all.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.presence"
+
+[deploy]
+# The presence server answers 200 with a small JSON on every path.
+healthcheckPath = "/"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+numReplicas = 1
