@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
 import { logger } from "./logger";
+import { isContractTestAgent } from "./agents";
 
 export type TelegramPostType = "snapshot" | "agent" | "task_milestone" | "usdc_milestone" | "activity";
 
@@ -61,10 +62,11 @@ export async function postToTelegram(type: TelegramPostType, text: string): Prom
 }
 
 export async function notifyNewAgent(
-  _agentId: string,
+  agentId: string,
   name: string,
   capabilities: string[]
 ): Promise<void> {
+  if (isContractTestAgent(agentId)) return;
   try {
     const db = getDb();
     const { count } = db

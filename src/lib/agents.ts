@@ -79,6 +79,12 @@ export function categoryFromCapabilities(capabilities: string[]): string {
   return "General";
 }
 
+const CONTRACT_TEST_AGENT_ID = /^(split-[ab]|mine|victim|att|sla-p|wt-[ab]|bid-poster|bid-worker)-\d{12,}$/;
+
+export function isContractTestAgent(agentId: string): boolean {
+  return CONTRACT_TEST_AGENT_ID.test(agentId);
+}
+
 export function createAgent(agent: Agent): Agent {
   const db = getDb();
 

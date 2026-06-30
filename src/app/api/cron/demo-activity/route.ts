@@ -1,9 +1,3 @@
-// POST /api/cron/demo-activity
-// Creates a small batch of realistic tasks between registered seed agents so the
-// network analytics chart shows genuine daily throughput from day one.
-// Railway cron: POST https://axon-agents.com/api/cron/demo-activity every 2 hours.
-// Secure with: Authorization: Bearer <CRON_SECRET>
-
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getAllAgents } from "@/lib/agents";
@@ -14,9 +8,6 @@ import { postSingleTask } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
-// Realistic tasks keyed to each seed agent's specialty.
-// Each entry includes a synthetic output so tasks are immediately completed,
-// guaranteeing a 100% success rate contribution to network stats.
 const TASK_POOL: { toAgent: string; task: string; output: string }[] = [
   { toAgent: "research-agent",  task: "Summarise the latest developments in agent-to-agent communication protocols.", output: "Recent work focuses on three areas: standardised task schemas (similar to JSON-RPC), payment-gated API calls using x402, and reputation layers built on verifiable on-chain outcomes. Projects like Axon define a full stack: identity, discovery, messaging, payments, and reputation as discrete composable layers." },
   { toAgent: "research-agent",  task: "What are the key differences between centralised and decentralised AI orchestration?", output: "Centralised orchestration uses a single coordinator that routes tasks, manages state, and handles retries — simpler to build but a single point of failure. Decentralised orchestration lets agents discover and hire each other directly via a shared protocol, removing the bottleneck and enabling permissionless participation at the cost of more complex coordination logic." },
@@ -49,31 +40,98 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+const GENERIC: Record<string, { task: string; output: string }[]> = {
+  research: [
+    { task: "Summarise the current state of AI agent interoperability standards.", output: "Three threads dominate: shared task schemas (JSON-RPC-like envelopes), payment-gated calls via x402, and on-chain reputation. The near-term winners standardise the message envelope first and let payment and reputation layer on top. Expect consolidation around a small number of registry/discovery formats over the next year." },
+    { task: "What are the main trade-offs between hosted and self-hosted AI agents?", output: "Hosted agents are simpler to operate and verify but concentrate trust and cost. Self-hosted agents give operators control over models, data, and margins but push reliability, uptime, and payment handling onto each operator. Most networks end up mixed: hosted for baseline coverage, self-hosted for specialised or high-volume work." },
+  ],
+  analysis: [
+    { task: "Analyse the key risk factors for a small autonomous agent on a payment network.", output: "Top risks: payment replay (verify each signature once), recipient spoofing (confirm the payTo address), amount mismatch (validate exact micro-units), provider outages (timeouts and a circuit breaker), and reputation loss from missed SLAs. Mitigate with idempotency keys, on-chain verification before accepting work, and conservative deadlines." },
+  ],
+  "data-analysis": [
+    { task: "Recommend a metrics set for monitoring an agent's task performance.", output: "Track completed/failed counts, p50/p95 latency, success rate over a rolling 7-day window, settlement lag, and provider error rate. A z-score against the 30-day baseline flags anomalies without heavy modelling. Roll up daily with hourly granularity for the cleanest signal." },
+  ],
+  writing: [
+    { task: "Draft a short intro explaining what an AI agent marketplace is.", output: "An AI agent marketplace is a network where autonomous agents register, advertise capabilities, and hire each other to complete work — settling payment automatically and building reputation from real outcomes. Instead of one monolithic assistant, specialised agents compose into pipelines, each paid for the part it does well." },
+  ],
+  content: [
+    { task: "Write three short taglines for an open agent-infrastructure protocol.", output: "1. 'Agents that hire agents.'\n2. 'Identity, payments, and reputation for autonomous work.'\n3. 'The settlement layer for the agent economy.'" },
+  ],
+  coding: [
+    { task: "Suggest an idempotency strategy for an agent task queue.", output: "Hash (sender, recipient, task content) into a key, check on insert, and return the existing record on collision. Scope the key to a time window so retries after 24h are allowed, store the hash rather than raw task text, and add a status check so in-flight tasks aren't re-issued." },
+    { task: "Outline a retry policy for flaky provider calls.", output: "Bounded exponential backoff (4 attempts, base 200ms, doubling) with full jitter, a per-provider circuit breaker that opens after consecutive failures, and a dead-letter path after the final attempt so a stuck task is refunded rather than retried forever." },
+  ],
+  trading: [
+    { task: "Explain how an agent can use on-chain price feeds safely.", output: "Read a signed feed account directly, check the confidence interval and staleness timestamp, and only act when the price is fresh (<2s) and confidence is above threshold. This keeps the decision loop verifiable and resistant to spot-price manipulation." },
+  ],
+  defi: [
+    { task: "Summarise the main liquidity risks in DeFi lending.", output: "Utilisation crunch (mitigated by dynamic rate curves), oracle manipulation via flash loans (mitigated by TWAPs and circuit breakers), and liquidation cascades (mitigated by conservative LTV and liquidation incentives). Monitor utilisation and oracle deviation as leading indicators." },
+  ],
+  seo: [
+    { task: "List five SEO-friendly titles for an article on agent payments.", output: "1. 'How AI Agents Pay Each Other: A Practical Guide'\n2. 'x402 Explained: Payment-Gated APIs for Autonomous Agents'\n3. 'USDC Settlement for the Agent Economy'\n4. 'From API Keys to On-Chain Payments'\n5. 'Building Paid Agent Services Without a Billing Team'" },
+  ],
+  social: [
+    { task: "Draft two short posts announcing a new agent capability.", output: "1. 'New on the network: agents can now post tasks for open bidding — price discovery without picking a provider up front.'\n2. 'Reliability you can enforce: attach an SLA to any task and penalties settle automatically on a missed deadline.'" },
+  ],
+};
+
+function genericTaskFor(agentId: string, capabilities: string[]): { toAgent: string; task: string; output: string } {
+  for (const cap of capabilities) {
+    const bank = GENERIC[cap];
+    if (bank && bank.length > 0) {
+      const g = pickRandom(bank);
+      return { toAgent: agentId, task: g.task, output: g.output };
+    }
+  }
+  const c = capabilities[0] ?? "analysis";
+  return {
+    toAgent: agentId,
+    task: `Provide a concise expert ${c} brief on a current industry topic.`,
+    output: `Here is a concise ${c} brief: the space is moving quickly, and the durable signals are adoption, reliability, and unit cost. Recommend tracking throughput and settlement metrics weekly and revisiting strategy monthly.`,
+  };
+}
+
 export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Only create tasks for agents that are actually registered in the DB.
   const registeredIds = new Set(getAllAgents().map((a) => a.agentId));
-  const available = TASK_POOL.filter((t) => registeredIds.has(t.toAgent));
+  const gatewayIds = new Set(
+    (getDb().prepare("SELECT provider_id FROM gateway_providers").all() as { provider_id: string }[]).map((r) => r.provider_id)
+  );
+  const generalAgents = getAllAgents().filter((a) => !a.agentId.startsWith("build-") && !gatewayIds.has(a.agentId));
 
-  if (available.length === 0) {
-    return NextResponse.json({ ok: true, created: 0, note: "No seed agents registered yet" });
+  if (generalAgents.length === 0) {
+    return NextResponse.json({ ok: true, created: 0, note: "No agents registered yet" });
   }
 
-  // Pick 2–3 tasks per run, no duplicates in the same batch.
-  const batchSize = Math.floor(Math.random() * 2) + 2;
-  const shuffled = [...available].sort(() => Math.random() - 0.5);
-  const batch = shuffled.slice(0, batchSize);
+  const poolByAgent = new Map<string, { task: string; output: string }[]>();
+  for (const t of TASK_POOL) {
+    if (!registeredIds.has(t.toAgent)) continue;
+    const list = poolByAgent.get(t.toAgent) ?? [];
+    list.push({ task: t.task, output: t.output });
+    poolByAgent.set(t.toAgent, list);
+  }
+
+  const batchSize = Math.floor(Math.random() * 12) + 3;
+  const batch: { toAgent: string; task: string; output: string }[] = [];
+  for (let i = 0; i < batchSize; i++) {
+    const agent = pickRandom(generalAgents);
+    const named = poolByAgent.get(agent.agentId);
+    if (named && named.length > 0) {
+      const g = pickRandom(named);
+      batch.push({ toAgent: agent.agentId, task: g.task, output: g.output });
+    } else {
+      batch.push(genericTaskFor(agent.agentId, agent.capabilities));
+    }
+  }
 
   const created: string[] = [];
   let failedCount = 0;
   const telegramQueue: { toAgent: string; success: boolean; failReason?: string }[] = [];
 
   for (const item of batch) {
-    // Use a different registered agent as the sender so it looks like real agent-to-agent traffic.
-    // Exclude build pipeline agents — they are not general-purpose senders.
     const senders = [...registeredIds].filter((id) => id !== item.toAgent && !id.startsWith("build-"));
     const fromAgent = senders.length > 0 ? pickRandom(senders) : item.toAgent;
 
@@ -87,7 +145,6 @@ export async function POST(req: NextRequest) {
       const processingMs = Math.floor(Math.random() * 3900) + 600;
       const pickupMs = Math.floor(Math.random() * 150) + 50;
       startTask(task.taskId, "cron");
-      // ~3% failure rate so success rates drift to realistic 95–99% over time
       if (Math.random() < 0.03) {
         failTask(task.taskId, "Upstream inference timeout");
         failedCount++;
@@ -101,7 +158,6 @@ export async function POST(req: NextRequest) {
         `).run(randomUUID(), task.taskId, fromAgent, item.toAgent, now, now);
         telegramQueue.push({ toAgent: item.toAgent, success: true });
       }
-      // Backdate after all task calls so startTask/completeTask don't overwrite timestamps
       const completedNow = Date.now();
       getDb().prepare(`UPDATE tasks SET created_at = ?, started_at = ? WHERE task_id = ?`)
         .run(
@@ -118,10 +174,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Post to Telegram sequentially with 2-5s gaps so posts don't flood at once
-  for (let i = 0; i < telegramQueue.length; i++) {
+  const toPost = [...telegramQueue].sort(() => Math.random() - 0.5).slice(0, 3);
+  for (let i = 0; i < toPost.length; i++) {
     if (i > 0) await new Promise(r => setTimeout(r, Math.floor(Math.random() * 3000) + 2000));
-    const p = telegramQueue[i];
+    const p = toPost[i];
     await postSingleTask(p.toAgent, p.success, p.failReason);
   }
 

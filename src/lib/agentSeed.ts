@@ -75,6 +75,14 @@ export function seedBuiltinAgents(db: Database): void {
     ).run(...currentIds);
   }
 
+  const testIdPattern = /^(split-[ab]|mine|victim|att|sla-p|wt-[ab]|bid-poster|bid-worker)-\d{12,}$/;
+  const leaked = (db.prepare("SELECT agent_id FROM agents").all() as { agent_id: string }[])
+    .map((r) => r.agent_id)
+    .filter((id) => testIdPattern.test(id));
+  if (leaked.length > 0) {
+    db.prepare(`DELETE FROM agents WHERE agent_id IN (${leaked.map(() => "?").join(",")})`).run(...leaked);
+  }
+
   const upsertAgent = db.prepare(`
     INSERT INTO agents
       (agent_id, name, capabilities, public_key, price, reputation, category, provider, provider_model, wallet_address, verification_status, created_at)
