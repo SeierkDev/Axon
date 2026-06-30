@@ -16,7 +16,7 @@ type RecentTask = {
 type Metrics = {
   worker: { queueDepth: number; running: number; lastSeenMs: number | null };
   throughput: { today: number; last24h: number; byHour: ByHour[] };
-  latency: { p50ProcessingMs: number; p95ProcessingMs: number; avgPickupMs: number };
+  latency: { p50ProcessingMs: number; p95ProcessingMs: number; p50PickupMs: number };
   perAgent: PerAgent[];
   recentTasks: RecentTask[];
   updatedAt: string;
@@ -148,7 +148,7 @@ export default function WorkersDashboard() {
               {[
                 { label: "P50 Processing", value: fmtMs(data.latency.p50ProcessingMs), sub: "median task duration" },
                 { label: "P95 Processing", value: fmtMs(data.latency.p95ProcessingMs), sub: "95th percentile duration" },
-                { label: "Avg Pickup Latency", value: fmtMs(data.latency.avgPickupMs), sub: "time to start after queued" },
+                { label: "P50 Pickup", value: fmtMs(data.latency.p50PickupMs), sub: "median time to start after queued" },
               ].map((c) => (
                 <div key={c.label} className="p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
                   <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{c.label}</p>

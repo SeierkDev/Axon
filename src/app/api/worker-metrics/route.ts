@@ -111,7 +111,10 @@ export async function GET() {
     latency: {
       p50ProcessingMs: percentile(processingRaw, 50),
       p95ProcessingMs: percentile(processingRaw, 95),
-      avgPickupMs: pickupRaw.length > 0 ? Math.round(pickupRaw.reduce((a, b) => a + b, 0) / pickupRaw.length) : 0,
+      // Median, not mean: a backlog picked up after worker downtime produces a few
+      // multi-hour pickups that wreck an average. The median reflects the typical
+      // wait and matches how processing latency is reported above.
+      p50PickupMs: percentile(pickupRaw, 50),
     },
     perAgent,
     recentTasks,
