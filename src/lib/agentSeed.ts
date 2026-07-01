@@ -229,6 +229,38 @@ function parseUsdcAmount(price: string | null): number {
   return m ? parseFloat(m[1]) : 0;
 }
 
+// Correct synthetic demo settlements to each worker agent's real listed price.
+// The activity cron historically recorded a flat 0.10 USDC per completed task; now
+// it uses the agent's price, and this fixes the old rows so the explorer shows real
+// amounts. Only rows with NO on-chain signature (incoming or outgoing) are touched,
+// so real, signed settlements are never modified. Idempotent — a row already at the
+// correct price is left as-is.
+export function backfillDemoSettlementAmounts(db: Database): number {
+  const agents = db.prepare("SELECT agent_id, price FROM agents").all() as { agent_id: string; price: string | null }[];
+  const priceByAgent = new Map(agents.map((a) => [a.agent_id, parseUsdcAmount(a.price)]));
+
+  const rows = db
+    .prepare(
+      "SELECT tx_id, to_agent, amount_sol FROM transactions WHERE signature IS NULL AND incoming_signature IS NULL AND currency = 'USDC' AND status = 'completed'"
+    )
+    .all() as { tx_id: string; to_agent: string; amount_sol: number }[];
+  if (rows.length === 0) return 0;
+
+  const update = db.prepare("UPDATE transactions SET amount_sol = ? WHERE tx_id = ?");
+  let changed = 0;
+  const run = db.transaction(() => {
+    for (const r of rows) {
+      const price = priceByAgent.get(r.to_agent) ?? 0;
+      if (price > 0 && Math.abs(price - r.amount_sol) > 1e-9) {
+        update.run(price, r.tx_id);
+        changed++;
+      }
+    }
+  });
+  run();
+  return changed;
+}
+
 export function backfillAgentHistory(db: Database): void {
   // Build pipeline agents are not standalone discovery agents — skip their backfill
   // so they don't inflate reputation counts or crowd out search results.

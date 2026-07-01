@@ -21,7 +21,7 @@
 
 import Database from "better-sqlite3";
 import path from "path";
-import { seedBuiltinAgents, backfillAgentHistory } from "./agentSeed";
+import { seedBuiltinAgents, backfillAgentHistory, backfillDemoSettlementAmounts } from "./agentSeed";
 import { applyMigrations } from "./migrations";
 import { backfillSpecHashes } from "./specCommitment";
 import { isTursoConfigured, syncToTurso, closeTursoClient } from "./db-turso";
@@ -120,6 +120,8 @@ export function getDb(): Database.Database {
   // Pin AgenC canonical spec hashes for any tasks created before the spec_hash
   // column existed (idempotent — no-op once all rows have one).
   backfillSpecHashes(_db);
+  // Correct old flat-rate demo settlements to each agent's real listed price.
+  backfillDemoSettlementAmounts(_db);
 
   return _db;
 }

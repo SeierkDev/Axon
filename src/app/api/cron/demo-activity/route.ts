@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAllAgents } from "@/lib/agents";
 import { getDb } from "@/lib/db";
 import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
+import { parsePaymentAmount } from "@/lib/solana";
 import { logger } from "@/lib/logger";
 import { postSingleTask } from "@/lib/telegram";
 
@@ -101,6 +102,8 @@ export async function POST(req: NextRequest) {
     (getDb().prepare("SELECT provider_id FROM gateway_providers").all() as { provider_id: string }[]).map((r) => r.provider_id)
   );
   const generalAgents = getAllAgents().filter((a) => !a.agentId.startsWith("build-") && !gatewayIds.has(a.agentId));
+  // Settle each task at the worker agent's real listed price, not a flat amount.
+  const priceByAgent = new Map(generalAgents.map((a) => [a.agentId, a.price ?? null]));
 
   if (generalAgents.length === 0) {
     return NextResponse.json({ ok: true, created: 0, note: "No agents registered yet" });
@@ -152,10 +155,18 @@ export async function POST(req: NextRequest) {
       } else {
         completeTask(task.taskId, item.output);
         const now = new Date().toISOString();
+        // Settlement amount = the worker agent's listed price (parsed from e.g.
+        // "0.15 USDC"), falling back to 0.10 USDC if the agent has no valid price.
+        const parsedPrice = (() => {
+          const p = priceByAgent.get(item.toAgent);
+          return p ? parsePaymentAmount(p) : null;
+        })();
+        const amount = parsedPrice?.amount ?? 0.10;
+        const currency = parsedPrice?.currency ?? "USDC";
         getDb().prepare(`
           INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
-          VALUES (?, ?, ?, ?, 0.10, 'completed', NULL, 0, 'USDC', ?, ?)
-        `).run(randomUUID(), task.taskId, fromAgent, item.toAgent, now, now);
+          VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?)
+        `).run(randomUUID(), task.taskId, fromAgent, item.toAgent, amount, currency, now, now);
         telegramQueue.push({ toAgent: item.toAgent, success: true });
       }
       const completedNow = Date.now();
