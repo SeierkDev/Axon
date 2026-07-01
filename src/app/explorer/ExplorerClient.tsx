@@ -10,6 +10,8 @@ interface ExplorerTask {
   status: string;
   createdAt: string;
   completedAt?: string;
+  specHash?: string;
+  outputHash?: string;
 }
 interface ExplorerSettlement {
   txId: string;
@@ -46,6 +48,25 @@ const STATUS_COLOR: Record<string, string> = {
   split: "text-violet-600 dark:text-violet-400",
 };
 const statusClass = (s: string) => STATUS_COLOR[s] ?? "text-gray-500 dark:text-gray-400";
+
+const shortHash = (h: string) => `${h.slice(0, 10)}…`;
+
+// The job spec pinned with AgenC's canonical hash (verifiable on AgenC's protocol),
+// plus Axon's on-chain output-hash commitment when the deliverable is in.
+function Verifiable({ specHash, outputHash }: { specHash?: string; outputHash?: string }) {
+  if (!specHash) return <span className="text-gray-300 dark:text-gray-600">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        title={`Job spec pinned with AgenC's canonical hash\nspec: ${specHash}${outputHash ? `\noutput: ${outputHash}` : ""}`}
+        className="inline-flex items-center gap-1 rounded-full border border-pink-200 dark:border-pink-900 bg-pink-50 dark:bg-pink-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-pink-700 dark:text-pink-400"
+      >
+        ✓ AgenC
+      </span>
+      <span className="font-mono text-[11px] text-gray-400">{shortHash(specHash)}</span>
+    </span>
+  );
+}
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -104,13 +125,21 @@ export default function ExplorerClient() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Recent Tasks</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Recent Tasks</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Job specs are pinned with{" "}
+              <a href="https://agenc.tech" target="_blank" rel="noopener noreferrer" className="text-pink-600 dark:text-pink-400 hover:underline">
+                AgenC
+              </a>
+              &apos;s canonical hash — verifiable on the AgenC protocol.
+            </p>
             <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-400 text-xs uppercase tracking-wider">
                   <tr>
                     <th className="text-left px-4 py-2 font-medium">From → To</th>
                     <th className="text-left px-4 py-2 font-medium">Status</th>
+                    <th className="text-left px-4 py-2 font-medium">Verifiable</th>
                     <th className="text-right px-4 py-2 font-medium">When</th>
                   </tr>
                 </thead>
@@ -119,11 +148,12 @@ export default function ExplorerClient() {
                     <tr key={t.taskId} className="text-gray-700 dark:text-gray-300">
                       <td className="px-4 py-2 font-mono text-xs">{t.fromAgent} → <span className="text-gray-900 dark:text-white">{t.toAgent}</span></td>
                       <td className={`px-4 py-2 font-medium ${statusClass(t.status)}`}>{t.status}</td>
+                      <td className="px-4 py-2"><Verifiable specHash={t.specHash} outputHash={t.outputHash} /></td>
                       <td className="px-4 py-2 text-right text-gray-400">{timeAgo(t.createdAt)}</td>
                     </tr>
                   ))}
                   {feed.recentTasks.length === 0 && (
-                    <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-400">No tasks yet.</td></tr>
+                    <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">No tasks yet.</td></tr>
                   )}
                 </tbody>
               </table>

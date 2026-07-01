@@ -44,8 +44,11 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
     "@libsql/client": "^0.17.3",
+    "@solana/kit": "^6.10.0",
+    "@solana/program-client-core": "^6.10.0",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
+    "@tetsuo-ai/marketplace-sdk": "^0.6.0",
     "better-sqlite3": "^12.10.0",
     "framer-motion": "^12.40.0",
     "next": "16.2.7",

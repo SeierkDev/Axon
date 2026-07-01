@@ -4,6 +4,7 @@ import type { Payment } from "./payments";
 import type { WebhookDelivery } from "./webhooks";
 import { recommendPaymentPath, type PaymentPathRecommendation } from "./paymentPath";
 import { getOutputCommitment, type OutputCommitment } from "./outputCommitment";
+import { verifyTaskSpec, type SpecVerification } from "./specCommitment";
 import { getTaskProgress, type TaskProgressEntry } from "./progress";
 import { getPaymentNotes, type PaymentNote } from "./paymentNotes";
 import { getSplitsForTask, type TaskSplit } from "./escrowSplits";
@@ -15,6 +16,7 @@ export interface Receipt {
   payment: Payment | null;
   webhookDeliveries: Pick<WebhookDelivery, "deliveryId" | "webhookId" | "eventType" | "status" | "attempts" | "responseStatus" | "lastAttemptAt">[];
   recommendedPath: PaymentPathRecommendation;
+  specVerification: SpecVerification | null; // job-spec hash pinned at creation + tamper check
   outputCommitment: OutputCommitment | null;
   progress: TaskProgressEntry[];
   notes: PaymentNote[]; // dispute/refund notes attached to this payment
@@ -61,6 +63,7 @@ export function getReceipt(taskId: string): Receipt {
         createdAt: taskRow.created_at as string,
         startedAt: taskRow.started_at as string ?? undefined,
         completedAt: taskRow.completed_at as string ?? undefined,
+        specHash: taskRow.spec_hash as string ?? undefined,
         outputHash: taskRow.output_hash as string ?? undefined,
         outputCommitment: taskRow.output_commitment as string ?? undefined,
         stuckCount: (taskRow.stuck_count as number) ?? 0,
@@ -111,6 +114,7 @@ export function getReceipt(taskId: string): Receipt {
       lastAttemptAt: r.last_attempt_at ?? undefined,
     })),
     recommendedPath,
+    specVerification: verifyTaskSpec(taskId),
     outputCommitment: getOutputCommitment(taskId),
     progress: getTaskProgress(taskId),
     notes: getPaymentNotes(taskId),

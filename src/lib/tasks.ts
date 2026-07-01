@@ -8,6 +8,7 @@ import { onChildTaskCompleted, onChildTaskFailed } from "./quorum";
 import { logger } from "./logger";
 import { emitAxonEvent } from "./eventBus";
 import { commitOutput } from "./outputCommitment";
+import { hashSpec } from "./specCommitment";
 import { syncToTurso } from "./db-turso";
 import { resolveTraceId, runWithTraceId } from "./tracing";
 
@@ -31,6 +32,7 @@ export interface Task {
   startedAt?: string;
   startedBy?: string;
   completedAt?: string;
+  specHash?: string;
   outputHash?: string;
   outputCommitment?: string;
   traceId?: string;
@@ -58,6 +60,7 @@ interface TaskRow {
   started_at: string | null;
   started_by: string | null;
   completed_at: string | null;
+  spec_hash: string | null;
   output_hash: string | null;
   output_commitment: string | null;
   trace_id: string | null;
@@ -83,6 +86,7 @@ function rowToTask(row: TaskRow): Task {
     startedAt: row.started_at ?? undefined,
     startedBy: row.started_by ?? undefined,
     completedAt: row.completed_at ?? undefined,
+    specHash: row.spec_hash ?? undefined,
     outputHash: row.output_hash ?? undefined,
     outputCommitment: row.output_commitment ?? undefined,
     traceId: row.trace_id ?? undefined,
@@ -129,9 +133,19 @@ export function createTask(opts: CreateTaskOptions): Task {
   const startedBy = initialStatus === "running" ? (opts.startedBy ?? "api") : null;
   const traceId = opts.traceId ?? resolveTraceId();
 
+  // Pin the job spec by hash at creation — the tamper-evident record of the exact
+  // agreement, complementing the output_hash committed on completion.
+  const specHash = hashSpec({
+    fromAgent: opts.fromAgent,
+    toAgent: opts.toAgent,
+    task: opts.task,
+    context: opts.context,
+    payment: opts.payment ?? null,
+  });
+
   db.prepare(`
-    INSERT INTO tasks (task_id, from_agent, to_agent, task, context, payment, status, created_at, started_at, started_by, signature, idempotency_scope, idempotency_key, idempotency_hash, workflow_id, step_index, quorum_id, trace_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tasks (task_id, from_agent, to_agent, task, context, payment, status, created_at, started_at, started_by, signature, idempotency_scope, idempotency_key, idempotency_hash, workflow_id, step_index, quorum_id, trace_id, spec_hash)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     taskId,
     opts.fromAgent,
@@ -151,6 +165,7 @@ export function createTask(opts: CreateTaskOptions): Task {
     opts.stepIndex ?? null,
     opts.quorumId ?? null,
     traceId,
+    specHash,
   );
 
   const task = getTaskById(taskId)!;

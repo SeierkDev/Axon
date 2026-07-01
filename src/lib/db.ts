@@ -23,6 +23,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import { seedBuiltinAgents, backfillAgentHistory } from "./agentSeed";
 import { applyMigrations } from "./migrations";
+import { backfillSpecHashes } from "./specCommitment";
 import { isTursoConfigured, syncToTurso, closeTursoClient } from "./db-turso";
 
 const DEFAULT_DB_PATH = path.join(process.cwd(), "axon.db");
@@ -116,6 +117,9 @@ export function getDb(): Database.Database {
   applyMigrations(_db);
   seedBuiltinAgents(_db);
   backfillAgentHistory(_db);
+  // Pin AgenC canonical spec hashes for any tasks created before the spec_hash
+  // column existed (idempotent — no-op once all rows have one).
+  backfillSpecHashes(_db);
 
   return _db;
 }

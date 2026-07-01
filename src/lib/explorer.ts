@@ -16,6 +16,11 @@ export interface ExplorerTask {
   status: string;
   createdAt: string;
   completedAt?: string;
+  // Verifiable-work commitments: the job-spec hash (pinned at creation) and the
+  // deliverable hash (committed on completion). Metadata only — the hashes are
+  // public proof; the task content and output are not exposed.
+  specHash?: string;
+  outputHash?: string;
 }
 
 export interface ExplorerSettlement {
@@ -53,7 +58,7 @@ function clampLimit(limit: number | undefined): number {
 export function getRecentTasks(limit?: number): ExplorerTask[] {
   const rows = getDb()
     .prepare(
-      "SELECT task_id, from_agent, to_agent, status, created_at, completed_at FROM tasks ORDER BY created_at DESC LIMIT ?"
+      "SELECT task_id, from_agent, to_agent, status, created_at, completed_at, spec_hash, output_hash FROM tasks ORDER BY created_at DESC LIMIT ?"
     )
     .all(clampLimit(limit)) as {
     task_id: string;
@@ -62,6 +67,8 @@ export function getRecentTasks(limit?: number): ExplorerTask[] {
     status: string;
     created_at: string;
     completed_at: string | null;
+    spec_hash: string | null;
+    output_hash: string | null;
   }[];
   return rows.map((r) => ({
     taskId: r.task_id,
@@ -70,6 +77,8 @@ export function getRecentTasks(limit?: number): ExplorerTask[] {
     status: r.status,
     createdAt: r.created_at,
     completedAt: r.completed_at ?? undefined,
+    specHash: r.spec_hash ?? undefined,
+    outputHash: r.output_hash ?? undefined,
   }));
 }
 
