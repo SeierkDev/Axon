@@ -347,8 +347,10 @@ export default function BuildClient({
     }
 
     // 2 — Poll for progress. Each request is short, so an HTTP/2 reset can't kill
-    // the build; a transient poll failure just retries on the next tick.
-    const deadline = Date.now() + 12 * 60_000; // safety cap
+    // the build; a transient poll failure just retries on the next tick. Jobs are
+    // durable server-side and auto-resume after a restart, so polling rides out a
+    // redeploy (up to ~5 min of failed polls) instead of declaring failure.
+    const deadline = Date.now() + 25 * 60_000; // safety cap — QA retries on a slower coder model add up
     let consecutiveMisses = 0;
     let consecutiveUnknown = 0;
     while (Date.now() < deadline) {
@@ -363,22 +365,22 @@ export default function BuildClient({
       try {
         const res = await fetch(`/api/build/status/${buildId}`);
         if (!res.ok) {
-          if (++consecutiveMisses > 60) break;
+          if (++consecutiveMisses > 150) break;
           continue;
         }
         job = await res.json();
         consecutiveMisses = 0;
       } catch {
-        if (++consecutiveMisses > 60) break;
+        if (++consecutiveMisses > 150) break;
         continue;
       }
 
-      // The server no longer knows this build AND nothing was saved — it means
-      // the build process died (e.g. the server restarted mid-build). Detect it
-      // fast and surface Resume instead of spinning until the 12-minute cap.
+      // The server doesn't know this build at all — jobs are persisted, so this
+      // means the job row is genuinely gone (expired/pruned), not a mid-build
+      // restart (those keep their row and auto-resume). Surface Resume.
       if (job.unknown) {
-        if (++consecutiveUnknown >= 4) {
-          setError("The build was interrupted — the server restarted before it finished. Your payment is saved, so click Resume to continue (you won't be charged again).");
+        if (++consecutiveUnknown >= 10) {
+          setError("The build was interrupted. Your payment is saved, so click Resume to continue (you won't be charged again).");
           setPhase("error");
           return;
         }

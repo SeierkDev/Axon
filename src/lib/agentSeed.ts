@@ -32,7 +32,7 @@ const BUILTIN_AGENTS: BuiltinAgent[] = [
   { agentId: "build-orchestrator", name: "Build Orchestrator", capabilities: ["game-build", "orchestration", "planning"],    category: "Build", price: "0.05 USDC", providerModel: "claude-opus-4-8" },
   { agentId: "build-designer",     name: "Build Designer",     capabilities: ["game-build", "game-design", "planning"],     category: "Build", price: "0.15 USDC", providerModel: "claude-opus-4-8" },
   { agentId: "build-world",        name: "Build World",        capabilities: ["game-build", "world-design", "level-design"], category: "Build", price: "0.15 USDC", providerModel: "claude-opus-4-8" },
-  { agentId: "build-coder",        name: "Build Coder",        capabilities: ["game-build", "coding", "html5", "canvas"],   category: "Build", price: "0.25 USDC", providerModel: "claude-opus-4-8" },
+  { agentId: "build-coder",        name: "Build Coder",        capabilities: ["game-build", "coding", "html5", "canvas"],   category: "Build", price: "0.25 USDC", providerModel: "claude-fable-5" },
   { agentId: "build-artist",       name: "Build Artist",       capabilities: ["game-build", "art", "visual-design"],        category: "Build", price: "0.10 USDC", providerModel: "claude-opus-4-8" },
   { agentId: "build-qa",           name: "Build QA",           capabilities: ["game-build", "qa", "testing"],               category: "Build", price: "0.10 USDC", providerModel: "claude-opus-4-8" },
 ];

@@ -17,6 +17,16 @@ export async function register() {
       const { startWorkerLoops } = await import("./workers/index");
       void startWorkerLoops();
     }
+
+    // Pick up paid builds a restart interrupted (deploys kill the in-flight
+    // pipeline; the job rows are durable). Fire-and-forget: each resumed
+    // pipeline runs in the background exactly like a fresh one.
+    try {
+      const { resumeInterruptedBuilds } = await import("./lib/buildPipeline");
+      resumeInterruptedBuilds();
+    } catch {
+      /* Build resume is best-effort — never block server startup on it */
+    }
   }
 }
 

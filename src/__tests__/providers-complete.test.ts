@@ -95,6 +95,52 @@ describe("AnthropicProvider.complete: no text block in response", () => {
   });
 });
 
+describe("AnthropicProvider.complete: refusal falls back to Opus", () => {
+  it("re-runs a refused completion on the fallback model and returns its text", async () => {
+    mockStream
+      .mockReturnValueOnce({
+        finalMessage: () => Promise.resolve({ content: [], stop_reason: "refusal" }),
+      })
+      .mockReturnValueOnce({
+        finalMessage: () => Promise.resolve({ content: [{ type: "text", text: "Rescued output" }], stop_reason: "end_turn" }),
+      });
+    const provider = getProvider(makeAgent({ provider: "anthropic", providerModel: "claude-fable-5" }));
+    expect(await provider.complete("system", "message")).toBe("Rescued output");
+    expect(mockStream).toHaveBeenCalledTimes(2);
+    expect(mockStream.mock.calls[0][0].model).toBe("claude-fable-5");
+    expect(mockStream.mock.calls[1][0].model).toBe("claude-opus-4-8");
+  });
+
+  it("discards partial output from a mid-stream refusal", async () => {
+    mockStream
+      .mockReturnValueOnce({
+        finalMessage: () => Promise.resolve({ content: [{ type: "text", text: "partial garbage" }], stop_reason: "refusal" }),
+      })
+      .mockReturnValueOnce({
+        finalMessage: () => Promise.resolve({ content: [{ type: "text", text: "Clean output" }], stop_reason: "end_turn" }),
+      });
+    const provider = getProvider(makeAgent({ provider: "anthropic", providerModel: "claude-fable-5" }));
+    expect(await provider.complete("system", "message")).toBe("Clean output");
+  });
+
+  it("throws when the fallback model refuses too", async () => {
+    mockStream
+      .mockReturnValueOnce({ finalMessage: () => Promise.resolve({ content: [], stop_reason: "refusal" }) })
+      .mockReturnValueOnce({ finalMessage: () => Promise.resolve({ content: [], stop_reason: "refusal" }) });
+    const provider = getProvider(makeAgent({ provider: "anthropic", providerModel: "claude-fable-5" }));
+    await expect(provider.complete("system", "message")).rejects.toThrow(/declined/);
+  });
+
+  it("throws without a second call when the primary IS the fallback model", async () => {
+    mockStream.mockReturnValueOnce({
+      finalMessage: () => Promise.resolve({ content: [], stop_reason: "refusal" }),
+    });
+    const provider = getProvider(makeAgent({ provider: "anthropic", providerModel: "claude-opus-4-8" }));
+    await expect(provider.complete("system", "message")).rejects.toThrow(/declined/);
+    expect(mockStream).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("AnthropicProvider.complete: API error propagates", () => {
   it("rethrows errors from the Anthropic API", async () => {
     mockStream.mockReturnValueOnce({ finalMessage: () => Promise.reject(new Error("Rate limit exceeded")) });

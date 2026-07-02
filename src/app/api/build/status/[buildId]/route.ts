@@ -24,8 +24,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ buildId
     });
   }
 
-  // Not in memory (process restarted, or pruned after TTL) — recover the
-  // finished game from persistence so a reconnect still gets its result.
+  // No job row (pruned after TTL) — recover the finished game from persistence
+  // so a reconnect still gets its result.
   const game = getBuildGame(buildId);
   if (game) {
     return Response.json({

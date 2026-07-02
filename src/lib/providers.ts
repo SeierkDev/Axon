@@ -12,6 +12,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Agent } from "@/sdk/types";
 import { publicHttpFetch } from "./urlSecurity";
+import { logger } from "./logger";
 
 // System prompts — imported from each handler so the provider uses the real
 // domain-specific prompt, not a generic fallback.
@@ -112,11 +113,13 @@ Behavior:
 
 // Per-agent token limits — build agents need much higher limits to produce
 // complete HTML5 games. All other agents use the default 2048.
+// The coder runs on claude-fable-5, whose always-on thinking bills against
+// max_tokens — the extra headroom keeps the game itself at ~28k.
 const AGENT_MAX_TOKENS: Record<string, number> = {
   "build-orchestrator": 1024,
   "build-designer":     1024,
   "build-world":        2048,
-  "build-coder":        28000,
+  "build-coder":        40000,
   "build-artist":       28000,
   "build-qa":           1024,
 };
@@ -162,6 +165,23 @@ function stitchContinuation(soFar: string, continuation: string): string {
 
 // ── Anthropic ─────────────────────────────────────────────────────────────────
 
+// Where a completion lands if the primary model declines it with a safety
+// refusal (Fable-class models only — Opus/Haiku never emit stop_reason "refusal").
+const REFUSAL_FALLBACK_MODEL = "claude-opus-4-8";
+
+// True when the API says the model itself can't be used by this org (not a
+// transient failure): unknown model or missing entitlement.
+function isModelUnavailable(err: unknown): boolean {
+  try {
+    return (
+      err instanceof Anthropic.NotFoundError ||
+      err instanceof Anthropic.PermissionDeniedError
+    );
+  } catch {
+    return false; // SDK error classes unavailable (mocked module)
+  }
+}
+
 class AnthropicProvider implements ProviderClient {
   private client: Anthropic;
   private model: string;
@@ -174,6 +194,47 @@ class AnthropicProvider implements ProviderClient {
   }
 
   async complete(system: string, message: string, maxTokens = 2048): Promise<string> {
+    let first: { text: string; refused: boolean };
+    try {
+      first = await this.completeWith(this.model, system, message, maxTokens);
+    } catch (err) {
+      // The org may not have access to the primary model at all (404/403, e.g.
+      // a Fable-class model without the required retention setting). A paid
+      // build must never die on that — re-run on the Opus fallback.
+      if (this.model !== REFUSAL_FALLBACK_MODEL && isModelUnavailable(err)) {
+        logger.warn("provider.model_fallback", "Primary model unavailable — falling back", {
+          model: this.model,
+          fallback: REFUSAL_FALLBACK_MODEL,
+          reason: err instanceof Error ? err.message : String(err),
+        });
+        const rescued = await this.completeWith(REFUSAL_FALLBACK_MODEL, system, message, maxTokens);
+        if (rescued.refused) throw new Error("Model declined the request (fallback included)");
+        return rescued.text;
+      }
+      throw err;
+    }
+    if (!first.refused) return first.text;
+    // Fable-class models can decline a request outright (stop_reason "refusal",
+    // occasionally a false positive on benign work) — same fallback.
+    if (this.model === REFUSAL_FALLBACK_MODEL) {
+      throw new Error(`Model ${this.model} declined the request`);
+    }
+    logger.warn("provider.model_fallback", "Primary model refused — falling back", {
+      model: this.model,
+      fallback: REFUSAL_FALLBACK_MODEL,
+      reason: "refusal",
+    });
+    const second = await this.completeWith(REFUSAL_FALLBACK_MODEL, system, message, maxTokens);
+    if (second.refused) throw new Error("Model declined the request (fallback included)");
+    return second.text;
+  }
+
+  private async completeWith(
+    model: string,
+    system: string,
+    message: string,
+    maxTokens: number,
+  ): Promise<{ text: string; refused: boolean }> {
     const timeoutMs = Math.max(120_000, maxTokens * 30);
     // If the model hits the token ceiling mid-output, ask it to continue from
     // where it stopped — as a normal follow-up turn, since this model doesn't
@@ -198,19 +259,22 @@ class AnthropicProvider implements ProviderClient {
       const msg = await withRetry(
         () =>
           this.client.messages
-            .stream({ model: this.model, max_tokens: maxTokens, system, messages }, { timeout: timeoutMs })
+            .stream({ model, max_tokens: maxTokens, system, messages }, { timeout: timeoutMs })
             .finalMessage(),
         3,
         1000,
-        `anthropic:${this.model}`,
+        `anthropic:${model}`,
       );
+      // A safety refusal may arrive before any output (empty content) or
+      // mid-stream (partial output) — discard partials, the caller falls back.
+      if ((msg.stop_reason as string) === "refusal") return { text: "", refused: true };
       const block = msg.content.find((b) => b.type === "text");
       if (!block || block.type !== "text") throw new Error("No text response from Anthropic");
       full = round === 0 ? block.text : stitchContinuation(full, block.text);
-      if (msg.stop_reason !== "max_tokens") return full; // finished cleanly
+      if (msg.stop_reason !== "max_tokens") return { text: full, refused: false }; // finished cleanly
     }
     // Continuation cap reached — return the best effort rather than failing the build.
-    return full;
+    return { text: full, refused: false };
   }
 
   async *stream(system: string, message: string, maxTokens = 4096): AsyncIterable<string> {
