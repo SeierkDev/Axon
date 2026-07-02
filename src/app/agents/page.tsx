@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { searchAgents, getAgentCounts } from "@/lib/agents";
 import { getVerifiedOwners } from "@/lib/ownerVerification";
+import { getAgencListedIds } from "@/lib/integrations/agencListing";
 import { getAllCapabilities } from "@/lib/capabilities";
 import type { SortField } from "@/lib/agents";
 import SiteNav from "@/components/SiteNav";
@@ -35,9 +36,14 @@ export default async function AgentsPage({
     sort: (activeSort as SortField),
     limit: 200,
   });
-  // Tag each agent with whether its owner wallet is verified (one batched query).
+  // Tag each agent with owner verification + AgenC cross-listing (batched queries).
   const verifiedOwners = getVerifiedOwners(filtered.map((a) => a.agentId));
-  const agents = filtered.map((a) => ({ ...a, ownerVerified: verifiedOwners.has(a.agentId) }));
+  const agencListed = getAgencListedIds(filtered.map((a) => a.agentId));
+  const agents = filtered.map((a) => ({
+    ...a,
+    ownerVerified: verifiedOwners.has(a.agentId),
+    agencListed: agencListed.has(a.agentId),
+  }));
 
   return (
     <div className="bg-white dark:bg-[#0a0a0a] min-h-screen text-[#0a0a0a] dark:text-white">

@@ -10,6 +10,7 @@ import { computeReputation } from "@/lib/reputation";
 import type { Review } from "@/sdk/types";
 import SiteNav from "@/components/SiteNav";
 import ReviewForm from "@/components/ReviewForm";
+import AgencCrossListing from "./AgencCrossListing";
 
 export const dynamic = "force-dynamic";
 
@@ -179,6 +180,9 @@ export default async function AgentProfilePage({
             <Row label="Avg Latency" value={avgLatency} />
           </div>
         </div>
+
+        {/* AgenC cross-listing (opt-in interop) */}
+        <AgencCrossListing agentId={agent.agentId} />
 
         {/* Identity */}
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">

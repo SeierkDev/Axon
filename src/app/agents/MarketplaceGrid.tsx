@@ -72,6 +72,9 @@ function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
             {agent.ownerVerified && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 leading-none">Verified owner</span>
             )}
+            {agent.agencListed && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-pink-100 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400 leading-none">✓ AgenC</span>
+            )}
           </div>
           <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
             {agent.name}

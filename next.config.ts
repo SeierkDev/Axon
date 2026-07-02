@@ -22,6 +22,11 @@ const nextConfig: NextConfig = {
       "./node_modules/@libsql/darwin-arm64/**/*",
     ],
   },
+  // litesvm is a native module (AgenC's local marketplace sandbox, dev-only) and
+  // the marketplace SDK's /testing entry loads it — keep both out of the webpack
+  // bundle; they resolve from node_modules at runtime where available (the
+  // cross-listing code degrades gracefully when they aren't).
+  serverExternalPackages: ["litesvm", "@tetsuo-ai/marketplace-sdk"],
   async headers() {
     return [
       {

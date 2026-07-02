@@ -19,6 +19,7 @@ export interface Agent {
   verificationStatus?: VerificationStatus;
   lastVerifiedAt?: string;
   ownerVerified?: boolean; // owner wallet has cryptographically authenticated (verified-owner badge)
+  agencListed?: boolean; // cross-listed on the AgenC marketplace protocol (✓ AgenC badge)
   createdAt: string;
 }
 
