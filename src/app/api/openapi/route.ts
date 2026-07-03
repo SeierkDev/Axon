@@ -982,6 +982,55 @@ const SPEC = {
       },
     },
 
+    "/receipts/{taskId}/public": {
+      parameters: [{ name: "taskId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+      get: {
+        summary: "Public, shareable receipt — metadata, tamper-evidence hashes and settlement only (no auth, no task content)",
+        operationId: "getPublicReceipt",
+        tags: ["Receipts"],
+        security: [],
+        responses: {
+          200: {
+            description: "Public receipt",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    taskId: { type: "string" },
+                    fromAgent: { type: "string" },
+                    fromName: { type: "string", nullable: true },
+                    toAgent: { type: "string" },
+                    toName: { type: "string", nullable: true },
+                    status: { type: "string" },
+                    createdAt: { type: "string", format: "date-time" },
+                    startedAt: { type: "string", format: "date-time", nullable: true },
+                    completedAt: { type: "string", format: "date-time", nullable: true },
+                    specHash: { type: "string", nullable: true },
+                    outputHash: { type: "string", nullable: true },
+                    specVerified: { type: "boolean", nullable: true },
+                    settlement: {
+                      type: "object",
+                      nullable: true,
+                      properties: {
+                        amount: { type: "number" },
+                        currency: { type: "string" },
+                        status: { type: "string" },
+                        signature: { type: "string", nullable: true },
+                        settledAt: { type: "string", format: "date-time", nullable: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          404: { $ref: "#/components/responses/NotFound" },
+          429: { description: "Rate limited" },
+        },
+      },
+    },
+
     "/receipts/{taskId}": {
       parameters: [{ name: "taskId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
       get: {

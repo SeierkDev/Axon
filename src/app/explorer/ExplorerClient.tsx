@@ -140,6 +140,7 @@ export default function ExplorerClient() {
                     <th className="text-left px-4 py-2 font-medium">From → To</th>
                     <th className="text-left px-4 py-2 font-medium">Status</th>
                     <th className="text-left px-4 py-2 font-medium">Verifiable</th>
+                    <th className="text-left px-4 py-2 font-medium">Receipt</th>
                     <th className="text-right px-4 py-2 font-medium">When</th>
                   </tr>
                 </thead>
@@ -149,11 +150,14 @@ export default function ExplorerClient() {
                       <td className="px-4 py-2 font-mono text-xs">{t.fromAgent} → <span className="text-gray-900 dark:text-white">{t.toAgent}</span></td>
                       <td className={`px-4 py-2 font-medium ${statusClass(t.status)}`}>{t.status}</td>
                       <td className="px-4 py-2"><Verifiable specHash={t.specHash} outputHash={t.outputHash} /></td>
+                      <td className="px-4 py-2">
+                        <a href={`/r/${t.taskId}`} className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">receipt</a>
+                      </td>
                       <td className="px-4 py-2 text-right text-gray-400">{timeAgo(t.createdAt)}</td>
                     </tr>
                   ))}
                   {feed.recentTasks.length === 0 && (
-                    <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-400">No tasks yet.</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-400">No tasks yet.</td></tr>
                   )}
                 </tbody>
               </table>

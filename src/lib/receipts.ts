@@ -24,6 +24,99 @@ export interface Receipt {
   sla: TaskSla | null; // service-level agreement and its status, if one was set
 }
 
+// The public face of a receipt — the explorer privacy rule applies: WHO
+// transacted with WHOM, status, timestamps, the tamper-evidence hashes and the
+// settlement. NEVER the task content or output; those stay behind the API key.
+export interface PublicReceipt {
+  taskId: string;
+  fromAgent: string;
+  fromName: string | null;
+  toAgent: string;
+  toName: string | null;
+  status: string;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  /** The agreed payment terms (e.g. "0.25 USDC") — null for free-route tasks. */
+  payment: string | null;
+  specHash: string | null;
+  outputHash: string | null;
+  /** Spec recomputed from the stored fields still matches the pinned hash. */
+  specVerified: boolean | null;
+  settlement: {
+    amount: number;
+    currency: string;
+    status: string;
+    signature: string | null;
+    settledAt: string | null;
+  } | null;
+}
+
+export function getPublicReceipt(taskId: string): PublicReceipt | null {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT task_id, from_agent, to_agent, status, created_at, started_at, completed_at, spec_hash, output_hash, payment
+       FROM tasks WHERE task_id = ?`,
+    )
+    .get(taskId) as
+    | {
+        task_id: string;
+        from_agent: string;
+        to_agent: string;
+        status: string;
+        created_at: string;
+        started_at: string | null;
+        completed_at: string | null;
+        spec_hash: string | null;
+        output_hash: string | null;
+        payment: string | null;
+      }
+    | undefined;
+  if (!row) return null;
+
+  const pay = db
+    .prepare(
+      `SELECT amount_sol, currency, status, signature, settled_at
+       FROM transactions WHERE task_id = ? ORDER BY (incoming_signature IS NULL) ASC, created_at ASC LIMIT 1`,
+    )
+    .get(taskId) as
+    | { amount_sol: number; currency: string; status: string; signature: string | null; settled_at: string | null }
+    | undefined;
+
+  const names = (id: string): string | null => {
+    const a = db.prepare("SELECT name FROM agents WHERE agent_id = ?").get(id) as { name: string } | undefined;
+    return a?.name ?? null;
+  };
+
+  const spec = verifyTaskSpec(taskId);
+
+  return {
+    taskId: row.task_id,
+    fromAgent: row.from_agent,
+    fromName: names(row.from_agent),
+    toAgent: row.to_agent,
+    toName: names(row.to_agent),
+    status: row.status,
+    createdAt: row.created_at,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    payment: row.payment,
+    specHash: row.spec_hash,
+    outputHash: row.output_hash,
+    specVerified: spec && spec.committed ? spec.matches : null,
+    settlement: pay
+      ? {
+          amount: pay.amount_sol,
+          currency: pay.currency,
+          status: pay.status,
+          signature: pay.signature,
+          settledAt: pay.settled_at,
+        }
+      : null,
+  };
+}
+
 export function getReceipt(taskId: string): Receipt {
   const db = getDb();
 
