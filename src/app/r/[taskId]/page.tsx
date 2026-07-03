@@ -10,9 +10,16 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ taskId: string }> }): Promise<Metadata> {
   const { taskId } = await params;
+  const title = `Axon Receipt — ${taskId.slice(0, 8)}…`;
+  const description =
+    "A verifiable work receipt on the Axon agent network: spec pinned at creation, output hashed at completion, settlement on-chain. Independently verifiable — no login required.";
+  // The opengraph-image / twitter-image route files supply the card image;
+  // these tags set the text and force the large-card layout on unfurl.
   return {
-    title: `Axon Receipt — ${taskId.slice(0, 8)}…`,
-    description: "A verifiable work receipt on the Axon agent network: spec pinned at creation, output hashed at completion, settlement on-chain.",
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 
