@@ -2,6 +2,7 @@ import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 import { emitAxonEvent } from "./eventBus";
+import { safeAppendTraceEvent, traceIdForTask, hashContent } from "./traceEvents";
 
 export interface TaskProgressEntry {
   id: number;
@@ -70,6 +71,19 @@ export function emitProgress(taskId: string, message: string): TaskProgressEntry
       message,
       sequence: entry.sequence,
     },
+  });
+
+  // Flight recorder: commit the progress update into the trace's hash chain. The
+  // message is stored as a hash only — the chain proves what was reported without
+  // exposing content on the public timeline.
+  safeAppendTraceEvent({
+    traceId: traceIdForTask(taskId),
+    taskId,
+    kind: "progress",
+    fromAgent: taskRow.from_agent,
+    toAgent: taskRow.to_agent,
+    outputHash: hashContent(message),
+    meta: { sequence: entry.sequence },
   });
 
   logger.info("task.progress", "Task progress emitted", { taskId, sequence: entry.sequence, message });

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPublicReceipt, type PublicReceipt } from "@/lib/receipts";
+import TimelineClient from "./TimelineClient";
 
 // /r/<taskId> — the shareable, public, tamper-evident receipt for a task.
 // One URL anyone can open: who worked for whom, the pinned hashes proving the
@@ -181,6 +182,9 @@ export default async function ReceiptPage({ params }: { params: Promise<{ taskId
             </a>
           </div>
         </div>
+
+        {/* The replayable, hash-chained execution timeline behind this receipt. */}
+        {r && <TimelineClient taskId={taskId} />}
       </div>
     </main>
   );

@@ -9,6 +9,7 @@ export interface RetentionResult {
   error_log: number;
   rate_limit_windows: number;
   task_progress: number;
+  trace_events: number;
 }
 
 export function runRetentionCleanup(): RetentionResult {
@@ -64,6 +65,18 @@ export function runRetentionCleanup(): RetentionResult {
       )
       .run(thirtyDaysAgo).changes;
 
+    // Execution traces age out with their tasks, same window as progress.
+    const trace_events = db
+      .prepare(
+        `DELETE FROM trace_events
+         WHERE task_id IN (
+           SELECT task_id FROM tasks
+           WHERE completed_at IS NOT NULL
+           AND completed_at < ?
+         )`
+      )
+      .run(thirtyDaysAgo).changes;
+
     return {
       webhook_deliveries,
       audit_events,
@@ -73,6 +86,7 @@ export function runRetentionCleanup(): RetentionResult {
       error_log,
       rate_limit_windows,
       task_progress,
+      trace_events,
     };
   })();
 }

@@ -8,6 +8,7 @@ import { logger } from "./logger";
 import { syncToTurso } from "./db-turso";
 import { recordRefundNote } from "./paymentNotes";
 import { getSplitsForTask, computeSplitAmounts, TOTAL_BPS, type TaskSplit } from "./escrowSplits";
+import { safeAppendTraceEvent, traceIdForTask } from "./traceEvents";
 
 // 'split' marks an escrow that was settled by distribution: the original row is
 // kept intact (total amount, recipient, on-chain signature) for the audit trail,
@@ -220,6 +221,18 @@ export function releasePayment(taskId: string): Payment | null {
     currency: payment.currency,
   });
 
+  // Flight recorder: the settlement that closes this task's trace.
+  if (payment.taskId) {
+    safeAppendTraceEvent({
+      traceId: traceIdForTask(payment.taskId),
+      taskId: payment.taskId,
+      kind: "settlement.completed",
+      fromAgent: payment.fromAgent,
+      toAgent: payment.toAgent,
+      meta: { amount: payment.amountSol, currency: payment.currency },
+    });
+  }
+
   void syncToTurso();
   return payment;
 }
@@ -249,6 +262,19 @@ function releaseWithSplits(
       insert.run(randomUUID(), escrow.task_id, escrow.from_agent, p.agentId, p.amount, escrow.currency, settledAt, settledAt, burn);
     }
   })();
+
+  // Flight recorder: one settlement event for the split, carrying the escrow
+  // total and how many recipients it divided across.
+  if (escrow.task_id) {
+    safeAppendTraceEvent({
+      traceId: traceIdForTask(escrow.task_id),
+      taskId: escrow.task_id,
+      kind: "settlement.completed",
+      fromAgent: escrow.from_agent,
+      toAgent: escrow.to_agent,
+      meta: { amount: escrow.amount_sol, currency: escrow.currency, splits: payouts.length },
+    });
+  }
 
   for (const p of payouts) {
     try {
@@ -369,6 +395,19 @@ export function releaseWithPenalty(taskId: string, penaltyBps: number): Payment 
     penaltyAmount,
     currency: row.currency,
   });
+
+  // Flight recorder: the penalty-reduced settlement that closes this task's trace
+  // (records what the worker actually received plus the applied penalty).
+  if (row.task_id) {
+    safeAppendTraceEvent({
+      traceId: traceIdForTask(row.task_id),
+      taskId: row.task_id,
+      kind: "settlement.completed",
+      fromAgent: row.from_agent,
+      toAgent: row.to_agent,
+      meta: { amount: providerAmount, currency: row.currency, penaltyBps },
+    });
+  }
 
   void syncToTurso();
   return getPaymentById(row.tx_id)!;

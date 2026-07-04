@@ -11,6 +11,7 @@ import { commitOutput } from "./outputCommitment";
 import { hashSpec } from "./specCommitment";
 import { syncToTurso } from "./db-turso";
 import { resolveTraceId, runWithTraceId } from "./tracing";
+import { safeAppendTraceEvent, hashContent } from "./traceEvents";
 
 export type TaskStatus = "payment_pending" | "queued" | "running" | "completed" | "failed";
 
@@ -169,6 +170,21 @@ export function createTask(opts: CreateTaskOptions): Task {
   );
 
   const task = getTaskById(taskId)!;
+
+  // Flight recorder: opening event for this task's trace — the who-hired-whom
+  // edge (from→to, workflow/step) plus the spec-hash commitment as input.
+  safeAppendTraceEvent({
+    traceId: task.traceId ?? task.taskId,
+    taskId: task.taskId,
+    kind: "task.created",
+    fromAgent: task.fromAgent,
+    toAgent: task.toAgent,
+    workflowId: task.workflowId ?? null,
+    stepIndex: task.stepIndex ?? null,
+    inputHash: specHash,
+    meta: task.payment ? { payment: task.payment } : null,
+  });
+
   if (initialStatus === "queued" && opts.queueQueuedWebhook !== false) queueTaskQueuedWebhook(task);
   void syncToTurso(); // covers task INSERT + any webhook_deliveries INSERT above
   logger.info("task.created", "Task created", {
@@ -283,6 +299,24 @@ export function completeTask(taskId: string, output: string): Task | null {
 
     const t = getTaskById(taskId)!;
 
+    // Flight recorder: emitted INSIDE the txn and before advanceWorkflow, so a
+    // workflow's next-step task.created can never get a lower seq than this step's
+    // completion (which would invert the replay timeline).
+    safeAppendTraceEvent({
+      traceId: t.traceId ?? t.taskId,
+      taskId: t.taskId,
+      kind: "task.completed",
+      fromAgent: t.fromAgent,
+      toAgent: t.toAgent,
+      workflowId: t.workflowId ?? null,
+      stepIndex: t.stepIndex ?? null,
+      outputHash: t.output ? hashContent(t.output) : null,
+      latencyMs:
+        t.startedAt && t.completedAt
+          ? new Date(t.completedAt).getTime() - new Date(t.startedAt).getTime()
+          : null,
+    });
+
     if (t.startedAt && t.completedAt) {
       const latencyMs = new Date(t.completedAt).getTime() - new Date(t.startedAt).getTime();
       recordTaskLatency(t.toAgent, latencyMs, true);
@@ -385,6 +419,28 @@ export function failTask(taskId: string, error: string): Task | null {
       toAgent: task.toAgent,
     });
   }
+
+  // A content-free classification only — the raw error may echo task content,
+  // which must never reach the public trace.
+  const errClass = /timed out|timeout/i.test(task.error ?? "")
+    ? "timeout"
+    : /declin|refus/i.test(task.error ?? "")
+      ? "refused"
+      : "error";
+  safeAppendTraceEvent({
+    traceId: task.traceId ?? task.taskId,
+    taskId: task.taskId,
+    kind: "task.failed",
+    fromAgent: task.fromAgent,
+    toAgent: task.toAgent,
+    workflowId: task.workflowId ?? null,
+    stepIndex: task.stepIndex ?? null,
+    meta: { errorClass: errClass },
+    latencyMs:
+      task.startedAt && task.completedAt
+        ? new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime()
+        : null,
+  });
 
   logger.warn("task.failed", "Task failed", {
     taskId: task.taskId,

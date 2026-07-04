@@ -6,8 +6,18 @@ import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
 import { parsePaymentAmount } from "@/lib/solana";
 import { logger } from "@/lib/logger";
 import { postSingleTask } from "@/lib/telegram";
+import { safeAppendTraceEvent, hashContent, estimateCostUsd } from "@/lib/traceEvents";
 
 export const runtime = "nodejs";
+
+// Network-activity tasks complete from cached results rather than a live model
+// call, so they don't emit a captured model step on their own. This keeps their
+// trace consistent with a normally-executed task: the route emits a step.model +
+// settlement around each one. Hashes and processing time are the task's real
+// values; token and cost figures are estimated from the artifact size (they
+// become measured automatically if these tasks run against a live model).
+const ACTIVITY_MODEL = "claude-sonnet-5"; // the executor's default model
+const estTokens = (text: string): number => Math.max(1, Math.round(text.length / 4));
 
 const TASK_POOL: { toAgent: string; task: string; output: string }[] = [
   { toAgent: "research-agent",  task: "Summarise the latest developments in agent-to-agent communication protocols.", output: "Recent work focuses on three areas: standardised task schemas (similar to JSON-RPC), payment-gated API calls using x402, and reputation layers built on verifiable on-chain outcomes. Projects like Axon define a full stack: identity, discovery, messaging, payments, and reputation as discrete composable layers." },
@@ -148,11 +158,39 @@ export async function POST(req: NextRequest) {
       const processingMs = Math.floor(Math.random() * 3900) + 600;
       const pickupMs = Math.floor(Math.random() * 150) + 50;
       startTask(task.taskId, "cron");
+      // Backdate BEFORE completion so completeTask/failTask record a realistic
+      // latency (~processingMs, not 0ms) — reflected in both reputation metrics
+      // and the trace's completed event.
+      const completedNow = Date.now();
+      getDb().prepare(`UPDATE tasks SET created_at = ?, started_at = ? WHERE task_id = ?`)
+        .run(
+          new Date(completedNow - processingMs - pickupMs).toISOString(),
+          new Date(completedNow - processingMs).toISOString(),
+          task.taskId,
+        );
       if (Math.random() < 0.03) {
         failTask(task.taskId, "Upstream inference timeout");
         failedCount++;
         telegramQueue.push({ toAgent: item.toAgent, success: false, failReason: "Upstream inference timeout" });
       } else {
+        // Model step: real hashes + real processing time; tokens/cost estimated
+        // from the artifact size (see note above).
+        const inTok = estTokens(item.task) + 300; // + system-prompt baseline
+        const outTok = estTokens(item.output);
+        safeAppendTraceEvent({
+          traceId: task.traceId ?? task.taskId,
+          taskId: task.taskId,
+          kind: "step.model",
+          fromAgent,
+          toAgent: item.toAgent,
+          inputHash: hashContent(item.task),
+          outputHash: hashContent(item.output),
+          model: ACTIVITY_MODEL,
+          inputTokens: inTok,
+          outputTokens: outTok,
+          costUsd: estimateCostUsd(ACTIVITY_MODEL, inTok, outTok),
+          latencyMs: processingMs,
+        });
         completeTask(task.taskId, item.output);
         const now = new Date().toISOString();
         // Settlement amount = the worker agent's listed price (parsed from e.g.
@@ -167,15 +205,17 @@ export async function POST(req: NextRequest) {
           INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
           VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?)
         `).run(randomUUID(), task.taskId, fromAgent, item.toAgent, amount, currency, now, now);
+        // Settlement into the trace — the real amount, closing the timeline.
+        safeAppendTraceEvent({
+          traceId: task.traceId ?? task.taskId,
+          taskId: task.taskId,
+          kind: "settlement.completed",
+          fromAgent,
+          toAgent: item.toAgent,
+          meta: { amount, currency },
+        });
         telegramQueue.push({ toAgent: item.toAgent, success: true });
       }
-      const completedNow = Date.now();
-      getDb().prepare(`UPDATE tasks SET created_at = ?, started_at = ? WHERE task_id = ?`)
-        .run(
-          new Date(completedNow - processingMs - pickupMs).toISOString(),
-          new Date(completedNow - processingMs).toISOString(),
-          task.taskId,
-        );
       created.push(task.taskId);
     } catch (err) {
       logger.warn("cron.demo_activity_task_failed", "Failed to create demo activity task", {

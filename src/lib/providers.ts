@@ -13,6 +13,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Agent } from "@/sdk/types";
 import { publicHttpFetch } from "./urlSecurity";
 import { logger } from "./logger";
+import { recordModelUsage } from "./modelUsage";
 
 // System prompts — imported from each handler so the provider uses the real
 // domain-specific prompt, not a generic fallback.
@@ -267,6 +268,14 @@ class AnthropicProvider implements ProviderClient {
         1000,
         `anthropic:${model}`,
       );
+      // Report token usage into the active trace step (no-op when untraced),
+      // accumulating across continuation rounds. Best-effort — never let it
+      // disturb the model call.
+      try {
+        if (msg.usage) recordModelUsage(model, msg.usage.input_tokens ?? 0, msg.usage.output_tokens ?? 0);
+      } catch {
+        /* usage capture is optional */
+      }
       // A safety refusal may arrive before any output (empty content) or
       // mid-stream (partial output) — discard partials, the caller falls back.
       if ((msg.stop_reason as string) === "refusal") return { text: "", refused: true };
@@ -331,9 +340,17 @@ class OpenAICompatibleProvider implements ProviderClient {
         throw err;
       }
 
-      const data = await res.json() as { choices: { message: { content: string } }[] };
+      const data = await res.json() as {
+        choices: { message: { content: string } }[];
+        usage?: { prompt_tokens?: number; completion_tokens?: number };
+      };
       const content = data.choices?.[0]?.message?.content;
       if (!content) throw new Error("No content in provider response");
+      try {
+        if (data.usage) recordModelUsage(this.model, data.usage.prompt_tokens ?? 0, data.usage.completion_tokens ?? 0);
+      } catch {
+        /* usage capture is optional */
+      }
       return content;
     }, 3, 1000, `openai-compat:${this.model}`);
   }

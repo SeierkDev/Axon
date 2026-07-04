@@ -10,6 +10,7 @@ import { deliverPendingWebhooks } from "../lib/webhooks";
 import { recordTaskLatency } from "../lib/metrics";
 import { formatContext } from "../lib/formatContext";
 import { runWithProvider, getAgentMaxTokens } from "../lib/providers";
+import { safeAppendTraceEvent, hashContent, estimateCostUsd, captureModelStep } from "../lib/traceEvents";
 import { verifyAgentEndpoint } from "../lib/verification";
 import { logger } from "../lib/logger";
 import { runWithTraceId } from "../lib/tracing";
@@ -199,12 +200,34 @@ async function processTasks() {
             setTimeout(() => reject(new Error(`Task timed out after ${TASK_TIMEOUT_MS / 1000}s`)), TASK_TIMEOUT_MS).unref()
           );
 
-          const output = await Promise.race([
-            mcpHandler
-              ? mcpHandler(fullMessage)
-              : runWithProvider(agent, fullMessage, getAgentMaxTokens(agent.agentId)),
-            taskTimeout,
-          ]);
+          const step = await captureModelStep(() =>
+            Promise.race([
+              mcpHandler
+                ? mcpHandler(fullMessage)
+                : runWithProvider(agent, fullMessage, getAgentMaxTokens(agent.agentId)),
+              taskTimeout,
+            ]),
+          );
+          const output = step.result;
+
+          // Flight recorder: the rich per-step event — input/output hashes, the
+          // actually-used model, tokens, cost, and latency. Best-effort.
+          safeAppendTraceEvent({
+            traceId: task.traceId ?? task.taskId,
+            taskId: task.taskId,
+            kind: "step.model",
+            fromAgent: task.fromAgent,
+            toAgent: task.toAgent,
+            workflowId: task.workflowId ?? null,
+            stepIndex: task.stepIndex ?? null,
+            inputHash: hashContent(fullMessage),
+            outputHash: hashContent(output),
+            model: step.model ?? (Boolean(mcpHandler) ? "mcp" : null),
+            inputTokens: step.inputTokens || null,
+            outputTokens: step.outputTokens || null,
+            costUsd: estimateCostUsd(step.model, step.inputTokens, step.outputTokens),
+            latencyMs: step.latencyMs,
+          });
 
           if (completeTask(task.taskId, output)) {
             settleCompletedTask(task.taskId);
