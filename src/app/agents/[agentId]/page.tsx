@@ -7,6 +7,7 @@ import CodeTabs from "@/components/CodeTabs";
 import { getAgentMetrics } from "@/lib/metrics";
 import { getReviewsByAgent, getAgentRating } from "@/lib/reviews";
 import { computeReputation } from "@/lib/reputation";
+import { getAgentTrackRecord } from "@/lib/trackRecord";
 import type { Review } from "@/sdk/types";
 import SiteNav from "@/components/SiteNav";
 import ReviewForm from "@/components/ReviewForm";
@@ -22,7 +23,14 @@ export async function generateMetadata({
   const { agentId } = await params;
   const agent = getAgentById(agentId);
   if (!agent) return { title: "Agent Not Found — Axon" };
-  return { title: `${agent.name} — Axon` };
+  const title = `${agent.name} — Axon Track Record`;
+  const description = `${agent.name}'s verified track record on Axon: every stat backed by receipts. Hire on proof, not vibes.`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
+  };
 }
 
 export default async function AgentProfilePage({
@@ -40,6 +48,7 @@ export default async function AgentProfilePage({
   const rating = getAgentRating(agentId);
   const metrics = getAgentMetrics(agentId, 30);
   const reputation = computeReputation(agentId);
+  const track = getAgentTrackRecord(agentId);
   const price = agent.price?.trim() || "Free";
   const isPaid = Boolean(agent.price?.trim());
   const avgLatency =
@@ -132,6 +141,104 @@ export default async function AgentProfilePage({
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">30d Success</p>
           </div>
         </div>
+
+        {/* Verified Track Record — every number backed by a receipt */}
+        {track && (
+          <div className="rounded-lg border border-teal-200 dark:border-teal-900/50 overflow-hidden mb-10">
+            <div className="px-5 py-3 border-b border-teal-200 dark:border-teal-900/50 bg-teal-50/60 dark:bg-teal-950/20 flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-400">
+                Verified Track Record
+              </p>
+              {track.running > 0 ? (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-semibold">
+                  ● Working now
+                </span>
+              ) : track.queued > 0 ? (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-semibold">
+                  ◔ {track.queued} in queue
+                </span>
+              ) : (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 font-semibold">
+                  ○ Available for hire
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-gray-100 dark:divide-gray-800">
+              <div className="p-4">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{track.tasksCompleted}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Jobs completed</p>
+              </div>
+              <div className="p-4">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {track.tasksCompleted + track.tasksFailed > 0 ? `${Math.round(track.successRate * 100)}%` : "—"}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Success rate</p>
+              </div>
+              <div className="p-4">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  ${Number(track.usdcEarned.toFixed(2))}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">USDC earned</p>
+              </div>
+              <div className="p-4">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {track.avgResponseSec > 0 ? `${track.avgResponseSec.toFixed(1)}s` : "—"}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Avg response</p>
+              </div>
+            </div>
+            {track.attestations.length > 0 && (
+              <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800">
+                <p className="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
+                  Third-party attestations
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {track.attestations.map((a, i) => (
+                    <span
+                      key={i}
+                      title={`Vouched by ${a.verifier}`}
+                      className="text-[11px] px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-900/50 bg-teal-50/50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-400 font-medium"
+                    >
+                      ✓ {a.capability}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
+                Recent verified work — every job links to its proof
+              </p>
+              {track.recentJobs.length === 0 ? (
+                <p className="text-sm text-gray-400 dark:text-gray-500">
+                  {track.tasksCompleted > 0
+                    ? "No public jobs to show here yet."
+                    : "No completed jobs on record yet."}
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {track.recentJobs.map((j) => (
+                    <li key={j.taskId}>
+                      <Link
+                        href={`/r/${encodeURIComponent(j.taskId)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 -mx-2 hover:bg-teal-50/60 dark:hover:bg-teal-950/20 group"
+                      >
+                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                          for {j.counterparty}
+                        </span>
+                        <span className="text-xs text-teal-600 dark:text-teal-400 shrink-0 font-medium">
+                          {j.payment ?? "free"} · view receipt ↗
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Trust */}
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">
