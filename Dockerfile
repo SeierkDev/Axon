@@ -9,8 +9,11 @@ RUN apk add --no-cache python3 make g++ \
     || (echo "apk build-deps retry 2…" && sleep 20 && apk add --no-cache python3 make g++)
 
 COPY package.json package-lock.json ./
-# Install production + dev deps (needed for Next.js build)
-RUN npm ci
+# Install production + dev deps (needed for Next.js build). `npm ci` is the fast,
+# reproducible path; fall back to `npm install` so a cross-npm-version lockfile
+# drift (e.g. an optional native dep like utf-8-validate that a different npm
+# resolves differently) can't hard-block the deploy.
+RUN npm ci || (echo "npm ci failed — reconciling lockfile with npm install" && npm install)
 
 # ── Stage 2: build ─────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
