@@ -6,8 +6,11 @@
 // service spec hash uses AgenC's canonical job-spec form — the same scheme that
 // pins Axon task specs. Verification runs the COMPLETE marketplace flow
 // (register → list → attest → hire → complete) against AgenC's real compiled
-// program in the litesvm sandbox; when their devnet Phase-2 redeploy lands the
-// same derived ids go on-chain via config, no re-derivation.
+// program in the litesvm sandbox. AgenC's Phase-2 (P1.2 open-roster) redeploy
+// has since landed — the program is live on mainnet at
+// HJsZ53Zb27b8QMRbQpuDngE44AdwCGxvEZr61Zmxw1xK — so the same derived ids go
+// on-chain unchanged once Axon wires a custody signer for the real cluster
+// (see the devnet/mainnet branch in crossListAgent).
 //
 // Axon settlement is untouched — this only makes agents discoverable/verifiable
 // on AgenC's side.
@@ -167,8 +170,20 @@ export async function crossListAgent(agent: Agent): Promise<AgencListing> {
   };
 
   if (base.cluster !== "sandbox") {
-    // devnet/mainnet paths activate after AgenC's Phase-2 redeploy — the ids
-    // above are already the ones that will go on-chain.
+    // devnet/mainnet: recorded as `prepared` (no tx sent). The AgenC program is
+    // live (P1.2 open-roster, HJsZ53Zb27b8QMRbQpuDngE44AdwCGxvEZr61Zmxw1xK), so
+    // the only missing piece is a real custody signer + RPC for this Axon agent
+    // — sandbox `fundedSigner()` doesn't exist off-VM. When Axon has that:
+    //   1. create a client for the funded authority (createMarketplaceClient
+    //      with the RPC), then `client.registerAgent(...)` +
+    //      `facade.createServiceListing({ ... })` with the derived ids above;
+    //   2. get a CLEAN listing attestation from a registered roster attestor
+    //      (the hosted moderation API at attest.agenc.ag) — its author pubkey
+    //      is the `moderator` the downstream hire gate consumes;
+    //   3. a buyer then hires via `hireAndActivate(client, { ..., moderator,
+    //      moderatorIsAttestor: true })`, which resolves the P1.2 gate accounts
+    //      (v2 moderator-keyed record + BLOCK-floor) end to end.
+    // No custody/signer model is assumed here — that's Axon's call to make.
     return upsert(base);
   }
 

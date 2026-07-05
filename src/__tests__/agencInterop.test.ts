@@ -84,7 +84,10 @@ describe("AgenC interop — Axon job specs execute on AgenC's program", () => {
     // Moderation attests CLEAN against the same Axon hash (fail-closed gate).
     await market.moderator.attestListing(listing, axonHash);
 
-    // Buyer hires — task + escrow + hire record in one instruction.
+    // Buyer hires — task + escrow + hire record in one instruction. P1.2: the
+    // gate consumes the attestation authored by `moderator` (the sandbox
+    // moderation authority; a registered roster attestor would also pass
+    // `moderatorIsAttestor: true`).
     const taskId = new Uint8Array(32).fill(8);
     await buyerClient.hireFromListing({
       listing,
@@ -95,6 +98,7 @@ describe("AgenC interop — Axon job specs execute on AgenC's program", () => {
       expectedPrice: price,
       expectedVersion: 1n,
       listingSpecHash: axonHash,
+      moderator: market.moderator.address,
     });
     const [task] = await findTaskPda({ creator: buyer.address, taskId });
 
@@ -106,6 +110,7 @@ describe("AgenC interop — Axon job specs execute on AgenC's program", () => {
         creator: buyer,
         jobSpecHash: axonHash,
         jobSpecUri: `agenc://job-spec/sha256/${axonSpecHex}`,
+        moderator: market.moderator.address,
       }),
     ]);
 
