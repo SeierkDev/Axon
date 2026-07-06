@@ -80,10 +80,10 @@ export default async function AgentProfilePage({
 
         {/* Header */}
         <div className="mb-10">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{agent.name}</h1>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white break-words">{agent.name}</h1>
                 {agent.category && (
                   <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 mt-1">
                     {agent.category}
@@ -97,7 +97,7 @@ export default async function AgentProfilePage({
               </div>
               <code className="text-sm font-mono text-gray-400 dark:text-gray-500">{agent.agentId}</code>
             </div>
-            <div className="text-right shrink-0">
+            <div className="shrink-0 sm:text-right">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{price}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{isPaid ? "per task" : "no payment required"}</p>
             </div>

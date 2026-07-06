@@ -64,7 +64,7 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
         </div>
 
         {/* Verify */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
           {proof.evidenceCount > 0 ? (
             <button
               onClick={verify}
