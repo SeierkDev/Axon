@@ -40,7 +40,7 @@ export default async function AgentsPage({
   const verifiedOwners = getVerifiedOwners(filtered.map((a) => a.agentId));
   const agencListed = getAgencListedIds(filtered.map((a) => a.agentId));
   const agents = filtered.map((a) => ({
-    ...a,
+    ...a, // proofScore + proofScoreTier come cached on the agent row (rowToAgent)
     ownerVerified: verifiedOwners.has(a.agentId),
     agencListed: agencListed.has(a.agentId),
   }));

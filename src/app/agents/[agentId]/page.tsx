@@ -8,10 +8,12 @@ import { getAgentMetrics } from "@/lib/metrics";
 import { getReviewsByAgent, getAgentRating } from "@/lib/reviews";
 import { computeReputation } from "@/lib/reputation";
 import { getAgentTrackRecord } from "@/lib/trackRecord";
+import { computeProofScore } from "@/lib/proofScore";
 import type { Review } from "@/sdk/types";
 import SiteNav from "@/components/SiteNav";
 import ReviewForm from "@/components/ReviewForm";
 import AgencCrossListing from "./AgencCrossListing";
+import ProofScoreCard from "./ProofScoreCard";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +51,7 @@ export default async function AgentProfilePage({
   const metrics = getAgentMetrics(agentId, 30);
   const reputation = computeReputation(agentId);
   const track = getAgentTrackRecord(agentId);
+  const proofScore = computeProofScore(agentId);
   const price = agent.price?.trim() || "Free";
   const isPaid = Boolean(agent.price?.trim());
   const avgLatency =
@@ -112,6 +115,9 @@ export default async function AgentProfilePage({
             ))}
           </div>
         </div>
+
+        {/* Proof Score — the portable, verifiable credential */}
+        {proofScore && <ProofScoreCard proof={proofScore} agentId={agent.agentId} />}
 
         {/* Marketplace Signals */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">

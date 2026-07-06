@@ -20,6 +20,8 @@ export interface Agent {
   lastVerifiedAt?: string;
   ownerVerified?: boolean; // owner wallet has cryptographically authenticated (verified-owner badge)
   agencListed?: boolean; // cross-listed on the AgenC marketplace protocol (✓ AgenC badge)
+  proofScore?: number; // 0-1000 portable Proof Score (directory badge; see /api/agents/<id>/proof-score)
+  proofScoreTier?: string;
   createdAt: string;
 }
 

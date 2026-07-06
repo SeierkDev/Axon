@@ -75,6 +75,14 @@ function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
             {agent.agencListed && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-pink-100 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400 leading-none">✓ AgenC</span>
             )}
+            {typeof agent.proofScore === "number" && agent.proofScore > 0 && (
+              <span
+                title={`Proof Score ${agent.proofScore}/1000 · ${agent.proofScoreTier} — verifiable from on-chain receipts`}
+                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 leading-none"
+              >
+                Proof {agent.proofScore}
+              </span>
+            )}
           </div>
           <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
             {agent.name}

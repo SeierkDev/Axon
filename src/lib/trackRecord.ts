@@ -1,5 +1,6 @@
 import { getDb } from "./db";
 import { computeReputation } from "./reputation";
+import { computeProofScore } from "./proofScore";
 import { getAttestationsForAgent } from "./attestations";
 import { getAgentById, isContractTestAgent } from "./agents";
 import { isOwnerVerified } from "./ownerVerification";
@@ -29,6 +30,8 @@ export interface AgentTrackRecord {
   price: string | null;
   // Stats — every one from an existing shared function.
   reputation: number;
+  proofScore: number; // 0..1000 portable, third-party-verifiable credential (see /api/agents/<id>/proof-score)
+  proofScoreTier: string;
   tasksCompleted: number;
   tasksFailed: number;
   successRate: number; // 0..1
@@ -129,6 +132,7 @@ export function getAgentTrackRecord(agentId: string): AgentTrackRecord | null {
   if (!agent) return null;
 
   const rep = computeReputation(agentId); // same fn the profile + trust badge use
+  const proof = computeProofScore(agentId); // portable Proof Score (non-null: agent exists)
   const act = liveStatus(agentId); // running/queued/last-completed
 
   return {
@@ -139,6 +143,8 @@ export function getAgentTrackRecord(agentId: string): AgentTrackRecord | null {
     ownerVerified: isOwnerVerified(agentId),
     price: agent.price ?? null,
     reputation: agent.reputation ?? 0,
+    proofScore: proof?.score ?? 0,
+    proofScoreTier: proof?.tier ?? "New",
     tasksCompleted: rep.totalTasksCompleted,
     tasksFailed: rep.totalTasksFailed,
     successRate: rep.successRate,
