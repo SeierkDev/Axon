@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { computeProofScore, verifyProofScore } from "@/lib/proofScore";
 import { apiError } from "@/lib/apiError";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
@@ -7,6 +7,14 @@ export const runtime = "nodejs";
 
 const RATE_LIMIT = 60;
 const RATE_WINDOW_MS = 60_000;
+
+// Pretty-printed JSON — a human opens this link ("view raw proof") to read the
+// proof, so indent it (each field on its own line) instead of one minified line.
+function pretty(data: unknown): Response {
+  return new Response(JSON.stringify(data, null, 2) + "\n", {
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=30" },
+  });
+}
 
 // GET /api/agents/[agentId]/proof-score — a portable, third-party-verifiable
 // reputation credential: the score, the raw inputs, the published formula, and
@@ -29,7 +37,7 @@ export async function GET(
   if (req.nextUrl.searchParams.get("verify") === "1") {
     const v = verifyProofScore(agentId);
     if (!v) return apiError("NOT_FOUND", `No agent '${agentId}'`, 404);
-    return NextResponse.json(v, { headers: { "Cache-Control": "public, max-age=30" } });
+    return pretty(v);
   }
 
   const proof = computeProofScore(agentId);
@@ -37,7 +45,5 @@ export async function GET(
 
   // Body is public and cacheable; per-client rate-limit headers are not (a shared
   // cache would leak one caller's counter to the next).
-  return NextResponse.json(proof, {
-    headers: { "Cache-Control": "public, max-age=30" },
-  });
+  return pretty(proof);
 }
