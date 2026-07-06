@@ -21,6 +21,8 @@ interface AgentRow {
   provider_endpoint: string | null;
   verification_status: string | null;
   last_verified_at: string | null;
+  proof_score: number | null;
+  proof_score_tier: string | null;
   created_at: string;
 }
 
@@ -53,6 +55,8 @@ function rowToAgent(row: AgentRow): Agent {
     providerEndpoint: row.provider_endpoint ?? undefined,
     verificationStatus: (row.verification_status ?? "unverified") as Agent["verificationStatus"],
     lastVerifiedAt: row.last_verified_at ?? undefined,
+    proofScore: row.proof_score ?? undefined, // cached; NULL until the recompute backfills it
+    proofScoreTier: row.proof_score_tier ?? undefined,
     createdAt: row.created_at,
   };
 }

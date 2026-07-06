@@ -3,6 +3,7 @@ import { getDb } from "./db";
 import { queueWebhookEvent } from "./webhooks";
 import { recordTaskLatency } from "./metrics";
 import { updateAgentReputation } from "./reputation";
+import { updateAgentProofScore } from "./proofScore";
 import { advanceWorkflow, failWorkflow } from "./workflows";
 import { onChildTaskCompleted, onChildTaskFailed } from "./quorum";
 import { logger } from "./logger";
@@ -328,6 +329,7 @@ export function completeTask(taskId: string, output: string): Task | null {
       onChildTaskCompleted(t.quorumId);
     }
     updateAgentReputation(t.toAgent);
+    updateAgentProofScore(t.toAgent); // refresh cached Proof Score (list-view badge)
     return t;
   })();
 
@@ -397,6 +399,7 @@ export function failTask(taskId: string, error: string): Task | null {
       onChildTaskFailed(t.quorumId);
     }
     updateAgentReputation(t.toAgent);
+    updateAgentProofScore(t.toAgent); // refresh cached Proof Score (list-view badge)
     return t;
   })();
 

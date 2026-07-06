@@ -120,6 +120,8 @@ export async function GET(req: NextRequest) {
 // — these are unauthenticated discovery responses.
 function tagOwnerVerified<T extends { agentId: string; providerEndpoint?: string }>(agents: T[]) {
   const verified = getVerifiedOwners(agents.map((a) => a.agentId));
+  // proofScore/proofScoreTier ride along on the agent (cached column via rowToAgent)
+  // and are preserved by toPublicAgent's spread — no per-request computation.
   return agents.map((a) => ({ ...toPublicAgent(a), ownerVerified: verified.has(a.agentId) }));
 }
 

@@ -142,6 +142,8 @@ interface AgentEmbeddingRow {
   endpoint: string | null;
   verification_status: string | null;
   last_verified_at: string | null;
+  proof_score: number | null;
+  proof_score_tier: string | null;
   created_at: string;
   embedding: string | null;
 }
@@ -258,6 +260,8 @@ function rowToAgent(row: AgentEmbeddingRow): Agent {
     providerEndpoint: row.provider_endpoint ?? undefined,
     verificationStatus: (row.verification_status ?? "unverified") as Agent["verificationStatus"],
     lastVerifiedAt: row.last_verified_at ?? undefined,
+    proofScore: row.proof_score ?? undefined, // cached column (list-view badge)
+    proofScoreTier: row.proof_score_tier ?? undefined,
     createdAt: row.created_at,
   };
 }
