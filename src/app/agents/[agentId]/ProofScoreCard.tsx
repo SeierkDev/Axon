@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ProofScore } from "@/lib/proofScore";
+import { ExtArrow } from "@/components/ExtArrow";
 
 // Colours per tier — a credit-score-style ladder.
 const TIER_STYLES: Record<string, string> = {
@@ -11,6 +12,12 @@ const TIER_STYLES: Record<string, string> = {
   Emerging: "border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400",
   New: "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400",
 };
+
+// Proper display names for networks (the stored key is lowercase, e.g. "agenc").
+const NETWORK_LABEL: Record<string, string> = { agenc: "AgenC", axon: "Axon" };
+function networkLabel(n: string): string {
+  return NETWORK_LABEL[n.toLowerCase()] ?? n.charAt(0).toUpperCase() + n.slice(1);
+}
 
 type Verification = {
   verified: boolean;
@@ -40,6 +47,9 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
   const quality = Math.round(proof.components.quality.factor * 100);
   const provenWork = Math.round(proof.components.provenWork.factor * 100);
   const tierStyle = TIER_STYLES[proof.tier] ?? TIER_STYLES.New;
+  // Work this agent proved on OTHER networks (e.g. AgenC) — its reputation follows
+  // it across the boundary instead of resetting, each item verifiable on its origin.
+  const crossNetwork = (proof.evidence ?? []).filter((e) => e.network !== "axon");
 
   return (
     <div className="rounded-lg border border-teal-200 dark:border-teal-900/50 overflow-hidden mb-10">
@@ -63,6 +73,28 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
           <Bar label="Proven work" pct={provenWork} sub={`${proof.evidenceCount} settled task${proof.evidenceCount !== 1 ? "s" : ""} on-chain`} />
         </div>
 
+        {/* Cross-network work — reputation that travels across agent networks */}
+        {crossNetwork.length > 0 && (
+          <div className="mb-5 rounded-md border border-pink-200 dark:border-pink-900/50 bg-pink-50/60 dark:bg-pink-950/20 px-4 py-3">
+            <p className="text-xs font-semibold text-pink-700 dark:text-pink-400 mb-1.5">
+              Reputation that travels — {crossNetwork.length} settlement{crossNetwork.length !== 1 ? "s" : ""} earned on other networks
+            </p>
+            <ul className="space-y-1">
+              {crossNetwork.map((e) => (
+                <li key={`${e.network}:${e.taskId}`} className="flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-300">
+                  <span>{networkLabel(e.network)} · settled on-chain</span>
+                  <a href={e.receipt} target="_blank" rel="noopener noreferrer" className="text-pink-600 dark:text-pink-400 hover:underline whitespace-nowrap">
+                    receipt<ExtArrow />
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">
+              Counted in the score above; each verifiable on the network that settled it.
+            </p>
+          </div>
+        )}
+
         {/* Verify */}
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
           {proof.evidenceCount > 0 ? (
@@ -82,7 +114,7 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
             rel="noopener noreferrer"
             className="text-xs text-teal-600 dark:text-teal-400 hover:underline"
           >
-            view raw proof ↗
+            view raw proof<ExtArrow />
           </a>
         </div>
 

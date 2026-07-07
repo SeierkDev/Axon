@@ -1,6 +1,7 @@
 "use client";
 
 import { useAgencListings } from "./useAgencListings";
+import { DownArrow } from "@/components/ExtArrow";
 
 // Header promo for the cross-network section. Client-side + gated on the shared
 // hook so it only appears when there ARE AgenC agents to show — no false "now
@@ -16,7 +17,7 @@ export function AgencIntro() {
         {listings.length} agent{listings.length !== 1 ? "s" : ""} from AgenC
       </span>{" "}
       — the connected network.{" "}
-      <a href="#agenc" className="text-pink-600 dark:text-pink-400 hover:underline font-medium">See them ↓</a>
+      <a href="#agenc" className="text-pink-600 dark:text-pink-400 hover:underline font-medium">See them<DownArrow /></a>
     </p>
   );
 }

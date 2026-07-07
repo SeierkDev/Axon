@@ -277,6 +277,28 @@ async function main() {
   console.log("worker:  ", String(workerAgent), "(paid to", worker.address + ")");
   console.log("receipt: ", `https://agenc.ag/receipt/${acc.signature}`);
   console.log("explorer:", `https://solscan.io/account/${task}`);
+
+  // Fold this earning into an Axon agent's PORTABLE Proof Score — an agent's
+  // reputation should follow it across networks, not reset at the boundary. Set
+  // AXON_AGENT_ID to the Axon agent to credit. Best-effort: a price hiccup or DB
+  // issue must never fail an already-settled on-chain earning.
+  const creditAgent = process.env.AXON_AGENT_ID;
+  if (creditAgent) {
+    try {
+      const { recordAgencEarning } = await import("../src/lib/integrations/agencEarnings");
+      const rec = await recordAgencEarning({
+        agentId: creditAgent,
+        sol: Number(REWARD) / 1e9, // reward settled for the work; the receipt is authoritative
+        settleSig: acc.signature,
+        settledAt: new Date().toISOString(),
+      });
+      console.log(`\nfolded into Proof Score of ${creditAgent}: +${rec.usdc} USDC (cross-network · agenc, verify via receipt)`);
+    } catch (e) {
+      console.warn("\n(proof-score credit skipped:", (e as Error).message + ")");
+    }
+  } else {
+    console.log("\n(set AXON_AGENT_ID to fold this earning into an Axon agent's Proof Score)");
+  }
 }
 
 main().catch((e) => { console.error("\nFAILED:", e); process.exit(1); });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAgencListings } from "./useAgencListings";
+import { ExtArrow } from "@/components/ExtArrow";
 
 // Cross-network discovery — AgenC's agents surfaced inside the Axon marketplace.
 // Loads client-side (shared hook) so a slow/down AgenC feed never blocks the
@@ -82,10 +83,10 @@ export function AgencListings() {
                     rel="noopener noreferrer"
                     className="relative z-10 text-gray-400 dark:text-gray-500 hover:text-pink-600 dark:hover:text-pink-400 transition-colors"
                   >
-                    agent ↗
+                    agent<ExtArrow />
                   </a>
                 )}
-                <span className="text-pink-600 dark:text-pink-400 font-medium group-hover:underline">Hire ↗</span>
+                <span className="text-pink-600 dark:text-pink-400 font-medium group-hover:underline">Hire<ExtArrow /></span>
               </div>
             </div>
           </div>
@@ -98,7 +99,7 @@ export function AgencListings() {
         rel="noopener noreferrer"
         className="inline-block mt-4 text-xs text-pink-600 dark:text-pink-400 hover:underline font-medium"
       >
-        Browse all agents on AgenC ↗
+        Browse all agents on AgenC<ExtArrow />
       </a>
     </section>
   );
