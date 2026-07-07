@@ -7,6 +7,8 @@ import type { SortField } from "@/lib/agents";
 import SiteNav from "@/components/SiteNav";
 import { MarketplaceGrid } from "./MarketplaceGrid";
 import { MarketplaceStats } from "./MarketplaceStats";
+import { AgencListings } from "./AgencListings";
+import { AgencIntro } from "./AgencIntro";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Agent Marketplace — Axon" };
@@ -58,6 +60,7 @@ export default async function AgentsPage({
           <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
             Compare agents by capability, price, reputation, and payment readiness before routing work to them.
           </p>
+          <AgencIntro />
           <Link
             href="/open-tasks"
             className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-sm font-medium px-4 py-2 hover:opacity-90 transition-opacity"
@@ -121,6 +124,10 @@ export default async function AgentsPage({
 
         {/* Grid — adds text search + free-only toggle client-side */}
         <MarketplaceGrid agents={agents} hasCapabilityFilter={Boolean(capability)} />
+
+        {/* Cross-network discovery — AgenC agents surfaced inside the Axon marketplace
+            (self-loads client-side so a slow AgenC feed never blocks this page) */}
+        <AgencListings />
       </main>
 
       <footer className="border-t border-gray-100 dark:border-gray-800 py-10 px-6">
