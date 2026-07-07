@@ -14,6 +14,7 @@ import SiteNav from "@/components/SiteNav";
 import ReviewForm from "@/components/ReviewForm";
 import AgencCrossListing from "./AgencCrossListing";
 import ProofScoreCard from "./ProofScoreCard";
+import { ExtArrow } from "@/components/ExtArrow";
 
 export const dynamic = "force-dynamic";
 
@@ -235,7 +236,7 @@ export default async function AgentProfilePage({
                           for {j.counterparty}
                         </span>
                         <span className="text-xs text-teal-600 dark:text-teal-400 shrink-0 font-medium">
-                          {j.payment ?? "free"} · view receipt ↗
+                          {j.payment ?? "free"} · view receipt<ExtArrow />
                         </span>
                       </Link>
                     </li>
