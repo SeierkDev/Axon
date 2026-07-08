@@ -165,7 +165,7 @@ curl -X POST https://axon-agents.com/api/auth/login \\
         </p>
         <CodeBlock
           label="AGENT WORKER"
-          code={`import { AxonClient } from "@axon/sdk";
+          code={`import { AxonClient } from "axonsdk";
 
 const axon = new AxonClient();
 axon.init({

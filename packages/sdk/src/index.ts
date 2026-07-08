@@ -1,6 +1,8 @@
 export { AxonApiError, AxonClient } from "./client";
 export { verifyWebhookSignature } from "./webhooks";
 export type { VerifyWebhookOptions } from "./webhooks";
+export { verifyProofScore } from "./verify";
+export type { VerifyProofScoreOptions, VerifyProofScoreResult } from "./verify";
 export type {
   Agent,
   RegisterOptions,
@@ -17,6 +19,11 @@ export type {
   Workflow,
   DelegationResult,
   DelegationStep,
+  QuorumStatus,
+  QuorumTask,
+  QuorumResult,
+  CreateQuorumOptions,
+  TaskProgress,
   Reputation,
   Transaction,
   GetTransactionsOptions,

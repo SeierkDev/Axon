@@ -114,6 +114,10 @@ var AxonClient = class {
   async failTask(taskId, error) {
     return this.post(`/api/tasks/${pathPart(taskId)}/fail`, { error });
   }
+  /** Emit a progress update while running a task — streamed to the payer and recorded on the receipt. */
+  async emitProgress(taskId, message) {
+    return this.post(`/api/tasks/${pathPart(taskId)}/progress`, { message });
+  }
   onTask(handler) {
     this.taskHandler = handler;
   }
@@ -123,7 +127,7 @@ var AxonClient = class {
     }
     try {
       const result = await this.taskHandler(task);
-      return { taskId: task.taskId, ...result, completedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      return { ...result, taskId: task.taskId, completedAt: (/* @__PURE__ */ new Date()).toISOString() };
     } catch (err) {
       return { taskId: task.taskId, success: false, output: "", error: String(err), completedAt: (/* @__PURE__ */ new Date()).toISOString() };
     }
@@ -144,6 +148,15 @@ var AxonClient = class {
       await this.failTask(started.taskId, result.error ?? "Task failed");
     }
     return result;
+  }
+  // Quorum tasks
+  /** Fan a task out to multiple agents; the first `threshold` matching results win. */
+  async createQuorumTask(options) {
+    return this.post("/api/tasks/quorum", options);
+  }
+  /** Fetch a quorum task and every agent's result. */
+  async getQuorumTask(quorumId) {
+    return this.get(`/api/quorum/${pathPart(quorumId)}`);
   }
   // Delegation
   async delegate(options) {
@@ -183,6 +196,11 @@ var AxonClient = class {
   }
   async getReceipt(taskId) {
     return this.get(`/api/receipts/${pathPart(taskId)}`);
+  }
+  // Attach a dispute (or general) note to a task's payment. Only parties to the
+  // task may file one; it then surfaces on the receipt's `notes`.
+  async addReceiptNote(taskId, kind, note) {
+    return this.post(`/api/receipts/${pathPart(taskId)}`, { kind, note });
   }
   async verifyEndpoint(agentId) {
     return this.get(`/api/agents/${pathPart(agentId)}/verify`);
@@ -305,6 +323,132 @@ var AxonClient = class {
   async retryWebhookDelivery(deliveryId) {
     return this.post(`/api/webhooks/deliveries/${pathPart(deliveryId)}/retry`, {});
   }
+  // Bidding
+  /** Open a task for bidding (instead of hiring a fixed agent). */
+  async createOpenTask(options) {
+    return this.post("/api/open-tasks", options);
+  }
+  /** Discover open tasks available to bid on. */
+  async listOpenTasks(options = {}) {
+    const params = new URLSearchParams();
+    if (options.status) params.set("status", options.status);
+    if (options.capability) params.set("capability", options.capability);
+    if (options.from) params.set("from", options.from);
+    if (options.limit !== void 0) params.set("limit", String(options.limit));
+    const qs = params.toString();
+    const res = await this.get(`/api/open-tasks${qs ? `?${qs}` : ""}`);
+    return res.openTasks;
+  }
+  /** Fetch an open task and all of its bids. */
+  async getOpenTask(openTaskId) {
+    return this.get(`/api/open-tasks/${pathPart(openTaskId)}`);
+  }
+  /** Cancel an open task you posted, so it stops accepting bids. */
+  async cancelOpenTask(openTaskId) {
+    return this.delete(`/api/open-tasks/${pathPart(openTaskId)}`);
+  }
+  /** Split a task's escrow across multiple agents by share (basis points summing to 10000). */
+  async defineSplits(taskId, recipients) {
+    return this.post(`/api/tasks/${pathPart(taskId)}/splits`, { recipients });
+  }
+  /** View a task's escrow split and the projected per-recipient payouts. */
+  async getSplits(taskId) {
+    return this.get(`/api/tasks/${pathPart(taskId)}/splits`);
+  }
+  /** Create a reusable workflow template — an agent chain + a task with {{placeholders}}. */
+  async createWorkflowTemplate(options) {
+    return this.post("/api/workflow-templates", options);
+  }
+  /** Discover workflow templates (optionally filtered to one owner). */
+  async listWorkflowTemplates(query) {
+    const params = new URLSearchParams();
+    if (query?.from) params.set("from", query.from);
+    if (query?.limit) params.set("limit", String(query.limit));
+    const qs = params.toString();
+    const res = await this.get(`/api/workflow-templates${qs ? `?${qs}` : ""}`);
+    return res.templates;
+  }
+  /** Fetch a single workflow template. */
+  async getWorkflowTemplate(templateId) {
+    return this.get(`/api/workflow-templates/${pathPart(templateId)}`);
+  }
+  /** Delete a workflow template you own. */
+  async deleteWorkflowTemplate(templateId) {
+    return this.delete(`/api/workflow-templates/${pathPart(templateId)}`);
+  }
+  /** Instantiate a template (as `from`) with parameter values — starts a real workflow. */
+  async instantiateWorkflowTemplate(templateId, options) {
+    const res = await this.post(`/api/workflow-templates/${pathPart(templateId)}/instantiate`, options);
+    return res.workflow;
+  }
+  /** The canonical message a verifier signs to attest an agent's capability. */
+  attestationMessage(agentId, capability) {
+    return `axon-attest:${agentId}:${capability}`;
+  }
+  /** The canonical message a verifier signs to revoke one of their attestations. */
+  attestationRevokeMessage(attestationId) {
+    return `axon-attest-revoke:${attestationId}`;
+  }
+  /** Submit a signed third-party attestation that an agent has a capability. */
+  async attestCapability(agentId, options) {
+    return this.post(`/api/agents/${pathPart(agentId)}/attestations`, options);
+  }
+  /** List an agent's capability attestations. */
+  async getAttestations(agentId) {
+    const res = await this.get(`/api/agents/${pathPart(agentId)}/attestations`);
+    return res.attestations;
+  }
+  /** Revoke an attestation — sign attestationRevokeMessage(attestationId) with the verifier wallet. */
+  async revokeAttestation(agentId, attestationId, signature) {
+    return this.delete(`/api/agents/${pathPart(agentId)}/attestations/${pathPart(attestationId)}`, { signature });
+  }
+  /** Define (or replace) an SLA on a task — a deadline and a penalty the provider forfeits on breach. The task's payer only. */
+  async defineSla(taskId, options) {
+    return this.post(`/api/tasks/${pathPart(taskId)}/sla`, options);
+  }
+  /** Get a task's SLA and its current status (active | met | breached). */
+  async getSla(taskId) {
+    return this.get(`/api/tasks/${pathPart(taskId)}/sla`);
+  }
+  /** Report an agent for abuse (spam, scam, non-delivery, etc.). */
+  async fileAbuseReport(options) {
+    return this.post(`/api/abuse-reports`, options);
+  }
+  /** Get the platform's published fee policy. */
+  async getFeePolicy() {
+    return this.get(`/api/fee-policy`);
+  }
+  /** Get the protocol versions and capabilities this server speaks. */
+  async getProtocol() {
+    return this.get(`/api/protocol`);
+  }
+  /** Negotiate a common protocol version — offer the versions you speak, get the highest both share. */
+  async negotiateProtocol(clientVersions) {
+    return this.post(`/api/protocol`, { clientVersions });
+  }
+  /** Get the public network explorer feed: recent tasks, settlements, and headline totals. */
+  async getExplorer(limit) {
+    const q = limit ? `?limit=${encodeURIComponent(limit)}` : "";
+    return this.get(`/api/explorer${q}`);
+  }
+  /** Get the public platform status: components, overall health, and live metrics. */
+  async getStatus() {
+    return this.get(`/api/status`);
+  }
+  /** Submit a bid on an open task. */
+  async submitBid(openTaskId, options) {
+    return this.post(`/api/open-tasks/${pathPart(openTaskId)}/bids`, options);
+  }
+  /** List the bids on an open task. */
+  async getBids(openTaskId) {
+    const res = await this.get(`/api/open-tasks/${pathPart(openTaskId)}/bids`);
+    return res.bids;
+  }
+  /** Accept a bid — converts the open task into a real task at the agreed price.
+   *  For paid bids, pass `paymentSignature` to escrow the agreed amount. */
+  async acceptBid(openTaskId, options) {
+    return this.post(`/api/open-tasks/${pathPart(openTaskId)}/accept`, options);
+  }
   // x402
   async getX402Requirements(agentId) {
     const res = await fetch(`${this.baseUrl()}/api/agents/${pathPart(agentId)}/x402`);
@@ -371,27 +515,62 @@ var AxonClient = class {
     if (this.config.apiKey) headers.Authorization = `Bearer ${this.config.apiKey}`;
     return headers;
   }
-  async get(path) {
-    const res = await fetch(`${this.baseUrl()}${path}`, { headers: this.headers() });
-    if (!res.ok) throw await this.apiErrorFromResponse(res, "GET", path);
-    return res.json();
+  get(path) {
+    return this.request("GET", path);
   }
-  async post(path, body, extraHeaders) {
-    const res = await fetch(`${this.baseUrl()}${path}`, {
-      method: "POST",
-      headers: this.headers({ "Content-Type": "application/json", ...extraHeaders ?? {} }),
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) throw await this.apiErrorFromResponse(res, "POST", path);
-    return res.json();
+  post(path, body, extraHeaders) {
+    return this.request("POST", path, { body, headers: extraHeaders });
   }
-  async delete(path) {
-    const res = await fetch(`${this.baseUrl()}${path}`, {
-      method: "DELETE",
-      headers: this.headers()
+  delete(path, body) {
+    return this.request("DELETE", path, { body });
+  }
+  // Central request path: per-request timeout, plus automatic retry with
+  // exponential backoff + jitter for transient failures (network error, timeout,
+  // 429, 5xx). Only idempotent requests are retried — GET/DELETE always, a POST
+  // ONLY when it carries an Idempotency-Key, so a retry can never double-apply a
+  // side effect. A retryable network/timeout failure surfaces as an AxonApiError
+  // with a NETWORK / TIMEOUT code (status 0) instead of a raw fetch throw.
+  async request(method, path, opts = {}) {
+    const maxRetries = Math.max(0, this.config.maxRetries ?? 2);
+    const baseMs = this.config.retryBaseMs ?? 250;
+    const timeoutMs = this.config.timeoutMs ?? 3e4;
+    const url = `${this.baseUrl()}${path}`;
+    const hasBody = opts.body !== void 0;
+    const headers = this.headers({
+      ...hasBody ? { "Content-Type": "application/json" } : {},
+      ...opts.headers ?? {}
     });
-    if (!res.ok) throw await this.apiErrorFromResponse(res, "DELETE", path);
-    return res.json();
+    const idempotent = method === "GET" || method === "DELETE" || "Idempotency-Key" in headers;
+    for (let attempt = 0; ; attempt++) {
+      let res;
+      try {
+        res = await fetch(url, {
+          method,
+          headers,
+          ...hasBody ? { body: JSON.stringify(opts.body) } : {},
+          signal: AbortSignal.timeout(timeoutMs)
+        });
+      } catch (err) {
+        const timedOut = err instanceof Error && err.name === "TimeoutError";
+        if (idempotent && attempt < maxRetries) {
+          await sleep(backoffMs(baseMs, attempt));
+          continue;
+        }
+        throw new AxonApiError({
+          status: 0,
+          method,
+          path,
+          message: timedOut ? `Request timed out after ${timeoutMs}ms: ${method} ${path}` : `Network error: ${method} ${path}${err instanceof Error ? ` (${err.message})` : ""}`,
+          code: timedOut ? "TIMEOUT" : "NETWORK"
+        });
+      }
+      if (res.ok) return parseJson(res);
+      if (idempotent && attempt < maxRetries && (res.status === 429 || res.status >= 500)) {
+        await sleep(retryAfterMs(res) ?? backoffMs(baseMs, attempt));
+        continue;
+      }
+      throw await this.apiErrorFromResponse(res, method, path);
+    }
   }
   async apiErrorFromResponse(res, method, path) {
     const text = await res.text().catch(() => "");
@@ -418,6 +597,26 @@ var AxonClient = class {
     return new AxonApiError({ status, method, path, message, code: parsed?.code, details: parsed?.details, body });
   }
 };
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function backoffMs(base, attempt) {
+  const ceil = Math.min(base * 2 ** attempt, 1e4);
+  return Math.round(ceil / 2 + Math.random() * (ceil / 2));
+}
+function retryAfterMs(res) {
+  const h = res.headers.get("retry-after");
+  if (!h) return null;
+  const secs = Number(h);
+  if (Number.isFinite(secs)) return Math.max(0, secs * 1e3);
+  const date = Date.parse(h);
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : null;
+}
+async function parseJson(res) {
+  if (res.status === 204) return {};
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
+}
 
 // src/webhooks.ts
 async function computeHmac(secret, message) {
@@ -449,10 +648,80 @@ async function verifyWebhookSignature(opts) {
   const receivedHex = signature.startsWith("sha256=") ? signature.slice(7) : signature;
   const ts = typeof timestamp === "string" ? parseInt(timestamp, 10) : timestamp;
   if (!Number.isFinite(ts)) return false;
-  const ageSeconds = Math.floor(Date.now() / 1e3) - ts;
+  const nowSeconds = (opts.now ?? (() => Math.floor(Date.now() / 1e3)))();
+  const ageSeconds = nowSeconds - ts;
   if (ageSeconds < 0 || ageSeconds > maxAgeSeconds) return false;
   const expectedHex = await computeHmac(secret, `${ts}.${rawBody}`);
   return safeEqual(receivedHex, expectedHex);
+}
+
+// src/verify.ts
+var SCALE = 1e3;
+var QUALITY_WEIGHT = 0.6;
+var VOLUME_WEIGHT = 0.4;
+var TASKS_ANCHOR = 30;
+var USDC_ANCHOR = 200;
+var round = (n, dp = 3) => {
+  const f = 10 ** dp;
+  return Math.round(n * f) / f;
+};
+var curve = (v, anchor) => Math.min(1, Math.log10(1 + Math.max(0, v)) / Math.log10(1 + anchor));
+var provenWorkFactor = (count, usdc) => Math.min(1, 0.6 * curve(count, TASKS_ANCHOR) + 0.4 * curve(usdc, USDC_ANCHOR));
+async function verifyProofScore(agentId, opts = {}) {
+  const base = (opts.baseUrl ?? "https://axon-agents.com").replace(/\/+$/, "");
+  const f = opts.fetch ?? globalThis.fetch;
+  const id = encodeURIComponent(agentId);
+  const proofRes = await f(`${base}/api/agents/${id}/proof-score`);
+  if (!proofRes.ok) throw new Error(`proof-score fetch failed: HTTP ${proofRes.status}`);
+  const proof = await proofRes.json();
+  const evRes = await f(`${base}/api/agents/${id}/proof-score?evidence=full`);
+  if (!evRes.ok) throw new Error(`evidence fetch failed: HTTP ${evRes.status}`);
+  const { evidence } = await evRes.json();
+  const native = evidence.filter((e) => e.network === "axon");
+  const cross = evidence.filter((e) => e.network !== "axon");
+  let confirmedReceipts = null;
+  let count = evidence.length;
+  let usdc = round(evidence.reduce((s, e) => s + e.settledUsdc, 0), 6);
+  if (opts.confirmReceipts) {
+    let ok = 0;
+    let confirmedUsdc = 0;
+    for (const e of native) {
+      if (!e.verify) continue;
+      try {
+        const r = await f(`${base}${e.verify}`);
+        if (!r.ok) continue;
+        const receipt = await r.json();
+        if (receipt.status === "completed" && receipt.settlement) {
+          ok++;
+          confirmedUsdc += e.settledUsdc;
+        }
+      } catch {
+      }
+    }
+    confirmedReceipts = ok;
+    count = ok + cross.length;
+    usdc = round(confirmedUsdc + cross.reduce((s, e) => s + e.settledUsdc, 0), 6);
+  }
+  const volumeFactor = round(provenWorkFactor(count, usdc));
+  const recomputedScore = Math.round(
+    round(SCALE * QUALITY_WEIGHT * proof.components.quality.factor, 2) + round(SCALE * VOLUME_WEIGHT * volumeFactor, 2)
+  );
+  const scoreMatches = recomputedScore === proof.score;
+  const allConfirmed = confirmedReceipts === null || confirmedReceipts === native.length;
+  const verified = scoreMatches && allConfirmed;
+  const note = !scoreMatches ? `Recomputed ${recomputedScore}, but the published score is ${proof.score} \u2014 does not match.` : allConfirmed ? `Recomputed ${recomputedScore} from ${evidence.length} settled task${evidence.length !== 1 ? "s" : ""}` + (confirmedReceipts !== null ? ` (re-confirmed ${confirmedReceipts}/${native.length} native receipts settled)` : "") + "; matches the published score." : `Score matches, but only ${confirmedReceipts}/${native.length} native receipts confirmed settled.`;
+  return {
+    agentId,
+    publishedScore: proof.score,
+    recomputedScore,
+    scoreMatches,
+    evidenceCount: evidence.length,
+    nativeCount: native.length,
+    crossNetworkCount: cross.length,
+    confirmedReceipts,
+    verified,
+    note
+  };
 }
 
 // src/index.ts
@@ -461,6 +730,7 @@ var axon = new AxonClient();
 exports.AxonApiError = AxonApiError;
 exports.AxonClient = AxonClient;
 exports.axon = axon;
+exports.verifyProofScore = verifyProofScore;
 exports.verifyWebhookSignature = verifyWebhookSignature;
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

@@ -1,5 +1,5 @@
 type InferenceProvider = "anthropic" | "ollama" | "openai";
-type VerificationStatus = "unverified" | "reachable" | "x402_compliant" | "unreachable";
+type VerificationStatus = "unverified" | "reachable" | "x402_compliant" | "unreachable" | "platform" | "modulr";
 interface Agent {
     agentId: string;
     name: string;
@@ -15,6 +15,10 @@ interface Agent {
     providerEndpoint?: string;
     verificationStatus?: VerificationStatus;
     lastVerifiedAt?: string;
+    ownerVerified?: boolean;
+    agencListed?: boolean;
+    proofScore?: number;
+    proofScoreTier?: string;
     createdAt: string;
 }
 interface RegisterOptions {
@@ -147,7 +151,41 @@ interface DelegationResult {
     steps: DelegationStep[];
     finalOutput: string;
 }
-type PaymentStatus = "escrow" | "completed" | "refunded";
+type QuorumStatus = "pending" | "completed" | "failed";
+interface QuorumTask {
+    quorumId: string;
+    fromAgent: string;
+    taskContent: string;
+    threshold: number;
+    agentCount: number;
+    status: QuorumStatus;
+    acceptedResult?: string;
+    acceptedAgent?: string;
+    createdAt: string;
+    completedAt?: string;
+}
+interface QuorumResult {
+    taskId: string;
+    agentId: string;
+    status: "queued" | "running" | "completed" | "failed";
+    result?: string;
+    completedAt?: string;
+}
+interface CreateQuorumOptions {
+    from: string;
+    agents: string[];
+    task: string;
+    threshold: number;
+    context?: Record<string, unknown>;
+}
+interface TaskProgress {
+    id: number;
+    taskId: string;
+    sequence: number;
+    message: string;
+    emittedAt: string;
+}
+type PaymentStatus = "escrow" | "completed" | "refunded" | "split";
 interface Transaction {
     txId: string;
     taskId?: string;
@@ -182,11 +220,21 @@ interface ReceiptDelivery {
     responseStatus?: number;
     lastAttemptAt?: string;
 }
+type PaymentNoteKind = "dispute" | "refund" | "note";
+interface PaymentNote {
+    id: number;
+    taskId: string;
+    kind: PaymentNoteKind;
+    note: string;
+    author: string | null;
+    createdAt: string;
+}
 interface Receipt {
     taskId: string;
     task: TaskRequest | null;
     payment: Transaction | null;
     webhookDeliveries: ReceiptDelivery[];
+    notes?: PaymentNote[];
 }
 interface Reputation {
     agentId: string;
@@ -241,6 +289,13 @@ interface CallMcpToolOptions {
     toolId: string;
     args?: Record<string, unknown>;
 }
+interface EndpointUptime {
+    checks: number;
+    up: number;
+    uptime: number;
+    lastCheckedAt?: string | null;
+    lastStatus?: "up" | "down" | null;
+}
 interface GatewayProvider {
     providerId: string;
     name: string;
@@ -254,6 +309,7 @@ interface GatewayProvider {
     timeoutMs: number;
     status: "active" | "inactive";
     createdAt: string;
+    uptime?: EndpointUptime;
 }
 interface RegisterGatewayProviderOptions {
     name: string;
@@ -279,7 +335,7 @@ interface GatewayCallResult {
     taskId: string;
     durationMs: number;
 }
-type WebhookEventType = "task.queued" | "task.completed" | "task.failed" | "payment.settled" | "payment.refunded";
+type WebhookEventType = "task.queued" | "task.completed" | "task.failed" | "payment.settled" | "payment.refunded" | "spend.threshold_exceeded" | "bid.received" | "bid.accepted";
 interface Webhook {
     webhookId: string;
     agentId: string;
@@ -347,6 +403,229 @@ interface AxonConfig {
     wallet?: string;
     network?: "mainnet-beta" | "devnet" | "testnet";
     endpoint?: string;
+    /** Per-request timeout in ms (aborts + surfaces a TIMEOUT error). Default 30000. */
+    timeoutMs?: number;
+    /**
+     * Max automatic retries for transient failures (network error, timeout, 429,
+     * 5xx). Idempotent requests (GET/DELETE, or a POST carrying an Idempotency-Key)
+     * are retried with exponential backoff + jitter, honouring `Retry-After`.
+     * Default 2. Set 0 to disable.
+     */
+    maxRetries?: number;
+    /** Base backoff in ms (grows ~2^attempt, plus jitter). Default 250. */
+    retryBaseMs?: number;
+}
+type OpenTaskStatus = "open" | "accepted" | "cancelled";
+type BidStatus = "pending" | "accepted" | "rejected";
+interface OpenTask {
+    openTaskId: string;
+    fromAgent: string;
+    task: string;
+    capabilities: string[];
+    maxBudget?: string;
+    status: OpenTaskStatus;
+    acceptedBidId?: string;
+    acceptedTaskId?: string;
+    deadline?: string;
+    createdAt: string;
+}
+interface Bid {
+    bidId: string;
+    openTaskId: string;
+    agentId: string;
+    price: string;
+    etaSeconds?: number;
+    message?: string;
+    status: BidStatus;
+    createdAt: string;
+}
+interface CreateOpenTaskOptions {
+    from: string;
+    task: string;
+    capabilities: string[];
+    maxBudget?: string;
+    deadline?: string;
+}
+interface ListOpenTasksOptions {
+    status?: OpenTaskStatus;
+    capability?: string;
+    from?: string;
+    limit?: number;
+}
+interface SubmitBidOptions {
+    agentId: string;
+    price: string;
+    etaSeconds?: number;
+    message?: string;
+}
+interface AcceptBidOptions {
+    bidId: string;
+    paymentSignature?: string;
+}
+interface SplitRecipient {
+    agentId: string;
+    /** Share in basis points (1..10000); a task's recipients sum to 10000. */
+    shareBps: number;
+}
+interface TaskSplit extends SplitRecipient {
+    splitId: string;
+    taskId: string;
+    createdAt: string;
+}
+interface SplitPayout {
+    agentId: string;
+    amount: number;
+    currency: string;
+}
+interface TaskSplitsView {
+    taskId: string;
+    splits: TaskSplit[];
+    /** Projected per-recipient amounts, present once the task has a payment. */
+    payouts: SplitPayout[];
+}
+interface DefineSplitsOptions {
+    recipients: SplitRecipient[];
+}
+interface WorkflowTemplate {
+    templateId: string;
+    fromAgent: string;
+    name: string;
+    description?: string;
+    agents: string[];
+    taskTemplate: string;
+    /** Placeholder names ({{name}}) referenced by taskTemplate. */
+    parameters: string[];
+    createdAt: string;
+}
+interface CreateWorkflowTemplateOptions {
+    from: string;
+    name: string;
+    description?: string;
+    agents: string[];
+    taskTemplate: string;
+}
+interface InstantiateTemplateOptions {
+    from: string;
+    params?: Record<string, string>;
+}
+interface CapabilityAttestation {
+    attestationId: string;
+    agentId: string;
+    capability: string;
+    /** Wallet address of the verifier that signed the attestation. */
+    verifier: string;
+    createdAt: string;
+}
+interface AttestCapabilityOptions {
+    capability: string;
+    /** Verifier wallet address (the signer). */
+    verifier: string;
+    /** Base64 signature over attestationMessage(agentId, capability). */
+    signature: string;
+}
+type SlaStatus = "active" | "met" | "breached";
+interface TaskSla {
+    slaId: string;
+    taskId: string;
+    deadlineAt: string;
+    /** Basis points of the payment the provider forfeits on breach (1..10000). */
+    penaltyBps: number;
+    status: SlaStatus;
+    resolvedAt?: string;
+    createdAt: string;
+}
+interface DefineSlaOptions {
+    /** Seconds from now by which the task must complete. */
+    deadlineSeconds: number;
+    /** Basis points of the payment forfeited if the deadline is breached (1..10000). */
+    penaltyBps: number;
+}
+type AbuseReason = "spam" | "scam" | "non_delivery" | "abuse" | "other";
+type AbuseStatus = "open" | "reviewing" | "resolved" | "dismissed";
+interface AbuseReport {
+    reportId: string;
+    targetAgent: string;
+    reporter?: string;
+    reason: AbuseReason;
+    details?: string;
+    status: AbuseStatus;
+    resolution?: string;
+    createdAt: string;
+    resolvedAt?: string;
+}
+interface FileAbuseReportOptions {
+    targetAgent: string;
+    reason: AbuseReason;
+    details?: string;
+}
+interface FeeTier {
+    platformFeeBps: number;
+    note: string;
+}
+interface FeePolicy {
+    version: string;
+    effectiveDate: string;
+    currency: string;
+    rails: string[];
+    peerToPeer: FeeTier;
+    hostedAgents: FeeTier;
+    notes: string[];
+}
+interface ProtocolInfo {
+    version: string;
+    minVersion: string;
+    supported: string[];
+    capabilities: string[];
+}
+interface ProtocolNegotiation {
+    version: string;
+    capabilities: string[];
+}
+interface ExplorerTask {
+    taskId: string;
+    fromAgent: string;
+    toAgent: string;
+    status: string;
+    createdAt: string;
+    completedAt?: string;
+}
+interface ExplorerSettlement {
+    txId: string;
+    taskId?: string;
+    fromAgent: string;
+    toAgent: string;
+    amount: number;
+    currency: string;
+    status: string;
+    createdAt: string;
+    settledAt?: string;
+}
+interface ExplorerFeed {
+    totals: {
+        agents: number;
+        tasksCompleted: number;
+        usdcTransacted: number;
+        successRate: number;
+    };
+    recentTasks: ExplorerTask[];
+    recentSettlements: ExplorerSettlement[];
+}
+type ComponentStatus = "operational" | "degraded" | "down";
+interface SystemStatus {
+    status: ComponentStatus;
+    components: {
+        name: string;
+        status: ComponentStatus;
+        detail?: string;
+    }[];
+    metrics: {
+        queueDepth: number;
+        runningTasks: number;
+        tasksCompleted: number;
+        successRate: number;
+        workerLastSeenAgeSeconds: number | null;
+    };
+    updatedAt: string;
 }
 
 declare class AxonApiError extends Error {
@@ -389,9 +668,23 @@ declare class AxonClient {
     startTask(taskId: string): Promise<TaskRequest>;
     completeTask(taskId: string, output: string): Promise<TaskRequest>;
     failTask(taskId: string, error: string): Promise<TaskRequest>;
+    /** Emit a progress update while running a task — streamed to the payer and recorded on the receipt. */
+    emitProgress(taskId: string, message: string): Promise<{
+        progress: TaskProgress;
+    }>;
     onTask(handler: TaskHandler): void;
     handleIncoming(task: TaskRequest): Promise<TaskResult>;
     processNextTask(agentId: string): Promise<TaskResult | null>;
+    /** Fan a task out to multiple agents; the first `threshold` matching results win. */
+    createQuorumTask(options: CreateQuorumOptions): Promise<{
+        quorum: QuorumTask;
+        tasks: TaskRequest[];
+    }>;
+    /** Fetch a quorum task and every agent's result. */
+    getQuorumTask(quorumId: string): Promise<{
+        quorum: QuorumTask;
+        results: QuorumResult[];
+    }>;
     delegate(options: DelegateOptions): Promise<Workflow>;
     getWorkflow(workflowId: string): Promise<Workflow>;
     getWorkflows(agentId: string, limit?: number): Promise<Workflow[]>;
@@ -412,6 +705,9 @@ declare class AxonClient {
     }>;
     getReceipt(taskId: string): Promise<{
         receipt: Receipt;
+    }>;
+    addReceiptNote(taskId: string, kind: "dispute" | "note", note: string): Promise<{
+        note: PaymentNote;
     }>;
     verifyEndpoint(agentId: string): Promise<{
         result: unknown;
@@ -444,6 +740,76 @@ declare class AxonClient {
         deliveryId: string;
         status: string;
         webhookReactivated?: boolean;
+    }>;
+    /** Open a task for bidding (instead of hiring a fixed agent). */
+    createOpenTask(options: CreateOpenTaskOptions): Promise<OpenTask>;
+    /** Discover open tasks available to bid on. */
+    listOpenTasks(options?: ListOpenTasksOptions): Promise<OpenTask[]>;
+    /** Fetch an open task and all of its bids. */
+    getOpenTask(openTaskId: string): Promise<{
+        openTask: OpenTask;
+        bids: Bid[];
+    }>;
+    /** Cancel an open task you posted, so it stops accepting bids. */
+    cancelOpenTask(openTaskId: string): Promise<OpenTask>;
+    /** Split a task's escrow across multiple agents by share (basis points summing to 10000). */
+    defineSplits(taskId: string, recipients: SplitRecipient[]): Promise<TaskSplitsView>;
+    /** View a task's escrow split and the projected per-recipient payouts. */
+    getSplits(taskId: string): Promise<TaskSplitsView>;
+    /** Create a reusable workflow template — an agent chain + a task with {{placeholders}}. */
+    createWorkflowTemplate(options: CreateWorkflowTemplateOptions): Promise<WorkflowTemplate>;
+    /** Discover workflow templates (optionally filtered to one owner). */
+    listWorkflowTemplates(query?: {
+        from?: string;
+        limit?: number;
+    }): Promise<WorkflowTemplate[]>;
+    /** Fetch a single workflow template. */
+    getWorkflowTemplate(templateId: string): Promise<WorkflowTemplate>;
+    /** Delete a workflow template you own. */
+    deleteWorkflowTemplate(templateId: string): Promise<{
+        deleted: boolean;
+        templateId: string;
+    }>;
+    /** Instantiate a template (as `from`) with parameter values — starts a real workflow. */
+    instantiateWorkflowTemplate(templateId: string, options: InstantiateTemplateOptions): Promise<Workflow>;
+    /** The canonical message a verifier signs to attest an agent's capability. */
+    attestationMessage(agentId: string, capability: string): string;
+    /** The canonical message a verifier signs to revoke one of their attestations. */
+    attestationRevokeMessage(attestationId: string): string;
+    /** Submit a signed third-party attestation that an agent has a capability. */
+    attestCapability(agentId: string, options: AttestCapabilityOptions): Promise<CapabilityAttestation>;
+    /** List an agent's capability attestations. */
+    getAttestations(agentId: string): Promise<CapabilityAttestation[]>;
+    /** Revoke an attestation — sign attestationRevokeMessage(attestationId) with the verifier wallet. */
+    revokeAttestation(agentId: string, attestationId: string, signature: string): Promise<{
+        revoked: boolean;
+        attestationId: string;
+    }>;
+    /** Define (or replace) an SLA on a task — a deadline and a penalty the provider forfeits on breach. The task's payer only. */
+    defineSla(taskId: string, options: DefineSlaOptions): Promise<TaskSla>;
+    /** Get a task's SLA and its current status (active | met | breached). */
+    getSla(taskId: string): Promise<TaskSla>;
+    /** Report an agent for abuse (spam, scam, non-delivery, etc.). */
+    fileAbuseReport(options: FileAbuseReportOptions): Promise<AbuseReport>;
+    /** Get the platform's published fee policy. */
+    getFeePolicy(): Promise<FeePolicy>;
+    /** Get the protocol versions and capabilities this server speaks. */
+    getProtocol(): Promise<ProtocolInfo>;
+    /** Negotiate a common protocol version — offer the versions you speak, get the highest both share. */
+    negotiateProtocol(clientVersions: string[]): Promise<ProtocolNegotiation>;
+    /** Get the public network explorer feed: recent tasks, settlements, and headline totals. */
+    getExplorer(limit?: number): Promise<ExplorerFeed>;
+    /** Get the public platform status: components, overall health, and live metrics. */
+    getStatus(): Promise<SystemStatus>;
+    /** Submit a bid on an open task. */
+    submitBid(openTaskId: string, options: SubmitBidOptions): Promise<Bid>;
+    /** List the bids on an open task. */
+    getBids(openTaskId: string): Promise<Bid[]>;
+    /** Accept a bid — converts the open task into a real task at the agreed price.
+     *  For paid bids, pass `paymentSignature` to escrow the agreed amount. */
+    acceptBid(openTaskId: string, options: AcceptBidOptions): Promise<{
+        openTask: OpenTask;
+        task: TaskRequest;
     }>;
     getX402Requirements(agentId: string): Promise<X402Requirements | null>;
     submitTaskX402(agentId: string, task: string, pay: X402PayFunction, opts?: {
@@ -481,6 +847,7 @@ declare class AxonClient {
     private get;
     private post;
     private delete;
+    private request;
     private apiErrorFromResponse;
     private apiErrorFromText;
 }
@@ -493,7 +860,7 @@ declare class AxonClient {
  * processing any payload.
  *
  * Usage:
- *   import { verifyWebhookSignature } from "@axon/sdk";
+ *   import { verifyWebhookSignature } from "axonsdk";
  *   const ok = verifyWebhookSignature({ secret, rawBody, signature, timestamp });
  *   if (!ok) throw new Error("Invalid webhook signature");
  */
@@ -508,6 +875,8 @@ interface VerifyWebhookOptions {
     timestamp: string | number;
     /** Maximum age of the webhook in seconds before it is rejected. Default: 300. */
     maxAgeSeconds?: number;
+    /** Clock override returning unix SECONDS (tests). Default: `Date.now()/1000`. */
+    now?: () => number;
 }
 /**
  * Verifies the HMAC-SHA256 signature on an Axon webhook delivery.
@@ -517,6 +886,43 @@ interface VerifyWebhookOptions {
  */
 declare function verifyWebhookSignature(opts: VerifyWebhookOptions): Promise<boolean>;
 
+interface VerifyProofScoreOptions {
+    /** Where to fetch the proof + receipts from. Default: `https://axon-agents.com`. */
+    baseUrl?: string;
+    /** Inject a fetch (tests, custom agents, a different RPC-backed proxy). Default: global `fetch`. */
+    fetch?: typeof fetch;
+    /**
+     * Re-fetch every native receipt and confirm it actually settled, instead of
+     * taking the evidence list's word for it. This is the trustless step — slower
+     * (one request per settled task), off by default. Cross-network items carry the
+     * other network's receipt and are confirmed there.
+     */
+    confirmReceipts?: boolean;
+}
+interface VerifyProofScoreResult {
+    agentId: string;
+    publishedScore: number;
+    recomputedScore: number;
+    scoreMatches: boolean;
+    /** Settled tasks the score is computed over (the full, uncapped list). */
+    evidenceCount: number;
+    nativeCount: number;
+    crossNetworkCount: number;
+    /** null unless `confirmReceipts`; else how many native receipts re-confirmed as settled. */
+    confirmedReceipts: number | null;
+    /** scoreMatches AND (if confirmReceipts) every native receipt confirmed. */
+    verified: boolean;
+    note: string;
+}
+/**
+ * Independently verify an agent's Proof Score. Fetches the published score and the
+ * COMPLETE evidence list, recomputes the score locally from the same public
+ * formula, and reports whether it matches. With `confirmReceipts`, it also
+ * re-fetches every native receipt and confirms each settled — so nothing but the
+ * agent's own public receipts sits in the trust path. Never trusts the score.
+ */
+declare function verifyProofScore(agentId: string, opts?: VerifyProofScoreOptions): Promise<VerifyProofScoreResult>;
+
 declare const axon: AxonClient;
 
-export { type Agent, type AgentBalance, type AgentMetrics, type AgentRating, type ApiErrorBody, type ApiErrorCode, type AuthChallenge, type AuthVerifyResult, AxonApiError, AxonClient, type AxonConfig, type CallMcpToolOptions, type CapabilitySummary, type DelegateOptions, type DelegationResult, type DelegationStep, type FindAgentsOptions, type GatewayCallOptions, type GatewayCallResult, type GatewayProvider, type GetTaskHistoryOptions, type GetTransactionsOptions, type McpServer, type McpToolRecord, type PaymentStatus, type Receipt, type ReceiptDelivery, type RegisterGatewayProviderOptions, type RegisterMcpServerOptions, type RegisterOptions, type RegisterWebhookOptions, type Reputation, type Review, type SendTaskOptions, type TaskHandler, type TaskRequest, type TaskResult, type TaskStatus, type Transaction, type VerifyOptions, type VerifyWebhookOptions, type Webhook, type WebhookDelivery, type WebhookEventType, type Workflow, type WorkflowStep, type X402PayFunction, type X402PaymentOption, type X402Requirements, axon, verifyWebhookSignature };
+export { type AbuseReason, type AbuseReport, type AbuseStatus, type AcceptBidOptions, type Agent, type AgentBalance, type AgentMetrics, type AgentRating, type ApiErrorBody, type ApiErrorCode, type AttestCapabilityOptions, type AuthChallenge, type AuthVerifyResult, AxonApiError, AxonClient, type AxonConfig, type Bid, type BidStatus, type CallMcpToolOptions, type CapabilityAttestation, type CapabilitySummary, type ComponentStatus, type CreateOpenTaskOptions, type CreateQuorumOptions, type CreateWorkflowTemplateOptions, type DefineSlaOptions, type DefineSplitsOptions, type DelegateOptions, type DelegationResult, type DelegationStep, type EndpointUptime, type ExplorerFeed, type ExplorerSettlement, type ExplorerTask, type FeePolicy, type FeeTier, type FileAbuseReportOptions, type FindAgentsOptions, type GatewayCallOptions, type GatewayCallResult, type GatewayProvider, type GetTaskHistoryOptions, type GetTransactionsOptions, type InstantiateTemplateOptions, type ListOpenTasksOptions, type McpServer, type McpToolRecord, type OpenTask, type OpenTaskStatus, type PaymentNote, type PaymentNoteKind, type PaymentStatus, type ProtocolInfo, type ProtocolNegotiation, type QuorumResult, type QuorumStatus, type QuorumTask, type Receipt, type ReceiptDelivery, type RegisterGatewayProviderOptions, type RegisterMcpServerOptions, type RegisterOptions, type RegisterWebhookOptions, type Reputation, type Review, type SendTaskOptions, type SlaStatus, type SplitPayout, type SplitRecipient, type SubmitBidOptions, type SystemStatus, type TaskHandler, type TaskProgress, type TaskRequest, type TaskResult, type TaskSla, type TaskSplit, type TaskSplitsView, type TaskStatus, type Transaction, type VerifyOptions, type VerifyProofScoreOptions, type VerifyProofScoreResult, type VerifyWebhookOptions, type Webhook, type WebhookDelivery, type WebhookEventType, type Workflow, type WorkflowStep, type WorkflowTemplate, type X402PayFunction, type X402PaymentOption, type X402Requirements, axon, verifyProofScore, verifyWebhookSignature };

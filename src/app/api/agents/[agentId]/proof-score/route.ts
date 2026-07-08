@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { computeProofScore, verifyProofScore } from "@/lib/proofScore";
+import { computeProofScore, verifyProofScore, getProofScoreEvidence } from "@/lib/proofScore";
 import { apiError } from "@/lib/apiError";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
 
@@ -31,6 +31,16 @@ export async function GET(
   if (!rl.allowed) return tooManyRequests(rl);
 
   const { agentId } = await params;
+
+  // ?evidence=full — the COMPLETE, uncapped list of settled tasks backing the score
+  // (the proof body inlines only the most-recent 25). A client fetches this to
+  // re-check every receipt and recompute the score itself, so verification isn't
+  // limited to high-volume agents' most-recent work.
+  if (req.nextUrl.searchParams.get("evidence") === "full") {
+    const evidence = getProofScoreEvidence(agentId);
+    if (!evidence) return apiError("NOT_FOUND", `No agent '${agentId}'`, 404);
+    return pretty({ agentId, evidenceCount: evidence.length, evidence });
+  }
 
   // ?verify=1 — re-walk every cited receipt, confirm each settled on-chain, and
   // recompute the score. Returns the verification report instead of the proof.
