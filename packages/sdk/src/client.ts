@@ -50,6 +50,10 @@ import type {
   AttestCapabilityOptions,
   TaskSla,
   DefineSlaOptions,
+  TaskProgress,
+  QuorumTask,
+  QuorumResult,
+  CreateQuorumOptions,
   AbuseReport,
   FileAbuseReportOptions,
   FeePolicy,
@@ -217,6 +221,11 @@ export class AxonClient {
     return this.post(`/api/tasks/${pathPart(taskId)}/fail`, { error }) as Promise<TaskRequest>;
   }
 
+  /** Emit a progress update while running a task — streamed to the payer and recorded on the receipt. */
+  async emitProgress(taskId: string, message: string): Promise<{ progress: TaskProgress }> {
+    return this.post(`/api/tasks/${pathPart(taskId)}/progress`, { message }) as Promise<{ progress: TaskProgress }>;
+  }
+
   onTask(handler: TaskHandler): void {
     this.taskHandler = handler;
   }
@@ -250,6 +259,28 @@ export class AxonClient {
       await this.failTask(started.taskId, result.error ?? "Task failed");
     }
     return result;
+  }
+
+  // Quorum tasks
+
+  /** Fan a task out to multiple agents; the first `threshold` matching results win. */
+  async createQuorumTask(
+    options: CreateQuorumOptions
+  ): Promise<{ quorum: QuorumTask; tasks: TaskRequest[] }> {
+    return this.post("/api/tasks/quorum", options) as Promise<{
+      quorum: QuorumTask;
+      tasks: TaskRequest[];
+    }>;
+  }
+
+  /** Fetch a quorum task and every agent's result. */
+  async getQuorumTask(
+    quorumId: string
+  ): Promise<{ quorum: QuorumTask; results: QuorumResult[] }> {
+    return this.get(`/api/quorum/${pathPart(quorumId)}`) as Promise<{
+      quorum: QuorumTask;
+      results: QuorumResult[];
+    }>;
   }
 
   // Delegation
@@ -744,30 +775,74 @@ export class AxonClient {
     return headers;
   }
 
-  private async get(path: string): Promise<unknown> {
-    const res = await fetch(`${this.baseUrl()}${path}`, { headers: this.headers() });
-    if (!res.ok) throw await this.apiErrorFromResponse(res, "GET", path);
-    return res.json();
+  private get(path: string): Promise<unknown> {
+    return this.request("GET", path);
   }
 
-  private async post(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<unknown> {
-    const res = await fetch(`${this.baseUrl()}${path}`, {
-      method: "POST",
-      headers: this.headers({ "Content-Type": "application/json", ...(extraHeaders ?? {}) }),
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw await this.apiErrorFromResponse(res, "POST", path);
-    return res.json();
+  private post(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<unknown> {
+    return this.request("POST", path, { body, headers: extraHeaders });
   }
 
-  private async delete(path: string, body?: unknown): Promise<unknown> {
-    const res = await fetch(`${this.baseUrl()}${path}`, {
-      method: "DELETE",
-      headers: this.headers(body !== undefined ? { "Content-Type": "application/json" } : undefined),
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  private delete(path: string, body?: unknown): Promise<unknown> {
+    return this.request("DELETE", path, { body });
+  }
+
+  // Central request path: per-request timeout, plus automatic retry with
+  // exponential backoff + jitter for transient failures (network error, timeout,
+  // 429, 5xx). Only idempotent requests are retried — GET/DELETE always, a POST
+  // ONLY when it carries an Idempotency-Key, so a retry can never double-apply a
+  // side effect. A retryable network/timeout failure surfaces as an AxonApiError
+  // with a NETWORK / TIMEOUT code (status 0) instead of a raw fetch throw.
+  private async request(
+    method: string,
+    path: string,
+    opts: { body?: unknown; headers?: Record<string, string> } = {},
+  ): Promise<unknown> {
+    const maxRetries = Math.max(0, this.config.maxRetries ?? 2);
+    const baseMs = this.config.retryBaseMs ?? 250;
+    const timeoutMs = this.config.timeoutMs ?? 30_000;
+    const url = `${this.baseUrl()}${path}`;
+    const hasBody = opts.body !== undefined;
+    const headers = this.headers({
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
+      ...(opts.headers ?? {}),
     });
-    if (!res.ok) throw await this.apiErrorFromResponse(res, "DELETE", path);
-    return res.json();
+    const idempotent = method === "GET" || method === "DELETE" || "Idempotency-Key" in headers;
+
+    for (let attempt = 0; ; attempt++) {
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method,
+          headers,
+          ...(hasBody ? { body: JSON.stringify(opts.body) } : {}),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch (err) {
+        const timedOut = err instanceof Error && err.name === "TimeoutError";
+        if (idempotent && attempt < maxRetries) {
+          await sleep(backoffMs(baseMs, attempt));
+          continue;
+        }
+        throw new AxonApiError({
+          status: 0,
+          method,
+          path,
+          message: timedOut
+            ? `Request timed out after ${timeoutMs}ms: ${method} ${path}`
+            : `Network error: ${method} ${path}${err instanceof Error ? ` (${err.message})` : ""}`,
+          code: timedOut ? "TIMEOUT" : "NETWORK",
+        });
+      }
+
+      if (res.ok) return parseJson(res);
+
+      if (idempotent && attempt < maxRetries && (res.status === 429 || res.status >= 500)) {
+        await sleep(retryAfterMs(res) ?? backoffMs(baseMs, attempt));
+        continue;
+      }
+      throw await this.apiErrorFromResponse(res, method, path);
+    }
   }
 
   private async apiErrorFromResponse(res: Response, method: string, path: string): Promise<AxonApiError> {
@@ -797,4 +872,34 @@ export class AxonClient {
     const message = parsed?.error ?? `Axon API error: ${status} ${method} ${path}`;
     return new AxonApiError({ status, method, path, message, code: parsed?.code, details: parsed?.details, body });
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Exponential backoff with full jitter: a random point in [ceil/2, ceil] where
+// ceil = base·2^attempt, capped at 10s — so retries spread out instead of
+// hammering a struggling server in lockstep.
+function backoffMs(base: number, attempt: number): number {
+  const ceil = Math.min(base * 2 ** attempt, 10_000);
+  return Math.round(ceil / 2 + Math.random() * (ceil / 2));
+}
+
+// Honour a `Retry-After` header (delta-seconds or an HTTP-date) on 429/503;
+// null when it's absent or unparseable, so the caller falls back to backoff.
+function retryAfterMs(res: Response): number | null {
+  const h = res.headers.get("retry-after");
+  if (!h) return null;
+  const secs = Number(h);
+  if (Number.isFinite(secs)) return Math.max(0, secs * 1000);
+  const date = Date.parse(h);
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : null;
+}
+
+// Parse a successful response body, tolerating an empty one (204 / no content).
+async function parseJson(res: Response): Promise<unknown> {
+  if (res.status === 204) return {};
+  const text = await res.text();
+  return text ? (JSON.parse(text) as unknown) : {};
 }

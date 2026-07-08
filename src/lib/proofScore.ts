@@ -161,6 +161,23 @@ function settledWork(agentId: string): WorkItem[] {
   );
 }
 
+// Full, uncapped evidence for INDEPENDENT verification — every settled task, so a
+// client can re-fetch each receipt and recompute the score itself. computeProofScore
+// only inlines the most-recent MAX_EVIDENCE (to keep the proof small and its hash
+// stable), but the score is computed over ALL of them — so a trustless recompute
+// needs the complete list, not the capped one.
+export function getProofScoreEvidence(agentId: string): ProofScoreEvidence[] | null {
+  if (!getAgentById(agentId)) return null;
+  return settledWork(agentId).map((w) => ({
+    taskId: w.taskId,
+    network: w.network,
+    receipt: w.receipt,
+    verify: w.verify,
+    completedAt: w.completedAt,
+    settledUsdc: round(w.settledUsdc, 6),
+  }));
+}
+
 export function computeProofScore(agentId: string): ProofScore | null {
   const agent = getAgentById(agentId);
   if (!agent) return null;

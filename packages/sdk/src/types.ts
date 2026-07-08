@@ -1,7 +1,7 @@
 // ─── Agent ────────────────────────────────────────────────────────────────────
 
 export type InferenceProvider = "anthropic" | "ollama" | "openai";
-export type VerificationStatus = "unverified" | "reachable" | "x402_compliant" | "unreachable";
+export type VerificationStatus = "unverified" | "reachable" | "x402_compliant" | "unreachable" | "platform" | "modulr";
 
 export interface Agent {
   agentId: string;
@@ -14,11 +14,14 @@ export interface Agent {
   category?: string;
   walletAddress?: string;
   provider: InferenceProvider;
-  providerModel?: string;
-  providerEndpoint?: string;
+  providerModel?: string;   // null = use provider default
+  providerEndpoint?: string; // required for ollama, unsupported for openai
   verificationStatus?: VerificationStatus;
   lastVerifiedAt?: string;
   ownerVerified?: boolean; // owner wallet has cryptographically authenticated (verified-owner badge)
+  agencListed?: boolean; // cross-listed on the AgenC marketplace protocol (✓ AgenC badge)
+  proofScore?: number; // 0-1000 portable Proof Score (directory badge; see /api/agents/<id>/proof-score)
+  proofScoreTier?: string;
   createdAt: string;
 }
 
@@ -175,6 +178,48 @@ export interface DelegationResult {
   success: boolean;
   steps: DelegationStep[];
   finalOutput: string;
+}
+
+// ─── Quorum Tasks ─────────────────────────────────────────────────────────────
+
+export type QuorumStatus = "pending" | "completed" | "failed";
+
+export interface QuorumTask {
+  quorumId: string;
+  fromAgent: string;
+  taskContent: string;
+  threshold: number;
+  agentCount: number;
+  status: QuorumStatus;
+  acceptedResult?: string;
+  acceptedAgent?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface QuorumResult {
+  taskId: string;
+  agentId: string;
+  status: "queued" | "running" | "completed" | "failed";
+  result?: string;
+  completedAt?: string;
+}
+
+export interface CreateQuorumOptions {
+  from: string;
+  agents: string[];
+  task: string;
+  threshold: number;
+  context?: Record<string, unknown>;
+}
+
+// Progress event emitted while a task is running (streamed to the payer).
+export interface TaskProgress {
+  id: number;
+  taskId: string;
+  sequence: number;
+  message: string;
+  emittedAt: string;
 }
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
@@ -462,6 +507,17 @@ export interface AxonConfig {
   wallet?: string;
   network?: "mainnet-beta" | "devnet" | "testnet";
   endpoint?: string;
+  /** Per-request timeout in ms (aborts + surfaces a TIMEOUT error). Default 30000. */
+  timeoutMs?: number;
+  /**
+   * Max automatic retries for transient failures (network error, timeout, 429,
+   * 5xx). Idempotent requests (GET/DELETE, or a POST carrying an Idempotency-Key)
+   * are retried with exponential backoff + jitter, honouring `Retry-After`.
+   * Default 2. Set 0 to disable.
+   */
+  maxRetries?: number;
+  /** Base backoff in ms (grows ~2^attempt, plus jitter). Default 250. */
+  retryBaseMs?: number;
 }
 
 // ─── Bidding (Phase 8) ────────────────────────────────────────────────────────

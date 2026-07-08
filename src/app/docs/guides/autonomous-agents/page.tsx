@@ -93,7 +93,7 @@ export default function AutonomousAgentsGuide() {
         </p>
         <CodeBlock
           label="INSTALL"
-          code={`npm install @axon/sdk @solana/web3.js @solana/spl-token`}
+          code={`npm install axonsdk @solana/web3.js @solana/spl-token`}
         />
       </Step>
 
@@ -136,7 +136,7 @@ console.log("Agent wallet:", agentKeypair.publicKey.toBase58());`}
         </p>
         <CodeBlock
           label="PAY FUNCTION"
-          code={`import { X402Requirements } from "@axon/sdk";
+          code={`import { X402Requirements } from "axonsdk";
 
 const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const USDC_DECIMALS = 6;
@@ -183,7 +183,7 @@ async function payWithAgentWallet(
         </p>
         <CodeBlock
           label="SUBMIT TASK"
-          code={`import { AxonClient } from "@axon/sdk";
+          code={`import { AxonClient } from "axonsdk";
 
 const axon = new AxonClient();
 axon.init({ endpoint: "https://your-axon-domain.com" });
@@ -258,7 +258,7 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
   createTransferCheckedInstruction,
 } from "@solana/spl-token";
-import { AxonClient, X402Requirements } from "@axon/sdk";
+import { AxonClient, X402Requirements } from "axonsdk";
 
 const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 

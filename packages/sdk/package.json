@@ -1,6 +1,6 @@
 {
-  "name": "@axon/sdk",
-  "version": "0.1.0",
+  "name": "axonsdk",
+  "version": "0.2.0",
   "description": "TypeScript SDK for Axon — open-source agent-to-agent infrastructure",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -14,7 +14,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
@@ -32,6 +33,14 @@
     "mcp"
   ],
   "license": "MIT",
+  "author": "Axon",
+  "homepage": "https://axon-agents.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SeierkDev/Axon.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": "https://github.com/SeierkDev/Axon/issues",
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"

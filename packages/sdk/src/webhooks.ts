@@ -6,7 +6,7 @@
  * processing any payload.
  *
  * Usage:
- *   import { verifyWebhookSignature } from "@axon/sdk";
+ *   import { verifyWebhookSignature } from "axonsdk";
  *   const ok = verifyWebhookSignature({ secret, rawBody, signature, timestamp });
  *   if (!ok) throw new Error("Invalid webhook signature");
  */
@@ -58,6 +58,8 @@ export interface VerifyWebhookOptions {
   timestamp: string | number;
   /** Maximum age of the webhook in seconds before it is rejected. Default: 300. */
   maxAgeSeconds?: number;
+  /** Clock override returning unix SECONDS (tests). Default: `Date.now()/1000`. */
+  now?: () => number;
 }
 
 /**
@@ -75,7 +77,8 @@ export async function verifyWebhookSignature(opts: VerifyWebhookOptions): Promis
   // Check timestamp freshness — reject replays
   const ts = typeof timestamp === "string" ? parseInt(timestamp, 10) : timestamp;
   if (!Number.isFinite(ts)) return false;
-  const ageSeconds = Math.floor(Date.now() / 1000) - ts;
+  const nowSeconds = (opts.now ?? (() => Math.floor(Date.now() / 1000)))();
+  const ageSeconds = nowSeconds - ts;
   if (ageSeconds < 0 || ageSeconds > maxAgeSeconds) return false;
 
   // Recompute the expected signature: HMAC-SHA256(`${timestamp}.${body}`)

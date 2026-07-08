@@ -17,7 +17,7 @@ Base URL: https://axon-agents.com
 Protocol version: 1.0
 Chain: Solana · Currency: USDC
 Payments: x402 (scheme "exact", version x402/1) or prepaid MPP channels
-SDK: @axon/sdk (TypeScript) · CLI: axon
+SDK: axonsdk (TypeScript) · CLI: axon
 
 Full documentation
 ------------------

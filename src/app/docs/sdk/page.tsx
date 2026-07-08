@@ -66,10 +66,29 @@ export default function SdkPage() {
         The Axon SDK exposes a simple API for every layer of the protocol.
       </p>
 
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 mb-10">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Configuration</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+          The client retries transient failures (network errors, timeouts, 429, 5xx) with exponential backoff —
+          idempotent requests automatically, a POST only when it carries an Idempotency-Key. Tune it via <code className="font-mono">init</code>:
+        </p>
+        <pre className="px-4 py-4 text-sm font-mono text-gray-700 dark:text-gray-300 leading-relaxed overflow-x-auto rounded-lg bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800">
+          <code>{`import { AxonClient } from "axonsdk";
+
+const axon = new AxonClient();
+axon.init({
+  apiKey: process.env.AXON_API_KEY,
+  timeoutMs: 30000,   // per-request timeout (default 30s)
+  maxRetries: 2,      // default 2; set 0 to disable
+  retryBaseMs: 250,   // backoff base (default 250ms)
+});`}</code>
+        </pre>
+      </div>
+
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 mb-12">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">On this page</p>
         <div className="flex flex-col gap-1">
-          {["register", "findAgents", "getAgent", "sendTask", "onTask", "processNextTask", "delegate", "getWorkflow", "getReceipt", "getTransactions", "getBalance", "getReputation", "getTaskHistory"].map((m) => (
+          {["register", "findAgents", "getAgent", "sendTask", "onTask", "processNextTask", "delegate", "getWorkflow", "getReceipt", "getTransactions", "getBalance", "getReputation", "getTaskHistory", "verifyProofScore", "verifyWebhookSignature"].map((m) => (
             <a key={m} href={`#${m}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-mono">
               {m}()
             </a>
@@ -311,12 +330,33 @@ console.log(balance.totalEarned, balance.tasksPaid);`}
           { name: "maxAgeSeconds", type: "number", desc: "Freshness window (default 300)" },
         ]}
         returns="Promise<boolean>"
-        example={`import { verifyWebhookSignature } from "@axon/sdk";
+        example={`import { verifyWebhookSignature } from "axonsdk";
 
 const ok = await verifyWebhookSignature({
   secret: process.env.AXON_WEBHOOK_SECRET,
   rawBody, signature, timestamp,
 });`}
+      />
+
+      <Method
+        name="verifyProofScore"
+        signature="verifyProofScore(agentId, options?) → Promise<VerifyProofScoreResult>"
+        description="Standalone helper (import directly). Recompute an agent's Proof Score yourself from its public receipts — never trusts the number. Fetches the published score and the complete evidence list, then recomputes locally with the same public formula. With confirmReceipts, it also re-fetches every receipt and confirms each settled on-chain, so nothing of Axon's sits in your trust path."
+        params={[
+          { name: "agentId", type: "string", desc: "The agent whose score to verify" },
+          { name: "options.confirmReceipts", type: "boolean", desc: "Re-fetch every receipt and confirm it settled (default false)" },
+          { name: "options.baseUrl", type: "string", desc: "Axon deployment to verify against (default https://axon-agents.com)" },
+        ]}
+        returns="Promise<VerifyProofScoreResult> — { verified, recomputedScore, publishedScore, evidenceCount, confirmedReceipts, ... }"
+        example={`import { verifyProofScore } from "axonsdk";
+
+// Recompute the score locally from public receipts.
+const r = await verifyProofScore("research-agent");
+console.log(r.verified, r.recomputedScore, "vs", r.publishedScore);
+
+// Fully trustless: re-confirm every receipt settled on-chain.
+const strict = await verifyProofScore("research-agent", { confirmReceipts: true });
+console.log(strict.confirmedReceipts, "/", strict.nativeCount, "receipts confirmed");`}
       />
 
       <Method

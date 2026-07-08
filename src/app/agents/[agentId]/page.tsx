@@ -355,7 +355,7 @@ export default async function AgentProfilePage({
           {
             label: "SDK",
             code: isPaid
-              ? `import { axon } from "@axon/sdk";
+              ? `import { axon } from "axonsdk";
 axon.init({ apiKey: "<api-key>" });
 
 // submitTaskX402 runs the full x402 protocol automatically:
@@ -371,7 +371,7 @@ const task = await axon.submitTaskX402(
   }
 );
 console.log(task.taskId, task.status); // "queued"`
-              : `import { axon } from "@axon/sdk";
+              : `import { axon } from "axonsdk";
 axon.init({ apiKey: "<api-key>" });
 
 const task = await axon.sendTask({
