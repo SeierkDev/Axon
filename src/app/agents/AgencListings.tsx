@@ -1,16 +1,45 @@
 "use client";
 
+import { useState } from "react";
 import { useAgencListings } from "./useAgencListings";
 import { ExtArrow } from "@/components/ExtArrow";
+import { hireWithWallet } from "@/lib/agencHireClient";
 
-// Cross-network discovery — AgenC's agents surfaced inside the Axon marketplace.
-// Loads client-side (shared hook) so a slow/down AgenC feed never blocks the
-// marketplace page. Read-only for now: cards link out to AgenC to hire (the
-// on-chain hire-through flow is the next step). AgenC-branded (pink) so it's
-// clear these are from the connected network.
+type HireStatus = "idle" | "hiring" | "done" | "error";
+
+// Cross-network discovery + hire — AgenC's agents surfaced inside the Axon
+// marketplace, hireable from here. The hire is non-custodial: the user signs +
+// pays with their own Phantom wallet, creating a real funded task on AgenC's
+// on-chain program. Delivery + settlement happen on AgenC, by the provider.
 export function AgencListings() {
   const listings = useAgencListings();
+  const [hireFor, setHireFor] = useState<{ id: string; name: string } | null>(null);
+  const [task, setTask] = useState("");
+  const [status, setStatus] = useState<HireStatus>("idle");
+  const [result, setResult] = useState<{ task: string; explorerUrl: string } | null>(null);
+  const [error, setError] = useState("");
+  const [step, setStep] = useState("");
+
   if (listings.length === 0) return null;
+
+  function openHire(l: { id: string; name: string }) {
+    setHireFor(l); setTask(""); setStatus("idle"); setResult(null); setError(""); setStep("");
+  }
+
+  // Non-custodial: the user's own Phantom wallet signs + pays. Axon only builds
+  // the AgenC transactions (server) and runs the attestor moderation.
+  async function submitHire() {
+    if (!hireFor || !task.trim()) return;
+    setStatus("hiring"); setError(""); setStep("");
+    try {
+      const r = await hireWithWallet({ listingPda: hireFor.id, task: task.trim(), onStep: setStep });
+      setResult({ task: r.taskPda, explorerUrl: r.explorerUrl }); setStatus("done");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setStatus("error");
+      setError(msg === "PHANTOM_NOT_FOUND" ? "No Phantom wallet found — install Phantom to hire." : msg);
+    }
+  }
 
   return (
     <section id="agenc" className="mt-16 scroll-mt-24">
@@ -86,7 +115,12 @@ export function AgencListings() {
                     agent<ExtArrow />
                   </a>
                 )}
-                <span className="text-pink-600 dark:text-pink-400 font-medium group-hover:underline">Hire<ExtArrow /></span>
+                <button
+                  onClick={() => openHire(l)}
+                  className="relative z-10 text-pink-600 dark:text-pink-400 font-medium hover:underline"
+                >
+                  Hire
+                </button>
               </div>
             </div>
           </div>
@@ -101,6 +135,85 @@ export function AgencListings() {
       >
         Browse all agents on AgenC<ExtArrow />
       </a>
+
+      {hireFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => status !== "hiring" && setHireFor(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-pink-100 dark:border-pink-950/40 bg-white dark:bg-gray-900 shadow-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-pink-100 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400 leading-none">AgenC</span>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">Hire {hireFor.name}</h3>
+            </div>
+
+            {status === "done" && result ? (
+              <div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Paid ✓</span> — your funds are held in escrow and a real task is now live for this agent on AgenC.
+                </p>
+                <a
+                  href={result.explorerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-pink-600 dark:text-pink-400 hover:underline break-all"
+                >
+                  View the task on-chain<ExtArrow />
+                </a>
+                <div className="mt-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 px-3 py-2.5">
+                  <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-400 mb-0.5">What happens next</p>
+                  <p className="text-[11px] text-amber-800/90 dark:text-amber-400/90 leading-relaxed">
+                    The agent delivers on <span className="font-medium">AgenC</span>, not here — so this isn&apos;t instant, and delivery depends on the provider. The result + receipt show up on AgenC once they complete it. Your escrow stays locked until then, so nothing is lost while you wait.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setHireFor(null)}
+                  className="mt-5 w-full rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium py-2.5 hover:opacity-90 transition-opacity"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  What should it do? You&apos;ll fund a real task on AgenC with your own wallet — the
+                  agent delivers there, so the result appears on AgenC, not instantly here.
+                </p>
+                <textarea
+                  value={task}
+                  onChange={(e) => setTask(e.target.value)}
+                  disabled={status === "hiring"}
+                  rows={3}
+                  placeholder="e.g. Write a runbook for restarting a crashed worker"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-pink-400 dark:focus:border-pink-600 disabled:opacity-60 resize-none"
+                />
+                {status === "error" && (
+                  <p className="text-xs text-red-500 mt-2 break-words">{error}</p>
+                )}
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => setHireFor(null)}
+                    disabled={status === "hiring"}
+                    className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm py-2.5 hover:border-gray-400 dark:hover:border-gray-500 disabled:opacity-60 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitHire}
+                    disabled={status === "hiring" || !task.trim()}
+                    className="flex-1 rounded-lg bg-pink-600 hover:bg-pink-700 disabled:opacity-60 text-white text-sm font-medium py-2.5 transition-colors"
+                  >
+                    {status === "hiring" ? (step || "Hiring…") : "Hire + pay"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
