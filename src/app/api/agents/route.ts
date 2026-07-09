@@ -16,7 +16,7 @@ import { verifyAgentEndpoint } from "@/lib/verification";
 import { notifyNewAgent } from "@/lib/telegram";
 
 const VALID_SORT_FIELDS = new Set<string>(["reputation", "price", "createdAt", "activity", "successRate", "latency", "reviews"]);
-const VALID_PROVIDERS: InferenceProvider[] = ["anthropic", "ollama", "openai"];
+const VALID_PROVIDERS: InferenceProvider[] = ["anthropic", "ollama", "openai", "grok"];
 
 // Terms that would impersonate the Axon platform
 const IMPERSONATION_TERMS = [
@@ -176,10 +176,10 @@ async function handlePost(req: NextRequest) {
     if (endpointError) return apiError("VALIDATION_ERROR", endpointError, 400);
   }
   if (body.providerEndpoint) {
-    if ((body.provider ?? "anthropic") === "openai") {
+    if ((body.provider ?? "anthropic") === "openai" || body.provider === "grok") {
       return apiError(
         "VALIDATION_ERROR",
-        "providerEndpoint is not supported for openai because it would receive the server OpenAI API key",
+        "providerEndpoint is not supported for openai/grok because it would receive the server API key",
         400
       );
     }

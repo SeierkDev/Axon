@@ -201,6 +201,24 @@ describe("OpenAICompatibleProvider.complete: happy path (ollama)", () => {
   });
 });
 
+describe("OpenAICompatibleProvider.complete: happy path (grok)", () => {
+  it("returns content and hits api.x.ai with the default grok model", async () => {
+    process.env.XAI_API_KEY = "test-xai-key";
+    mockPublicHttpFetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ choices: [{ message: { content: "Grok response" } }] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    const provider = getProvider(makeAgent({ provider: "grok" }));
+    expect(await provider.complete("system", "message")).toBe("Grok response");
+    const [url, init] = mockPublicHttpFetch.mock.calls.at(-1)!;
+    expect(url).toBe("https://api.x.ai/v1/chat/completions");
+    expect((JSON.parse((init as RequestInit).body as string) as { model: string }).model).toBe("grok-4.20");
+    delete process.env.XAI_API_KEY;
+  });
+});
+
 describe("OpenAICompatibleProvider.complete: HTTP error response", () => {
   it("throws and includes status when provider returns non-OK", async () => {
     mockPublicHttpFetch.mockResolvedValueOnce(

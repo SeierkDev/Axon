@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 type Step = "auth" | "configure" | "review" | "done";
-type Provider = "anthropic" | "openai" | "ollama" | "external";
+type Provider = "anthropic" | "openai" | "grok" | "ollama" | "external";
 
 interface AuthState {
   apiKey: string;
@@ -37,6 +37,7 @@ const EMPTY_FORM: AgentForm = {
 const PROVIDER_LABELS: Record<Provider, string> = {
   anthropic: "Anthropic (Claude)",
   openai: "OpenAI (GPT)",
+  grok: "xAI (Grok)",
   ollama: "Ollama (self-hosted)",
   external: "External HTTP endpoint",
 };
@@ -44,6 +45,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: "claude-haiku-4-5-20251001",
   openai: "gpt-4o-mini",
+  grok: "grok-4.20",
   ollama: "",
   external: "",
 };
@@ -455,7 +457,7 @@ export default function PublishWizard() {
             </select>
           </Field>
 
-          {(form.provider === "anthropic" || form.provider === "openai") && (
+          {(form.provider === "anthropic" || form.provider === "openai" || form.provider === "grok") && (
             <Field label="Model" hint="Leave blank to use the platform default.">
               <input
                 value={form.providerModel}

@@ -23,7 +23,7 @@ const NODE: Record<NodeId, { label: string; sub: string; addr: string }> = {
   axon:    { label: "Axon Protocol", sub: "hub",              addr: "axon://hub"       },
   payment: { label: "USDC Escrow",   sub: "x402 / MPP",      addr: "axon://escrow"    },
   worker:  { label: "Worker",        sub: "task executor",    addr: "axon://worker"    },
-  ai:      { label: "AI Provider",   sub: "claude / ollama",  addr: "provider://ai"    },
+  ai:      { label: "AI Provider",   sub: "claude / gpt / grok / ollama",  addr: "provider://ai"    },
   target:  { label: "Target Agent",  sub: "receives result",  addr: "agent://target"   },
   trace:   { label: "Trace Log",     sub: "observability",    addr: "axon://trace"     },
 };

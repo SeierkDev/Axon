@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 function MarkdownOutput({ text }: { text: string }) {
   const lines = text.split("\n");
@@ -128,12 +128,18 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
   const [latency, setLatency] = useState<number | null>(null);
   const [remaining, setRemaining] = useState<number>(LIMIT);
   const [error, setError] = useState<string | null>(null);
+  // Re-entry guard: the Run button only unmounts after the state flip renders, so
+  // a double-click can fire handleRun twice — two concurrent streams would then
+  // interleave into the same output (duplicated blocks) and burn extra demo calls.
+  const runningRef = useRef(false);
 
   if (hasExternalEndpoint) return null;
 
   const placeholder = suggestPrompt(capabilities);
 
   async function handleRun() {
+    if (runningRef.current) return;
+    runningRef.current = true;
     const input = task.trim() || placeholder;
     setStep("running");
     setOutput("");
@@ -209,6 +215,8 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
     } catch {
       setError("Network error — could not reach the test endpoint.");
       setStep("error");
+    } finally {
+      runningRef.current = false;
     }
   }
 
