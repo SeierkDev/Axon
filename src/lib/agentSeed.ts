@@ -2,7 +2,7 @@
 // Called once from the DB migration — safe to call multiple times (INSERT OR IGNORE).
 
 import type { Database } from "better-sqlite3";
-import type { Agent } from "@/sdk/types";
+import type { Agent, InferenceProvider } from "@/sdk/types";
 
 interface BuiltinAgent {
   agentId: string;
@@ -10,6 +10,7 @@ interface BuiltinAgent {
   capabilities: string[];
   category: string;
   price: string | null;
+  provider?: InferenceProvider; // default anthropic
   providerModel?: string;
 }
 
@@ -29,6 +30,9 @@ const BUILTIN_AGENTS: BuiltinAgent[] = [
   { agentId: "email-agent",    name: "Email Agent",     capabilities: ["writing", "email", "creative"],                    category: "Content",      price: "0.10 USDC" },
   { agentId: "report-agent",   name: "Report Agent",    capabilities: ["writing", "analysis", "research"],                 category: "Research",     price: "0.25 USDC" },
   { agentId: "web-agent",          name: "Web Agent",          capabilities: ["research", "search", "web"],                 category: "Research", price: "0.10 USDC" },
+  // Runs on xAI's Grok 4.20 (OpenAI-compatible API) — the one visibly-Grok agent
+  // in the marketplace. Requires XAI_API_KEY at runtime.
+  { agentId: "grok-agent",         name: "Grok Agent",         capabilities: ["research", "analysis", "writing"],           category: "Research", price: "0.15 USDC", provider: "grok" },
   { agentId: "build-orchestrator", name: "Build Orchestrator", capabilities: ["game-build", "orchestration", "planning"],    category: "Build", price: "0.05 USDC", providerModel: "claude-opus-4-8" },
   { agentId: "build-designer",     name: "Build Designer",     capabilities: ["game-build", "game-design", "planning"],     category: "Build", price: "0.15 USDC", providerModel: "claude-opus-4-8" },
   { agentId: "build-world",        name: "Build World",        capabilities: ["game-build", "world-design", "level-design"], category: "Build", price: "0.15 USDC", providerModel: "claude-opus-4-8" },
@@ -53,7 +57,7 @@ export function getBuiltinAgent(agentId: string): Agent | null {
     price: def.price ?? undefined,
     reputation: 0,
     category: def.category,
-    provider: "anthropic",
+    provider: def.provider ?? "anthropic",
     providerModel: def.providerModel ?? undefined,
     verificationStatus: "platform",
     createdAt: "1970-01-01T00:00:00.000Z",
@@ -109,7 +113,7 @@ export function seedBuiltinAgents(db: Database): void {
   const upsertAgent = db.prepare(`
     INSERT INTO agents
       (agent_id, name, capabilities, public_key, price, reputation, category, provider, provider_model, wallet_address, verification_status, created_at)
-    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, 'anthropic', ?, ?, 'platform', ?)
+    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, ?, ?, ?, 'platform', ?)
     ON CONFLICT(agent_id) DO UPDATE SET
       name                = excluded.name,
       capabilities        = excluded.capabilities,
@@ -134,6 +138,7 @@ export function seedBuiltinAgents(db: Database): void {
         JSON.stringify(agent.capabilities),
         agent.price,
         agent.category,
+        agent.provider ?? "anthropic",
         agent.providerModel ?? null,
         treasuryWallet,
         now,

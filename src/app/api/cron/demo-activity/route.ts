@@ -17,6 +17,10 @@ export const runtime = "nodejs";
 // values; token and cost figures are estimated from the artifact size (they
 // become measured automatically if these tasks run against a live model).
 const ACTIVITY_MODEL = "claude-sonnet-5"; // the executor's default model
+// Agents that run on a non-default provider — their traces must name the model
+// that actually backs them, not the network default.
+const AGENT_MODELS: Record<string, string> = { "grok-agent": "grok-4.20" };
+const modelFor = (toAgent: string): string => AGENT_MODELS[toAgent] ?? ACTIVITY_MODEL;
 const estTokens = (text: string): number => Math.max(1, Math.round(text.length / 4));
 
 const TASK_POOL: { toAgent: string; task: string; output: string }[] = [
@@ -39,6 +43,8 @@ const TASK_POOL: { toAgent: string; task: string; output: string }[] = [
   { toAgent: "defi-agent",      task: "What are the main liquidity risks in DeFi lending protocols and how are they mitigated?", output: "Key risks: (1) **Utilisation crunch** — all supply is borrowed, no withdrawals possible; mitigated by dynamic interest rate curves that make borrowing expensive as utilisation approaches 100%. (2) **Oracle price manipulation** — flash loan attacks inflate collateral price; mitigated by TWAPs and circuit breakers. (3) **Liquidation cascade** — falling prices trigger mass liquidation, further depressing price; mitigated by conservative LTV ratios and liquidation incentives." },
   { toAgent: "social-agent",    task: "Draft three short Twitter posts announcing a new open-source agent infrastructure project.", output: "1. 'We just open-sourced Axon — the task, payment, and identity layer for AI agents. Register an agent, send work, settle in USDC. No platform fee, no lock-in. github.com/axon-agents/axon'\n\n2. 'AI agents should be able to hire each other. Axon makes that possible: discovery, tasks, x402 payments, and reputation in one open protocol.'\n\n3. 'Built the infra we wished existed when building multi-agent systems. It's open source. Try it: axon-agents.com'" },
   { toAgent: "email-agent",     task: "Write a concise outreach email template for inviting developers to try an agent API platform.", output: "Subject: Open-source infra for agent-to-agent work\n\nHi [Name],\n\nI noticed you're building with [LLM/framework]. We open-sourced Axon — a task and payment layer that lets AI agents register, discover each other, and settle USDC payments without custom integration code.\n\nTakes about 5 minutes to register an agent and send a first task. Happy to share the quick-start if useful.\n\n[Your name]" },
+  { toAgent: "grok-agent",      task: "Compare the trade-offs of settling agent payments per-task versus in daily batches.", output: "Per-task settlement gives instant finality and a receipt per unit of work — ideal for trust-building between agents that have no history — at the cost of one on-chain fee per task. Batched settlement amortises fees and suits high-frequency pairs with standing trust, but introduces credit risk inside the batch window and complicates dispute attribution. A practical hybrid: settle per-task below a trust threshold, then graduate proven pairs to daily netting with an on-chain checkpoint." },
+  { toAgent: "grok-agent",      task: "What makes an AI agent's reputation portable across networks, and what breaks it?", output: "Portability requires three properties: (1) the underlying evidence is publicly verifiable (receipts, not platform assertions), (2) the scoring formula is published so any third party recomputes the same number, and (3) identity is cryptographic, not a platform account. It breaks when any input is platform-trusted: self-reported task counts, opaque ratings, or history that can't be re-derived. The test is simple — delete the platform, can the score still be reconstructed?" },
 ];
 
 function authorized(req: NextRequest): boolean {
@@ -185,10 +191,10 @@ export async function POST(req: NextRequest) {
           toAgent: item.toAgent,
           inputHash: hashContent(item.task),
           outputHash: hashContent(item.output),
-          model: ACTIVITY_MODEL,
+          model: modelFor(item.toAgent),
           inputTokens: inTok,
           outputTokens: outTok,
-          costUsd: estimateCostUsd(ACTIVITY_MODEL, inTok, outTok),
+          costUsd: estimateCostUsd(modelFor(item.toAgent), inTok, outTok),
           latencyMs: processingMs,
         });
         completeTask(task.taskId, item.output);

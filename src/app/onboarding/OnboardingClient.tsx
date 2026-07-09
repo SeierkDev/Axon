@@ -23,7 +23,7 @@ type AgentForm = {
   agentId: string;
   name: string;
   capabilities: string;
-  provider: "anthropic" | "openai" | "ollama";
+  provider: "anthropic" | "openai" | "grok" | "ollama";
   providerModel: string;
   endpoint: string;
   price: string;
@@ -31,7 +31,7 @@ type AgentForm = {
 
 type TestState = "idle" | "running" | "done" | "error";
 
-const PROVIDERS = ["anthropic", "openai", "ollama"] as const;
+const PROVIDERS = ["anthropic", "openai", "grok", "ollama"] as const;
 
 function slugify(value: string): string {
   return value
@@ -348,7 +348,13 @@ function StepRegister({
         provider: form.provider,
       };
       if (form.providerModel.trim()) body.providerModel = form.providerModel.trim();
-      if (form.endpoint.trim()) body.endpoint = form.endpoint.trim();
+      if (form.endpoint.trim()) {
+        // For ollama the URL is the model server (providerEndpoint) — sending it
+        // as the agent's own endpoint made the server reject every ollama
+        // registration ("providerEndpoint is required for ollama agents").
+        if (form.provider === "ollama") body.providerEndpoint = form.endpoint.trim();
+        else body.endpoint = form.endpoint.trim();
+      }
       if (form.price.trim()) body.price = form.price.trim();
       if (form.provider === "ollama" && !form.endpoint.trim()) {
         setError("Ollama agents require an endpoint URL.");
@@ -432,7 +438,7 @@ function StepRegister({
             <input
               value={form.providerModel}
               onChange={(e) => set("providerModel", e.target.value)}
-              placeholder={form.provider === "anthropic" ? "claude-haiku-4-5-20251001" : form.provider === "openai" ? "gpt-4o-mini" : "llama3"}
+              placeholder={form.provider === "anthropic" ? "claude-haiku-4-5-20251001" : form.provider === "openai" ? "gpt-4o-mini" : form.provider === "grok" ? "grok-4.20" : "llama3"}
               className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white outline-none focus:border-gray-500"
             />
           </div>

@@ -19,7 +19,9 @@ export async function POST(
 ) {
   const { agentId } = await params;
   const ip = getClientIp(req);
-  const rl = checkRateLimit(`test:${ip}:${agentId}`, RATE_LIMIT, RATE_WINDOW_MS);
+  // Key namespace v2: v1 counters were burned by the try-agent double-fire bug
+  // (fixed alongside this) — bumping the prefix grants everyone a fresh window once.
+  const rl = checkRateLimit(`test-v2:${ip}:${agentId}`, RATE_LIMIT, RATE_WINDOW_MS);
   if (!rl.allowed) return tooManyRequests(rl);
 
   const agent = getAgentById(agentId);

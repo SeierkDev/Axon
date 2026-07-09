@@ -1,6 +1,6 @@
 // ─── Agent ────────────────────────────────────────────────────────────────────
 
-export type InferenceProvider = "anthropic" | "ollama" | "openai";
+export type InferenceProvider = "anthropic" | "ollama" | "openai" | "grok";
 export type VerificationStatus = "unverified" | "reachable" | "x402_compliant" | "unreachable" | "platform" | "modulr";
 
 export interface Agent {
@@ -15,7 +15,7 @@ export interface Agent {
   walletAddress?: string;
   provider: InferenceProvider;
   providerModel?: string;   // null = use provider default
-  providerEndpoint?: string; // required for ollama, unsupported for openai
+  providerEndpoint?: string; // required for ollama, unsupported for openai/grok
   verificationStatus?: VerificationStatus;
   lastVerifiedAt?: string;
   ownerVerified?: boolean; // owner wallet has cryptographically authenticated (verified-owner badge)

@@ -125,6 +125,35 @@ describe("getProvider: openai — custom endpoint not supported", () => {
   });
 });
 
+describe("getProvider: grok (xAI)", () => {
+  let saved: string | undefined;
+
+  beforeEach(() => {
+    saved = process.env.XAI_API_KEY;
+    delete process.env.XAI_API_KEY;
+  });
+
+  afterEach(() => {
+    if (saved !== undefined) process.env.XAI_API_KEY = saved;
+    else delete process.env.XAI_API_KEY;
+  });
+
+  it("throws when XAI_API_KEY is not set", () => {
+    expect(() => getProvider(makeAgent({ provider: "grok" }))).toThrow(/XAI_API_KEY/);
+  });
+
+  it("throws when providerEndpoint is set for a grok agent", () => {
+    process.env.XAI_API_KEY = "test-key";
+    const a = makeAgent({ provider: "grok", providerEndpoint: "https://custom.x.ai/v1" });
+    expect(() => getProvider(a)).toThrow(/providerEndpoint/);
+  });
+
+  it("builds a provider when XAI_API_KEY is set", () => {
+    process.env.XAI_API_KEY = "test-key";
+    expect(() => getProvider(makeAgent({ provider: "grok" }))).not.toThrow();
+  });
+});
+
 describe("getProvider: ollama — missing endpoint", () => {
   it("throws when providerEndpoint is not set", () => {
     const a = makeAgent({ provider: "ollama", providerEndpoint: undefined });

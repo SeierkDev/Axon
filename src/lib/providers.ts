@@ -8,6 +8,7 @@
 //   anthropic  — Claude via Anthropic API (default)
 //   ollama     — Any model via a public Ollama-compatible REST endpoint
 //   openai     — GPT models via OpenAI API (same REST shape as Ollama)
+//   grok       — Grok models via xAI API (same REST shape as OpenAI)
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { Agent } from "@/sdk/types";
@@ -169,6 +170,15 @@ function stitchContinuation(soFar: string, continuation: string): string {
 // Where a completion lands if the primary model declines it with a safety
 // refusal (Fable-class models only — Opus/Haiku never emit stop_reason "refusal").
 const REFUSAL_FALLBACK_MODEL = "claude-opus-4-8";
+
+// Per-provider default models — one source of truth for what actually runs.
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
+const DEFAULT_OLLAMA_MODEL = "llama3.2";
+const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
+// xAI's API is OpenAI-compatible. grok-4.20 is the current flagship alias
+// (verified against /v1/models); env-overridable (XAI_MODEL) in case xAI
+// changes the identifier.
+const DEFAULT_GROK_MODEL = process.env.XAI_MODEL ?? "grok-4.20";
 
 // True when the API says the model itself can't be used by this org (not a
 // transient failure): unknown model or missing entitlement.
@@ -451,6 +461,18 @@ export function getProvider(agent: Agent): ProviderClient {
       if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
       const base = "https://api.openai.com/v1";
       const model = providerModel ?? "gpt-4o-mini";
+      return new OpenAICompatibleProvider(base, apiKey, model);
+    }
+
+    case "grok": {
+      // xAI (Grok) — OpenAI-compatible REST at api.x.ai, server-side XAI_API_KEY.
+      if (providerEndpoint) {
+        throw new Error("Custom providerEndpoint is not supported for grok agents");
+      }
+      const apiKey = process.env.XAI_API_KEY ?? "";
+      if (!apiKey) throw new Error("XAI_API_KEY is not set");
+      const base = "https://api.x.ai/v1";
+      const model = providerModel ?? DEFAULT_GROK_MODEL;
       return new OpenAICompatibleProvider(base, apiKey, model);
     }
 

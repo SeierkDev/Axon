@@ -29,7 +29,7 @@ export const registerAgentSchema = z.object({
   endpoint: z.string().url("endpoint must be a valid URL").optional(),
   price: z.string().optional(),
   category: z.string().max(60).optional(),
-  provider: z.enum(["anthropic", "ollama", "openai"]).optional(),
+  provider: z.enum(["anthropic", "ollama", "openai", "grok"]).optional(),
   providerModel: z.string().max(80).optional(),
   providerEndpoint: z.string().url("providerEndpoint must be a valid URL").optional(),
 });

@@ -1,4 +1,4 @@
-type InferenceProvider = "anthropic" | "ollama" | "openai";
+type InferenceProvider = "anthropic" | "ollama" | "openai" | "grok";
 type VerificationStatus = "unverified" | "reachable" | "x402_compliant" | "unreachable" | "platform" | "modulr";
 interface Agent {
     agentId: string;

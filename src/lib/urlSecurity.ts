@@ -162,8 +162,21 @@ export async function publicHttpFetch(rawUrl: string, init: PublicHttpFetchInit 
         headers,
         signal: init.signal ?? undefined,
         servername: url.hostname,
-        lookup: (_hostname, _options, callback) => {
-          callback(null, address, family);
+        // Pin the connection to the address validated above (SSRF guard: the
+        // socket must connect to what we checked, not a second DNS answer).
+        // Node 20+'s happy-eyeballs path calls lookup with { all: true } and
+        // expects an ARRAY — returning a bare string there makes net read
+        // addresses[0].address as undefined and throw ERR_INVALID_IP_ADDRESS
+        // ("Invalid IP address: undefined"), so honor both callback shapes.
+        lookup: (_hostname, options, callback) => {
+          if (options.all) {
+            (callback as unknown as (err: null, addresses: { address: string; family: number }[]) => void)(
+              null,
+              [{ address, family }],
+            );
+          } else {
+            callback(null, address, family);
+          }
         },
       },
       (res) => {
