@@ -12,6 +12,7 @@ import {
   compareOutputs,
   lexicalSimilarity,
   hashReproProof,
+  sampleReproducibility,
   EQUIVALENCE_THRESHOLD,
 } from "@/lib/reproducibility";
 import { createTask, startTask, completeTask, getTaskById } from "@/lib/tasks";
@@ -227,5 +228,49 @@ describe("reproduceTask", () => {
     // sanity: the seeded trace event is what the guard reads
     expect(getTaskById(taskId)?.status).toBe("completed");
     await expect(reproduceTask(taskId, { runner: async () => "x" })).rejects.toThrow(/external MCP/);
+  });
+});
+
+describe("sampleReproducibility", () => {
+  it("reproduces recent eligible tasks and skips already-proofed and network-activity ones", async () => {
+    const output = "sampled deliverable body";
+    const eligible = completedTask(output);
+
+    // Already proofed — must not be re-sampled.
+    const proofed = completedTask("already proven output");
+    await reproduceTask(proofed, { runner: async () => "already proven output" });
+
+    // Network-activity task — completes from prepared results; never sampled.
+    const from = makeAgent();
+    const worker = makeAgent();
+    const activity = createTask({
+      fromAgent: from.agentId,
+      toAgent: worker.agentId,
+      task: "scheduled network activity",
+      context: { source: "axon-network-activity", automated: true },
+    });
+    startTask(activity.taskId);
+    completeTask(activity.taskId, "prepared output");
+
+    const samples = await sampleReproducibility(10, { runner: async () => output });
+    const ids = samples.map((s) => s.taskId);
+    expect(ids).toContain(eligible);
+    expect(ids).not.toContain(proofed);
+    expect(ids).not.toContain(activity.taskId);
+
+    // The sampled task now carries a real, public proof.
+    const proof = getReproProof(eligible);
+    expect(proof).not.toBeNull();
+    expect(proof!.verdict).toBe("exact");
+  });
+
+  it("skips non-reproducible tasks without failing the pass", async () => {
+    ensureAgent("crypto-agent");
+    const priceTask = taskTo("crypto-agent", "live-data output");
+    const normal = completedTask("plain body");
+    const samples = await sampleReproducibility(10, { runner: async () => "plain body" });
+    const ids = samples.map((s) => s.taskId);
+    expect(ids).not.toContain(priceTask);
+    expect(ids).toContain(normal);
   });
 });
