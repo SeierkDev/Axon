@@ -127,7 +127,10 @@ const AGENT_MAX_TOKENS: Record<string, number> = {
 };
 
 export function getAgentMaxTokens(agentId: string): number {
-  return AGENT_MAX_TOKENS[agentId] ?? 2048;
+  // 1000-token default (~700 words): interactive-speed deliverables. Length is
+  // NOT a truncation risk — the provider auto-continues if a response ever
+  // hits the ceiling; agents with bigger real needs are listed above.
+  return AGENT_MAX_TOKENS[agentId] ?? 1000;
 }
 
 // Returns the agent's real system prompt, or a strong generic fallback
@@ -142,13 +145,20 @@ export function getAgentSystem(agent: Agent): string {
     `Give complete answers, not overviews. ` +
     `Think like the best specialist in your field, not a general assistant.`;
 
-  return core + BEHAVIOR_RULES;
+  // Dense beats long, everywhere on the network: tasks settle in seconds, not
+  // minutes, and nobody hires an agent twice for a wall of filler.
+  return (
+    core +
+    BEHAVIOR_RULES +
+    `\n\nLENGTH: Default to SHORT, dense deliverables — roughly 250-350 words. ` +
+    `Only go longer when the task explicitly asks for exhaustive depth. Always end with a clean conclusion.`
+  );
 }
 
 // ── Provider interface ────────────────────────────────────────────────────────
 
 export interface ProviderClient {
-  complete(system: string, message: string, maxTokens?: number): Promise<string>;
+  complete(system: string, message: string, maxTokens?: number, temperature?: number): Promise<string>;
   stream(system: string, message: string, maxTokens?: number): AsyncIterable<string>;
 }
 
@@ -171,7 +181,8 @@ function stitchContinuation(soFar: string, continuation: string): string {
 // refusal (Fable-class models only — Opus/Haiku never emit stop_reason "refusal").
 const REFUSAL_FALLBACK_MODEL = "claude-opus-4-8";
 
-// Per-provider default models — one source of truth for what actually runs.
+// Per-provider default models — one source of truth, so getProvider (what runs)
+// and effectiveModel (what a reproducibility proof records) can never drift apart.
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
 const DEFAULT_OLLAMA_MODEL = "llama3.2";
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
@@ -201,15 +212,18 @@ class AnthropicProvider implements ProviderClient {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
     this.client = new Anthropic({ apiKey });
-    // Opus-tier default: agents must know CURRENT tech (Haiku 4.5's early-2025
-    // cutoff predates things like x402, turning research tasks into dead ends).
-    this.model = model ?? "claude-opus-4-8";
+    // Sonnet 5 default: current knowledge (Haiku 4.5's early-2025 cutoff
+    // predated x402 and dead-ended research tasks) at interactive speed — a
+    // 3-step pipeline on Opus took minutes, which kills the showcase.
+    this.model = model ?? DEFAULT_ANTHROPIC_MODEL;
   }
 
-  async complete(system: string, message: string, maxTokens = 2048): Promise<string> {
+  // 4096: Opus-tier agents write full deliverables — 2048 truncated pipeline
+  // outputs mid-sentence.
+  async complete(system: string, message: string, maxTokens = 4096, temperature?: number): Promise<string> {
     let first: { text: string; refused: boolean };
     try {
-      first = await this.completeWith(this.model, system, message, maxTokens);
+      first = await this.completeWith(this.model, system, message, maxTokens, temperature);
     } catch (err) {
       // The org may not have access to the primary model at all (404/403, e.g.
       // a Fable-class model without the required retention setting). A paid
@@ -220,7 +234,7 @@ class AnthropicProvider implements ProviderClient {
           fallback: REFUSAL_FALLBACK_MODEL,
           reason: err instanceof Error ? err.message : String(err),
         });
-        const rescued = await this.completeWith(REFUSAL_FALLBACK_MODEL, system, message, maxTokens);
+        const rescued = await this.completeWith(REFUSAL_FALLBACK_MODEL, system, message, maxTokens, temperature);
         if (rescued.refused) throw new Error("Model declined the request (fallback included)");
         return rescued.text;
       }
@@ -237,7 +251,7 @@ class AnthropicProvider implements ProviderClient {
       fallback: REFUSAL_FALLBACK_MODEL,
       reason: "refusal",
     });
-    const second = await this.completeWith(REFUSAL_FALLBACK_MODEL, system, message, maxTokens);
+    const second = await this.completeWith(REFUSAL_FALLBACK_MODEL, system, message, maxTokens, temperature);
     if (second.refused) throw new Error("Model declined the request (fallback included)");
     return second.text;
   }
@@ -247,6 +261,7 @@ class AnthropicProvider implements ProviderClient {
     system: string,
     message: string,
     maxTokens: number,
+    temperature?: number,
   ): Promise<{ text: string; refused: boolean }> {
     const timeoutMs = Math.max(120_000, maxTokens * 30);
     // If the model hits the token ceiling mid-output, ask it to continue from
@@ -269,6 +284,12 @@ class AnthropicProvider implements ProviderClient {
                   "Your previous response was cut off because it was too long. Continue from EXACTLY where it stopped and output ONLY the remaining content — do not repeat anything you already wrote, do not restate the file, and do not add any explanation or markdown fences.",
               },
             ];
+      // NOTE: `temperature` is intentionally NOT forwarded — current Claude models
+      // (Sonnet 5 / 4.6+ era) reject the parameter as deprecated (API 400). The
+      // param stays in the signature for the ProviderClient interface; callers
+      // needing determinism (reproducibility) rely on the pinned model + frozen
+      // input and must record that no temperature was applied.
+      void temperature;
       const msg = await withRetry(
         () =>
           this.client.messages
@@ -326,7 +347,9 @@ class OpenAICompatibleProvider implements ProviderClient {
     return h;
   }
 
-  async complete(system: string, message: string, maxTokens = 2048): Promise<string> {
+  // 4096: Opus-tier agents write full deliverables — 2048 truncated pipeline
+  // outputs mid-sentence.
+  async complete(system: string, message: string, maxTokens = 4096, temperature?: number): Promise<string> {
     return withRetry(async () => {
       const res = await publicHttpFetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
@@ -334,6 +357,7 @@ class OpenAICompatibleProvider implements ProviderClient {
         body: JSON.stringify({
           model: this.model,
           max_tokens: maxTokens,
+          ...(temperature !== undefined ? { temperature } : {}),
           messages: [
             { role: "system", content: system },
             { role: "user", content: message },
@@ -449,7 +473,7 @@ export function getProvider(agent: Agent): ProviderClient {
         throw new Error("providerEndpoint is required for ollama agents and must be a public HTTP(S) endpoint");
       }
       const base = providerEndpoint.replace(/\/$/, "");
-      const model = providerModel ?? "llama3.2";
+      const model = providerModel ?? DEFAULT_OLLAMA_MODEL;
       return new OpenAICompatibleProvider(`${base}/v1`, "", model);
     }
 
@@ -460,7 +484,7 @@ export function getProvider(agent: Agent): ProviderClient {
       const apiKey = process.env.OPENAI_API_KEY ?? "";
       if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
       const base = "https://api.openai.com/v1";
-      const model = providerModel ?? "gpt-4o-mini";
+      const model = providerModel ?? DEFAULT_OPENAI_MODEL;
       return new OpenAICompatibleProvider(base, apiKey, model);
     }
 
@@ -490,4 +514,44 @@ export async function runWithProvider(
   maxTokens = 2048
 ): Promise<string> {
   return getProvider(agent).complete(getAgentSystem(agent), message, maxTokens);
+}
+
+// The model that WOULD run for this agent, resolving defaults the same way the
+// providers do — so a reproducibility proof can record the concrete model it ran,
+// never a misleading null. `pinned` (the model read from the original trace) wins.
+export function effectiveModel(agent: Agent, pinned?: string | null): string | null {
+  if (pinned) return pinned;
+  if (agent.providerModel) return agent.providerModel;
+  // No pinned/configured model — resolve the same default the provider would use,
+  // so the proof records the concrete model that actually ran, never null.
+  switch (agent.provider) {
+    case "ollama":
+      return DEFAULT_OLLAMA_MODEL;
+    case "openai":
+      return DEFAULT_OPENAI_MODEL;
+    case "grok":
+      return DEFAULT_GROK_MODEL;
+    case "anthropic":
+      return DEFAULT_ANTHROPIC_MODEL;
+    default:
+      return null;
+  }
+}
+
+// A deterministic re-run for reproducibility proofs: pins the exact model that
+// originally ran (so a post-refusal fallback is reproduced faithfully) and drives
+// temperature 0. Everything else — system prompt, token ceiling, continuation
+// stitching — matches a normal run. See src/lib/reproducibility.ts.
+export async function runReproduction(
+  agent: Agent,
+  message: string,
+  maxTokens: number,
+  opts: { model?: string; temperature?: number } = {},
+): Promise<string> {
+  const model = opts.model ?? agent.providerModel;
+  // Pin the model for every provider — not just Anthropic — so the re-run uses the
+  // same model the proof claims, even for openai/ollama agents.
+  const provider =
+    agent.provider === "anthropic" ? new AnthropicProvider(model) : getProvider({ ...agent, providerModel: model });
+  return provider.complete(getAgentSystem(agent), message, maxTokens, opts.temperature);
 }
