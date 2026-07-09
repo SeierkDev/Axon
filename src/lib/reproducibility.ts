@@ -356,3 +356,60 @@ export function getReproProof(taskId: string): ReproProof | null {
     .get(taskId) as ReproRow | undefined;
   return row ? rowToProof(row) : null;
 }
+
+// ── Continuous sampling ──────────────────────────────────────────────────────
+// Reproducibility shouldn't depend on someone manually re-running a task: the
+// sampling pass picks recent completed tasks that don't yet carry a proof and
+// reproduces them, so verdicts accumulate across the network on their own.
+//
+// Only tasks whose output came from a live model run are eligible — scheduled
+// network-activity tasks complete from prepared results, so re-running them
+// proves nothing about the work and is skipped, exactly like the price/external/
+// MCP guards inside reproduceTask (which this defers to for the final word).
+
+export interface ReproSample {
+  taskId: string;
+  verdict: ReproVerdict;
+  similarity: number;
+}
+
+// Recent completed tasks (newest first) that are worth reproducing and have no
+// proof yet. `sinceIso` bounds how far back sampling reaches.
+export function eligibleTasksForSampling(limit: number, sinceIso: string): string[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT t.task_id
+         FROM tasks t
+         LEFT JOIN reproducibility_proofs p ON p.task_id = t.task_id
+        WHERE t.status = 'completed'
+          AND t.output IS NOT NULL
+          AND t.completed_at >= ?
+          AND p.task_id IS NULL
+          AND (t.started_by IS NULL OR t.started_by NOT IN ('seed', 'cron'))
+          AND (t.context IS NULL OR t.context NOT LIKE '%axon-network-activity%')
+        ORDER BY t.completed_at DESC
+        LIMIT ?`,
+    )
+    .all(sinceIso, limit) as { task_id: string }[];
+  return rows.map((r) => r.task_id);
+}
+
+// Reproduce up to `limit` eligible recent tasks. Each task that reproduceTask
+// refuses (non-reproducible agent, missing pieces) is skipped, never failed —
+// the pass is best-effort by design.
+export async function sampleReproducibility(limit = 3, opts: ReproduceOptions = {}): Promise<ReproSample[]> {
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  // Over-fetch so refusals don't waste the whole budget.
+  const candidates = eligibleTasksForSampling(limit * 3, since);
+  const results: ReproSample[] = [];
+  for (const taskId of candidates) {
+    if (results.length >= limit) break;
+    try {
+      const proof = await reproduceTask(taskId, opts);
+      results.push({ taskId, verdict: proof.verdict, similarity: proof.similarity });
+    } catch {
+      // Refused or transiently failed — skip; the next pass can retry.
+    }
+  }
+  return results;
+}
