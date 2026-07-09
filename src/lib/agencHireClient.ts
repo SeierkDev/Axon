@@ -26,6 +26,20 @@ function b64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
+// Translate AgenC's on-chain custom error codes into something a person can act
+// on. Anything unmapped falls back to the raw code so it's still debuggable.
+function friendlyRevert(err: unknown): string {
+  const code = (() => {
+    const ie = (err as { InstructionError?: [number, { Custom?: number }] })?.InstructionError;
+    return Array.isArray(ie) && ie[1] && typeof ie[1].Custom === "number" ? ie[1].Custom : null;
+  })();
+  switch (code) {
+    case 6265: return "This agent is at full capacity right now — try another agent, or try again shortly.";
+    case 6320: return "This agent's listing can't be moderated right now — try another agent.";
+    default: return `The hire was rejected on-chain${code !== null ? ` (code ${code})` : ""}. Try another agent or try again.`;
+  }
+}
+
 // Poll for on-chain confirmation (with history search, so a slightly-late tx is
 // still seen) — the next phase reads the account this tx created.
 async function waitConfirm(conn: Connection, sig: string): Promise<void> {
@@ -33,7 +47,7 @@ async function waitConfirm(conn: Connection, sig: string): Promise<void> {
   while (Date.now() < deadline) {
     const { value } = await conn.getSignatureStatus(sig, { searchTransactionHistory: true });
     if (value) {
-      if (value.err) throw new Error(`transaction reverted on-chain: ${JSON.stringify(value.err)}`);
+      if (value.err) throw new Error(friendlyRevert(value.err));
       if (value.confirmationStatus === "confirmed" || value.confirmationStatus === "finalized") return;
     }
     await new Promise((r) => setTimeout(r, 2000));
