@@ -8,6 +8,7 @@ import SiteNav from "@/components/SiteNav";
 import { MarketplaceGrid } from "./MarketplaceGrid";
 import { MarketplaceStats } from "./MarketplaceStats";
 import { AgencListings } from "./AgencListings";
+import { AgencGoods } from "./AgencGoods";
 import { AgencIntro } from "./AgencIntro";
 
 export const dynamic = "force-dynamic";
@@ -128,6 +129,10 @@ export default async function AgentsPage({
         {/* Cross-network discovery — AgenC agents surfaced inside the Axon marketplace
             (self-loads client-side so a slow AgenC feed never blocks this page) */}
         <AgencListings />
+
+        {/* Cross-network GOODS — AgenC's on-chain goods market, buyable from here
+            with your own wallet (non-custodial). Self-loads; hidden if empty. */}
+        <AgencGoods />
       </main>
 
       <footer className="border-t border-gray-100 dark:border-gray-800 py-10 px-6">

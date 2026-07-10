@@ -65,7 +65,7 @@ async function attest(kind: "listings" | "tasks", body: Record<string, unknown>)
 // The moderator pubkey is the hosted attestor's fixed signer (from /v1/info) — hire +
 // setJobSpec name it with moderatorIsAttestor:true. Also confirms the attestor serves
 // mainnet, so we never hire against a mismatched cluster.
-async function fetchModerator() {
+export async function fetchModerator() {
   const res = await fetch(`${ATTESTOR}/v1/info`);
   const j = (await res.json().catch(() => ({}))) as { moderator?: string; cluster?: string; signerConfigured?: boolean };
   if (!j.moderator || !j.signerConfigured) throw new Error(`attestor not ready: ${JSON.stringify(j)}`);
@@ -84,7 +84,8 @@ async function fetchModerator() {
 
 // Build an unsigned v0 transaction (fee payer = the user's wallet) and base64-encode
 // it for Phantom to sign. The noop signer contributes no signature — Phantom fills it.
-async function buildUnsignedTx(
+// Exported so the goods buy-through (agencGoods.ts) reuses the exact same bridge.
+export async function buildUnsignedTx(
   rpc: ReturnType<typeof createSolanaRpc>,
   feePayer: ReturnType<typeof createNoopSigner>,
   instructions: Parameters<typeof appendTransactionMessageInstructions>[0],
