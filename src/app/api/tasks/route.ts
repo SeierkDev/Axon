@@ -63,8 +63,12 @@ async function handlePost(req: NextRequest) {
         403
       );
     }
-  } else if (!process.env.VITEST) {
-    // 3 free calls per IP per agent — 1 year window so refreshing the page doesn't reset it
+  } else if (!process.env.VITEST && parsePriceToSol(agent.price) === null) {
+    // 3 free calls per IP per agent — 1 year window so refreshing the page doesn't
+    // reset it. Gates ONLY the actual free lane: an anonymous request to a PAID
+    // agent is authorized by its on-chain payment (verified below), so the demo
+    // quota must never block a paying hirer (e.g. MCP clients, which are always
+    // anonymous and pay per task).
     const freeRl = checkRateLimit(`free-demo:${ip}:${body.to}`, 3, 365 * 24 * 60 * 60 * 1000);
     if (!freeRl.allowed) {
       return apiError(
