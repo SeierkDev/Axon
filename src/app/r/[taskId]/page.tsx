@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getPublicReceipt, type PublicReceipt } from "@/lib/receipts";
 import TimelineClient from "./TimelineClient";
 import ReproClient from "./ReproClient";
+import DiscloseClient from "./DiscloseClient";
 
 // /r/<taskId> — the shareable, public, tamper-evident receipt for a task.
 // One URL anyone can open: who worked for whom, the pinned hashes proving the
@@ -189,6 +190,9 @@ export default async function ReceiptPage({ params }: { params: Promise<{ taskId
 
         {/* Reproducibility proof — shown only when the task has been re-run. */}
         {r && <ReproClient taskId={taskId} />}
+
+        {/* Selective disclosure — prove one fact from the receipt without the rest. */}
+        {r && <DiscloseClient taskId={taskId} />}
       </div>
     </main>
   );
