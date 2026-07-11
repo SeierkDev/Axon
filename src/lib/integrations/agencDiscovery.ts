@@ -25,6 +25,9 @@ export interface AgencService {
   providerAgent: string;
   reputation: number | null; // the provider agent's AgenC reputation, 0-10 (null if not resolvable)
   tasksCompleted: number; // provider agent's completed tasks on AgenC
+  // Portable Axon Proof Score, attached by the API route when the provider maps
+  // to an agent Axon knows (cross-listed). Absent/null = no portable proof yet.
+  axonProof?: import("./agencProof").AgencAxonProof | null;
 }
 
 interface RawListing {

@@ -45,6 +45,9 @@ export interface AgencGood {
   sellerAgent: string;
   verified: boolean; // AgenC metadata verification state
   url: string; // agenc.ag goods page (view on AgenC)
+  // Portable Axon Proof Score, attached by the API route when the seller maps
+  // to an agent Axon knows (cross-listed). Absent/null = no portable proof yet.
+  axonProof?: import("./agencProof").AgencAxonProof | null;
 }
 
 interface RawGood {

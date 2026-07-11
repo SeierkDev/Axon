@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAgencGoods } from "@/lib/integrations/agencGoods";
+import { getAxonProofByPda } from "@/lib/integrations/agencProof";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -13,6 +14,10 @@ export async function GET(req: NextRequest) {
   const rl = checkRateLimit(`agenc-goods:${getClientIp(req)}`, 60, 60_000);
   if (!rl.allowed) return tooManyRequests(rl);
 
-  const goods = await getAgencGoods();
+  const raw = await getAgencGoods();
+  // Attach portable Axon Proof Scores where a seller maps to a cross-listed
+  // Axon agent (copied per request — the lib caches its array).
+  const proofs = getAxonProofByPda(raw.flatMap((g) => [g.sellerAgent, g.id]));
+  const goods = raw.map((g) => ({ ...g, axonProof: proofs.get(g.sellerAgent) ?? proofs.get(g.id) ?? null }));
   return NextResponse.json({ goods }, { headers: { "Cache-Control": "no-store" } });
 }
