@@ -50,6 +50,7 @@ interface Peer {
   z: number;
   ry: number;
   st: string; // idle | walk | run | jump
+  h: number; // height above ground (the arcade tower); 0 on flat ground
   ws: WebSocket;
   lastSeen: number;
   lastChat: number;
@@ -70,6 +71,10 @@ const clampCoord = (v: unknown) => {
   return Math.max(-600, Math.min(600, n));
 };
 const clampAngle = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+const clampHeight = (v: unknown) => {
+  const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
+  return Math.max(0, Math.min(120, n));
+};
 const STATES = new Set(["idle", "walk", "run", "jump", "sit", "fish"]);
 const cleanState = (v: unknown) => (typeof v === "string" && STATES.has(v) ? v : "idle");
 const cleanName = (v: unknown) => (typeof v === "string" ? v.slice(0, 24) : "Guest") || "Guest";
@@ -88,7 +93,7 @@ function cleanLook(v: unknown): Look {
   };
 }
 
-const meta = (p: Peer) => ({ id: p.id, name: p.name, look: p.look, x: p.x, z: p.z, ry: p.ry, st: p.st });
+const meta = (p: Peer) => ({ id: p.id, name: p.name, look: p.look, x: p.x, z: p.z, ry: p.ry, st: p.st, h: p.h });
 
 function send(ws: WebSocket, obj: unknown) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
@@ -154,6 +159,7 @@ wss.on("connection", (ws: WebSocket) => {
         z: 18,
         ry: Math.PI,
         st: "idle",
+        h: 0,
         ws,
         lastSeen: Date.now(),
         lastChat: 0,
@@ -170,8 +176,9 @@ wss.on("connection", (ws: WebSocket) => {
       p.z = clampCoord(m.z);
       p.ry = clampAngle(m.ry);
       p.st = cleanState(m.st);
+      p.h = clampHeight(m.h);
       p.lastSeen = Date.now();
-      broadcast({ t: "pose", id, x: p.x, z: p.z, ry: p.ry, st: p.st }, id);
+      broadcast({ t: "pose", id, x: p.x, z: p.z, ry: p.ry, st: p.st, h: p.h }, id);
     } else if (m.t === "update" && p) {
       const now = Date.now();
       if (now - lastUpdate < 1000) return; // rare event; blunt the re-render storm

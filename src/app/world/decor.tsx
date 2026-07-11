@@ -183,21 +183,20 @@ function Canopy({ a, b }: { a: string; b: string }) {
   const c = shade(a, 0.76);
   const hi = lighten(b, 0.34);
   // Fewer, larger blobs for the same rounded silhouette at a fraction of the
-  // draw calls. Only the core casts a shadow (the rest are cheap to skip).
-  const blobs: [number, number, number, number, string][] = [];
-  blobs.push([0, 3.55, 0, 1.55, a]); // core
-  for (let i = 0; i < 5; i++) {
-    const ang = (i / 5) * Math.PI * 2;
-    blobs.push([Math.cos(ang) * 1.2, 3.35, Math.sin(ang) * 1.2, 1.0, i % 2 ? b : a]);
-  }
-  blobs.push([0, 2.9, 0, 1.15, c]); // shadow underside
-  blobs.push([0, 4.45, 0, 0.95, hi]); // top highlight
-  blobs.push([0.42, 4.2, 0.26, 0.6, hi]);
+  // draw calls. THREE blobs instead of nine — a big low-poly crown that still
+  // reads round from a distance, at a third of the draw cost. (Was the single
+  // biggest source of individual meshes across every arena.)
+  void c;
+  const blobs: [number, number, number, number, string][] = [
+    [0, 3.5, 0, 1.7, a], // core
+    [0.5, 4.2, 0.3, 1.05, hi], // sunlit top
+    [-0.5, 3.3, -0.3, 1.1, b], // side volume
+  ];
   return (
     <>
       {blobs.map(([x, y, z, r, col], i) => (
         <mesh key={i} position={[x, y, z]} castShadow={i === 0}>
-          <sphereGeometry args={[r, 12, 10]} />
+          <sphereGeometry args={[r, 8, 6]} />
           <meshStandardMaterial color={col} roughness={0.9} />
         </mesh>
       ))}
@@ -218,41 +217,21 @@ export function Tree({
 }) {
   return (
     <group position={position} scale={scale} rotation={[0, rotation, 0]}>
+      {/* trunk only — the root flare + branch stubs were pure draw-call cost
+          that barely reads at arena distances */}
       <mesh position={[0, 1, 0]} castShadow>
-        <cylinderGeometry args={[0.26, 0.38, 2, 8]} />
+        <cylinderGeometry args={[0.26, 0.38, 2, 6]} />
         <meshStandardMaterial color="#8a5a2b" roughness={1} />
       </mesh>
-      {/* Root flare at the base */}
-      <mesh position={[0, 0.14, 0]} castShadow>
-        <coneGeometry args={[0.55, 0.4, 8]} />
-        <meshStandardMaterial color="#7a4f26" roughness={1} />
-      </mesh>
-      {/* Branch stubs reaching into the canopy */}
-      {variant !== "pine" && (
-        <>
-          <mesh position={[0.32, 1.9, 0.1]} rotation={[0, 0, -0.7]}>
-            <cylinderGeometry args={[0.07, 0.11, 0.9, 6]} />
-            <meshStandardMaterial color="#7a4f26" roughness={1} />
-          </mesh>
-          <mesh position={[-0.28, 2.1, -0.14]} rotation={[0.3, 0, 0.65]}>
-            <cylinderGeometry args={[0.06, 0.1, 0.8, 6]} />
-            <meshStandardMaterial color="#7a4f26" roughness={1} />
-          </mesh>
-        </>
-      )}
       {variant === "pine" ? (
         <>
-          <mesh position={[0, 2.4, 0]} castShadow>
-            <coneGeometry args={[1.5, 2, 8]} />
+          <mesh position={[0, 2.6, 0]} castShadow>
+            <coneGeometry args={[1.5, 2.6, 7]} />
             <meshStandardMaterial color="#3f8f5a" roughness={0.9} />
           </mesh>
-          <mesh position={[0, 3.4, 0]} castShadow>
-            <coneGeometry args={[1.15, 1.8, 8]} />
+          <mesh position={[0, 4.0, 0]} castShadow>
+            <coneGeometry args={[0.95, 1.8, 7]} />
             <meshStandardMaterial color="#469862" roughness={0.9} />
-          </mesh>
-          <mesh position={[0, 4.3, 0]} castShadow>
-            <coneGeometry args={[0.8, 1.5, 8]} />
-            <meshStandardMaterial color="#3f8f5a" roughness={0.9} />
           </mesh>
         </>
       ) : variant === "blossom" ? (
@@ -1235,21 +1214,33 @@ export function Barrel({ position, rotation = 0 }: { position: Vec3; rotation?: 
 
 // A little tuft of grass — a few thin blades, fanned out. Cheap ground texture.
 export function GrassTuft({ position, scale = 1, color = "#5aa85f" }: { position: Vec3; scale?: number; color?: string }) {
+  // seven blades of two tones and varied heights around a low clump — reads
+  // as a living tuft instead of five identical cones
   const blades: [number, number, number, number][] = [
     [0, 0, 0, 0],
     [0.09, 0.05, 0.2, 1],
     [-0.08, 0.06, -0.24, 2],
     [0.04, -0.08, 0.16, 3],
     [-0.05, -0.05, -0.14, 4],
+    [0.12, -0.02, 0.32, 5],
+    [-0.11, 0.03, -0.34, 6],
   ];
+  const dark = useMemo(() => new THREE.Color(color).multiplyScalar(0.78), [color]);
   return (
     <group position={position} scale={scale}>
-      {blades.map(([x, z, tilt, i]) => (
-        <mesh key={i} position={[x, 0.2, z]} rotation={[tilt * 0.4, 0, tilt]}>
-          <coneGeometry args={[0.035, 0.42, 4]} />
-          <meshStandardMaterial color={color} roughness={1} />
-        </mesh>
-      ))}
+      <mesh position={[0, 0.02, 0]} scale={[0.16, 0.05, 0.16]}>
+        <sphereGeometry args={[1, 7, 5]} />
+        <meshStandardMaterial color={dark} roughness={1} flatShading />
+      </mesh>
+      {blades.map(([x, z, tilt, i]) => {
+        const h = 0.34 + (i % 3) * 0.09;
+        return (
+          <mesh key={i} position={[x, h / 2 + 0.02, z]} rotation={[tilt * 0.4, 0, tilt]}>
+            <coneGeometry args={[0.032, h, 4]} />
+            <meshStandardMaterial color={i % 2 ? color : dark} roughness={1} />
+          </mesh>
+        );
+      })}
     </group>
   );
 }

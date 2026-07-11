@@ -23,6 +23,26 @@ export function skipDayTime(): void {
   daySkew += DAY_CYCLE_S / 8;
 }
 
+// ── Arena mood override ───────────────────────────────────────────────────────
+// Zombie Waves belongs at night: torches, silhouettes, a horizon ember. Like the
+// N-key skip this is a LOCAL preview — this client's sky only — and it restores
+// the shared wall-clock phase the moment the arena is left.
+let savedSkew: number | null = null;
+
+/** Pin the local sky to a phase (0 midnight … 0.5 noon) until cleared. */
+export function overridePhase(target: number): void {
+  if (savedSkew === null) savedSkew = daySkew;
+  daySkew = target * DAY_CYCLE_S - Date.now() / 1000;
+}
+
+/** Back to the shared, wall-clock-anchored sky. */
+export function clearPhaseOverride(): void {
+  if (savedSkew !== null) {
+    daySkew = savedSkew;
+    savedSkew = null;
+  }
+}
+
 /** How deep into night we are, 0 (day) → 1 (full night). */
 export function nightFactor(elapsed?: number): number {
   const p = dayPhase(elapsed);

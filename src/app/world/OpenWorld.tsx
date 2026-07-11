@@ -633,8 +633,8 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
   const winW = w * 0.16;
   return (
     <group rotation={[0, rotation, 0]}>
-      {/* Stone base */}
-      <mesh position={[0, base / 2, 0]} receiveShadow castShadow>
+      {/* Stone base (shadow comes from the walls above — no separate caster) */}
+      <mesh position={[0, base / 2, 0]} receiveShadow>
         <boxGeometry args={[w + 0.3, base, w + 0.3]} />
         <meshStandardMaterial color="#9c968c" roughness={1} />
       </mesh>
@@ -677,7 +677,7 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
       {detail && (
         <>
           {/* stone skirt grounding the house */}
-          <mesh position={[0, 0.16, 0]} castShadow>
+          <mesh position={[0, 0.16, 0]}>
             <boxGeometry args={[w + 0.14, 0.32, w + 0.14]} />
             <meshStandardMaterial color="#9c968c" roughness={1} />
           </mesh>
@@ -688,7 +688,7 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
           </mesh>
           {/* dormer on the front roof face */}
           <group position={[0, base + h + roofH * 0.32, w * 0.34]} rotation={[0, 0, 0]}>
-            <mesh castShadow>
+            <mesh>
               <boxGeometry args={[0.8, 0.7, 0.6]} />
               <meshStandardMaterial color={wall} roughness={0.92} />
             </mesh>
@@ -774,7 +774,7 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
       {/* A little awning over the door + stepping stones toward the street */}
       {detail && (
         <>
-          <mesh position={[0, base + 2.02, df + 0.3]} rotation={[0.42, 0, 0]} castShadow>
+          <mesh position={[0, base + 2.02, df + 0.3]} rotation={[0.42, 0, 0]}>
             <boxGeometry args={[w * 0.2 + 0.34, 0.06, 0.75]} />
             <meshStandardMaterial color={shade(roof, 0.85)} roughness={0.9} />
           </mesh>
@@ -835,7 +835,7 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
             <meshStandardMaterial color="#8a5a4a" roughness={0.9} />
           </mesh>
           {/* Cap rim + dark flue so the top reads finished */}
-          <mesh position={[w * 0.26, base + h + roofH * 0.7 + 0.05, w * 0.16]} castShadow>
+          <mesh position={[w * 0.26, base + h + roofH * 0.7 + 0.05, w * 0.16]}>
             <boxGeometry args={[0.52, 0.14, 0.52]} />
             <meshStandardMaterial color="#6e463a" roughness={0.9} />
           </mesh>
@@ -1698,10 +1698,14 @@ function Pond({ position, r, seed, dockA, playerRef }: { position: Vec3; r: numb
 // The edge of the world: a dense, impassable pine forest ring, rolling forested
 // hills behind it, and low-poly mountains on the horizon (some snow-capped).
 // Replaces the flat green void — from inside you see treeline → hills → peaks.
-function BoundaryScenery({ extent }: { extent: number }) {
+// Exported: the arcade arena wraps itself in the same mountain country so its
+// edge reads like the city's, not a void.
+export function BoundaryScenery({ extent }: { extent: number }) {
   const trunkRef = useRef<THREE.InstancedMesh>(null);
   const canopyRef = useRef<THREE.InstancedMesh>(null);
   const canopy2Ref = useRef<THREE.InstancedMesh>(null);
+  const coneRef = useRef<THREE.InstancedMesh>(null);
+  const domeRef = useRef<THREE.InstancedMesh>(null);
   const data = useMemo(() => {
     const r = mulberry(0xb0d3);
     const pines: { x: number; z: number; s: number; c: number }[] = [];
@@ -1794,7 +1798,43 @@ function BoundaryScenery({ extent }: { extent: number }) {
         rot: r() * Math.PI,
       };
     });
-    return { pines, hills, mounts, farPeaks, foothills };
+    // Flatten every cone (foothills, far peaks, mountain massifs + shoulders +
+    // snow) and every hill dome into two instance pools. Unit cone/sphere +
+    // per-instance scale/rotation/colour reproduces the same silhouette in two
+    // draw calls instead of ~180. (Seg fixed to 6 — distant, imperceptible.)
+    const rotY = (dx: number, dz: number, a: number): [number, number] => [dx * Math.cos(a) + dz * Math.sin(a), -dx * Math.sin(a) + dz * Math.cos(a)];
+    const cones: { x: number; y: number; z: number; sx: number; sy: number; sz: number; ry: number; c: string }[] = [];
+    const domes: { x: number; y: number; z: number; sx: number; sy: number; sz: number; c: string }[] = [];
+    for (const h of hills) {
+      domes.push({ x: h.x, y: 0, z: h.z, sx: h.rx, sy: h.ry, sz: h.rx, c: h.c });
+      domes.push({ x: h.x + h.rx * h.o1.dx, y: 0, z: h.z + h.rx * h.o1.dz, sx: h.rx * h.o1.s, sy: h.ry * h.o1.sy, sz: h.rx * h.o1.s, c: shade(h.c, 0.86) });
+      domes.push({ x: h.x + h.rx * h.o2.dx, y: 0, z: h.z + h.rx * h.o2.dz, sx: h.rx * h.o2.s, sy: h.ry * h.o2.sy, sz: h.rx * h.o2.s, c: shade(h.c, 0.93) });
+    }
+    for (const m of foothills) {
+      cones.push({ x: m.x, y: m.h / 2 - 1.5, z: m.z, sx: m.base, sy: m.h, sz: m.base, ry: m.rot, c: m.c });
+    }
+    for (const m of farPeaks) {
+      cones.push({ x: m.x, y: m.h / 2 - 2, z: m.z, sx: m.base, sy: m.h, sz: m.base, ry: m.rot, c: m.c });
+      cones.push({ x: m.x, y: m.h - 2 - m.h * 0.19 + 0.06, z: m.z, sx: m.base * 0.38 * 1.045, sy: m.h * 0.38, sz: m.base * 0.38 * 1.045, ry: m.rot, c: "#f2f6f9" });
+    }
+    for (const m of mounts) {
+      // scree skirt, main cone, darker ridge face
+      cones.push({ x: m.x, y: m.h * 0.1 - 2, z: m.z, sx: m.base * 1.45, sy: m.h * 0.28, sz: m.base * 1.45, ry: m.rot, c: shade(m.c, 0.82) });
+      cones.push({ x: m.x, y: m.h / 2 - 2, z: m.z, sx: m.base, sy: m.h, sz: m.base, ry: m.rot, c: m.c });
+      const [rdx, rdz] = rotY(m.base * 0.2, m.base * 0.12, m.rot);
+      cones.push({ x: m.x + rdx, y: m.h * 0.4 - 2, z: m.z + rdz, sx: m.base * 0.55, sy: m.h * 0.8, sz: m.base * 0.55, ry: m.rot + 0.5, c: shade(m.c, 0.74) });
+      if (m.snowy) {
+        cones.push({ x: m.x, y: m.h - 2 - m.h * 0.15 + 0.06, z: m.z, sx: m.base * 0.3 * 1.045, sy: m.h * 0.3, sz: m.base * 0.3 * 1.045, ry: m.rot, c: "#eef3f6" });
+      }
+      for (const sh of m.shoulders) {
+        const [sdx, sdz] = rotY(sh.dx, sh.dz, m.rot);
+        cones.push({ x: m.x + sdx, y: sh.h / 2 - 2, z: m.z + sdz, sx: sh.b, sy: sh.h, sz: sh.b, ry: m.rot, c: shade(m.c, 0.92) });
+        if (sh.h > 40) {
+          cones.push({ x: m.x + sdx, y: sh.h - 2 - sh.h * 0.13 + 0.05, z: m.z + sdz, sx: sh.b * 0.26 * 1.045, sy: sh.h * 0.26, sz: sh.b * 0.26 * 1.045, ry: m.rot, c: "#eef3f6" });
+        }
+      }
+    }
+    return { pines, cones, domes };
   }, [extent]);
 
   useLayoutEffect(() => {
@@ -1818,7 +1858,30 @@ function BoundaryScenery({ extent }: { extent: number }) {
     tips.instanceMatrix.needsUpdate = true;
     if (canopies.instanceColor) canopies.instanceColor.needsUpdate = true;
     if (tips.instanceColor) tips.instanceColor.needsUpdate = true;
-  }, [data.pines]);
+
+    const cones = coneRef.current, domes = domeRef.current;
+    if (cones) {
+      data.cones.forEach((c, i) => {
+        _ie.set(0, c.ry, 0);
+        _iq.setFromEuler(_ie);
+        _im.compose(_ip.set(c.x, c.y, c.z), _iq, _is.set(c.sx, c.sy, c.sz));
+        cones.setMatrixAt(i, _im);
+        cones.setColorAt(i, _ic.set(c.c));
+      });
+      cones.instanceMatrix.needsUpdate = true;
+      if (cones.instanceColor) cones.instanceColor.needsUpdate = true;
+    }
+    if (domes) {
+      _iq.identity();
+      data.domes.forEach((d, i) => {
+        _im.compose(_ip.set(d.x, d.y, d.z), _iq, _is.set(d.sx, d.sy, d.sz));
+        domes.setMatrixAt(i, _im);
+        domes.setColorAt(i, _ic.set(d.c));
+      });
+      domes.instanceMatrix.needsUpdate = true;
+      if (domes.instanceColor) domes.instanceColor.needsUpdate = true;
+    }
+  }, [data]);
 
   return (
     <group>
@@ -1835,85 +1898,17 @@ function BoundaryScenery({ extent }: { extent: number }) {
         <coneGeometry args={[1.7, 4.6, 7]} />
         <meshStandardMaterial roughness={0.95} />
       </instancedMesh>
-      {/* Rolling forest hills — overlapping canopy domes */}
-      {data.hills.map((h, i) => (
-        <group key={`h${i}`} position={[h.x, 0, h.z]}>
-          <mesh scale={[h.rx, h.ry, h.rx]}>
-            <sphereGeometry args={[1, 14, 10]} />
-            <meshStandardMaterial color={h.c} roughness={1} />
-          </mesh>
-          <mesh position={[h.rx * h.o1.dx, 0, h.rx * h.o1.dz]} scale={[h.rx * h.o1.s, h.ry * h.o1.sy, h.rx * h.o1.s]}>
-            <sphereGeometry args={[1, 12, 9]} />
-            <meshStandardMaterial color={shade(h.c, 0.86)} roughness={1} />
-          </mesh>
-          <mesh position={[h.rx * h.o2.dx, 0, h.rx * h.o2.dz]} scale={[h.rx * h.o2.s, h.ry * h.o2.sy, h.rx * h.o2.s]}>
-            <sphereGeometry args={[1, 12, 9]} />
-            <meshStandardMaterial color={shade(h.c, 0.93)} roughness={1} />
-          </mesh>
-        </group>
-      ))}
-      {/* The far range — hazy giants on the horizon, snow to the shoulders */}
-      {data.farPeaks.map((m, i) => (
-        <group key={`fp${i}`} position={[m.x, 0, m.z]} rotation={[0, m.rot, 0]}>
-          <mesh position={[0, m.h / 2 - 2, 0]}>
-            <coneGeometry args={[m.base, m.h, m.seg]} />
-            <meshStandardMaterial color={m.c} roughness={1} flatShading />
-          </mesh>
-          <mesh position={[0, m.h - 2 - m.h * 0.19 + 0.06, 0]}>
-            <coneGeometry args={[m.base * 0.38 * 1.045, m.h * 0.38, m.seg]} />
-            <meshStandardMaterial color="#f2f6f9" roughness={0.8} flatShading />
-          </mesh>
-        </group>
-      ))}
-      {/* Rocky foothills bridge the forest hills into the rock */}
-      {data.foothills.map((m, i) => (
-        <group key={`fh${i}`} position={[m.x, 0, m.z]} rotation={[0, m.rot, 0]}>
-          <mesh position={[0, m.h / 2 - 1.5, 0]}>
-            <coneGeometry args={[m.base, m.h, m.seg]} />
-            <meshStandardMaterial color={m.c} roughness={1} flatShading />
-          </mesh>
-        </group>
-      ))}
-      {/* Mountain massifs — scree skirt + shaded ridge face + shoulders + snow */}
-      {data.mounts.map((m, i) => (
-        <group key={`m${i}`} position={[m.x, 0, m.z]} rotation={[0, m.rot, 0]}>
-          <mesh position={[0, m.h * 0.1 - 2, 0]}>
-            <coneGeometry args={[m.base * 1.45, m.h * 0.28, m.seg + 2]} />
-            <meshStandardMaterial color={shade(m.c, 0.82)} roughness={1} flatShading />
-          </mesh>
-          <mesh position={[0, m.h / 2 - 2, 0]}>
-            <coneGeometry args={[m.base, m.h, m.seg]} />
-            <meshStandardMaterial color={m.c} roughness={1} flatShading />
-          </mesh>
-          {/* a darker ridge face gives the peak a faceted, carved look */}
-          <mesh position={[m.base * 0.2, m.h * 0.4 - 2, m.base * 0.12]} rotation={[0, 0.5, 0]}>
-            <coneGeometry args={[m.base * 0.55, m.h * 0.8, Math.max(4, m.seg - 1)]} />
-            <meshStandardMaterial color={shade(m.c, 0.74)} roughness={1} flatShading />
-          </mesh>
-          {m.snowy && (
-            /* Snow cap sized to the cone's own slope (radius = base·height-fraction)
-               so white meets rock in a flush line, not a jutting ledge. */
-            <mesh position={[0, m.h - 2 - m.h * 0.15 + 0.06, 0]}>
-              <coneGeometry args={[m.base * 0.3 * 1.045, m.h * 0.3, m.seg]} />
-              <meshStandardMaterial color="#eef3f6" roughness={0.8} flatShading />
-            </mesh>
-          )}
-          {m.shoulders.map((s, k) => (
-            <group key={k} position={[s.dx, 0, s.dz]}>
-              <mesh position={[0, s.h / 2 - 2, 0]}>
-                <coneGeometry args={[s.b, s.h, s.seg]} />
-                <meshStandardMaterial color={shade(m.c, 0.92)} roughness={1} flatShading />
-              </mesh>
-              {s.h > 40 && (
-                <mesh position={[0, s.h - 2 - s.h * 0.13 + 0.05, 0]}>
-                  <coneGeometry args={[s.b * 0.26 * 1.045, s.h * 0.26, s.seg]} />
-                  <meshStandardMaterial color="#eef3f6" roughness={0.8} flatShading />
-                </mesh>
-              )}
-            </group>
-          ))}
-        </group>
-      ))}
+      {/* Mountain country — INSTANCED: every foothill, far peak, and massif
+          (skirt + ridge + shoulders + snow) in ONE cone draw call; every forest
+          hill dome in ONE sphere draw call. ~180 meshes → 2. */}
+      <instancedMesh key={`mc${data.cones.length}`} ref={coneRef} args={[undefined, undefined, data.cones.length]} frustumCulled={false}>
+        <coneGeometry args={[1, 1, 6]} />
+        <meshStandardMaterial roughness={0.92} flatShading />
+      </instancedMesh>
+      <instancedMesh key={`md${data.domes.length}`} ref={domeRef} args={[undefined, undefined, data.domes.length]} frustumCulled={false}>
+        <sphereGeometry args={[1, 12, 9]} />
+        <meshStandardMaterial roughness={1} />
+      </instancedMesh>
     </group>
   );
 }
@@ -3082,6 +3077,77 @@ function GardenFountain({ x, z }: { x: number; z: number }) {
         <circleGeometry args={[0.42, 14]} />
         <meshStandardMaterial color="#6fc0e8" roughness={0.15} metalness={0.35} />
       </mesh>
+    </group>
+  );
+}
+
+// Every street + trail, INSTANCED. Pixel-identical to the two per-path .map
+// loops (sandy base + worn centre + two worn edge strips = 4 meshes each, dozens
+// of paths, all always-on) — folded into 3 draw calls. Colours are uniform per
+// layer so no per-instance colour is needed; per-path length/width/angle ride
+// the instance transform.
+function InstancedPaths({ paths }: { paths: { x1: number; z1: number; x2: number; z2: number; w: number }[] }) {
+  const baseRef = useRef<THREE.InstancedMesh>(null);
+  const centreRef = useRef<THREE.InstancedMesh>(null);
+  const edgeRef = useRef<THREE.InstancedMesh>(null);
+  const data = useMemo(() => {
+    const base: { p: Vec3; ry: number; s: Vec3 }[] = [];
+    const centre: { p: Vec3; ry: number; s: Vec3 }[] = [];
+    const edge: { p: Vec3; e: Vec3; s: Vec3 }[] = [];
+    for (const pa of paths) {
+      const dx = pa.x2 - pa.x1, dz = pa.z2 - pa.z1;
+      const len = Math.hypot(dx, dz);
+      const mx = (pa.x1 + pa.x2) / 2, mz = (pa.z1 + pa.z2) / 2;
+      if (len >= 1) {
+        const ry = -Math.atan2(dz, dx);
+        base.push({ p: [mx, 0.01, mz], ry, s: [len + pa.w, 0.04, pa.w] });
+        centre.push({ p: [mx, 0.025, mz], ry, s: [len, 0.04, pa.w * 0.6] });
+      }
+      if (len >= 4) {
+        const ry2 = Math.atan2(dx, dz), px = -dz / len, pz = dx / len, off = pa.w / 2 + 0.18;
+        edge.push({ p: [mx + px * off, 0.028, mz + pz * off], e: [-Math.PI / 2, 0, ry2], s: [0.5, len * 0.96, 1] });
+        edge.push({ p: [mx - px * off, 0.028, mz - pz * off], e: [-Math.PI / 2, 0, ry2], s: [0.5, len * 0.96, 1] });
+      }
+    }
+    return { base, centre, edge };
+  }, [paths]);
+  useLayoutEffect(() => {
+    const b = baseRef.current, c = centreRef.current, e = edgeRef.current;
+    if (!b || !c || !e) return;
+    _iq.identity();
+    const setY = (mesh: THREE.InstancedMesh, arr: { p: Vec3; ry: number; s: Vec3 }[]) => {
+      arr.forEach((d, i) => {
+        _ie.set(0, d.ry, 0);
+        _iq.setFromEuler(_ie);
+        _im.compose(_ip.set(d.p[0], d.p[1], d.p[2]), _iq, _is.set(d.s[0], d.s[1], d.s[2]));
+        mesh.setMatrixAt(i, _im);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+    };
+    setY(b, data.base);
+    setY(c, data.centre);
+    data.edge.forEach((d, i) => {
+      _ie.set(d.e[0], d.e[1], d.e[2]);
+      _iq.setFromEuler(_ie);
+      _im.compose(_ip.set(d.p[0], d.p[1], d.p[2]), _iq, _is.set(d.s[0], d.s[1], d.s[2]));
+      e.setMatrixAt(i, _im);
+    });
+    e.instanceMatrix.needsUpdate = true;
+  }, [data]);
+  return (
+    <group>
+      <instancedMesh key={`pb${data.base.length}`} ref={baseRef} args={[undefined, undefined, data.base.length]} receiveShadow renderOrder={2}>
+        <boxGeometry />
+        <meshStandardMaterial color="#cdb489" roughness={1} />
+      </instancedMesh>
+      <instancedMesh key={`pc${data.centre.length}`} ref={centreRef} args={[undefined, undefined, data.centre.length]} receiveShadow renderOrder={2.1}>
+        <boxGeometry />
+        <meshStandardMaterial color="#b89b6c" roughness={1} />
+      </instancedMesh>
+      <instancedMesh key={`pe${data.edge.length}`} ref={edgeRef} args={[undefined, undefined, data.edge.length]} renderOrder={1.9}>
+        <planeGeometry />
+        <meshStandardMaterial color="#8f7a55" transparent opacity={0.35} roughness={1} depthWrite={false} />
+      </instancedMesh>
     </group>
   );
 }
@@ -4353,9 +4419,14 @@ export const OpenWorld = memo(function OpenWorld({
   onMapBoard,
   onLandmarks,
   showTitle = true,
+  arcadeActive = false,
 }: {
   plots: OpenPlot[];
   lowPower?: boolean;
+  /** In an arcade the player is 500+ units away at an arena — the whole city's
+      visual landmarks are culled so looking back toward the map doesn't tank
+      the frame. Collision data (onSolids etc.) is unaffected. */
+  arcadeActive?: boolean;
   onSolids?: (s: Collider[]) => void;
   onBuildings?: (b: WorldBuilding[]) => void;
   onFishSpots?: (s: FishSpot[]) => void;
@@ -5272,75 +5343,29 @@ export const OpenWorld = memo(function OpenWorld({
           depth precision collapses. */}
 
 
-      {/* Worn edges along the trails — darker strips where feet leave the path */}
-      {layout.paths.map((pa, i) => {
-        const dx = pa.x2 - pa.x1;
-        const dz = pa.z2 - pa.z1;
-        const len = Math.hypot(dx, dz);
-        if (len < 4) return null;
-        const ry = Math.atan2(dx, dz);
-        const px = -dz / len;
-        const pz = dx / len;
-        const mx = (pa.x1 + pa.x2) / 2;
-        const mz = (pa.z1 + pa.z2) / 2;
-        const off = pa.w / 2 + 0.18;
-        return (
-          <group key={`pw${i}`}>
-            {[-1, 1].map((side) => (
-              <mesh
-                key={side}
-                position={[mx + px * side * off, 0.028, mz + pz * side * off]}
-                rotation={[-Math.PI / 2, 0, ry]}
-                renderOrder={1.9}
-              >
-                <planeGeometry args={[0.5, len * 0.96]} />
-                <meshStandardMaterial color="#8f7a55" transparent opacity={0.35} roughness={1} depthWrite={false} />
-              </mesh>
-            ))}
-          </group>
-        );
-      })}
+      {/* Every path — sandy base, worn centre and worn edge strips — in 3
+          instanced draw calls (was 4 meshes × dozens of paths, all always-on) */}
+      {!arcadeActive && <InstancedPaths paths={layout.paths} />}
 
       {/* Central plaza (spawn hub) */}
-      <group name="plaza"><CentralPlaza detail={!lowPower} furniture={layout.furniture} streetAngles={layout.streetAngles} title={showTitle} /></group>
-
-      {/* Paths — a sandy base with a darker worn centre for depth */}
-      {layout.paths.map((p, i) => {
-        const dx = p.x2 - p.x1, dz = p.z2 - p.z1;
-        const len = Math.hypot(dx, dz);
-        if (len < 1) return null;
-        const rot: Vec3 = [0, -Math.atan2(dz, dx), 0];
-        const mid: Vec3 = [(p.x1 + p.x2) / 2, 0.01, (p.z1 + p.z2) / 2];
-        return (
-          <group key={i}>
-            <mesh position={mid} rotation={rot} receiveShadow renderOrder={2}>
-              <boxGeometry args={[len + p.w, 0.04, p.w]} />
-              <meshStandardMaterial color="#cdb489" roughness={1} />
-            </mesh>
-            <mesh position={[mid[0], 0.025, mid[2]]} rotation={rot} receiveShadow renderOrder={2.1}>
-              <boxGeometry args={[len, 0.04, p.w * 0.6]} />
-              <meshStandardMaterial color="#b89b6c" roughness={1} />
-            </mesh>
-          </group>
-        );
-      })}
+      {!arcadeActive && <group name="plaza"><CentralPlaza detail={!lowPower} furniture={layout.furniture} streetAngles={layout.streetAngles} title={showTitle} /></group>}
 
       {/* Stones lining the streets + field rocks (ONE instanced draw call) and
           the flagstones worn into the trails */}
-      <InstancedRocks rocks={[...layout.pathStones, ...layout.rocks]} />
-      <Flagstones stones={layout.flagstones} />
+      {!arcadeActive && <InstancedRocks rocks={[...layout.pathStones, ...layout.rocks]} />}
+      {!arcadeActive && <Flagstones stones={layout.flagstones} />}
 
       {/* District signposts (beside each street entrance) */}
-      {layout.signs.map((s) => (
+      {!arcadeActive && layout.signs.map((s) => (
         <Signpost key={s.text} text={s.text} position={s.pos} />
       ))}
 
       {/* Buildings + their name signs (above the roof peak so they're readable) */}
       {/* Every house sign, one merged mesh — visible from anywhere */}
-      <HouseSignAtlas houses={layout.houses.map((h) => ({ key: h.key, pos: h.pos, rot: h.rot, roofPeak: h.roofPeak, name: h.name }))} />
+      {!arcadeActive && <HouseSignAtlas houses={layout.houses.map((h) => ({ key: h.key, pos: h.pos, rot: h.rot, roofPeak: h.roofPeak, name: h.name }))} />}
       {/* Two instanced draw calls carry the whole distant town */}
-      <group name="farhouses"><FarHouses houses={layout.houses} playerRef={playerPosRef} /></group>
-      {layout.houses.map((h) => (
+      {!arcadeActive && <group name="farhouses"><FarHouses houses={layout.houses} playerRef={playerPosRef} /></group>}
+      {!arcadeActive && layout.houses.map((h) => (
         <group key={h.key} name="house" position={h.pos}>
           <WithinRange x={h.pos[0]} z={h.pos[2]} range={24} playerRef={playerPosRef}>
             <AgentHouse w={h.w} h={h.h} wall={h.wall} roof={h.roof} rotation={h.rot} chimney={h.chimney} active={h.active} detail={!lowPower} flair={h.flair} doorOpen={knockId === h.key} doorCol={h.door} />
@@ -5364,34 +5389,42 @@ export const OpenWorld = memo(function OpenWorld({
       ))}
 
       {/* The plaza job board — real open tasks, readable with E */}
-      <BidBoardStand x={layout.board.x} z={layout.board.z} ry={layout.board.ry} />
-      <MapBoardStand
-        x={layout.mapBoard.x}
-        z={layout.mapBoard.z}
-        ry={layout.mapBoard.ry}
-        extent={layout.extent}
-        streetAngles={layout.streetAngles}
-        houses={layout.houses.map((h) => ({ x: h.pos[0], z: h.pos[2] }))}
-        landmarks={layout.landmarks}
-      />
+      {!arcadeActive && (
+        <>
+          <BidBoardStand x={layout.board.x} z={layout.board.z} ry={layout.board.ry} />
+          <MapBoardStand
+            x={layout.mapBoard.x}
+            z={layout.mapBoard.z}
+            ry={layout.mapBoard.ry}
+            extent={layout.extent}
+            streetAngles={layout.streetAngles}
+            houses={layout.houses.map((h) => ({ x: h.pos[0], z: h.pos[2] }))}
+            landmarks={layout.landmarks}
+          />
+        </>
+      )}
 
       {/* The river between plaza and districts */}
-      <group name="river"><River river={layout.river} /></group>
+      {!arcadeActive && <group name="river"><River river={layout.river} /></group>}
 
       {/* The hedge garden — fountain at the heart, treasure in a corner */}
-      <MazeHedges walls={layout.maze.walls} />
-      <WithinRange x={layout.maze.center.x} z={layout.maze.center.z} range={60} playerRef={playerPosRef}>
-        <GardenFountain x={layout.maze.center.x} z={layout.maze.center.z} />
-      </WithinRange>
+      {!arcadeActive && <MazeHedges walls={layout.maze.walls} />}
+      {!arcadeActive && (
+        <WithinRange x={layout.maze.center.x} z={layout.maze.center.z} range={60} playerRef={playerPosRef}>
+          <GardenFountain x={layout.maze.center.x} z={layout.maze.center.z} />
+        </WithinRange>
+      )}
       {/* (The four garden benches around the fountain render via the
           world-wide InstancedBenches pool.) */}
-      <group position={[layout.maze.chest.x - 0.79, 0, layout.maze.chest.z - 1.65]}>
-        <GiftChest w={2.2} rotation={0} opened={openedChestIds?.has("maze-daily") ?? false} />
-      </group>
+      {!arcadeActive && (
+        <group position={[layout.maze.chest.x - 0.79, 0, layout.maze.chest.z - 1.65]}>
+          <GiftChest w={2.2} rotation={0} opened={openedChestIds?.has("maze-daily") ?? false} />
+        </group>
+      )}
 
       {/* Farmland spread: wheat, its keeper, and hay */}
-      <group name="wheat"><WheatField stalks={layout.wheat} /></group>
-      {layout.wheatPatches.map((wp, i) => (
+      {!arcadeActive && <group name="wheat"><WheatField stalks={layout.wheat} /></group>}
+      {!arcadeActive && layout.wheatPatches.map((wp, i) => (
         <WithinRange key={`wp${i}`} x={wp.x} z={wp.z} range={55} playerRef={playerPosRef}>
           <Scarecrow x={wp.x + 4.2} z={wp.z + 3.4} rot={wp.rot + 0.4} />
           <HayBale position={[wp.x - 4.6, 0, wp.z - 3.2]} />
@@ -5399,37 +5432,41 @@ export const OpenWorld = memo(function OpenWorld({
       ))}
 
       {/* Sky + fauna */}
-      <group name="balloon"><Balloon extent={layout.extent} /></group>
-      {layout.deer.map((d, i) => (
+      {!arcadeActive && <group name="balloon"><Balloon extent={layout.extent} /></group>}
+      {!arcadeActive && layout.deer.map((d, i) => (
         <WithinRange key={`de${i}`} x={d.x} z={d.z} range={75} playerRef={playerPosRef}>
           <Deer home={d} playerPosRef={playerPosRef} />
         </WithinRange>
       ))}
 
       {/* The pipeline desk — open a work order, walk the streets, run the chain */}
-      <PipelineDesk x={layout.desk.x} z={layout.desk.z} ry={layout.desk.ry} />
+      {!arcadeActive && <PipelineDesk x={layout.desk.x} z={layout.desk.z} ry={layout.desk.ry} />}
 
       {/* Micro-life: laundry lines between neighbours + fireflies at the ponds */}
-      {layout.laundry.map((l, i) => (
+      {!arcadeActive && layout.laundry.map((l, i) => (
         <WithinRange key={`ll${i}`} x={(l.a[0] + l.b[0]) / 2} z={(l.a[1] + l.b[1]) / 2} range={48} playerRef={playerPosRef}>
           <LaundryLine a={l.a} b={l.b} />
         </WithinRange>
       ))}
-      <Fireflies ponds={layout.ponds} />
+      {!arcadeActive && <Fireflies ponds={layout.ponds} />}
       <NightDriver />
       <LampGlowDriver />
 
       {/* Always-visible instanced pools — every lamp, bench and orchard plant
           in the world in a handful of draw calls, no distance gating. */}
-      <group name="lamps"><InstancedLamps items={lampItems} /></group>
-      <group name="benches"><InstancedBenches items={benchItems} /></group>
-      <group name="orchard">
-        <InstancedAppleTrees items={layout.orchardTrees} />
-        <InstancedBerryBushes items={layout.berryBushes} />
-      </group>
+      {!arcadeActive && (
+        <>
+          <group name="lamps"><InstancedLamps items={lampItems} /></group>
+          <group name="benches"><InstancedBenches items={benchItems} /></group>
+          <group name="orchard">
+            <InstancedAppleTrees items={layout.orchardTrees} />
+            <InstancedBerryBushes items={layout.berryBushes} />
+          </group>
+        </>
+      )}
 
       {/* Fishing areas */}
-      {layout.ponds.map((p, i) => (
+      {!arcadeActive && layout.ponds.map((p, i) => (
         <group key={`pond${i}`} name="pond">
           <Pond position={p.pos} r={p.r} seed={p.seed} dockA={p.dockA} playerRef={playerPosRef} />
         </group>
@@ -5438,27 +5475,27 @@ export const OpenWorld = memo(function OpenWorld({
       {/* Rest stops along the hub roads — sit, look, breathe. The bench and
           lamp render via the always-visible instanced pools; only the small
           flower patch still culls at distance. */}
-      {layout.restStops.map((rs, i) => (
+      {!arcadeActive && layout.restStops.map((rs, i) => (
         <WithinRange key={`rest${i}`} x={rs.x} z={rs.z} range={55} playerRef={playerPosRef}>
           <Flowers position={[rs.fx, 0, rs.fz]} scale={1.1} />
         </WithinRange>
       ))}
 
       {/* The golden hen — catch it for a Golden Egg */}
-      <GoldenHen playerPosRef={playerPosRef} extent={layout.extent} obstacles={layout.obstacles} onCaught={onHenCaught} />
+      {!arcadeActive && <GoldenHen playerPosRef={playerPosRef} extent={layout.extent} obstacles={layout.obstacles} onCaught={onHenCaught} />}
 
       {/* The world's edge: pine wall → forested hills → mountains */}
-      <group name="boundary"><BoundaryScenery extent={layout.extent} /></group>
+      {!arcadeActive && <group name="boundary"><BoundaryScenery extent={layout.extent} /></group>}
 
       {/* Hall of Fame — the top agents by reputation, in bronze, facing home */}
-      {layout.hof && hofTop.length > 0 && (
+      {!arcadeActive && layout.hof && hofTop.length > 0 && (
         <group name="halloffame" position={[layout.hof.x, 0, layout.hof.z]} rotation={[0, layout.hofRot, 0]}>
           <HallOfFame top={hofTop} />
         </group>
       )}
 
       {/* The week's top agents staff the plaza stalls — names + real prices */}
-      {stallStaff && stallStaff.length > 0 && (
+      {!arcadeActive && stallStaff && stallStaff.length > 0 && (
         <group name="plaza">
           {layout.furniture.stalls.map((s, i) => {
             const a = stallStaff[i];
@@ -5474,7 +5511,7 @@ export const OpenWorld = memo(function OpenWorld({
       )}
 
       {/* Meadow vignettes — a farmstead, a relic site, orchards, berries, campfires */}
-      {layout.farm && (
+      {!arcadeActive && layout.farm && (
         <group name="farm" position={[layout.farm.x, 0, layout.farm.z]} rotation={[0, layout.farmRot, 0]}>
           <Barn position={[0, 0, 0]} />
           <Windmill position={[8.5, 0, -2]} rotation={0.4} />
@@ -5592,15 +5629,21 @@ export const OpenWorld = memo(function OpenWorld({
         </WithinRange>
       ))}
 
-      {/* Ground cover — instanced grass, flowers and leaf litter */}
-      <group name="grass"><GrassField spots={layout.grass} /></group>
-      <FlowerField spots={layout.flowerSpots} />
-      <LeafPatches patches={layout.leaves} />
+      {/* Ground cover — instanced grass, flowers and leaf litter. The arena
+          brings its own scenery, so the whole world's cover (millions of grass
+          tris + every tree) is culled during a run. */}
+      {!arcadeActive && (
+        <>
+          <group name="grass"><GrassField spots={layout.grass} /></group>
+          <FlowerField spots={layout.flowerSpots} />
+          <LeafPatches patches={layout.leaves} />
 
-      {/* Greenery (all instanced) + grazing livestock */}
-      <group name="trees"><InstancedTrees trees={layout.trees} /></group>
-      {!lowPower && <InstancedBushes positions={layout.bushes} />}
-      <Livestock area={layout.extent} obstacles={layout.obstacles} reportRef={animalsRef} />
+          {/* Greenery (all instanced) + grazing livestock */}
+          <group name="trees"><InstancedTrees trees={layout.trees} /></group>
+          {!lowPower && <InstancedBushes positions={layout.bushes} />}
+          <Livestock area={layout.extent} obstacles={layout.obstacles} reportRef={animalsRef} />
+        </>
+      )}
 
       {/* Hens pecking near the district signposts */}
       {layout.chickens.map((c, i) => (
@@ -5612,11 +5655,11 @@ export const OpenWorld = memo(function OpenWorld({
       {/* Pet the animals — E next to any sheep, cow or hen */}
       <Petting playerPosRef={playerPosRef} animalsRef={animalsRef} chickens={layout.chickens} onNear={onNearPet} />
 
-      {/* Sky + ambient life */}
-      <DriftingClouds extent={layout.extent} />
-      <SkyBirds extent={layout.extent} />
-      {!lowPower && <Pollen extent={layout.extent} />}
-      {!lowPower && <Butterflies spots={layout.flowerSpots} />}
+      {/* Sky + ambient life (the arena has its own clouds + atmosphere) */}
+      {!arcadeActive && <DriftingClouds extent={layout.extent} />}
+      {!arcadeActive && <SkyBirds extent={layout.extent} />}
+      {!arcadeActive && !lowPower && <Pollen extent={layout.extent} />}
+      {!arcadeActive && !lowPower && <Butterflies spots={layout.flowerSpots} />}
     </group>
   );
 });

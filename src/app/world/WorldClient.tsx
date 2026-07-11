@@ -87,6 +87,12 @@ export default function WorldClient() {
   const [stage, setStage] = useState<"landing" | "choose" | "world">("landing");
   const [wallet, setWallet] = useState<string | null>(null);
   const [webgl, setWebgl] = useState<"checking" | "ok" | "none">("checking");
+  // ?arcade=1 (the join-from-stream link): after entering, warp straight to the
+  // Arcade arena — watch → click → you're in the game in seconds.
+  const [autoArcade] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("arcade") !== null;
+  });
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -108,7 +114,7 @@ export default function WorldClient() {
   return (
     <WorldErrorBoundary>
       {stage === "world" ? (
-        <World3D onExit={exit} initialWallet={wallet} />
+        <World3D onExit={exit} initialWallet={wallet} autoArcade={autoArcade} />
       ) : stage === "choose" ? (
         <EntryChoice
           onGuest={() => setStage("world")}

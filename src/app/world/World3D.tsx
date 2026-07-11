@@ -7,9 +7,51 @@ import { WorldEnvironment, type Collider, type WorldBuilding } from "./Landing";
 import { OpenWorld, type OpenDistrict, type FishSpot, type BenchSpot, type GatherSpot, type WorldLandmarks } from "./OpenWorld";
 import { connectPhantom, disconnectPhantom, getPhantom } from "./wallet";
 import { usePresence, EMOTE_GLYPH, type PeerMeta, type PeerPose, type Bubble } from "./presence";
-import { WorldMusic, worldSfx } from "./audio";
+import { WorldMusic, worldSfx, zombieMusic } from "./audio";
 import { ITEMS, RARITY_COLOR, RARITY_LABEL, RARITY_ORDER, rollCatch, rollGift, type ItemDef, type Rarity } from "./items";
 import { ItemIcon } from "./ItemIcon";
+import {
+  ClimbArena,
+  GauntletArena,
+  ZombieArena,
+  ArcadeRunManager,
+  GauntletHazards,
+  ZombieWavesManager,
+  MinigamesOverlay,
+  type GateState,
+  type WaveHud,
+  type OverlayBoards,
+  type GauntletResetReason,
+  type ZombieRunStats,
+  type GhostSample,
+  GhostPlayer,
+  COMBO_WINDOW_MS,
+  CLIMB_GUST,
+} from "./arcade";
+import { ArcadeFxLayer, applyCameraShake } from "./arcadeFx";
+import { overridePhase, clearPhaseOverride } from "./dayCycle";
+import {
+  ARENAS,
+  MODE_PLATS,
+  type ArcadeModeId,
+  type ArenaDef,
+  type Plat,
+  CLIMB_START,
+  CLIMB_GOAL,
+  CLIMB_RESET,
+  CLIMB_QUARTERS,
+  GAUNTLET_START,
+  GAUNTLET_FINISH,
+  MODE_SOLIDS,
+  type ArcadeSolid,
+  platGroundAt,
+  resolvePlatXZ,
+  clampToCircle,
+  fmtMs,
+  CLIMB_SPRINGS,
+  GAUNTLET_SPEED_PADS,
+  SPEED_PAD_BOOST,
+} from "./arcadeLayout";
 
 // Darken a #rrggbb hex by factor f (0..1).
 function shade(hex: string, f: number): string {
@@ -839,25 +881,27 @@ function Peer({ meta, posesRef, bubblesRef, playerRef }: { meta: PeerMeta; poses
   const g = useRef<THREE.Group>(null);
   const nameG = useRef<THREE.Group>(null);
   const gait = useRef<Gait>({ speed: 0 });
-  const cur = useRef<{ x: number; z: number; ry: number } | null>(null);
+  const cur = useRef<{ x: number; z: number; ry: number; h: number } | null>(null);
   const jumpT = useRef(0);
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
     const t = posesRef.current?.get(meta.id);
     if (!t || !g.current) return;
-    if (!cur.current) cur.current = { x: t.x, z: t.z, ry: t.ry };
+    if (!cur.current) cur.current = { x: t.x, z: t.z, ry: t.ry, h: t.h ?? 0 };
     const k = 1 - Math.exp(-12 * dt);
     cur.current.x += (t.x - cur.current.x) * k;
     cur.current.z += (t.z - cur.current.z) * k;
+    cur.current.h += ((t.h ?? 0) - cur.current.h) * k;
     let d = t.ry - cur.current.ry;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     cur.current.ry += d * k;
     // Airtime is broadcast as a state, not a height — animate a hop locally so
-    // jumps read on other screens.
+    // jumps read on other screens. Peers that DO broadcast a real height (the
+    // arcade tower) render at it; the hop overlays only near the ground.
     if (t.st === "jump") jumpT.current = Math.min(jumpT.current + dt, 0.62);
     else jumpT.current = Math.max(jumpT.current - dt * 3, 0);
     const hop = Math.sin(Math.min(jumpT.current / 0.62, 1) * Math.PI) * 0.85;
-    g.current.position.set(cur.current.x, hop, cur.current.z);
+    g.current.position.set(cur.current.x, Math.max(hop, cur.current.h), cur.current.z);
     g.current.rotation.y = cur.current.ry;
     gait.current.speed = t.st === "run" ? 1.6 : t.st === "walk" ? 1 : 0;
     gait.current.mode = t.st === "sit" ? "sit" : t.st === "fish" ? "fish" : null;
@@ -1504,7 +1548,7 @@ function pressKey(code: string, holdMs = 140) {
   window.setTimeout(() => window.dispatchEvent(new KeyboardEvent("keyup", { code })), holdMs);
 }
 
-function TouchControls({ touchRef }: { touchRef: { current: { mx: number; my: number; run: boolean } } }) {
+function TouchControls({ touchRef, combat = false }: { touchRef: { current: { mx: number; my: number; run: boolean } }; combat?: boolean }) {
   const knobRef = useRef<HTMLDivElement>(null);
   const pid = useRef<number | null>(null);
   const origin = useRef({ x: 0, y: 0 });
@@ -1551,11 +1595,20 @@ function TouchControls({ touchRef }: { touchRef: { current: { mx: number; my: nu
       >
         <div ref={knobRef} className="absolute left-1/2 top-1/2 -ml-7 -mt-7 w-14 h-14 rounded-full bg-white/40 border border-white/50 pointer-events-none" />
       </div>
-      <div className="absolute bottom-24 right-4 flex flex-col items-center gap-3 z-30" style={{ touchAction: "none" }}>
-        <button onPointerDown={(e) => { e.stopPropagation(); pressKey("KeyK"); }} className={`${btn} w-14 h-14 bg-white/15 border-white/30 text-[11px]`}>KNOCK</button>
-        <button onPointerDown={(e) => { e.stopPropagation(); pressKey("KeyE"); }} className={`${btn} w-16 h-16 bg-teal-500/60 border-teal-200/60 text-sm`}>USE</button>
-        <button onPointerDown={(e) => { e.stopPropagation(); pressKey("Space", 180); }} className={`${btn} w-16 h-16 bg-white/15 border-white/30 text-[11px]`}>JUMP</button>
-      </div>
+      {combat ? (
+        /* Combat (Zombie Waves): the right thumb owns FIRE — USE + JUMP shift
+           left so nothing sits under the fire cluster. No KNOCK in a graveyard. */
+        <div className="absolute bottom-24 right-28 flex flex-col items-center gap-3 z-30" style={{ touchAction: "none" }}>
+          <button onPointerDown={(e) => { e.stopPropagation(); pressKey("KeyE"); }} className={`${btn} w-14 h-14 bg-teal-500/60 border-teal-200/60 text-sm`}>USE</button>
+          <button onPointerDown={(e) => { e.stopPropagation(); pressKey("Space", 180); }} className={`${btn} w-16 h-16 bg-white/15 border-white/30 text-[11px]`}>JUMP</button>
+        </div>
+      ) : (
+        <div className="absolute bottom-24 right-4 flex flex-col items-center gap-3 z-30" style={{ touchAction: "none" }}>
+          <button onPointerDown={(e) => { e.stopPropagation(); pressKey("KeyK"); }} className={`${btn} w-14 h-14 bg-white/15 border-white/30 text-[11px]`}>KNOCK</button>
+          <button onPointerDown={(e) => { e.stopPropagation(); pressKey("KeyE"); }} className={`${btn} w-16 h-16 bg-teal-500/60 border-teal-200/60 text-sm`}>USE</button>
+          <button onPointerDown={(e) => { e.stopPropagation(); pressKey("Space", 180); }} className={`${btn} w-16 h-16 bg-white/15 border-white/30 text-[11px]`}>JUMP</button>
+        </div>
+      )}
     </>
   );
 }
@@ -2659,6 +2712,231 @@ function NearPeerManager({
 }
 
 // A ticking mm:ss.d readout for the Ring Run HUD.
+// The zombies wave counter: tally strokes in groups of five (the fifth slashes
+// through its group); from wave 10 it becomes a big styled number instead.
+function WaveTally({ wave, breather }: { wave: number; breather: boolean }) {
+  const cls = breather ? "opacity-60 animate-pulse" : "";
+  if (wave >= 10) {
+    return (
+      <div className={`select-none ${cls}`}>
+        <p className="text-8xl font-black text-red-500 leading-none" style={{ textShadow: "0 0 18px rgba(220,38,38,0.75), 3px 3px 0 #450a0a", fontFamily: "Georgia, serif" }}>
+          {wave}
+        </p>
+        <p className="text-xs tracking-[0.4em] text-red-400/80 font-mono mt-1">WAVE</p>
+      </div>
+    );
+  }
+  const groups: number[] = [];
+  let left = wave;
+  while (left > 0) { groups.push(Math.min(5, left)); left -= 5; }
+  return (
+    <div className={`select-none flex items-end gap-3 ${cls}`}>
+      {groups.map((n, gi) => (
+        <div key={gi} className="relative flex gap-[7px]">
+          {Array.from({ length: Math.min(n, 4) }, (_, i) => (
+            <span
+              key={i}
+              className="block w-[8px] h-14 rounded-sm bg-red-500"
+              style={{ boxShadow: "0 0 12px rgba(220,38,38,0.8)", transform: `rotate(${(i % 2 ? 2 : -2) + gi}deg)` }}
+            />
+          ))}
+          {n === 5 && (
+            <span
+              className="absolute left-[-6px] top-1/2 w-[54px] h-[8px] rounded-sm bg-red-400"
+              style={{ boxShadow: "0 0 12px rgba(220,38,38,0.8)", transform: "rotate(-24deg)" }}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// "GO!" — flashes center-screen the moment a run arms (paired with the beep).
+// Same trick as HurtFlash: keyed remount + a forwards CSS animation, no state.
+function GoFlash({ startedAt }: { startedAt: number | null }) {
+  if (!startedAt) return null;
+  return (
+    <div key={startedAt} className="absolute top-1/3 left-1/2 -translate-x-1/2 z-40 pointer-events-none select-none">
+      <style>{`@keyframes axon-goflash { 0% { opacity: 0; transform: scale(0.6); } 18% { opacity: 1; transform: scale(1.15); } 70% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.05); } }`}</style>
+      <p className="text-7xl font-black text-teal-300" style={{ textShadow: "0 2px 18px rgba(20,184,166,0.8)", animation: "axon-goflash 0.9s ease-out forwards" }}>GO!</p>
+    </div>
+  );
+}
+
+// The Sky Climb altimeter — live height against the summit, always visible, so
+// you can SEE how far up (and how far left) you are. Also fires the quarter-gate
+// callbacks (25/50/75%) that drive the sector splits.
+function ClimbAltimeter({ poseRef, targetH, startedAt, quarterRef, onQuarter }: {
+  poseRef: { current: { h?: number } };
+  targetH: number;
+  startedAt?: number | null;
+  quarterRef?: { current: number };
+  onQuarter?: (idx: number, tms: number) => void;
+}) {
+  const [h, setH] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const hh = Math.max(0, poseRef.current.h ?? 0);
+      setH(hh);
+      // quarter gates only count while a run is live
+      if (startedAt && quarterRef && onQuarter) {
+        while (quarterRef.current < CLIMB_QUARTERS.length && hh >= CLIMB_QUARTERS[quarterRef.current]) {
+          onQuarter(quarterRef.current, Date.now() - startedAt);
+          quarterRef.current++;
+        }
+      }
+    }, 120);
+    return () => clearInterval(id);
+  }, [poseRef, startedAt, quarterRef, onQuarter]);
+  const pct = Math.max(0, Math.min(100, (h / targetH) * 100));
+  return (
+    <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1 select-none">
+      <span className="font-mono text-[11px] font-bold text-teal-200 bg-black/60 rounded-md px-1.5 py-0.5">{Math.round(h)}m</span>
+      <div className="w-2.5 h-44 rounded-full bg-black/50 border border-white/10 overflow-hidden flex flex-col justify-end">
+        <div className="w-full bg-gradient-to-t from-teal-500 to-teal-300 rounded-full transition-all duration-300" style={{ height: `${pct}%` }} />
+      </div>
+      <span className="font-mono text-[10px] text-teal-500/90 bg-black/50 rounded px-1 py-0.5">▲ {Math.round(targetH)}m</span>
+    </div>
+  );
+}
+
+// A red vignette pulse when a gauntlet hazard resets you — the fail READS.
+// Keyed remount + forwards animation (the HurtFlash pattern), no state.
+function ResetFlash({ at }: { at: number }) {
+  if (!at) return null;
+  return (
+    <div key={at} className="absolute inset-0 z-20 pointer-events-none" style={{ boxShadow: "inset 0 0 140px 48px rgba(224,90,60,0.55)", animation: "axon-resetflash 0.42s ease-out forwards" }}>
+      <style>{`@keyframes axon-resetflash { from { opacity: 1; } to { opacity: 0; } }`}</style>
+    </div>
+  );
+}
+
+// The climb fall toast — the clock does NOT stop; this points you at the pad.
+function FellToast({ at }: { at: number }) {
+  if (!at) return null;
+  return (
+    <div
+      key={at}
+      className="absolute bottom-28 left-1/2 -translate-x-1/2 z-30 rounded-2xl bg-black/75 text-amber-200 text-sm font-semibold px-5 py-2.5 shadow-xl pointer-events-none"
+      style={{ animation: "axon-felltoast 4s ease-out forwards" }}
+    >
+      <style>{`@keyframes axon-felltoast { 0% { opacity: 0; transform: translateY(8px); } 6% { opacity: 1; transform: translateY(0); } 88% { opacity: 1; } 100% { opacity: 0; } }`}</style>
+      You fell — the clock is still running. Stand on the RESET RUN pad by the start to go again.
+    </div>
+  );
+}
+
+// Crosshair hit feedback: a quick white ✕ on a hit, GOLD on a headshot, a
+// bigger red one on a kill. Each event remounts its own element (key =
+// timestamp) and fades out in CSS.
+function HitMarker({ hitAt, killAt, critAt }: { hitAt: number; killAt: number; critAt: number }) {
+  return (
+    <>
+      <style>{`@keyframes axon-hitmark { from { opacity: 1; } to { opacity: 0; } }`}</style>
+      {hitAt > 0 && (
+        <div key={`h${hitAt}`} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none select-none font-thin text-white/90 text-2xl" style={{ animation: "axon-hitmark 0.16s ease-out forwards" }}>
+          ✕
+        </div>
+      )}
+      {critAt > 0 && (
+        <div key={`c${critAt}`} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none select-none font-bold text-amber-300 text-3xl" style={{ animation: "axon-hitmark 0.26s ease-out forwards", textShadow: "0 0 10px rgba(251,191,36,0.8)" }}>
+          ✕
+        </div>
+      )}
+      {killAt > 0 && (
+        <div key={`k${killAt}`} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none select-none font-thin text-red-400 text-4xl" style={{ animation: "axon-hitmark 0.32s ease-out forwards" }}>
+          ✕
+        </div>
+      )}
+    </>
+  );
+}
+
+// "+60" floating up off the crosshair when a kill pays out.
+function PointsPopup({ amt, at }: { amt: number; at: number }) {
+  if (!at) return null;
+  return (
+    <div key={at} className="absolute left-1/2 top-[42%] -translate-x-1/2 z-20 pointer-events-none select-none">
+      <style>{`@keyframes axon-floatup { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-46px); } }`}</style>
+      <p className="font-mono font-bold text-violet-300 text-lg" style={{ animation: "axon-floatup 0.9s ease-out forwards", textShadow: "0 1px 8px rgba(0,0,0,0.7)" }}>
+        +{amt}
+      </p>
+    </div>
+  );
+}
+
+// A red edge-flash when a zombie connects — you always KNOW you were hit.
+// Remounts per hit (key = hurtAt) and fades itself out.
+function HurtFlash({ at }: { at: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || at === 0) return;
+    el.style.opacity = "1";
+    const t = setTimeout(() => { el.style.opacity = "0"; }, 160);
+    return () => clearTimeout(t);
+  }, [at]);
+  if (at === 0) return null;
+  return (
+    <div
+      ref={ref}
+      className="absolute inset-0 z-30 pointer-events-none"
+      style={{
+        opacity: 0,
+        transition: "opacity 450ms",
+        background:
+          "radial-gradient(ellipse at center, rgba(190, 10, 10, 0.18) 0%, rgba(190, 10, 10, 0.28) 42%, rgba(165, 0, 0, 0.82) 100%)",
+      }}
+    />
+  );
+}
+
+// The boss's entrance wash — a deeper, slower red than a bite: it announces,
+// then gets out of the way of the fight.
+function BossFlash({ at }: { at: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || at === 0) return;
+    el.style.opacity = "1";
+    const t = setTimeout(() => { el.style.opacity = "0"; }, 420);
+    return () => clearTimeout(t);
+  }, [at]);
+  if (at === 0) return null;
+  return (
+    <div
+      ref={ref}
+      className="absolute inset-0 z-20 pointer-events-none"
+      style={{
+        opacity: 0,
+        transition: "opacity 900ms",
+        background:
+          "radial-gradient(ellipse at center, rgba(120, 0, 0, 0.05) 0%, rgba(120, 0, 0, 0.2) 55%, rgba(90, 0, 0, 0.55) 100%)",
+      }}
+    />
+  );
+}
+
+// The crosshair with LIFE in it: four ticks + a dot that BLOOM outward on every
+// shot (keyed off the magazine count — each round fired remounts the pulse) and
+// settle back in ~150ms. The sniper scope draws its own reticle instead.
+function Crosshair({ mag, zoomed }: { mag: number; zoomed: boolean }) {
+  if (zoomed) return null;
+  return (
+    <div key={mag} className="absolute top-1/2 left-1/2 z-20 pointer-events-none" style={{ transform: "translate(-50%, -50%)" }}>
+      <style>{`@keyframes axon-xh-bloom { 0% { transform: scale(1.8); opacity: 0.55; } 100% { transform: scale(1); opacity: 0.9; } }`}</style>
+      <div className="relative w-7 h-7" style={{ animation: "axon-xh-bloom 150ms ease-out both" }}>
+        <span className="absolute left-1/2 top-0 -translate-x-1/2 w-px h-2 bg-white/90" />
+        <span className="absolute left-1/2 bottom-0 -translate-x-1/2 w-px h-2 bg-white/90" />
+        <span className="absolute top-1/2 left-0 -translate-y-1/2 h-px w-2 bg-white/90" />
+        <span className="absolute top-1/2 right-0 -translate-y-1/2 h-px w-2 bg-white/90" />
+        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-white/70" />
+      </div>
+    </div>
+  );
+}
+
 function RingTimer({ startedAt }: { startedAt: number }) {
   const [now, setNow] = useState(startedAt);
   useEffect(() => {
@@ -2749,6 +3027,7 @@ interface WorldPlot {
   usdcEarned: number;
   verified: boolean;
   walletAddress: string | null;
+  proofScore?: number | null;
 }
 interface WeeklyTopAgent {
   agentId: string;
@@ -2811,13 +3090,16 @@ function Player({
   aerial,
   worldRadius,
   lowPower,
+  arcade = null,
 }: {
   solids: Collider[];
   buildings: WorldBuilding[];
   benches: BenchSpot[];
   animalsRef?: React.RefObject<{ x: number; z: number }[]>;
   boostRef?: React.RefObject<number>;
-  bouncePads: { x: number; z: number; r: number }[];
+  /** Bounce surfaces. Optional y gates the trigger to a height (sky springboards);
+   *  optional v overrides the launch multiplier (default mushroom 2.2). */
+  bouncePads: { x: number; z: number; r: number; y?: number; v?: number }[];
   bounceFxRef?: React.RefObject<{ x: number; z: number; t: number } | null>;
   fishingSpot: FishSpot | null;
   onFishMove: () => void;
@@ -2845,6 +3127,8 @@ function Player({
   aerial: boolean;
   worldRadius: number;
   lowPower: boolean;
+  /** In an arcade arena: platform ground-height + box collision replace the flat world. */
+  arcade?: { arena: ArenaDef; plats: Plat[]; solids: ArcadeSolid[] } | null;
 }) {
   const ref = useRef<THREE.Group>(null);
   const pos = useRef(new THREE.Vector3(0, 0, 18)); // start on the plaza's south path
@@ -2858,6 +3142,13 @@ function Player({
   const jumpH = useRef(0); // height above ground during a jump
   const jumpV = useRef(0); // vertical velocity
   const grounded = useRef(true);
+  // Platforming forgiveness — the difference between "fair" and "the game ate
+  // my jump". Coyote: a jump pressed within ~110ms of walking off a ledge still
+  // fires. Buffer: a jump pressed just before touchdown fires the instant you land.
+  const coyoteUntil = useRef(0);
+  const jumpBufferedAt = useRef(0);
+  const jumpHeldPrev = useRef(false);
+  const onSpeedPad = useRef(false); // edge-detect: the boost whoosh fires on ENTRY only
   const buildingsRef = useRef(buildings);
   useEffect(() => { buildingsRef.current = buildings; }, [buildings]);
   const benchesRef = useRef(benches);
@@ -2872,6 +3163,8 @@ function Player({
   useEffect(() => { fpRef.current = firstPerson; }, [firstPerson]);
   const interiorRef = useRef(interior);
   useEffect(() => { interiorRef.current = interior; }, [interior]);
+  const arcadeRef = useRef(arcade);
+  useEffect(() => { arcadeRef.current = arcade; }, [arcade]);
   const aerialRef = useRef(aerial);
   useEffect(() => { aerialRef.current = aerial; }, [aerial]);
   const avatarWrap = useRef<THREE.Group>(null);
@@ -2909,6 +3202,11 @@ function Player({
   useEffect(() => {
     if (spawnTo) {
       pos.current.set(spawnTo[0], 0, spawnTo[1]);
+      // a warp lands you ON the ground — never carries the old altitude along
+      // (restarting from 80m up must not sky-drop you onto the spawn)
+      jumpH.current = 0;
+      jumpV.current = 0;
+      grounded.current = true;
       facing.current = Math.atan2(-spawnTo[0], -spawnTo[1]); // face the plaza
       // Snap the camera with the teleport — lerping from the old spot reads
       // as a camera flight across the whole map.
@@ -3084,8 +3382,21 @@ function Player({
     let moving = mx !== 0 || mz !== 0;
     const running = k["ShiftLeft"] || k["ShiftRight"] || !!(tc && tc.run);
     // Eating food grants a short sprint boost.
-    const boosted = (boostRef?.current ?? 0) > Date.now();
-    const speed = (running ? RUN_SPEED : WALK_SPEED) * (boosted ? 1.25 : 1);
+    const boosted = (boostRef?.current ?? 0) > Date.now() && !arcadeRef.current; // ranked runs are boost-free
+    // Gauntlet speed pads: a grounded step on a boost strip rewards the clean
+    // racing line with a burst of pace (pads exist only in that arena's space).
+    let padBoost = 1;
+    if (arcadeRef.current && grounded.current) {
+      for (const sp of GAUNTLET_SPEED_PADS) {
+        if (Math.abs(pos.current.x - sp.x) < sp.hw && Math.abs(pos.current.z - sp.z) < sp.hd) {
+          padBoost = SPEED_PAD_BOOST;
+          if (!onSpeedPad.current) worldSfx.whoosh(); // announce on entry, not per-frame
+          break;
+        }
+      }
+    }
+    onSpeedPad.current = padBoost > 1;
+    const speed = (running ? RUN_SPEED : WALK_SPEED) * (boosted ? 1.25 : 1) * padBoost;
 
     // Fishing: locked out on the dock with a cinematic side camera. Any
     // movement key asks the fishing manager to reel in (which unlocks us).
@@ -3220,6 +3531,34 @@ function Player({
         }
         pos.current.set(nx, 0, nz);
         facing.current = Math.atan2(mx, mz);
+      } else if (arcadeRef.current) {
+        // Arcade arena: platform slabs push back (height-aware), other players
+        // stay solid, and the clearing edge replaces the world boundary.
+        const arc = arcadeRef.current;
+        [nx, nz] = resolvePlatXZ(arc.plats, nx, nz, jumpH.current);
+        // round solids (the climb spire): impassable at any height below their top
+        for (const so of arc.solids) {
+          if (jumpH.current >= so.top) continue;
+          const dx = nx - so.x, dz = nz - so.z;
+          const dist = Math.hypot(dx, dz);
+          const min = so.r + PLAYER_RADIUS;
+          if (dist < min && dist > 1e-4) {
+            nx = so.x + (dx / dist) * min;
+            nz = so.z + (dz / dist) * min;
+          }
+        }
+        for (const [, peerPose] of peersRef?.current ?? []) {
+          const dx = nx - peerPose.x, dz = nz - peerPose.z;
+          const dist = Math.hypot(dx, dz);
+          const min = 0.55 + PLAYER_RADIUS;
+          if (dist < min && dist > 1e-4 && Math.abs((peerPose.h ?? 0) - jumpH.current) < 1.4) {
+            nx = peerPose.x + (dx / dist) * min;
+            nz = peerPose.z + (dz / dist) * min;
+          }
+        }
+        [nx, nz] = clampToCircle(arc.arena, nx, nz);
+        pos.current.set(nx, 0, nz);
+        facing.current = Math.atan2(mx, mz);
       } else {
       for (let iter = 0; iter < 2; iter++) {
         for (const s of solids) {
@@ -3258,8 +3597,9 @@ function Player({
       facing.current = Math.atan2(mx, mz);
       }
     }
-    // Drive the avatar's limb animation.
-    gait.current.speed = moving ? (running ? 1.6 : 1) : 0;
+    // Drive the avatar's limb animation — legs FREEZE in the air (a tucked hop
+    // reads right; running legs mid-jump read broken).
+    gait.current.speed = !grounded.current ? 0 : moving ? (running ? 1.6 : 1) : 0;
 
     // Footsteps — one soft tap per stride; stone inside the plaza, grass
     // everywhere else. Timer resets when standing so the first step lands fast.
@@ -3273,27 +3613,86 @@ function Player({
       stepClock.current = 0.3;
     }
 
-    // Bounce mushrooms: standing on a cap launches you sky-high (and tells the
-    // mushroom so it can squash).
+    // Bounce surfaces: town mushrooms (any height ~0) and the climb's
+    // springboards (y-gated to their platform, stronger launch, a proper boing).
     if (grounded.current) {
       for (const bp of padsRef.current) {
+        if (bp.y !== undefined && Math.abs(jumpH.current - bp.y) > 1.6) continue;
         if (Math.hypot(pos.current.x - bp.x, pos.current.z - bp.z) < bp.r) {
-          jumpV.current = JUMP_V * 2.2;
+          jumpV.current = JUMP_V * (bp.v ?? 2.2);
           grounded.current = false;
+          if (bp.v) worldSfx.spring();
           if (bounceFxRef) bounceFxRef.current = { x: bp.x, z: bp.z, t: performance.now() };
           break;
         }
       }
     }
-    // Jump + gravity.
-    if ((k["Space"] || k["KeyZ"]) && grounded.current) {
+    // Jump + gravity. In the arcade the ground is the platform under your feet:
+    // walking off an edge starts a fall, landing snaps to the platform top, and
+    // a near-apex ledge within step range mantles you up. Flat world: ground 0.
+    const groundH = arcadeRef.current
+      ? platGroundAt(arcadeRef.current.plats, pos.current.x, pos.current.z, jumpH.current)
+      : 0;
+    const nowJ = performance.now();
+    const jumpHeld = !!(k["Space"] || k["KeyZ"]);
+    const jumpPressed = jumpHeld && !jumpHeldPrev.current;
+    jumpHeldPrev.current = jumpHeld;
+    // a jump pressed mid-air arms the buffer — it fires the instant you land
+    if (jumpPressed && !grounded.current && nowJ >= coyoteUntil.current) jumpBufferedAt.current = nowJ;
+    if (jumpHeld && (grounded.current || nowJ < coyoteUntil.current)) {
+      // grounded, or inside the coyote window right after a ledge slipped away
       jumpV.current = JUMP_V;
       grounded.current = false;
+      coyoteUntil.current = 0;
+      jumpBufferedAt.current = 0;
+    }
+    if (grounded.current) {
+      if (jumpH.current > groundH + 0.02) {
+        // The floor vanished from under us (stepped off a platform) — fall,
+        // but leave the coyote window open: a jump in the next ~110ms still counts.
+        grounded.current = false;
+        jumpV.current = 0;
+        coyoteUntil.current = nowJ + 110;
+      } else {
+        jumpH.current = groundH; // stick to the ground / step up small ledges
+      }
     }
     if (!grounded.current) {
       jumpV.current -= GRAVITY * dt;
       jumpH.current += jumpV.current * dt;
-      if (jumpH.current <= 0) { jumpH.current = 0; jumpV.current = 0; grounded.current = true; }
+      if (jumpV.current <= 0 && jumpH.current <= groundH) {
+        jumpH.current = groundH;
+        jumpV.current = 0;
+        grounded.current = true;
+        // the buffered jump fires ON touchdown — no eaten inputs at the lip
+        if (nowJ - jumpBufferedAt.current < 140) {
+          jumpBufferedAt.current = 0;
+          jumpV.current = JUMP_V;
+          grounded.current = false;
+        }
+      }
+    }
+    // Sky Climb gusts: mid-air the daily wind shoves you sideways — telegraphed
+    // by the wind swell + the summit pennant. Zero everywhere else (the store is
+    // only written while the climb arena is mounted). Same colliders clamp it.
+    if (!grounded.current && arcadeRef.current && (CLIMB_GUST.vx !== 0 || CLIMB_GUST.vz !== 0)) {
+      const arc = arcadeRef.current;
+      let gx = pos.current.x + CLIMB_GUST.vx * dt;
+      let gz = pos.current.z + CLIMB_GUST.vz * dt;
+      [gx, gz] = resolvePlatXZ(arc.plats, gx, gz, jumpH.current);
+      for (const so of arc.solids) {
+        if (jumpH.current >= so.top) continue;
+        const dx = gx - so.x, dz = gz - so.z;
+        const dist = Math.hypot(dx, dz);
+        const min = so.r + PLAYER_RADIUS;
+        if (dist < min && dist > 1e-4) {
+          gx = so.x + (dx / dist) * min;
+          gz = so.z + (dz / dist) * min;
+        }
+      }
+      [gx, gz] = clampToCircle(arc.arena, gx, gz);
+      pos.current.x = gx;
+      pos.current.z = gz;
     }
     const bob = moving && grounded.current ? Math.abs(Math.sin(state.clock.elapsedTime * (running ? 16 : 10))) * 0.06 : 0;
 
@@ -3307,6 +3706,7 @@ function Player({
     poseRef.current.z = pos.current.z;
     poseRef.current.ry = facing.current;
     poseRef.current.st = !grounded.current ? "jump" : moving ? (running ? "run" : "walk") : "idle";
+    poseRef.current.h = jumpH.current;
 
     // Nearest interactable building (only report when it changes).
     let best: string | null = null;
@@ -3361,7 +3761,9 @@ function Player({
       const camH = Math.max(2.1, CAM_HEIGHT * (dist / CAM_DIST));
       target.current.set(
         pos.current.x + Math.sin(yaw) * dist,
-        camH + jumpH.current * 0.4,
+        // On the tower the camera must ride the full climb height — the 0.4
+        // damping is only for reading ground-level hops nicely.
+        camH + jumpH.current * (arcadeRef.current ? 1 : 0.4),
         pos.current.z + Math.cos(yaw) * dist
       );
       if (camSnap.current) {
@@ -3372,6 +3774,9 @@ function Player({
       }
       camera.lookAt(pos.current.x, 1.4 + (dist / CAM_DIST) * 0.6 + jumpH.current, pos.current.z);
     }
+    // Trauma shake LAST, after the pose is final — arcade impacts (gunshots,
+    // slams, boss entrances, hard landings) kick the camera; zero elsewhere.
+    applyCameraShake(camera, dt);
   });
 
   return (
@@ -3555,10 +3960,18 @@ function AgentCard({
       >
         <div className={`bg-gradient-to-br ${mine ? "from-amber-500 to-orange-600" : "from-emerald-500 to-teal-600"} px-6 py-5 text-white`}>
           <p className="text-[11px] tracking-[0.3em] font-mono text-white/80">{mine ? "YOUR AGENT" : "AGENT"}</p>
-          <h2 className="text-xl font-bold leading-tight flex items-center gap-2">
+          <h2 className="text-xl font-bold leading-tight flex items-center gap-2 flex-wrap">
             {agent.name}
             {agent.verified && <span className="text-xs bg-white/25 rounded-full px-2 py-0.5">✓ verified</span>}
             {agencListed && <span className="text-xs bg-pink-500/80 rounded-full px-2 py-0.5">✓ AgenC</span>}
+            {agent.proofScore !== null && agent.proofScore !== undefined && agent.proofScore > 0 && (
+              <span
+                title="Proof Score — portable reputation, recomputable by anyone from public receipts"
+                className="text-xs bg-teal-900/40 border border-white/30 rounded-full px-2 py-0.5"
+              >
+                Proof {agent.proofScore}
+              </span>
+            )}
           </h2>
           <p className="text-white/85 text-sm mt-1">{agent.district}</p>
         </div>
@@ -4379,7 +4792,7 @@ function EpochPanel({
   );
 }
 
-export default function World3D({ onExit, initialWallet = null }: { onExit: () => void; initialWallet?: string | null }) {
+export default function World3D({ onExit, initialWallet = null, autoArcade = false }: { onExit: () => void; initialWallet?: string | null; autoArcade?: boolean }) {
   const [solids, setSolids] = useState<Collider[]>([]);
   const [buildings, setBuildings] = useState<WorldBuilding[]>([]);
   const [snap, setSnap] = useState<WorldSnapshot | null>(null);
@@ -4588,6 +5001,304 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
     restRef.current = false;
     setResting(false);
   }, []);
+
+  // ── Axon Arcade: the minigame layer ──────────────────────────────────────
+  // Entered from the 🎮 MINIGAMES tab (top-right), never walked to. The gate
+  // sits at ENTRY: guests can't play, and the connected wallet must hold
+  // $AXON (verified on-chain via /api/world/arcade/gate) before PLAY unlocks.
+  // Each mode has its own arena clearing; finishes post to weekly + all-time
+  // leaderboards (time modes rank fastest, Bot Blitz ranks most kills).
+  const [showMinigames, setShowMinigames] = useState(false);
+  const [arcadeGate, setArcadeGate] = useState<GateState>("checking");
+
+  const [gateRequired, setGateRequired] = useState(1000);
+  const [activeArcade, setActiveArcade] = useState<ArcadeModeId | null>(null);
+  const [arcadeNonce, setArcadeNonce] = useState(0); // remount = re-arm the run
+  const [arcadeRun, setArcadeRun] = useState<{
+    startedAt: number | null;
+    finished: number | null; // ms for time modes, kills for Bot Blitz
+    rank: number | null;
+    newPb: boolean; // this finish set a new personal best
+    /** Time modes: how this run stacks against your PB (gold == newPb). */
+    medal: "silver" | "bronze" | "first" | null;
+  }>({ startedAt: null, finished: null, rank: null, newPb: false, medal: null });
+  // Transient run feedback: hazard-reset vignette + the climb "you fell" toast +
+  // the gauntlet checkpoint counter. All wiped by resetArcadeRun when a run re-arms.
+  const [resetFlashAt, setResetFlashAt] = useState(0);
+  const [fellAt, setFellAt] = useState(0);
+  const [gauntletCp, setGauntletCp] = useState<{ idx: number; total: number } | null>(null);
+  // Sector splits vs your PB run — "+0.4s" red / "−0.3s" green, per gate.
+  const [splitDelta, setSplitDelta] = useState<{ label: string; delta: number; at: number } | null>(null);
+  const runSplitsRef = useRef<number[]>([]); // this run's gate times (ms)
+  const climbQuarterRef = useRef(0); // next quarter-height gate to cross
+  const arcadeStartAtRef = useRef<number | null>(null);
+  // the run's misadventures, for the recap
+  const [falls, setFalls] = useState(0);
+  const [resets, setResets] = useState(0);
+  // recap payloads (declared here so resetArcadeRun below can clear them)
+  const [blitzStats, setBlitzStats] = useState<ZombieRunStats | null>(null);
+  const [weekChamp, setWeekChamp] = useState<{ player: string; ms: number } | null>(null);
+  const [blitzHud, setBlitzHud] = useState<WaveHud | null>(null);
+  const [showArcadeTop, setShowArcadeTop] = useState(false);
+  const [overlayBoards, setOverlayBoards] = useState<OverlayBoards | null>(null);
+  // Top-10 boards for every mode, loaded when the overlay opens.
+  useEffect(() => {
+    if (!showMinigames && !activeArcade) return;
+    let alive = true;
+    Promise.all(
+      (["climb", "gauntlet", "arena"] as const).map((m) =>
+        fetch(`/api/world/arcade?mode=${m}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => [m, d] as const)
+          .catch(() => [m, null] as const),
+      ),
+    ).then((entries) => {
+      if (!alive) return;
+      const out: OverlayBoards = {};
+      for (const [m, d] of entries) if (d) out[m] = d;
+      setOverlayBoards(out);
+    });
+    return () => { alive = false; };
+  }, [showMinigames, activeArcade]);
+  interface BoardData { top: { player: string; ms: number }[]; totalRuns: number }
+  const [arcadeBoards, setArcadeBoards] = useState<{ week: BoardData; allTime: BoardData } | null>(null);
+  const [boardTab, setBoardTab] = useState<"week" | "allTime">("week");
+  const arcadeRunningRef = useRef(false); // gauntlet hazards only bite mid-run
+  useEffect(() => {
+    arcadeRunningRef.current = arcadeRun.startedAt !== null && arcadeRun.finished === null;
+    arcadeStartAtRef.current = arcadeRun.startedAt;
+  }, [arcadeRun]);
+
+  // The entry gate: guests stay "guest"; a connected wallet is verified
+  // on-chain the moment the overlay opens (and re-checked on wallet change).
+  // Guests derive to "guest" below — the effect only verifies real wallets.
+  useEffect(() => {
+    if (!showMinigames || !wallet) return;
+    let alive = true;
+    fetch(`/api/world/arcade/gate?wallet=${encodeURIComponent(wallet)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { eligible?: boolean; required?: number } | null) => {
+        if (!alive) return;
+        if (d?.required) setGateRequired(d.required);
+        setArcadeGate(d?.eligible ? "eligible" : "ineligible");
+      })
+      .catch(() => { if (alive) setArcadeGate("ineligible"); });
+    return () => { alive = false; };
+  }, [showMinigames, wallet]);
+
+  const resetArcadeRun = useCallback(() => {
+    setShowArcadeTop(false);
+    setArcadeRun({ startedAt: null, finished: null, rank: null, newPb: false, medal: null });
+    setArcadeBoards(null);
+    setBlitzHud(null);
+    setBlitzStats(null);
+    setWeekChamp(null);
+    setResetFlashAt(0);
+    setFellAt(0);
+    setGauntletCp(null);
+    setSplitDelta(null);
+    setFalls(0);
+    setResets(0);
+    runSplitsRef.current = [];
+    climbQuarterRef.current = 0;
+    ghostSamplesRef.current = null;
+    setArcadeNonce((n) => n + 1);
+  }, []);
+  const fpBeforeArcade = useRef(false);
+  const enterArcadeMode = useCallback((mode: ArcadeModeId) => {
+    setActiveArcade(mode);
+    setShowMinigames(false);
+    setAerial(false); // the sky view frames the city, not the arenas
+    resetArcadeRun();
+    // Zombie Waves plays FIRST PERSON — aim with the mouse, click to shoot.
+    if (mode === "arena") {
+      setFirstPerson((prev) => {
+        fpBeforeArcade.current = prev;
+        return true;
+      });
+    }
+    const a = ARENAS[mode];
+    setWarp([a.spawn.x, a.spawn.z]);
+  }, [resetArcadeRun]);
+  const exitArcade = useCallback(() => {
+    setActiveArcade((mode) => {
+      if (mode === "arena") setFirstPerson(fpBeforeArcade.current);
+      return null;
+    });
+    resetArcadeRun();
+    setWarp([0, 18]); // back to the plaza's south path
+  }, [resetArcadeRun]);
+  const retryArcade = useCallback(() => {
+    resetArcadeRun();
+    setActiveArcade((mode) => {
+      if (mode) {
+        const a = ARENAS[mode];
+        setWarp([a.spawn.x, a.spawn.z]);
+      }
+      return mode;
+    });
+  }, [resetArcadeRun]);
+  // the finish overlay's "(R)" hint is REAL: press R on the recap to rerun
+  useEffect(() => {
+    if (arcadeRun.finished === null || !activeArcade) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "KeyR" && !isTyping()) retryArcade();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [arcadeRun.finished, activeArcade, retryArcade]);
+  // The server-side run token: opened when a run starts, spent when it submits.
+  // The server measures its own elapsed time between the two — the anti-cheat.
+  const runTokenRef = useRef<string | null>(null);
+  const fetchRunToken = useCallback((mode: string) => {
+    runTokenRef.current = null;
+    fetch("/api/world/arcade/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.runId) runTokenRef.current = d.runId; })
+      .catch(() => { /* offline run — it still plays, it just won't rank */ });
+  }, []);
+  const onArcadeStart = useCallback((mode: string, at: number) => {
+    setBoardTab("week");
+    fetchRunToken(mode); // open the run on the server clock
+    runSplitsRef.current = [];
+    climbQuarterRef.current = 0;
+    setFalls(0);
+    setResets(0);
+    setSplitDelta(null);
+    setArcadeRun({ startedAt: at, finished: null, rank: null, newPb: false, medal: null });
+  }, [fetchRunToken]);
+  const displayNameRef = useRef("Guest");
+  const walletRef = useRef<string | null>(null);
+  const arcadeSubmitLock = useRef(false);
+  // The finished run's recorded path; persisted as the ghost only on a NEW PB.
+  const ghostSamplesRef = useRef<GhostSample[] | null>(null);
+  const submitArcade = useCallback((mode: string, value: number) => {
+    // personal best — lower is better on the timed runs, higher in Zombie Waves
+    let newPb = false;
+    // medal vs your own mark (time modes): gold IS the new PB; silver within 5%,
+    // bronze within 15% — every finish gets a verdict, not just the record ones
+    let medal: "silver" | "bronze" | "first" | null = null;
+    try {
+      const key = `axon-arcade-best-${mode}`;
+      const prevRaw = Number(localStorage.getItem(key) ?? 0);
+      const prev = Number.isFinite(prevRaw) ? prevRaw : 0; // a corrupt entry heals instead of jamming PBs forever
+      newPb = mode === "arena" ? value > prev : !prev || value < prev;
+      if (mode !== "arena") {
+        if (!prev) medal = "first";
+        else if (!newPb) medal = value < prev * 1.05 ? "silver" : value < prev * 1.15 ? "bronze" : null;
+      }
+      if (newPb) {
+        localStorage.setItem(key, String(value));
+        // the PB run's path becomes the new ghost to race, its gate times the
+        // new sector references
+        if (mode !== "arena") {
+          if (ghostSamplesRef.current && ghostSamplesRef.current.length > 4) {
+            localStorage.setItem(`axon-ghost-${mode}`, JSON.stringify(ghostSamplesRef.current));
+          }
+          if (runSplitsRef.current.length > 0) {
+            localStorage.setItem(`axon-splits-${mode}`, JSON.stringify(runSplitsRef.current));
+          }
+        }
+      }
+    } catch { /* storage unavailable — the run still counts */ }
+    setArcadeRun((r) => ({ ...r, finished: value, newPb, medal }));
+    if (arcadeSubmitLock.current) return;
+    arcadeSubmitLock.current = true;
+    fetch("/api/world/arcade", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode, ms: value, player: displayNameRef.current, wallet: walletRef.current ?? undefined, runId: runTokenRef.current ?? undefined }),
+    })
+      .then(async (r) => {
+        const d = await r.json().catch(() => null);
+        if (r.ok && d) {
+          setArcadeRun((run) => ({ ...run, rank: d.rank }));
+          setArcadeBoards({ week: d.week, allTime: d.allTime });
+          setWeekChamp(d.lastWeekChampion ?? null);
+        }
+      })
+      .catch(() => { /* result still shows locally */ })
+      .finally(() => { arcadeSubmitLock.current = false; });
+  }, []);
+  // Your stored personal best for the active mode — derived straight from
+  // localStorage (re-read whenever a finish lands, which is when it can change).
+  const arcadePb = useMemo(() => {
+    if (!activeArcade || typeof window === "undefined") return null;
+    try {
+      const v = Number(localStorage.getItem(`axon-arcade-best-${activeArcade}`) ?? 0);
+      return v > 0 ? v : null;
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- arcadeRun.finished re-reads after each run
+  }, [activeArcade, arcadeRun.finished]);
+  const onGhostSamples = useCallback((samples: GhostSample[]) => {
+    Object.assign(ghostSamplesRef, { current: samples });
+  }, []);
+  // Zombie Waves has no start box — the run begins at mount, so the server
+  // token opens there (and re-opens on every restart via the nonce).
+  useEffect(() => {
+    if (activeArcade === "arena") fetchRunToken("arena");
+  }, [activeArcade, arcadeNonce, fetchRunToken]);
+  // Winning and dying are OPPOSITE moments — they must not share a sound.
+  const onArcadeFinish = useCallback((mode: string, ms: number) => {
+    worldSfx.fanfare();
+    submitArcade(mode, ms);
+  }, [submitArcade]);
+  const onBlitzEnd = useCallback((wave: number, stats: ZombieRunStats) => {
+    worldSfx.deathSting();
+    setBlitzStats(stats);
+    submitArcade("arena", wave);
+  }, [submitArcade]);
+  // Hazard resets tell you WHAT got you: water splashes, a sweeper hurts, and
+  // wandering out of the corridor thuds you back — plus a red vignette flash.
+  const onGauntletReset = useCallback((cp: { x: number; z: number }, reason: GauntletResetReason) => {
+    if (reason === "pond") worldSfx.splash();
+    else if (reason === "sweeper" || reason === "crusher") worldSfx.hurt();
+    else worldSfx.land(true);
+    setResets((n) => n + 1);
+    setResetFlashAt(Date.now());
+    setWarp([cp.x, cp.z]);
+  }, []);
+  const onGauntletCp = useCallback((idx: number, total: number) => {
+    setGauntletCp({ idx, total });
+    // sector split vs the PB run's time through this same gate
+    const t0 = arcadeStartAtRef.current;
+    if (!t0) return;
+    const tms = Date.now() - t0;
+    runSplitsRef.current[idx - 1] = tms;
+    try {
+      const pb = JSON.parse(localStorage.getItem("axon-splits-gauntlet") ?? "null") as number[] | null;
+      const ref = pb?.[idx - 1];
+      if (typeof ref === "number") setSplitDelta({ label: `CP${idx}`, delta: tms - ref, at: Date.now() });
+    } catch { /* no stored splits yet */ }
+  }, []);
+  const onClimbQuarter = useCallback((idx: number, tms: number) => {
+    worldSfx.milestone(); // the height mark chimes — progress you HEAR
+    runSplitsRef.current[idx] = tms;
+    try {
+      const pb = JSON.parse(localStorage.getItem("axon-splits-climb") ?? "null") as number[] | null;
+      const ref = pb?.[idx];
+      if (typeof ref === "number") setSplitDelta({ label: `${(idx + 1) * 25}%`, delta: tms - ref, at: Date.now() });
+    } catch { /* no stored splits yet */ }
+  }, []);
+  // Sky Climb has no checkpoints and never stops the clock for you — the reset
+  // pad wipes the run; a long fall just gets a toast pointing you to it.
+  const onClimbAbort = useCallback(() => {
+    runSplitsRef.current = [];
+    climbQuarterRef.current = 0;
+    setSplitDelta(null);
+    setArcadeRun({ startedAt: null, finished: null, rank: null, newPb: false, medal: null });
+  }, []);
+  const onClimbFell = useCallback(() => {
+    setFalls((n) => n + 1);
+    setFellAt(Date.now());
+  }, []);
+  // Restarts happen ONLY via the ↺ button — no accidental R-key wipes mid-run.
   // The house is USABLE: the desk terminal is a live dashboard for this agent,
   // and the bed skips the world clock forward (dusk on demand, indoors).
   const [showTerminal, setShowTerminal] = useState(false);
@@ -4698,6 +5409,35 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
       return next;
     });
   }, []);
+
+  // Zombie Waves gets its own darker soundtrack: the world's calm loop pauses,
+  // the graveyard beat runs, and everything restores on the way out. Muting
+  // SFX mutes this too.
+  useEffect(() => {
+    if (activeArcade !== "arena") return;
+    const worldWasPlaying = music.current?.playing ?? false;
+    if (worldWasPlaying) music.current?.stop();
+    if (worldSfx.enabled) zombieMusic.start();
+    // …and the graveyard belongs at night: pin this client's sky to late dusk
+    // (torches, silhouettes, an ember horizon) for the length of the mode.
+    overridePhase(0.83);
+    return () => {
+      clearPhaseOverride();
+      zombieMusic.stop();
+      if (worldWasPlaying) {
+        if (!music.current) music.current = new WorldMusic();
+        music.current.start(musicVolRef.current);
+      }
+    };
+  }, [activeArcade]);
+  // …and "Muting SFX mutes this too" holds LIVE, not just at entry: toggling
+  // sound mid-arena stops/starts the graveyard beat in place. (The climb wind
+  // self-governs — WindLoop.set() reads the flag every frame.)
+  useEffect(() => {
+    if (activeArcade !== "arena") return;
+    if (sfxOn && !zombieMusic.playing) zombieMusic.start();
+    if (!sfxOn && zombieMusic.playing) zombieMusic.stop();
+  }, [sfxOn, activeArcade]);
   const onMusicVol = useCallback((v: number) => {
     musicVolRef.current = v;
     setMusicVol(v);
@@ -4967,6 +5707,10 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
     [solids, postPos],
   );
 
+  // The arcade portal parks north of the plaza, then slides further out until
+  // it finds clear ground — the plaza boards/stalls/houses are data-driven, so
+  // no fixed spot is guaranteed free (same defence as the ring routes).
+
   // Everyone spawns at the plaza — connecting a wallet used to warp you to
   // your own house's doorstep, which read as "why am I at a random house?".
   // Your house is one 📍 locate away if you want it.
@@ -4976,13 +5720,13 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
     const onKey = (e: KeyboardEvent) => {
       if (e.code === "Escape") { setOpenKey(null); setCustomizing(false); setAerial(false); setShowEpoch(false); setShowInv(false); setShowBoard(false); setShowPipeline(false); setShowTerminal(false); setShowMap(false); }
       if (isTyping()) return;
-      if (e.code === "KeyV" && !homeIn) setFirstPerson((p) => !p); // indoors is FP-only
+      if (e.code === "KeyV" && !homeIn && activeArcade !== "arena") setFirstPerson((p) => !p); // indoors is FP-only; Zombie Waves is FP-locked
       if (e.code === "KeyP") setShowPerf((v) => !v);
-      if (e.code === "KeyM" && !homeIn) setAerial((m) => !m); // no sky view from indoors
+      if (e.code === "KeyM" && !homeIn && !activeArcade) setAerial((m) => !m); // no sky view indoors or in an arena
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [, homeIn]);
+  }, [homeIn, activeArcade]);
 
   // Load a saved avatar + name when a wallet connects.
   useEffect(() => {
@@ -5002,6 +5746,18 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
 
   // Custom name (from the character creator), falling back to wallet / Guest.
   const displayName = profileName?.trim() || (wallet ? short(wallet) : "Guest");
+  useEffect(() => { displayNameRef.current = displayName; }, [displayName]);
+  useEffect(() => { walletRef.current = wallet; }, [wallet]);
+
+  // Deep link (?arcade=1): joining from a stream opens the MINIGAMES overlay
+  // straight away — the growth loop is "watch → click → pick a game".
+  const autoArcadeDone = useRef(false);
+  useEffect(() => {
+    if (autoArcade && snap && !autoArcadeDone.current) {
+      autoArcadeDone.current = true;
+      setShowMinigames(true);
+    }
+  }, [autoArcade, snap]);
 
   const saveLook = () => {
     if (!wallet) return;
@@ -5143,20 +5899,27 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
             stallStaff={snap.weeklyTop}
             onMapBoard={setMapSpot}
             onLandmarks={setLandmarks}
+            arcadeActive={!!activeArcade}
           />
         )}
-        {!homeIn && <TaskStreaks buildings={buildings} />}
-        {crownPos && <Crown position={crownPos} />}
+        {!homeIn && !activeArcade && <TaskStreaks buildings={buildings} />}
+        {crownPos && !activeArcade && <Crown position={crownPos} />}
         {knock && knockBuilding && (
           <DoorGreeterFigure key={knock.id} b={knockBuilding} busy={knock.busy} name={knock.name} />
         )}
-        <group name="villagers">
-          {BOTS.slice(0, activeBots).map((b, i) => (
-            <Villager key={b.seed} seed={b.seed} name={b.name} slot={i} start={b.start} worldRadius={worldRadius} solidsRef={solidsRefForNpc} playerRef={poseRef} />
-          ))}
-        </group>
-        <Beacons buildings={agentBuildings} nearestKey={nearestKey} mineKeys={mineKeys} poseRef={poseRef} />
-        <group name="peers"><Peers peerList={peerList} posesRef={posesRef} bubblesRef={bubblesRef} playerRef={poseRef} /></group>
+        {/* City population (NPCs, live peers, building markers) — all off in an
+            arena, so cull them during a run to keep the arena frame clean. */}
+        {!activeArcade && (
+          <>
+            <group name="villagers">
+              {BOTS.slice(0, activeBots).map((b, i) => (
+                <Villager key={b.seed} seed={b.seed} name={b.name} slot={i} start={b.start} worldRadius={worldRadius} solidsRef={solidsRefForNpc} playerRef={poseRef} />
+              ))}
+            </group>
+            <Beacons buildings={agentBuildings} nearestKey={nearestKey} mineKeys={mineKeys} poseRef={poseRef} />
+            <group name="peers"><Peers peerList={peerList} posesRef={posesRef} bubblesRef={bubblesRef} playerRef={poseRef} /></group>
+          </>
+        )}
         <FishingManager spots={fishSpots} poseRef={poseRef} cancelRef={fishCancel} onCatch={onCatch} onPrompt={setFishPrompt} onState={setFishingSpot} />
         <GatherManager spots={gatherSpots} poseRef={poseRef} onGather={onGather} onNear={setNearGather} />
         <ChestManager spots={chestSpots} openedRef={openedChestsRef} poseRef={poseRef} onOpen={openGiftChest} onNear={setNearChest} />
@@ -5166,6 +5929,57 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
         {showPerf && <StatsProbe onStats={setPerf} />}
         <BoardManager spot={deskSpot} poseRef={poseRef} onOpen={openPipeline} onNear={setNearDesk} />
         <NearPeerManager posesRef={posesRef} poseRef={poseRef} peersRef={peerListRef} onNear={setNearPeer} />
+        {/* Axon Arcade: the active minigame's arena + its tracking */}
+        {/* the shared particle-FX layer: muzzle flashes, hits, deaths, confetti */}
+        {activeArcade && <ArcadeFxLayer />}
+        {activeArcade === "climb" && (
+          <>
+            <ClimbArena poseRef={poseRef} nonce={arcadeNonce} />
+            <GhostPlayer key={`gh-climb-${arcadeNonce}`} mode="climb" startedAt={arcadeRun.finished === null ? arcadeRun.startedAt : null} />
+            {arcadeRun.finished === null && (
+              <ArcadeRunManager
+                key={`climb-${arcadeNonce}`}
+                mode="climb"
+                start={CLIMB_START}
+                goal={CLIMB_GOAL}
+                poseRef={poseRef}
+                onStart={onArcadeStart}
+                onFinish={onArcadeFinish}
+                resetPad={CLIMB_RESET}
+                onAbort={onClimbAbort}
+                onFell={onClimbFell}
+                onGhostSamples={onGhostSamples}
+              />
+            )}
+          </>
+        )}
+        {activeArcade === "gauntlet" && (
+          <>
+            <GauntletArena />
+            <GhostPlayer key={`gh-gauntlet-${arcadeNonce}`} mode="gauntlet" startedAt={arcadeRun.finished === null ? arcadeRun.startedAt : null} />
+            {arcadeRun.finished === null && (
+              <ArcadeRunManager
+                key={`gauntlet-${arcadeNonce}`}
+                mode="gauntlet"
+                start={GAUNTLET_START}
+                goal={GAUNTLET_FINISH}
+                poseRef={poseRef}
+                onStart={onArcadeStart}
+                onFinish={onArcadeFinish}
+                onGhostSamples={onGhostSamples}
+              />
+            )}
+            <GauntletHazards key={`ghz-${arcadeNonce}`} poseRef={poseRef} runningRef={arcadeRunningRef} onReset={onGauntletReset} onCp={onGauntletCp} />
+          </>
+        )}
+        {activeArcade === "arena" && (
+          <>
+            <ZombieArena />
+            {arcadeRun.finished === null && (
+              <ZombieWavesManager key={`waves-${arcadeNonce}`} poseRef={poseRef} firstPerson={firstPerson} onHud={setBlitzHud} onEnd={onBlitzEnd} />
+            )}
+          </>
+        )}
         {waypoint && !homeIn && <WaypointBeacon x={waypoint.x} z={waypoint.z} poseRef={poseRef} onArrive={clearWaypoint} />}
         {homeIn && (
           <>
@@ -5190,14 +6004,14 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
             />
           </>
         )}
-        {snap && <RingRun postAngle={postAngle} poseRef={poseRef} obstacles={allSolids} onEvent={onRingEvent} />}
+        {snap && !activeArcade && <RingRun postAngle={postAngle} poseRef={poseRef} obstacles={allSolids} onEvent={onRingEvent} />}
         <Player
           solids={allSolids}
           buildings={agentBuildings}
           benches={benches}
           animalsRef={animalsRef}
           boostRef={boostUntil}
-          bouncePads={bouncePads}
+          bouncePads={activeArcade === "climb" ? CLIMB_SPRINGS : bouncePads}
           bounceFxRef={bounceFx}
           fishingSpot={fishingSpot}
           onFishMove={onFishMove}
@@ -5221,6 +6035,7 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
           aerial={aerial}
           worldRadius={worldRadius}
           lowPower={lowPower}
+          arcade={activeArcade ? { arena: ARENAS[activeArcade], plats: MODE_PLATS[activeArcade], solids: MODE_SOLIDS[activeArcade] } : null}
         />
       </Canvas>
 
@@ -5322,8 +6137,339 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
         </div>
       )}
 
+      {/* Arcade: live clock (time modes) while a run is going — with your PB
+          beside it and, on the gauntlet, the checkpoint count ticking up */}
+      {activeArcade && activeArcade !== "arena" && arcadeRun.startedAt !== null && arcadeRun.finished === null && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-black/65 text-teal-300 font-mono text-lg px-5 py-2 shadow-lg z-30 flex items-center gap-2.5">
+          <span className="text-[10px] tracking-widest text-teal-500">{activeArcade === "gauntlet" ? "THE GAUNTLET" : "SKY CLIMB"}</span>
+          <RingTimer startedAt={arcadeRun.startedAt} />
+          {activeArcade === "gauntlet" && gauntletCp && (
+            <span className="text-[11px] font-bold text-teal-400 bg-white/10 rounded-full px-2 py-0.5">CP {gauntletCp.idx}/{gauntletCp.total}</span>
+          )}
+          {arcadePb !== null && (
+            <span className="text-[10px] text-amber-300/90">PB {fmtMs(arcadePb)}</span>
+          )}
+        </div>
+      )}
+      {/* Arcade: the GO! moment when a run arms */}
+      {activeArcade && activeArcade !== "arena" && arcadeRun.finished === null && (
+        <GoFlash startedAt={arcadeRun.startedAt} />
+      )}
+      {/* Sky Climb: the altimeter — height vs the summit, always on */}
+      {activeArcade === "climb" && arcadeRun.finished === null && (
+        <ClimbAltimeter poseRef={poseRef} targetH={CLIMB_GOAL.minH + 0.7} startedAt={arcadeRun.startedAt} quarterRef={climbQuarterRef} onQuarter={onClimbQuarter} />
+      )}
+      {/* Sector split vs your PB — green you're up, red you're down */}
+      {activeArcade && activeArcade !== "arena" && splitDelta && arcadeRun.finished === null && (
+        <div key={splitDelta.at} className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none" style={{ animation: "axon-splitchip 2.2s ease-out forwards" }}>
+          <style>{`@keyframes axon-splitchip { 0% { opacity: 0; transform: translateY(6px); } 10% { opacity: 1; transform: translateY(0); } 82% { opacity: 1; } 100% { opacity: 0; } }`}</style>
+          <span className={`font-mono font-bold text-lg px-3 py-1 rounded-full bg-black/70 ${splitDelta.delta <= 0 ? "text-emerald-300" : "text-red-300"}`}>
+            {splitDelta.label} {splitDelta.delta <= 0 ? "−" : "+"}{(Math.abs(splitDelta.delta) / 1000).toFixed(2)}s
+          </span>
+        </div>
+      )}
+      {/* Sky Climb: the you-fell toast (the clock keeps running) */}
+      {activeArcade === "climb" && fellAt > 0 && <FellToast at={fellAt} />}
+      {/* The Gauntlet: hazard-reset vignette */}
+      {activeArcade === "gauntlet" && resetFlashAt > 0 && <ResetFlash at={resetFlashAt} />}
+      {/* Zombie Waves HUD — clean top; wave tallies bottom-left, vitals bottom */}
+      {activeArcade === "arena" && blitzHud && arcadeRun.finished === null && (
+        <>
+          {/* wave counter: tally marks (groups of five), styled number from 10 */}
+          <div className={`absolute ${IS_TOUCH ? "top-14 left-3" : "bottom-6 left-5"} z-30`}>
+            <WaveTally wave={blitzHud.wave} breather={blitzHud.breather} />
+          </div>
+          {/* vitals up top: health bar, points, kills (clean, one strip) */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4 rounded-2xl bg-black/70 px-5 py-2 shadow-lg">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm text-red-400">❤</span>
+              <div className="w-36 h-2.5 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-200 ${blitzHud.hp > 35 ? "bg-red-500" : "bg-red-700 animate-pulse"}`}
+                  style={{ width: `${blitzHud.hp}%` }}
+                />
+              </div>
+            </div>
+            <span className="font-mono text-sm text-violet-300">🪙 {blitzHud.points}</span>
+            <span className="font-mono text-sm text-amber-300">☠ {blitzHud.kills}</span>
+          </div>
+          {/* the BOSS bar — a crimson arc to follow from the roar to the drop */}
+          {blitzHud.boss !== null && (
+            <div className="absolute top-[3.7rem] left-1/2 -translate-x-1/2 z-30 w-72 pointer-events-none">
+              <p className="text-center font-mono text-[10px] tracking-[0.5em] text-red-400/90 mb-0.5">BOSS</p>
+              <div className="h-2 rounded-full bg-black/60 overflow-hidden border border-red-900/60">
+                <div className="h-full rounded-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-200" style={{ width: `${Math.round(blitzHud.boss * 100)}%` }} />
+              </div>
+            </div>
+          )}
+          {blitzHud.power && (
+            <div className="absolute top-[5.1rem] left-1/2 -translate-x-1/2 z-30">
+              <span className="text-sm font-bold text-red-300 animate-pulse tracking-widest">⚡ {blitzHud.power}</span>
+            </div>
+          )}
+          {/* the kill streak — chip under the crosshair, bar drains the 3s window */}
+          {blitzHud.combo >= 2 && (
+            <div key={blitzHud.comboAt} className="absolute top-[58%] left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none text-center">
+              <style>{`@keyframes axon-combo-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }`}</style>
+              <p className={`font-black leading-none ${blitzHud.comboMult > 1 ? "text-amber-300 text-2xl" : "text-gray-200 text-lg"}`} style={{ textShadow: "0 1px 10px rgba(0,0,0,0.7)" }}>
+                {blitzHud.combo}× {blitzHud.comboMult > 1 && <span className="text-red-400">·  {blitzHud.comboMult}× PTS</span>}
+              </p>
+              <div className="mt-1 h-1 w-24 mx-auto rounded-full bg-white/15 overflow-hidden">
+                <div className="h-full bg-amber-300 origin-left" style={{ animation: `axon-combo-drain ${COMBO_WINDOW_MS}ms linear forwards` }} />
+              </div>
+            </div>
+          )}
+          {/* under a quarter tank the world's edges bleed — recover and it clears */}
+          {blitzHud.hp <= 25 && blitzHud.hp > 0 && (
+            <div className="absolute inset-0 z-10 pointer-events-none animate-pulse" style={{ background: "radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(153,27,27,0.38) 100%)" }} />
+          )}
+          {/* weapon + magazine, bottom right (above the touch buttons) */}
+          <div className={`absolute ${IS_TOUCH ? "bottom-[16rem] right-4" : "bottom-6 right-5"} z-30 text-right`}>
+            <p className="font-mono text-sm text-gray-200">{blitzHud.weapon}</p>
+            {blitzHud.reloading ? (
+              <p className="font-mono text-xl font-bold text-amber-300 animate-pulse">RELOADING…</p>
+            ) : (
+              <p className={`font-mono text-2xl font-bold ${blitzHud.mag === 0 && blitzHud.magsLeft === 0 ? "text-red-400 animate-pulse" : "text-teal-300"}`}>
+                {blitzHud.mag} <span className="text-sm text-gray-400 font-normal">| {blitzHud.magsLeft} mag{blitzHud.magsLeft === 1 ? "" : "s"}</span>
+              </p>
+            )}
+            <p className={`font-mono text-xs ${blitzHud.grenades > 0 ? "text-gray-300" : "text-gray-600"}`}>
+              💣 ×{Math.max(0, blitzHud.grenades)} <span className="text-gray-500">(G)</span>
+            </p>
+          </div>
+          {/* sniper scope — black vignette ring + fine crosshair while zoomed */}
+          {blitzHud.zoomed && (
+            <div className="absolute inset-0 z-20 pointer-events-none">
+              <div
+                className="absolute inset-0"
+                style={{ background: "radial-gradient(circle at 50% 50%, transparent 30%, rgba(0,0,0,0.55) 42%, rgba(0,0,0,0.96) 52%)" }}
+              />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-[46%] h-px bg-black/70" />
+              <div className="absolute top-1/2 left-1/2 -translate-y-1/2 h-[46%] w-px bg-black/70" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border border-red-500/80" />
+            </div>
+          )}
+        </>
+      )}
+      {/* Mystery Box: contextual prompt (open → spin → take or walk away) */}
+      {activeArcade === "arena" && blitzHud?.boxPrompt && arcadeRun.finished === null && (
+        <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full ${blitzHud.boxPrompt.startsWith("E — ") ? "bg-violet-600" : "bg-black/60"} text-white text-sm px-5 py-2.5 shadow-lg font-semibold z-30`}>
+          🎁 {blitzHud.boxPrompt}
+        </div>
+      )}
+      {activeArcade === "arena" && blitzHud?.boxMsg && arcadeRun.finished === null && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 rounded-2xl bg-violet-700/90 text-white text-lg font-bold px-6 py-3 shadow-xl z-30">
+          🎁 {blitzHud.boxMsg}
+        </div>
+      )}
+      {/* Zombie Waves: the wave announces itself — banner + breather countdown */}
+      {activeArcade === "arena" && blitzHud?.banner && arcadeRun.finished === null && (
+        <div key={`${blitzHud.banner}-${blitzHud.wave}`} className="absolute top-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none">
+          <p className="text-5xl font-black tracking-[0.25em] text-red-500 animate-pulse" style={{ textShadow: "0 0 22px rgba(220,38,38,0.7), 3px 3px 0 #450a0a", fontFamily: "Georgia, serif" }}>
+            {blitzHud.banner}
+          </p>
+        </div>
+      )}
+      {activeArcade === "arena" && blitzHud && blitzHud.breather && blitzHud.breatherLeft > 0 && arcadeRun.finished === null && (
+        <div className="absolute top-40 left-1/2 -translate-x-1/2 z-30 pointer-events-none font-mono text-sm text-red-300/90">
+          next wave in {blitzHud.breatherLeft}…
+        </div>
+      )}
+      {/* Zombie Waves: crosshair (first person) + hit/kill markers + points popup */}
+      {activeArcade === "arena" && firstPerson && arcadeRun.finished === null && (
+        <Crosshair mag={blitzHud?.mag ?? 0} zoomed={!!blitzHud?.zoomed} />
+      )}
+      {activeArcade === "arena" && blitzHud && arcadeRun.finished === null && (
+        <>
+          <HitMarker hitAt={blitzHud.hitAt} killAt={blitzHud.killAt} critAt={blitzHud.critAt} />
+          <PointsPopup amt={blitzHud.popupAmt} at={blitzHud.popupAt} />
+        </>
+      )}
+      {/* Zombie Waves: the you-just-got-bitten flash */}
+      {activeArcade === "arena" && blitzHud && arcadeRun.finished === null && (
+        <HurtFlash key={blitzHud.hurtAt} at={blitzHud.hurtAt} />
+      )}
+      {/* Zombie Waves: the boss's entrance — one red wash as the roar lands */}
+      {activeArcade === "arena" && blitzHud && blitzHud.bossAt > 0 && arcadeRun.finished === null && (
+        <BossFlash key={blitzHud.bossAt} at={blitzHud.bossAt} />
+      )}
+      {/* Arcade: restart / leave / top 10 (always reachable, incl. touch) */}
+      {activeArcade && arcadeRun.finished === null && (
+        <div className="absolute top-4 right-4 z-30 flex flex-col items-end gap-2">
+          <div className="flex gap-2">
+            <button onClick={retryArcade} className="rounded-full bg-black/55 text-white text-xs px-3.5 py-2 shadow hover:bg-black/70">↺ Restart</button>
+            <button onClick={exitArcade} className="rounded-full bg-black/55 text-white text-xs px-3.5 py-2 shadow hover:bg-black/70">🌀 Leave</button>
+          </div>
+          <button
+            onClick={() => setShowArcadeTop((v) => !v)}
+            className={`rounded-full text-xs px-3.5 py-2 shadow ${showArcadeTop ? "bg-teal-600 text-white" : "bg-black/55 text-white hover:bg-black/70"}`}
+          >
+            🏆 Top 10
+          </button>
+          {showArcadeTop && (
+            <div className="w-64 rounded-2xl bg-black/85 backdrop-blur border border-white/10 p-3 shadow-2xl">
+              <p className="text-[10px] font-mono text-teal-400 tracking-widest mb-1.5">
+                {activeArcade === "climb" ? "SKY CLIMB" : activeArcade === "gauntlet" ? "THE GAUNTLET" : "ZOMBIE WAVES"} · ALL-TIME
+              </p>
+              {overlayBoards?.[activeArcade]?.allTime.top.length ? (
+                <ul className="space-y-0.5">
+                  {overlayBoards[activeArcade].allTime.top.map((e, i) => (
+                    <li key={`${e.player}-${i}`} className="flex justify-between text-xs">
+                      <span className={`truncate mr-2 ${i === 0 ? "text-amber-300" : "text-gray-300"}`}>{i + 1}. {e.player}</span>
+                      <span className="font-mono text-gray-400">{activeArcade === "arena" ? `wave ${e.ms}` : fmtMs(e.ms)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-gray-500">No entries yet — be first.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {/* Bot Blitz: FIRE + RELOAD buttons for touch */}
+      {activeArcade === "arena" && IS_TOUCH && arcadeRun.finished === null && (
+        <>
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("axon-fire", { detail: true })); }}
+            onPointerUp={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("axon-fire", { detail: false })); }}
+            onPointerLeave={() => { window.dispatchEvent(new CustomEvent("axon-fire", { detail: false })); }}
+            className="absolute bottom-24 right-4 z-30 w-20 h-20 rounded-full bg-red-500/70 border-2 border-red-200/60 text-white font-bold text-sm backdrop-blur-[2px]"
+            style={{ touchAction: "none" }}
+          >
+            FIRE
+          </button>
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("axon-reload")); }}
+            className="absolute bottom-[12.5rem] right-4 z-30 w-12 h-12 rounded-full bg-amber-500/60 border-2 border-amber-200/60 text-white font-bold text-[10px] backdrop-blur-[2px]"
+            style={{ touchAction: "none" }}
+          >
+            RELOAD
+          </button>
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("axon-grenade")); }}
+            className="absolute bottom-[12.5rem] right-[4.75rem] z-30 w-12 h-12 rounded-full bg-emerald-700/60 border-2 border-emerald-300/60 text-white font-bold text-lg backdrop-blur-[2px]"
+            style={{ touchAction: "none" }}
+          >
+            💣
+          </button>
+        </>
+      )}
+      {/* Arcade: finished! result + weekly/all-time boards */}
+      {activeArcade && arcadeRun.finished !== null && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white/95 backdrop-blur shadow-2xl p-5">
+            <p className="text-xs tracking-widest text-teal-600 font-mono">
+              {activeArcade === "climb" ? "SKY CLIMB · SUMMIT REACHED" : activeArcade === "gauntlet" ? "THE GAUNTLET · FINISHED" : "ZOMBIE WAVES · YOU FELL"}
+            </p>
+            <p className="text-4xl font-bold text-gray-900 mt-1 font-mono">
+              {activeArcade === "arena" ? `Wave ${arcadeRun.finished}` : fmtMs(arcadeRun.finished)}
+            </p>
+            {arcadeRun.newPb && arcadeRun.medal !== "first" && (
+              <p className="inline-block mt-1 rounded-full bg-amber-100 text-amber-700 text-[11px] font-black tracking-widest px-2.5 py-1 animate-pulse">
+                {activeArcade === "arena" ? "★ NEW PERSONAL BEST" : "🥇 GOLD — NEW PERSONAL BEST"}
+              </p>
+            )}
+            {!arcadeRun.newPb && arcadeRun.medal === "silver" && (
+              <p className="inline-block mt-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-black tracking-widest px-2.5 py-1">
+                🥈 SILVER — WITHIN 5% OF YOUR BEST
+              </p>
+            )}
+            {!arcadeRun.newPb && arcadeRun.medal === "bronze" && (
+              <p className="inline-block mt-1 rounded-full bg-orange-100 text-orange-700 text-[11px] font-black tracking-widest px-2.5 py-1">
+                🥉 BRONZE — WITHIN 15% OF YOUR BEST
+              </p>
+            )}
+            {arcadeRun.medal === "first" && (
+              <p className="inline-block mt-1 rounded-full bg-teal-100 text-teal-700 text-[11px] font-black tracking-widest px-2.5 py-1">
+                ⚑ FIRST CLEAR — THE MARK TO BEAT
+              </p>
+            )}
+            <p className="text-sm text-gray-500 mt-0.5">
+              {arcadeRun.rank !== null ? <>You&apos;re <span className="font-semibold text-teal-700">#{arcadeRun.rank}</span> all-time.</> : "Saving your result…"}
+            </p>
+            {weekChamp && (
+              <p className="text-[11px] text-gray-400 mt-1">
+                👑 Last week&apos;s champion: <span className="font-semibold text-gray-600">{weekChamp.player}</span>
+                {" — "}
+                <span className="font-mono">{activeArcade === "arena" ? `wave ${weekChamp.ms}` : fmtMs(weekChamp.ms)}</span>
+              </p>
+            )}
+            {/* the run's story — the recap that makes run #10 mean something */}
+            {activeArcade === "arena" && blitzStats ? (
+              <div className="mt-2 grid grid-cols-4 gap-1.5 text-center">
+                <div className="rounded-lg bg-gray-50 py-1.5"><p className="font-mono font-bold text-gray-800 text-sm">{blitzStats.kills}</p><p className="text-[9px] text-gray-500 tracking-wider">KILLS</p></div>
+                <div className="rounded-lg bg-gray-50 py-1.5"><p className="font-mono font-bold text-amber-600 text-sm">{blitzStats.crits}</p><p className="text-[9px] text-gray-500 tracking-wider">HEADSHOTS</p></div>
+                <div className="rounded-lg bg-gray-50 py-1.5"><p className="font-mono font-bold text-gray-800 text-sm">{blitzStats.shots > 0 ? Math.round((blitzStats.hits / blitzStats.shots) * 100) : 0}%</p><p className="text-[9px] text-gray-500 tracking-wider">ACCURACY</p></div>
+                <div className="rounded-lg bg-gray-50 py-1.5"><p className="font-mono font-bold text-violet-600 text-sm">{blitzStats.points}</p><p className="text-[9px] text-gray-500 tracking-wider">POINTS</p></div>
+              </div>
+            ) : activeArcade === "gauntlet" ? (
+              <p className="text-xs text-gray-400 mt-1.5 font-mono">
+                {gauntletCp ? `${gauntletCp.idx}/${gauntletCp.total} checkpoints` : "clean line"} · {resets} reset{resets !== 1 ? "s" : ""}
+              </p>
+            ) : activeArcade === "climb" ? (
+              <p className="text-xs text-gray-400 mt-1.5 font-mono">
+                {falls === 0 ? "a clean ascent — not one fall" : `${falls} fall${falls !== 1 ? "s" : ""} survived`}
+              </p>
+            ) : null}
+            {arcadeBoards && (
+              <div className="mt-3 border-t border-gray-100 pt-2">
+                <div className="flex gap-1 mb-1.5">
+                  {(["week", "allTime"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setBoardTab(tab)}
+                      className={`text-[11px] font-mono px-2 py-1 rounded ${boardTab === tab ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                    >
+                      {tab === "week" ? "THIS WEEK" : "ALL-TIME"}
+                    </button>
+                  ))}
+                  <span className="text-[11px] text-gray-400 font-mono ml-auto self-center">
+                    {arcadeBoards[boardTab].totalRuns} run{arcadeBoards[boardTab].totalRuns !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                {arcadeBoards[boardTab].top.length > 0 ? (
+                  <ul className="space-y-0.5 max-h-40 overflow-auto">
+                    {arcadeBoards[boardTab].top.map((e, i) => (
+                      <li key={`${e.player}-${i}`} className="flex justify-between text-sm">
+                        <span className="text-gray-700 truncate mr-3">{i + 1}. {e.player}</span>
+                        <span className="font-mono text-gray-500">
+                          {activeArcade === "arena" ? `wave ${e.ms}` : fmtMs(e.ms)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-gray-400">Nothing on this board yet — claim it.</p>
+                )}
+              </div>
+            )}
+            <div className="flex gap-2 mt-4">
+              <button onClick={retryArcade} className="flex-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium py-2.5">
+                Run it again {IS_TOUCH ? "" : "(R)"}
+              </button>
+              <button onClick={exitArcade} className="flex-1 rounded-lg border border-gray-300 text-gray-600 text-sm py-2.5 hover:border-gray-500">
+                Back to town
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Contextual prompt / controls hint — most urgent first */}
-      {fishPrompt === "bite" ? (
+      {activeArcade === "climb" && arcadeRun.startedAt === null && arcadeRun.finished === null ? (
+        <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-black/55 text-white text-xs px-4 py-2 text-center`}>
+          🏔 Climb to the summit flag — the clock starts on the first platform and NEVER stops for a fall. Some gaps need a sprint-jump{IS_TOUCH ? "" : " (Shift)"}. Cracked ledges give way — keep moving. The RESET RUN pad by the start wipes the clock.
+        </div>
+      ) : activeArcade === "gauntlet" && arcadeRun.startedAt === null && arcadeRun.finished === null ? (
+        <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-black/55 text-white text-xs px-4 py-2 text-center`}>
+          🏁 Cross the START arch and run the course — checkpoints save your progress; water, sweepers and the stomping pistons send you back to the last one. Race your teal ghost: it runs your best time.
+        </div>
+      ) : activeArcade === "arena" && arcadeRun.finished === null && (blitzHud === null || (blitzHud.wave === 1 && blitzHud.kills === 0)) ? (
+        <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-black/55 text-white text-xs px-4 py-2 text-center`}>
+          🧟 They&apos;re coming — {IS_TOUCH ? "FIRE shoots, RELOAD swaps mags, 💣 throws" : "click shoots · R reloads · G throws a grenade · right-click scopes"}. Headshots pay double. E buys: the Mystery Box gambles, the wall guns don&apos;t. Survive the waves.
+        </div>
+      ) : fishPrompt === "bite" ? (
         <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-rose-600 text-white text-base px-6 py-3 shadow-lg font-bold animate-pulse`}>
           ‼️ BITE — press <span className="font-mono">E</span>!
         </div>
@@ -5463,16 +6609,26 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
       )}
 
       {/* Mobile controls — portrait and landscape both welcome */}
-      {IS_TOUCH && <TouchControls touchRef={touchMove} />}
+      {IS_TOUCH && <TouchControls touchRef={touchMove} combat={activeArcade === "arena"} />}
 
       {/* Live population — players + residents, front and centre */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-white/85 backdrop-blur px-4 py-2 text-sm font-semibold text-gray-800 shadow-lg flex items-center gap-1.5" title="Explorers in the world right now (players + residents)">
-        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-        {count + activeBots} in world
-      </div>
+      {!activeArcade && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-white/85 backdrop-blur px-4 py-2 text-sm font-semibold text-gray-800 shadow-lg flex items-center gap-1.5" title="Explorers in the world right now (players + residents)">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          {count + activeBots} in world
+        </div>
+      )}
 
+      {!activeArcade && (
       <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
         <div className="flex items-center gap-2">
+          {/* The games live behind this tab — sign-in + $AXON gate inside */}
+          <button
+            onClick={() => { setArcadeGate("checking"); setShowMinigames(true); }}
+            className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white px-4 py-2 text-sm font-bold shadow-lg hover:brightness-110"
+          >
+            🎮{IS_TOUCH ? "" : " Minigames"}
+          </button>
           {/* Wallet lives in the menu on touch — the top bar is too tight there */}
           {!IS_TOUCH &&
             (wallet ? (
@@ -5528,8 +6684,9 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
               </button>
             )}
             {/* No sky view from indoors — the character is clamped in the tiny
-                interior box, so aerial would strand the camera outside it. */}
-            {!homeIn && (
+                interior box, so aerial would strand the camera outside it.
+                (Nor from the arcade island — the sky cam frames the city.) */}
+            {!homeIn && !activeArcade && (
               <button onClick={() => { setAerial((m) => !m); setShowMenu(false); }} className={`px-3 py-2 text-sm font-semibold text-left rounded-xl ${aerial ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"}`}>
                 {aerial ? "↩ Back down" : "🛰 Sky view"}
               </button>
@@ -5571,6 +6728,19 @@ export default function World3D({ onExit, initialWallet = null }: { onExit: () =
           </div>
         )}
       </div>
+      )}
+
+      {/* The MINIGAMES overlay — every mode, gated at entry */}
+      {showMinigames && !activeArcade && (
+        <MinigamesOverlay
+          gate={wallet ? arcadeGate : "guest"}
+          required={gateRequired}
+          onConnect={() => { void connect(); }}
+          connecting={walletState === "connecting"}
+          onPlay={enterArcadeMode}
+          onClose={() => setShowMinigames(false)}
+        />
+      )}
 
       {/* Wallet errors */}
       {walletState === "no-phantom" && (

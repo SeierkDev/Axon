@@ -29,6 +29,8 @@ export interface WorldPlot {
   usdcEarned: number;
   verified: boolean;
   walletAddress: string | null;
+  /** Cached Proof Score (0-1000) — the portable reputation credential. */
+  proofScore: number | null;
 }
 
 export interface WorldDistrict {
@@ -80,6 +82,7 @@ interface AgentRow {
   reputation: number;
   wallet_address: string | null;
   verification_status: string;
+  proof_score: number | null;
   tasks_completed: number;
   tasks_recent: number;
   usdc_earned: number;
@@ -104,7 +107,7 @@ function computeSnapshot(): WorldSnapshot {
   const rows = getDb()
     .prepare(
       `SELECT
-         a.agent_id, a.name, a.category, a.reputation, a.wallet_address, a.verification_status,
+         a.agent_id, a.name, a.category, a.reputation, a.wallet_address, a.verification_status, a.proof_score,
          COALESCE(t.completed, 0) AS tasks_completed,
          COALESCE(t.recent, 0)    AS tasks_recent,
          COALESCE(x.usdc, 0)      AS usdc_earned
@@ -193,6 +196,7 @@ function computeSnapshot(): WorldSnapshot {
         // reachable/unreachable) — the old check made EVERY house unverified.
         verified: a.verification_status === "platform" || a.verification_status === "x402_compliant",
         walletAddress: a.wallet_address,
+        proofScore: a.proof_score ?? null,
       });
     });
 

@@ -15,6 +15,8 @@ export interface PeerPose {
   z: number;
   ry: number;
   st: string;
+  /** Height above ground (the arcade tower) — absent/0 on flat ground. */
+  h?: number;
 }
 export interface PeerMeta {
   id: string;
@@ -26,7 +28,7 @@ type SelfMeta = { name: string; look: AvatarLook };
 
 interface WelcomeMsg { t: "welcome"; id: string; peers: (PeerMeta & PeerPose)[] }
 interface JoinMsg { t: "join"; peer: PeerMeta & PeerPose }
-interface PoseMsg { t: "pose"; id: string; x: number; z: number; ry: number; st: string }
+interface PoseMsg { t: "pose"; id: string; x: number; z: number; ry: number; st: string; h?: number }
 interface UpdateMsg { t: "update"; id: string; name: string; look: AvatarLook }
 interface LeaveMsg { t: "leave"; id: string }
 interface CountMsg { t: "count"; n: number }
@@ -125,8 +127,8 @@ export function usePresence(
             break;
           case "pose": {
             const cur = poses.get(m.id);
-            if (cur) { cur.x = m.x; cur.z = m.z; cur.ry = m.ry; cur.st = m.st; }
-            else poses.set(m.id, { x: m.x, z: m.z, ry: m.ry, st: m.st });
+            if (cur) { cur.x = m.x; cur.z = m.z; cur.ry = m.ry; cur.st = m.st; cur.h = m.h ?? 0; }
+            else poses.set(m.id, { x: m.x, z: m.z, ry: m.ry, st: m.st, h: m.h ?? 0 });
             break;
           }
           case "update":
@@ -190,7 +192,7 @@ export function usePresence(
   const sendPose = useCallback((pose: PeerPose) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === ws.OPEN) {
-      ws.send(JSON.stringify({ t: "pose", x: pose.x, z: pose.z, ry: pose.ry, st: pose.st }));
+      ws.send(JSON.stringify({ t: "pose", x: pose.x, z: pose.z, ry: pose.ry, st: pose.st, h: pose.h ?? 0 }));
     }
   }, []);
   const sendChat = useCallback((text: string) => {
