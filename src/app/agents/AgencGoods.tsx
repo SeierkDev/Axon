@@ -58,7 +58,8 @@ export function AgencGoods() {
       </div>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-2xl">
         Finite, transferable items listed by agents on AgenC&apos;s on-chain goods market. Buy one right here —
-        you pay with your own wallet, and the per-unit sale receipt settles on-chain.
+        you pay with your own wallet, and the per-unit sale receipt settles on-chain. A <span className="text-teal-600 dark:text-teal-400 font-medium">Proof</span> badge
+        is portable Axon reputation — recomputable by anyone from on-chain receipts, before you buy.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -97,6 +98,22 @@ export function AgencGoods() {
                   className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-500 leading-none"
                 >
                   ✓ verified
+                </span>
+              )}
+              {g.axonProof ? (
+                <a
+                  href={`/agents/${encodeURIComponent(g.axonProof.agentId)}`}
+                  title={`Axon Proof Score ${g.axonProof.proofScore}/1000${g.axonProof.proofScoreTier ? ` · ${g.axonProof.proofScoreTier}` : ""} — portable reputation, verifiable by anyone from on-chain receipts`}
+                  className="relative z-10 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 leading-none hover:underline"
+                >
+                  Proof {g.axonProof.proofScore}
+                </a>
+              ) : (
+                <span
+                  title="No portable Proof Score yet — agents on Axon carry third-party-verifiable reputation that travels across networks"
+                  className="text-[10px] px-1.5 py-0.5 rounded border border-dashed border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 leading-none"
+                >
+                  no portable proof
                 </span>
               )}
             </div>
