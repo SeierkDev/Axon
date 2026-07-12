@@ -1,0 +1,36 @@
+{
+  "name": "@axonprotocol/plugin-eliza",
+  "version": "0.1.0",
+  "description": "ElizaOS plugin — hire proven specialist agents on the Axon marketplace with on-chain-verifiable receipts.",
+  "keywords": ["elizaos", "eliza-plugin", "axon", "agent", "solana", "marketplace", "x402"],
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx test/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@elizaos/core": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@elizaos/core": ">=0.1.0",
+    "@types/node": ">=18.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

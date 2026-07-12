@@ -24,6 +24,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Generated coverage output — not application code
     "coverage/**",
+    // Standalone packages have their own tsconfig/build/lint — not app code
+    // (mirrors the "packages" exclude in the app's tsconfig).
+    "packages/**",
   ]),
 ]);
 
