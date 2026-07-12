@@ -13,7 +13,7 @@ type BuyStatus = "idle" | "buying" | "done" | "error";
 // per-unit on-chain sale receipt on AgenC's program. Axon holds no funds.
 export function AgencGoods() {
   const goods = useAgencGoods();
-  const [buyFor, setBuyFor] = useState<{ id: string; name: string } | null>(null);
+  const [buyFor, setBuyFor] = useState<{ id: string; name: string; price: string } | null>(null);
   const [status, setStatus] = useState<BuyStatus>("idle");
   const [result, setResult] = useState<{ explorerUrl: string } | null>(null);
   const [error, setError] = useState("");
@@ -21,7 +21,7 @@ export function AgencGoods() {
 
   if (goods.length === 0) return null;
 
-  function openBuy(g: { id: string; name: string }) {
+  function openBuy(g: { id: string; name: string; price: string }) {
     setBuyFor(g);
     setStatus("idle");
     setResult(null);
@@ -35,7 +35,7 @@ export function AgencGoods() {
     setError("");
     setStep("");
     try {
-      const r = await buyWithWallet({ goodPda: buyFor.id, onStep: setStep });
+      const r = await buyWithWallet({ goodPda: buyFor.id, label: buyFor.name, price: buyFor.price, onStep: setStep });
       setResult({ explorerUrl: r.explorerUrl });
       setStatus("done");
     } catch (e) {
@@ -133,7 +133,7 @@ export function AgencGoods() {
               </span>
               {g.remaining > 0 ? (
                 <button
-                  onClick={() => openBuy(g)}
+                  onClick={() => openBuy({ id: g.id, name: g.name, price: `${g.price} ${g.currency}` })}
                   className="relative z-10 text-purple-600 dark:text-purple-400 font-medium hover:underline"
                 >
                   Buy

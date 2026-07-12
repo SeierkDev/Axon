@@ -50,10 +50,30 @@ export interface WalletBuyResult {
   explorerUrl: string;
 }
 
+// Best-effort record of a placed order for the My Buys / My Hires panel. Never
+// throws and never blocks the flow: the on-chain tx is the source of truth, this
+// is only Axon's convenience index of it.
+async function recordOrder(body: { wallet: string; kind: "hire" | "buy"; itemPda: string; name: string; price: string; txSig: string }) {
+  try {
+    await fetch("/api/agenc/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    // tell an open My Orders panel to refresh — no reload needed to see it
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("axon-order-recorded"));
+  } catch {
+    // a failed convenience-copy write must never surface as a purchase failure
+  }
+}
+
 // Buy an AgenC good with the user's own wallet. Returns once the purchase has
-// landed on-chain. `onStep` reports progress for the UI.
+// landed on-chain. `onStep` reports progress for the UI. `label`/`price` (if
+// given) are stored in the buyer's My Buys history alongside the tx.
 export async function buyWithWallet(opts: {
   goodPda: string;
+  label?: string;
+  price?: string;
   rpcUrl?: string;
   onStep?: (msg: string) => void;
 }): Promise<WalletBuyResult> {
@@ -81,6 +101,9 @@ export async function buyWithWallet(opts: {
   const { signature } = await phantom.signAndSendTransaction(VersionedTransaction.deserialize(b64ToBytes(p.buyTx)));
   step("Confirming on-chain…");
   await waitConfirm(conn, signature);
+
+  // Record it for My Buys (best-effort, keyed by the sale-specific signature).
+  await recordOrder({ wallet: buyerPubkey, kind: "buy", itemPda: p.goodPda, name: opts.label ?? "", price: opts.price ?? "", txSig: signature });
 
   // Link to THIS purchase's transaction, not the shared listing account — the sig
   // is the only sale-specific identifier, and the server can't know it pre-sign.

@@ -60,11 +60,31 @@ export interface WalletHireResult {
   explorerUrl: string;
 }
 
+// Best-effort record of a placed order for the My Hires panel. Never throws and
+// never blocks the flow: the on-chain tx is the source of truth, this is only
+// Axon's convenience index of it.
+async function recordOrder(body: { wallet: string; kind: "hire" | "buy"; itemPda: string; name: string; price: string; txSig: string }) {
+  try {
+    await fetch("/api/agenc/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    // tell an open My Orders panel to refresh — no reload needed to see it
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("axon-order-recorded"));
+  } catch {
+    // a failed convenience-copy write must never surface as a hire failure
+  }
+}
+
 // Hire an AgenC listing with the user's own wallet. Returns the funded task once
 // both transactions have landed. `onStep` reports progress for the UI.
+// `label`/`price` (if given) are stored in the buyer's My Hires history.
 export async function hireWithWallet(opts: {
   listingPda: string;
   task: string;
+  label?: string;
+  price?: string;
   rpcUrl?: string;
   onStep?: (msg: string) => void;
 }): Promise<WalletHireResult> {
@@ -113,6 +133,10 @@ export async function hireWithWallet(opts: {
   const { signature: setSig } = await phantom.signAndSendTransaction(VersionedTransaction.deserialize(b64ToBytes(f.setSpecTx)));
   step("Finishing…");
   await waitConfirm(conn, setSig);
+
+  // Record it for My Hires (best-effort). The funding signature (hireSig) is the
+  // meaningful anchor — it's the tx that opened + escrowed the task.
+  await recordOrder({ wallet: buyerPubkey, kind: "hire", itemPda: p.taskPda, name: opts.label ?? "", price: opts.price ?? "", txSig: hireSig });
 
   return { taskPda: p.taskPda, explorerUrl: p.explorerUrl };
 }
