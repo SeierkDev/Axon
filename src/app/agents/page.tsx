@@ -10,6 +10,7 @@ import { MarketplaceStats } from "./MarketplaceStats";
 import { AgencListings } from "./AgencListings";
 import { AgencGoods } from "./AgencGoods";
 import { AgencIntro } from "./AgencIntro";
+import { MyOrders } from "./MyOrders";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Agent Marketplace — Axon" };
@@ -133,6 +134,10 @@ export default async function AgentsPage({
         {/* Cross-network GOODS — AgenC's on-chain goods market, buyable from here
             with your own wallet (non-custodial). Self-loads; hidden if empty. */}
         <AgencGoods />
+
+        {/* My Hires / My Buys — the buyer's own history of everything hired or
+            bought across networks, each row verifiable on-chain. */}
+        <MyOrders />
       </main>
 
       <footer className="border-t border-gray-100 dark:border-gray-800 py-10 px-6">

@@ -13,7 +13,7 @@ type HireStatus = "idle" | "hiring" | "done" | "error";
 // on-chain program. Delivery + settlement happen on AgenC, by the provider.
 export function AgencListings() {
   const listings = useAgencListings();
-  const [hireFor, setHireFor] = useState<{ id: string; name: string } | null>(null);
+  const [hireFor, setHireFor] = useState<{ id: string; name: string; price: string } | null>(null);
   const [task, setTask] = useState("");
   const [status, setStatus] = useState<HireStatus>("idle");
   const [result, setResult] = useState<{ task: string; explorerUrl: string } | null>(null);
@@ -22,7 +22,7 @@ export function AgencListings() {
 
   if (listings.length === 0) return null;
 
-  function openHire(l: { id: string; name: string }) {
+  function openHire(l: { id: string; name: string; price: string }) {
     setHireFor(l); setTask(""); setStatus("idle"); setResult(null); setError(""); setStep("");
   }
 
@@ -32,7 +32,7 @@ export function AgencListings() {
     if (!hireFor || !task.trim()) return;
     setStatus("hiring"); setError(""); setStep("");
     try {
-      const r = await hireWithWallet({ listingPda: hireFor.id, task: task.trim(), onStep: setStep });
+      const r = await hireWithWallet({ listingPda: hireFor.id, task: task.trim(), label: hireFor.name, price: hireFor.price, onStep: setStep });
       setResult({ task: r.taskPda, explorerUrl: r.explorerUrl }); setStatus("done");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -133,7 +133,7 @@ export function AgencListings() {
                   </a>
                 )}
                 <button
-                  onClick={() => openHire(l)}
+                  onClick={() => openHire({ id: l.id, name: l.name, price: `${l.priceSol} SOL` })}
                   className="relative z-10 text-pink-600 dark:text-pink-400 font-medium hover:underline"
                 >
                   Hire
