@@ -39,19 +39,24 @@ describe("getAgencGoods normalization", () => {
     expect(g.verified).toBe(true);
   });
 
-  it("excludes token-priced and operator-leg goods (only SOL, no-operator is buyable today)", async () => {
+  it("includes SOL + USDC goods (with or without an operator leg), excludes other mints", async () => {
+    const USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
     const goods = await goodsFrom([
-      { ...base, pda: "UsdcGood1", priceMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" }, // token-priced
-      { ...base, pda: "OpGood1", operator: "Op111111111111111111111111111111111111111111" }, // operator leg
-      { ...base, pda: "SysOpGood", operator: "11111111111111111111111111111111" }, // system-program sentinel = no operator → KEPT
-      base, // SOL, null operator — buyable
+      { ...base, pda: "UsdcGood1", priceMint: USDC }, // USDC-priced → KEPT
+      { ...base, pda: "UsdcOpGood", priceMint: USDC, operator: "Op111111111111111111111111111111111111111111" }, // USDC + operator → KEPT
+      { ...base, pda: "SolOpGood", operator: "Op111111111111111111111111111111111111111111" }, // SOL + operator → KEPT
+      { ...base, pda: "OtherMint", priceMint: "So11111111111111111111111111111111111111112" }, // non-USDC mint → EXCLUDED
+      base, // SOL, no operator → KEPT
     ]);
     const ids = goods.map((g) => g.id);
-    expect(ids).not.toContain("UsdcGood1");
-    expect(ids).not.toContain("OpGood1");
-    expect(ids).toContain("SysOpGood"); // system-program sentinel must count as no-operator
+    expect(ids).toContain("UsdcGood1");
+    expect(ids).toContain("UsdcOpGood");
+    expect(ids).toContain("SolOpGood"); // operator-leg goods are now composable
+    expect(ids).not.toContain("OtherMint"); // unknown mint: can't price/fulfil honestly
     expect(ids).toContain(base.pda);
-    expect(goods.every((g) => g.currency === "SOL")).toBe(true);
+    // USDC goods render a USDC price (2_000_000 base units ÷ 1e6).
+    expect(goods.find((g) => g.id === "UsdcGood1")?.currency).toBe("USDC");
+    expect(goods.find((g) => g.id === "UsdcGood1")?.price).toBe("2");
   });
 
   it("keeps sold-out items (in-stock first) and never throws on malformed rows", async () => {

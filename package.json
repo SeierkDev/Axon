@@ -48,6 +48,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@react-three/postprocessing": "^3.0.4",
+    "@solana-program/token": "^0.14.0",
     "@solana/kit": "^6.10.0",
     "@solana/program-client-core": "^6.10.0",
     "@solana/spl-token": "^0.4.14",

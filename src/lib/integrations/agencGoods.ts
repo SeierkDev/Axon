@@ -18,7 +18,12 @@ import {
   fetchProtocolConfig,
   findModerationBlockPda,
 } from "@tetsuo-ai/marketplace-sdk";
-import { createSolanaRpc, address, createNoopSigner } from "@solana/kit";
+import { createSolanaRpc, address, createNoopSigner, type Address } from "@solana/kit";
+import {
+  findAssociatedTokenPda,
+  getCreateAssociatedTokenIdempotentInstruction,
+  TOKEN_PROGRAM_ADDRESS,
+} from "@solana-program/token";
 import { buildUnsignedTx } from "./agencHire";
 
 const RPC_URL = process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com";
@@ -121,13 +126,13 @@ export async function getAgencGoods(): Promise<AgencGood[]> {
     const json = (await res.json()) as { items?: RawGood[] } | RawGood[];
     const raw = Array.isArray(json) ? json : json.items ?? [];
     const goods = raw
-      // Only SOL-priced goods with no operator leg are buyable from Axon today: the
-      // token/operator purchase path needs extra accounts (ATAs, operator wallet)
-      // we don't compose yet, so we never advertise a Buy we can't fulfil (that
-      // would cost the buyer a failed-tx fee). Token/operator goods → buy on AgenC.
-      // Treat both null and the system-program sentinel as "no operator" so the
-      // feed filter agrees with prepareBuy's on-chain guard.
-      .filter((g) => !g.priceMint && (!g.operator || g.operator === NO_OPERATOR))
+      // Buyable from Axon: SOL- or USDC-priced goods, with OR without an operator
+      // fee leg. prepareBuy composes the extra token accounts (buyer/seller/treasury/
+      // operator ATAs, idempotently created) and the operator wallet when needed.
+      // Other mints are still filtered out — we can't render their price honestly
+      // (unknown decimals) and don't fulfil them, so we never advertise a Buy we
+      // can't complete (a failed tx would cost the buyer a fee). Those → buy on AgenC.
+      .filter((g) => !g.priceMint || g.priceMint === USDC_MINT)
       .map(normalize)
       // Keep sold-out goods so the section persists and shows a real completed sale
       // (the card renders "Sold out · N sold" with Buy disabled). In-stock first.
@@ -170,15 +175,16 @@ export async function prepareBuy(opts: { goodPda: string; buyerPubkey: string })
   if (String(d.sellerAuthority) === opts.buyerPubkey) {
     throw new Error("this good is listed by your wallet — AgenC rejects self-purchase");
   }
-  // Only the SOL, no-operator purchase path is composed (see getAgencGoods). Refuse
-  // anything else here too — composing a token/operator buy without the extra
-  // accounts would revert on-chain and cost the buyer a wasted fee.
-  if (d.priceMint.__option === "Some") {
-    throw new Error("token-priced goods can't be bought from Axon yet — buy this one on AgenC directly");
+
+  // SOL or USDC are composed (see getAgencGoods). Any other mint is refused here
+  // too — we can't build its token leg, so composing it would revert on-chain and
+  // cost the buyer a wasted fee.
+  const mint = d.priceMint.__option === "Some" ? address(String(d.priceMint.value)) : null;
+  if (mint && String(mint) !== USDC_MINT) {
+    throw new Error("this token isn't supported from Axon yet — buy this one on AgenC directly");
   }
-  if (String(d.operator) !== NO_OPERATOR) {
-    throw new Error("goods with an operator fee leg can't be bought from Axon yet — buy this one on AgenC directly");
-  }
+  const hasOperator = String(d.operator) !== NO_OPERATOR;
+  const operator = hasOperator ? address(String(d.operator)) : null;
 
   // treasury = the protocol config's fee treasury; moderationBlock = the content-
   // addressed block-floor PDA over this good's metadata (empty for an un-blocked
@@ -186,22 +192,64 @@ export async function prepareBuy(opts: { goodPda: string; buyerPubkey: string })
   // auto-derived by the facade.
   const [protocolConfig] = await findProtocolConfigPda();
   const cfg = await fetchProtocolConfig(rpc, protocolConfig);
+  const treasury = cfg.data.treasury;
   const [moderationBlock] = await findModerationBlockPda({ contentHash: d.metadataHash });
+
+  // For a token-priced good the program moves SPL tokens, not lamports, so it needs
+  // the buyer/seller/treasury (and operator, if any) associated token accounts. The
+  // program has no ATA-program account and can't create them, so any that don't yet
+  // exist must be created first — idempotently, so existing ones no-op and the buyer
+  // pays rent only for genuinely-missing ones. USDC is the classic SPL Token program.
+  const preIxs: ReturnType<typeof getCreateAssociatedTokenIdempotentInstruction>[] = [];
+  // Extra accounts merged into the purchase instruction only on the token path;
+  // omitted (left null → the facade's "None" placeholder) for the SOL path.
+  const tokenLeg: {
+    priceMint?: Address;
+    buyerTokenAccount?: Address;
+    sellerTokenAccount?: Address;
+    treasuryTokenAccount?: Address;
+    operatorTokenAccount?: Address;
+    tokenProgram?: Address;
+  } = {};
+
+  if (mint) {
+    const ataOf = async (owner: Address) =>
+      (await findAssociatedTokenPda({ owner, tokenProgram: TOKEN_PROGRAM_ADDRESS, mint }))[0];
+    const buyerAta = await ataOf(address(opts.buyerPubkey));
+    const sellerAta = await ataOf(d.sellerAuthority);
+    const treasuryAta = await ataOf(treasury);
+    preIxs.push(
+      getCreateAssociatedTokenIdempotentInstruction({ payer: buyer, ata: buyerAta, owner: address(opts.buyerPubkey), mint }),
+      getCreateAssociatedTokenIdempotentInstruction({ payer: buyer, ata: sellerAta, owner: d.sellerAuthority, mint }),
+      getCreateAssociatedTokenIdempotentInstruction({ payer: buyer, ata: treasuryAta, owner: treasury, mint }),
+    );
+    tokenLeg.priceMint = mint;
+    tokenLeg.buyerTokenAccount = buyerAta;
+    tokenLeg.sellerTokenAccount = sellerAta;
+    tokenLeg.treasuryTokenAccount = treasuryAta;
+    tokenLeg.tokenProgram = TOKEN_PROGRAM_ADDRESS;
+    if (operator) {
+      const operatorAta = await ataOf(operator);
+      preIxs.push(getCreateAssociatedTokenIdempotentInstruction({ payer: buyer, ata: operatorAta, owner: operator, mint }));
+      tokenLeg.operatorTokenAccount = operatorAta;
+    }
+  }
 
   const buyIx = await facade.purchaseGood({
     good,
     sellerAgent: d.seller,
     sellerWallet: d.sellerAuthority,
     authority: buyer,
-    treasury: cfg.data.treasury,
+    treasury,
     moderationBlock,
     expectedSerial: d.soldCount,
     expectedPrice: d.price,
+    ...(operator ? { operatorWallet: operator } : {}),
+    ...tokenLeg,
   });
 
-  const buyTx = await buildUnsignedTx(rpc, buyer, [buyIx]);
-  // priceMint is guaranteed None here (guarded above), so the price is always SOL.
-  const { price, currency } = priceDisplay(d.price.toString(), null);
+  const buyTx = await buildUnsignedTx(rpc, buyer, [...preIxs, buyIx]);
+  const { price, currency } = priceDisplay(d.price.toString(), mint ? String(mint) : null);
 
   return {
     buyTx,
