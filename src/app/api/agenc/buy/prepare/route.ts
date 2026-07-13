@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const msg = e instanceof Error ? e.message : "prepare failed";
     // Client-side conditions (unbuyable good, sold out, self-purchase) aren't
     // upstream failures.
-    if (/can't be bought|no longer for sale|sold out|self-purchase/.test(msg)) {
+    if (/can't be bought|isn't supported|no longer for sale|sold out|self-purchase/.test(msg)) {
       return apiError("NOT_SUPPORTED", msg, 422);
     }
     return apiError("UPSTREAM_ERROR", msg, 502);
