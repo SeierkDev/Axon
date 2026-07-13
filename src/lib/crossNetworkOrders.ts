@@ -79,6 +79,21 @@ export function getOrderByTxSig(txSig: string): CrossNetworkOrder | null {
   return row ?? null;
 }
 
+// Move an order to a new lifecycle status — scoped to (wallet, item) so a
+// caller can only touch their own orders, never someone else's. Used when a
+// hire is reclaimed on-chain (funded → reclaimed) or confirmed delivered.
+// Returns the updated row, or null if nothing matched.
+export function setOrderStatus(wallet: string, itemPda: string, status: string): CrossNetworkOrder | null {
+  const s = typeof status === "string" ? status.trim().slice(0, 24) : "";
+  if (!isValidWallet(wallet) || !itemPda || !s) return null;
+  const row = getDb()
+    .prepare(`SELECT tx_sig AS txSig FROM cross_network_orders WHERE wallet = ? AND item_pda = ?`)
+    .get(wallet, itemPda) as { txSig: string } | undefined;
+  if (!row) return null;
+  getDb().prepare(`UPDATE cross_network_orders SET status = ? WHERE wallet = ? AND item_pda = ?`).run(s, wallet, itemPda);
+  return getOrderByTxSig(row.txSig);
+}
+
 // One wallet's full history, newest first. Bounded so a huge history can't blow
 // up a response; the panel shows the most recent orders.
 export function listOrders(wallet: string, limit = 100): CrossNetworkOrder[] {
