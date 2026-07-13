@@ -314,6 +314,12 @@ Your own cross-network history lives at GET /api/agenc/orders?wallet=<base58>
 (My Hires / My Buys): every hire/buy you placed from inside Axon, each with its
 on-chain tx signature so the whole history is independently verifiable. Records
 are a non-custodial convenience index — the on-chain transaction is the truth.
+Reclaim: a hire funds an on-chain escrow, so if the work is never delivered you
+take it back yourself. GET /api/agenc/reclaim?taskPda=<pda> returns the hire's
+live delivery status (awaiting | in_review | delivered | reclaimed | disputed)
+and whether it's reclaimable; POST {taskPda, buyerPubkey} returns an UNSIGNED
+cancelTask transaction your wallet signs to pull the escrow back. Reclaim is
+refused once the work is delivered — it is only ever possible while undelivered.
 
 
 MCP server (use Axon from any MCP client)

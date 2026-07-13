@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ExtArrow } from "@/components/ExtArrow";
+import { fetchDelivery, reclaimWithWallet } from "@/lib/agencReclaimClient";
+import type { Delivery } from "@/lib/integrations/agencReclaim";
 
 // My Hires / My Buys — one place a user sees everything they've hired or bought
 // across networks from inside Axon. The flow is non-custodial, so the on-chain
@@ -69,6 +71,9 @@ export function MyOrders() {
     loadFor(w);
   }, [loadFor]);
 
+  // Reload the connected wallet's orders (after a reclaim flips a status).
+  const refresh = useCallback(() => { if (walletRef.current) loadFor(walletRef.current); }, [loadFor]);
+
   // Reset the panel to its connect prompt (used on a wallet disconnect). Bumps
   // the request sequence so any in-flight load for the old wallet is discarded.
   const forgetWallet = useCallback(() => {
@@ -76,6 +81,17 @@ export function MyOrders() {
     reqSeq.current++;
     setWallet(null);
     setOrders(null);
+  }, []);
+
+  // Land the #my-orders deep link ON this section. The section sits below the
+  // agent grid + cross-network sections, so the browser's initial jump-to-hash
+  // fires before the layout settles and misses. Re-scroll once things settle.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.location.hash !== "#my-orders") return;
+    const t = setTimeout(() => {
+      document.getElementById("my-orders")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 350);
+    return () => clearTimeout(t);
   }, []);
 
   // Silent connect on mount: if the wallet already trusts this site, fill the
@@ -166,47 +182,111 @@ export function MyOrders() {
       ) : (
         <div className="space-y-2">
           {orders.map((o) => (
-            <div
-              key={o.id}
-              className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900"
-            >
-              <span
-                className={`text-[10px] font-bold px-2 py-1 rounded leading-none shrink-0 ${
-                  o.kind === "hire"
-                    ? "bg-pink-100 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400"
-                    : "bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400"
-                }`}
-              >
-                {o.kind === "hire" ? "HIRE" : "BUY"}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{o.name}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  {o.price} · {timeAgo(o.createdAt)}
-                </p>
-              </div>
-              <span
-                className={`text-[10px] font-medium px-1.5 py-0.5 rounded leading-none shrink-0 ${
-                  o.status === "settled"
-                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-500"
-                    : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-500"
-                }`}
-                title={o.status === "settled" ? "Sale settled on-chain" : "Escrow funded on-chain — delivery happens on AgenC"}
-              >
-                {o.status === "settled" ? "settled" : "funded"}
-              </span>
-              <a
-                href={`https://solscan.io/tx/${o.txSig}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-gray-400 dark:text-gray-500 hover:text-teal-600 dark:hover:text-teal-400 shrink-0"
-              >
-                verify<ExtArrow />
-              </a>
-            </div>
+            <OrderRow key={o.id} order={o} onChanged={refresh} />
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+// Live delivery status per hire + the Reclaim action. A funded hire polls its
+// on-chain task status once (awaiting / in_review / delivered / reclaimed); if
+// the work never came (awaiting), a Reclaim button pulls the escrow back to the
+// buyer's wallet — non-custodial, the buyer signs. Buys and already-reclaimed
+// hires just show their static status.
+const DELIVERY_LABEL: Record<Delivery["state"], string> = {
+  awaiting: "awaiting delivery",
+  in_review: "in review",
+  delivered: "delivered",
+  reclaimed: "reclaimed",
+  disputed: "disputed",
+  // the task account is closed/unreadable — settled one way or another; the
+  // verify link is how you see which. Never "on-chain" (a non-status word).
+  gone: "closed",
+};
+
+function OrderRow({ order: o, onChanged }: { order: Order; onChanged: () => void }) {
+  const isHire = o.kind === "hire";
+  const alreadyReclaimed = o.status === "reclaimed";
+  const [delivery, setDelivery] = useState<Delivery | null>(null);
+  const [reclaiming, setReclaiming] = useState(false);
+  const [err, setErr] = useState("");
+
+  // Read the hire's live on-chain status once (skip buys + already-reclaimed).
+  useEffect(() => {
+    if (!isHire || alreadyReclaimed) return;
+    let alive = true;
+    fetchDelivery(o.itemPda).then((d) => { if (alive) setDelivery(d); });
+    return () => { alive = false; };
+  }, [isHire, alreadyReclaimed, o.itemPda]);
+
+  async function reclaim() {
+    setReclaiming(true); setErr("");
+    try {
+      await reclaimWithWallet({ taskPda: o.itemPda });
+      onChanged(); // refresh the list — the order flips to reclaimed
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      setErr(m === "PHANTOM_NOT_FOUND" ? "No Phantom wallet found." : m);
+    } finally {
+      setReclaiming(false);
+    }
+  }
+
+  // The status chip: settled buy, reclaimed hire, or the live delivery state.
+  const state: Delivery["state"] | null = alreadyReclaimed ? "reclaimed" : delivery?.state ?? null;
+  const chipLabel = !isHire ? "settled" : state ? DELIVERY_LABEL[state] : "funded";
+  const good = !isHire ? true : state === "delivered";
+  const canReclaim = isHire && !alreadyReclaimed && delivery?.reclaimable === true;
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <span
+        className={`text-[10px] font-bold px-2 py-1 rounded leading-none shrink-0 ${
+          isHire
+            ? "bg-pink-100 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400"
+            : "bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400"
+        }`}
+      >
+        {isHire ? "HIRE" : "BUY"}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{o.name}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          {o.price} · {timeAgo(o.createdAt)}{err ? <span className="text-red-500"> · {err}</span> : null}
+        </p>
+      </div>
+      {canReclaim && (
+        <button
+          onClick={reclaim}
+          disabled={reclaiming}
+          title="This hire hasn't been delivered — reclaim your escrow on-chain"
+          className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/50 disabled:opacity-60 shrink-0"
+        >
+          {reclaiming ? "Reclaiming…" : "Reclaim"}
+        </button>
+      )}
+      <span
+        className={`text-[10px] font-medium px-1.5 py-0.5 rounded leading-none shrink-0 ${
+          good
+            ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-500"
+            : state === "reclaimed"
+              ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+              : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-500"
+        }`}
+        title={isHire ? "Live on-chain delivery status of this hire" : "Sale settled on-chain"}
+      >
+        {chipLabel}
+      </span>
+      <a
+        href={`https://solscan.io/tx/${o.txSig}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-gray-400 dark:text-gray-500 hover:text-teal-600 dark:hover:text-teal-400 shrink-0"
+      >
+        verify<ExtArrow />
+      </a>
+    </div>
   );
 }
