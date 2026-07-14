@@ -25,6 +25,7 @@ import {
   TOKEN_PROGRAM_ADDRESS,
 } from "@solana-program/token";
 import { buildUnsignedTx } from "./agencHire";
+import { guardTx, AGENC_PROGRAM, ATA_PROGRAM } from "./txGuard";
 
 const RPC_URL = process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com";
 const GOODS_FEED = process.env.AGENC_GOODS_FEED ?? "https://agenc.ag/api/goods";
@@ -246,6 +247,21 @@ export async function prepareBuy(opts: { goodPda: string; buyerPubkey: string })
     expectedPrice: d.price,
     ...(operator ? { operatorWallet: operator } : {}),
     ...tokenLeg,
+  });
+
+  // Guard the composed tx before it's handed to the wallet: only AgenC (and the
+  // ATA program, on the token path) may appear, and the single purchase leg must
+  // reference the good, the buyer's own authority, and the real seller + treasury
+  // read on-chain — so a swapped payout or a smuggled transfer never reaches the
+  // buyer to sign.
+  guardTx({
+    instructions: [...preIxs, buyIx],
+    allowedPrograms: mint ? [AGENC_PROGRAM, ATA_PROGRAM] : [AGENC_PROGRAM],
+    settlement: {
+      program: AGENC_PROGRAM,
+      count: 1,
+      accounts: [String(good), opts.buyerPubkey, String(d.sellerAuthority), String(treasury)],
+    },
   });
 
   const buyTx = await buildUnsignedTx(rpc, buyer, [...preIxs, buyIx]);

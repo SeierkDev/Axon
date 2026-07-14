@@ -26,6 +26,7 @@ import {
   compileTransaction, getBase64EncodedWireTransaction,
 } from "@solana/kit";
 import { randomBytes } from "crypto";
+import { guardTx, AGENC_PROGRAM } from "./txGuard";
 
 const RPC_URL = process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com";
 const ATTESTOR = process.env.ATTESTOR ?? "https://attest.agenc.ag";
@@ -146,6 +147,16 @@ export async function prepareHire(opts: { listingPda: string; task: string; buye
   });
   const [task] = await findTaskPda({ creator: buyer.address, taskId: taskIdBytes });
 
+  // Guard the composed tx before the wallet sees it: only AgenC instructions, and
+  // the single funding leg must reference the provider's listing (read on-chain)
+  // and the buyer's own authority — so the escrow can't be funded against a
+  // swapped listing, and no foreign instruction can ride along.
+  guardTx({
+    instructions: [registerIx, hireIx],
+    allowedPrograms: [AGENC_PROGRAM],
+    settlement: { program: AGENC_PROGRAM, count: 1, accounts: [String(listing), opts.buyerPubkey] },
+  });
+
   const hireTx = await buildUnsignedTx(rpc, buyer, [registerIx, hireIx]);
   return {
     hireTx,
@@ -169,6 +180,13 @@ export async function finalizeHire(opts: { taskPda: string; buyerPubkey: string;
 
   const jobSpecHash = Uint8Array.from(Buffer.from(opts.jobSpecHashHex, "hex"));
   const setSpecIx = await facade.setTaskJobSpec({ task: address(opts.taskPda), creator: buyer, jobSpecHash, jobSpecUri: opts.jobSpecUri, moderator, moderatorIsAttestor: true });
+  // Guard: only AgenC, and the single spec-pin leg must reference this task and
+  // the buyer's own authority — no foreign instruction rides along.
+  guardTx({
+    instructions: [setSpecIx],
+    allowedPrograms: [AGENC_PROGRAM],
+    settlement: { program: AGENC_PROGRAM, count: 1, accounts: [opts.taskPda, opts.buyerPubkey] },
+  });
   const setSpecTx = await buildUnsignedTx(rpc, buyer, [setSpecIx]);
   return { setSpecTx };
 }
