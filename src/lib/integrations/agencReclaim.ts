@@ -17,6 +17,7 @@ import {
 } from "@tetsuo-ai/marketplace-sdk";
 import { createSolanaRpc, address, createNoopSigner } from "@solana/kit";
 import { buildUnsignedTx } from "./agencHire";
+import { guardTx, AGENC_PROGRAM } from "./txGuard";
 
 const RPC_URL = process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com";
 
@@ -98,6 +99,14 @@ export async function prepareCancel(opts: { taskPda: string; buyerPubkey: string
   const cancelIx = await getCancelTaskInstructionAsync({
     task: address(opts.taskPda),
     authority: buyer,
+  });
+  // Guard before the wallet sees it: only AgenC, and the single cancel leg must
+  // reference this task and the buyer's own authority — a reclaim can only ever
+  // pull the buyer's own escrow back, nothing else.
+  guardTx({
+    instructions: [cancelIx],
+    allowedPrograms: [AGENC_PROGRAM],
+    settlement: { program: AGENC_PROGRAM, count: 1, accounts: [opts.taskPda, opts.buyerPubkey] },
   });
   const cancelTx = await buildUnsignedTx(rpc, buyer, [cancelIx]);
   return { cancelTx };
