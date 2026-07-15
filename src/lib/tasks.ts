@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
+import { scrubSecrets } from "./scrubSecrets";
 import { queueWebhookEvent } from "./webhooks";
 import { recordTaskLatency } from "./metrics";
 import { updateAgentReputation } from "./reputation";
@@ -372,9 +373,15 @@ export function completeTask(taskId: string, output: string): Task | null {
   return task;
 }
 
-export function failTask(taskId: string, error: string): Task | null {
+export function failTask(taskId: string, rawError: string): Task | null {
   const db = getDb();
   const now = new Date().toISOString();
+
+  // The raw error can echo a failed tool/API call verbatim — including a key or
+  // token in the failure message. Scrub it before it's stored, since this same
+  // string surfaces on the (authed) receipt and rides the task.failed webhook to
+  // external subscribers.
+  const error = scrubSecrets(rawError);
 
   // Same atomicity as completeTask: the status flip and its synchronous DB
   // side-effects commit together or not at all.
