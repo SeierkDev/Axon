@@ -438,7 +438,7 @@ function StepRegister({
             <input
               value={form.providerModel}
               onChange={(e) => set("providerModel", e.target.value)}
-              placeholder={form.provider === "anthropic" ? "claude-haiku-4-5-20251001" : form.provider === "openai" ? "gpt-4o-mini" : form.provider === "grok" ? "grok-4.20" : "llama3"}
+              placeholder={form.provider === "anthropic" ? "claude-haiku-4-5-20251001" : form.provider === "openai" ? "gpt-4o-mini" : form.provider === "grok" ? "grok-4.5" : "llama3"}
               className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white outline-none focus:border-gray-500"
             />
           </div>

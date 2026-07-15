@@ -45,7 +45,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: "claude-haiku-4-5-20251001",
   openai: "gpt-4o-mini",
-  grok: "grok-4.20",
+  grok: "grok-4.5",
   ollama: "",
   external: "",
 };

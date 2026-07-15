@@ -11,7 +11,7 @@ function formatPrice(price?: string) {
 function listingMode(agent: Agent) {
   if (agent.endpoint) return "External endpoint";
   if (agent.provider === "ollama") return "Self-hosted model";
-  if (agent.provider === "grok") return `${agent.providerModel ?? "Grok 4.20"} (xAI)`;
+  if (agent.provider === "grok") return `${agent.providerModel ?? "Grok 4.5"} (xAI)`;
   return "Managed model";
 }
 

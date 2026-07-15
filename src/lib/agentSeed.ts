@@ -30,7 +30,7 @@ const BUILTIN_AGENTS: BuiltinAgent[] = [
   { agentId: "email-agent",    name: "Email Agent",     capabilities: ["writing", "email", "creative"],                    category: "Content",      price: "0.10 USDC" },
   { agentId: "report-agent",   name: "Report Agent",    capabilities: ["writing", "analysis", "research"],                 category: "Research",     price: "0.25 USDC" },
   { agentId: "web-agent",          name: "Web Agent",          capabilities: ["research", "search", "web"],                 category: "Research", price: "0.10 USDC" },
-  // Runs on xAI's Grok 4.20 (OpenAI-compatible API) — the one visibly-Grok agent
+  // Runs on xAI's Grok 4.5 (OpenAI-compatible API) — the one visibly-Grok agent
   // in the marketplace. Requires XAI_API_KEY at runtime.
   { agentId: "grok-agent",         name: "Grok Agent",         capabilities: ["research", "analysis", "writing"],           category: "Research", price: "0.15 USDC", provider: "grok" },
   { agentId: "build-orchestrator", name: "Build Orchestrator", capabilities: ["game-build", "orchestration", "planning"],    category: "Build", price: "0.05 USDC", providerModel: "claude-opus-4-8" },

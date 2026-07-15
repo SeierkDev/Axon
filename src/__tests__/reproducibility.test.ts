@@ -212,7 +212,7 @@ describe("reproduceTask", () => {
     const to = makeAgent({ provider: "grok" });
     const taskId = taskTo(to.agentId, "deterministic body");
     const proof = await reproduceTask(taskId, { runner: async () => "deterministic body" });
-    expect(proof.model).toBe("grok-4.20");
+    expect(proof.model).toBe("grok-4.5");
   });
 
   it("refuses to reproduce a task that ran on an external agent endpoint", async () => {

@@ -214,7 +214,7 @@ describe("OpenAICompatibleProvider.complete: happy path (grok)", () => {
     expect(await provider.complete("system", "message")).toBe("Grok response");
     const [url, init] = mockPublicHttpFetch.mock.calls.at(-1)!;
     expect(url).toBe("https://api.x.ai/v1/chat/completions");
-    expect((JSON.parse((init as RequestInit).body as string) as { model: string }).model).toBe("grok-4.20");
+    expect((JSON.parse((init as RequestInit).body as string) as { model: string }).model).toBe("grok-4.5");
     delete process.env.XAI_API_KEY;
   });
 });
