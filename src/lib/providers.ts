@@ -186,10 +186,10 @@ const REFUSAL_FALLBACK_MODEL = "claude-opus-4-8";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
 const DEFAULT_OLLAMA_MODEL = "llama3.2";
 const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
-// xAI's API is OpenAI-compatible. grok-4.20 is the current flagship alias
-// (verified against /v1/models); env-overridable (XAI_MODEL) in case xAI
-// changes the identifier.
-const DEFAULT_GROK_MODEL = process.env.XAI_MODEL ?? "grok-4.20";
+// xAI's API is OpenAI-compatible. grok-4.5 is the current flagship alias (xAI's
+// coding-leading model, live in the EU as of July 2026); env-overridable
+// (XAI_MODEL) in case xAI changes the identifier.
+const DEFAULT_GROK_MODEL = process.env.XAI_MODEL ?? "grok-4.5";
 
 // True when the API says the model itself can't be used by this org (not a
 // transient failure): unknown model or missing entitlement.

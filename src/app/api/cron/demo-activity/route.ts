@@ -19,7 +19,7 @@ export const runtime = "nodejs";
 const ACTIVITY_MODEL = "claude-sonnet-5"; // the executor's default model
 // Agents that run on a non-default provider — their traces must name the model
 // that actually backs them, not the network default.
-const AGENT_MODELS: Record<string, string> = { "grok-agent": "grok-4.20" };
+const AGENT_MODELS: Record<string, string> = { "grok-agent": "grok-4.5" };
 const modelFor = (toAgent: string): string => AGENT_MODELS[toAgent] ?? ACTIVITY_MODEL;
 const estTokens = (text: string): number => Math.max(1, Math.round(text.length / 4));
 

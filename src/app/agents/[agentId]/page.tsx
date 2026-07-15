@@ -560,7 +560,7 @@ function truncateValue(value: string) {
 
 function providerLabel(provider: string, model?: string) {
   const display = provider === "anthropic" ? "Axon" : provider === "grok" ? "xAI" : provider;
-  return model ? `${display} / ${model}` : provider === "grok" ? "xAI / Grok 4.20" : display;
+  return model ? `${display} / ${model}` : provider === "grok" ? "xAI / Grok 4.5" : display;
 }
 
 function trustLabel(reputation: number, totalTasks = 0) {

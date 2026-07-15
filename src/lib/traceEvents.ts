@@ -141,7 +141,7 @@ const MODEL_PRICES: { prefix: string; in: number; out: number }[] = [
   { prefix: "claude-haiku-4-5", in: 1, out: 5 },
   { prefix: "claude-fable-5", in: 10, out: 50 },
   { prefix: "claude-mythos-5", in: 10, out: 50 },
-  { prefix: "grok-4.20", in: 2, out: 6 },
+  { prefix: "grok-4.5", in: 2, out: 6 },
   { prefix: "grok-4.3", in: 1.25, out: 2.5 },
 ];
 
