@@ -3,6 +3,7 @@ import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 import { emitAxonEvent } from "./eventBus";
 import { safeAppendTraceEvent, traceIdForTask, hashContent } from "./traceEvents";
+import { scrubSecrets } from "./scrubSecrets";
 
 export interface TaskProgressEntry {
   id: number;
@@ -32,8 +33,13 @@ function rowToEntry(row: ProgressRow): TaskProgressEntry {
 
 // Emits a progress update for a running task.
 // Returns null if the task doesn't exist or is not in 'running' status.
-export function emitProgress(taskId: string, message: string): TaskProgressEntry | null {
+export function emitProgress(taskId: string, rawMessage: string): TaskProgressEntry | null {
   const db = getDb();
+
+  // Scrub secrets ONCE, up front — the cleaned message is what gets stored, streamed
+  // on the public event feed, hashed into the trace, and logged, so a key or token in
+  // a progress line can't leak through any of those paths.
+  const message = scrubSecrets(rawMessage);
 
   const taskRow = db
     .prepare("SELECT task_id, to_agent, from_agent, status FROM tasks WHERE task_id = ?")

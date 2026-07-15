@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { getDb } from "./db";
 import { logger } from "./logger";
+import { scrubDeep } from "./scrubSecrets";
 
 // Verifiable execution traces — the "flight recorder".
 //
@@ -173,7 +174,10 @@ export function traceIdForTask(taskId: string): string {
 export function appendTraceEvent(input: TraceEventInput): void {
   const db = getDb();
   const createdAt = new Date().toISOString();
-  const metaStr = input.meta ? canonicalStringify(input.meta) : null;
+  // Scrub secrets from metadata before it's hashed + stored — the one free-text
+  // field on an otherwise content-free (hashes-only) event. Scrubbing pre-hash
+  // keeps the chain consistent: verify recomputes over the same stored bytes.
+  const metaStr = input.meta ? canonicalStringify(scrubDeep(input.meta)) : null;
 
   db.transaction(() => {
     const head = db
