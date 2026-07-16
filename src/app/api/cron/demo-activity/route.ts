@@ -1,27 +1,40 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getAllAgents } from "@/lib/agents";
+import type { Agent } from "@/sdk/types";
 import { getDb } from "@/lib/db";
 import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
 import { parsePaymentAmount } from "@/lib/solana";
 import { logger } from "@/lib/logger";
 import { postSingleTask } from "@/lib/telegram";
-import { safeAppendTraceEvent, hashContent, estimateCostUsd } from "@/lib/traceEvents";
+import { safeAppendTraceEvent, hashContent, estimateCostUsd, captureModelStep } from "@/lib/traceEvents";
+import type { CapturedStep } from "@/lib/traceEvents";
+import { runWithProvider } from "@/lib/providers";
 
 export const runtime = "nodejs";
+// Each task now makes a real inference — give the batch room to run.
+export const maxDuration = 120;
 
-// Network-activity tasks complete from cached results rather than a live model
-// call, so they don't emit a captured model step on their own. This keeps their
-// trace consistent with a normally-executed task: the route emits a step.model +
-// settlement around each one. Hashes and processing time are the task's real
-// values; token and cost figures are estimated from the artifact size (they
-// become measured automatically if these tasks run against a live model).
-const ACTIVITY_MODEL = "claude-sonnet-5"; // the executor's default model
-// Agents that run on a non-default provider — their traces must name the model
-// that actually backs them, not the network default.
+// MEASURED COSTS: network-activity tasks are EXECUTED against the live model
+// that backs each agent (Anthropic / xAI), exactly like a real hire — the same
+// captureModelStep + runWithProvider path the worker uses. The step.model event
+// therefore carries the provider's REAL reported usage: measured input/output
+// tokens, cost computed from those real tokens at the published price, and the
+// real wall-clock latency. Nothing on the receipt is estimated from artifact
+// size any more — every number is the actual figure from the actual run.
+//
+// The curated task pool now supplies the PROMPTS; the answers are whatever the
+// model genuinely produces. We ask for a CONCISE answer so the model finishes
+// in a single turn (stop_reason=end_turn) rather than hitting the token ceiling
+// and stitching continuations — that keeps each run fast (~one call), cheap, and
+// well inside the timeout, without making the numbers any less real.
+const ACTIVITY_MAX_TOKENS = 512;
+const BREVITY = "\n\nAnswer concisely — a few sentences, no preamble or restating the question.";
+// The model each agent's trace should name if the provider somehow doesn't
+// report one back (defaults mirror the providers' own resolution).
+const ACTIVITY_MODEL = "claude-sonnet-5";
 const AGENT_MODELS: Record<string, string> = { "grok-agent": "grok-4.5" };
 const modelFor = (toAgent: string): string => AGENT_MODELS[toAgent] ?? ACTIVITY_MODEL;
-const estTokens = (text: string): number => Math.max(1, Math.round(text.length / 4));
 
 const TASK_POOL: { toAgent: string; task: string; output: string }[] = [
   { toAgent: "research-agent",  task: "Summarise the latest developments in agent-to-agent communication protocols.", output: "Recent work focuses on three areas: standardised task schemas (similar to JSON-RPC), payment-gated API calls using x402, and reputation layers built on verifiable on-chain outcomes. Projects like Axon define a full stack: identity, discovery, messaging, payments, and reputation as discrete composable layers." },
@@ -120,6 +133,8 @@ export async function POST(req: NextRequest) {
   const generalAgents = getAllAgents().filter((a) => !a.agentId.startsWith("build-") && !gatewayIds.has(a.agentId));
   // Settle each task at the worker agent's real listed price, not a flat amount.
   const priceByAgent = new Map(generalAgents.map((a) => [a.agentId, a.price ?? null]));
+  // Full agent records — needed to run each task on the provider that backs it.
+  const agentById = new Map<string, Agent>(generalAgents.map((a) => [a.agentId, a]));
 
   if (generalAgents.length === 0) {
     return NextResponse.json({ ok: true, created: 0, note: "No agents registered yet" });
@@ -133,7 +148,9 @@ export async function POST(req: NextRequest) {
     poolByAgent.set(t.toAgent, list);
   }
 
-  const batchSize = Math.floor(Math.random() * 12) + 3;
+  // 3–8 real inferences per run — bounded so the whole batch finishes well
+  // inside the route budget even when the models are slow.
+  const batchSize = Math.floor(Math.random() * 6) + 3;
   const batch: { toAgent: string; task: string; output: string }[] = [];
   for (let i = 0; i < batchSize; i++) {
     const agent = pickRandom(generalAgents);
@@ -150,9 +167,22 @@ export async function POST(req: NextRequest) {
   let failedCount = 0;
   const telegramQueue: { toAgent: string; success: boolean; failReason?: string }[] = [];
 
+  // Each task is now a real inference, so bound the batch by wall-clock: stop
+  // issuing new tasks once we're near the route budget, leaving room for the
+  // final in-flight task and the Telegram tail. Prevents a slow model batch
+  // from being truncated mid-run (which would strand tasks in 'running').
+  // Concise answers land in ~one call (a few seconds); the timeout is generous
+  // headroom for an occasional slow provider, not the expected duration.
+  const PER_TASK_TIMEOUT_MS = 40_000;
+  const batchDeadline = Date.now() + 70_000;
+
   for (const item of batch) {
+    if (Date.now() > batchDeadline) break; // out of time — don't start more work
     const senders = [...registeredIds].filter((id) => id !== item.toAgent && !id.startsWith("build-"));
     const fromAgent = senders.length > 0 ? pickRandom(senders) : item.toAgent;
+
+    const agent = agentById.get(item.toAgent);
+    if (!agent) continue; // agent vanished between listing and dispatch
 
     try {
       const task = createTask({
@@ -161,43 +191,50 @@ export async function POST(req: NextRequest) {
         task: item.task,
         context: { source: "axon-network-activity", automated: true },
       });
-      const processingMs = Math.floor(Math.random() * 3900) + 600;
-      const pickupMs = Math.floor(Math.random() * 150) + 50;
-      startTask(task.taskId, "cron");
-      // Backdate BEFORE completion so completeTask/failTask record a realistic
-      // latency (~processingMs, not 0ms) — reflected in both reputation metrics
-      // and the trace's completed event.
-      const completedNow = Date.now();
-      getDb().prepare(`UPDATE tasks SET created_at = ?, started_at = ? WHERE task_id = ?`)
-        .run(
-          new Date(completedNow - processingMs - pickupMs).toISOString(),
-          new Date(completedNow - processingMs).toISOString(),
-          task.taskId,
+      if (!startTask(task.taskId, "cron")) continue; // couldn't move it to running — skip
+
+      // Run the task for real — same captureModelStep + runWithProvider path the
+      // worker uses — so the provider reports MEASURED usage back into the step.
+      // Send (and hash, below) the concise prompt actually processed.
+      const prompt = item.task + BREVITY;
+      let step: CapturedStep<string>;
+      try {
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Upstream inference timeout")), PER_TASK_TIMEOUT_MS).unref(),
         );
-      if (Math.random() < 0.03) {
-        failTask(task.taskId, "Upstream inference timeout");
+        step = await captureModelStep(() =>
+          Promise.race([runWithProvider(agent, prompt, ACTIVITY_MAX_TOKENS), timeout]),
+        );
+      } catch (runErr) {
+        // A real failure — surface it honestly, exactly as a live hire would.
+        const reason = runErr instanceof Error ? runErr.message : "Agent execution failed";
+        failTask(task.taskId, reason);
         failedCount++;
-        telegramQueue.push({ toAgent: item.toAgent, success: false, failReason: "Upstream inference timeout" });
-      } else {
-        // Model step: real hashes + real processing time; tokens/cost estimated
-        // from the artifact size (see note above).
-        const inTok = estTokens(item.task) + 300; // + system-prompt baseline
-        const outTok = estTokens(item.output);
-        safeAppendTraceEvent({
-          traceId: task.traceId ?? task.taskId,
-          taskId: task.taskId,
-          kind: "step.model",
-          fromAgent,
-          toAgent: item.toAgent,
-          inputHash: hashContent(item.task),
-          outputHash: hashContent(item.output),
-          model: modelFor(item.toAgent),
-          inputTokens: inTok,
-          outputTokens: outTok,
-          costUsd: estimateCostUsd(modelFor(item.toAgent), inTok, outTok),
-          latencyMs: processingMs,
-        });
-        completeTask(task.taskId, item.output);
+        telegramQueue.push({ toAgent: item.toAgent, success: false, failReason: reason });
+        created.push(task.taskId);
+        continue;
+      }
+
+      const output = step.result;
+      // The measured model step: real hashes, the model that actually ran, the
+      // provider's real token counts, cost from those real tokens, real latency.
+      safeAppendTraceEvent({
+        traceId: task.traceId ?? task.taskId,
+        taskId: task.taskId,
+        kind: "step.model",
+        fromAgent,
+        toAgent: item.toAgent,
+        inputHash: hashContent(prompt),
+        outputHash: hashContent(output),
+        model: step.model ?? modelFor(item.toAgent),
+        inputTokens: step.inputTokens || null,
+        outputTokens: step.outputTokens || null,
+        costUsd: estimateCostUsd(step.model ?? modelFor(item.toAgent), step.inputTokens, step.outputTokens),
+        latencyMs: step.latencyMs,
+      });
+      // Only settle if the task actually flipped to completed — never write a
+      // settlement for a task that wasn't completed (mirrors the worker).
+      if (completeTask(task.taskId, output)) {
         const now = new Date().toISOString();
         // Settlement amount = the worker agent's listed price (parsed from e.g.
         // "0.15 USDC"), falling back to 0.10 USDC if the agent has no valid price.
@@ -221,6 +258,11 @@ export async function POST(req: NextRequest) {
           meta: { amount, currency },
         });
         telegramQueue.push({ toAgent: item.toAgent, success: true });
+      } else {
+        logger.warn("cron.demo_activity_complete_noop", "Task did not flip to completed; skipping settlement", {
+          taskId: task.taskId,
+          toAgent: item.toAgent,
+        });
       }
       created.push(task.taskId);
     } catch (err) {

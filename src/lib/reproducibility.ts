@@ -362,10 +362,12 @@ export function getReproProof(taskId: string): ReproProof | null {
 // sampling pass picks recent completed tasks that don't yet carry a proof and
 // reproduces them, so verdicts accumulate across the network on their own.
 //
-// Only tasks whose output came from a live model run are eligible — scheduled
-// network-activity tasks complete from prepared results, so re-running them
-// proves nothing about the work and is skipped, exactly like the price/external/
-// MCP guards inside reproduceTask (which this defers to for the final word).
+// Organic hires are eligible; scheduled network-activity tasks are not. They now
+// run against a live model like any hire, but they're cron-issued ambient
+// activity at a reduced token ceiling — kept out of the sample pool (via
+// started_by='cron' AND the context marker) so accumulated proofs reflect real
+// hires, not the network's own background traffic. reproduceTask still has the
+// final word via its price/external/MCP guards.
 
 export interface ReproSample {
   taskId: string;
