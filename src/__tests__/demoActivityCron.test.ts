@@ -84,6 +84,9 @@ describe("network-activity cron — measured costs", () => {
       // …cost derived from those real tokens at the published $3/$15 per-1M price…
       expect(step.costUsd).toBeCloseTo((312 / 1e6) * 3 + (148 / 1e6) * 15, 9);
       expect(trace.summary.totalInputTokens).toBe(312);
+      // …and the receipt is labelled MEASURED (cron stamps the basis marker,
+      // so it isn't inferred as estimated from being network activity).
+      expect(trace.summary.costBasis).toBe("measured");
 
       // …and exactly one settlement was written for it.
       const settle = db.prepare("SELECT COUNT(*) AS n FROM transactions WHERE task_id = ?").get(taskId) as { n: number };

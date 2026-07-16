@@ -207,9 +207,11 @@ Verify an execution trace (the flight recorder, no auth)
     "events": [
       { "seq", "kind", "fromAgent", "toAgent", "fromName", "toName",
         "inputHash", "outputHash", "model", "inputTokens", "outputTokens",
-        "costUsd", "latencyMs", "hash", "prevHash", "createdAt" }, ...
+        "costUsd", "costBasis", "latencyMs", "hash", "prevHash", "createdAt" }, ...
     ],
-    "summary": { "steps", "agents", "totalOutputTokens", "totalCostUsd", "totalLatencyMs" }
+    "summary": { "steps", "agents", "totalOutputTokens", "totalCostUsd", "totalLatencyMs", "costBasis" }
+    // costBasis: "measured" (figures are the model's real reported usage) |
+    //            "estimated" (modelled from artifact size) | null (no figures)
   }
   event kinds: task.created, step.model, progress, task.completed, task.failed,
   settlement.completed. Each event commits to the previous event's hash, so

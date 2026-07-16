@@ -38,6 +38,7 @@ interface PublicTrace {
     totalOutputTokens: number | null;
     totalCostUsd: number | null;
     totalLatencyMs: number | null;
+    costBasis: "measured" | "estimated" | null;
     agents: number;
   };
 }
@@ -169,7 +170,12 @@ export default function TimelineClient({ taskId }: { taskId: string }) {
         {s.agents > 0 && <Stat label="Agents" value={String(s.agents)} />}
         {fmtTokens(s.totalOutputTokens) && <Stat label="Out tokens" value={fmtTokens(s.totalOutputTokens)!} />}
         {fmtLatency(s.totalLatencyMs) && <Stat label="Compute" value={fmtLatency(s.totalLatencyMs)!} />}
-        {fmtCost(s.totalCostUsd) && <Stat label="Est. cost" value={fmtCost(s.totalCostUsd)!} />}
+        {/* The cost label is honest about its basis: "Cost" when the tokens are
+            the model's real reported usage, "Est. cost" when modelled from size. */}
+        {fmtCost(s.totalCostUsd) && (
+          <Stat label={s.costBasis === "estimated" ? "Est. cost" : "Cost"} value={fmtCost(s.totalCostUsd)!} />
+        )}
+        {s.costBasis && <BasisBadge basis={s.costBasis} />}
       </div>
 
       {/* replay controls */}
@@ -267,5 +273,27 @@ function Stat({ label, value }: { label: string; value: string }) {
       <span className="text-gray-500">{label}: </span>
       <span className="text-white font-semibold font-mono">{value}</span>
     </div>
+  );
+}
+
+// Says plainly whether the receipt's token/cost figures are the provider's real
+// reported usage ("measured") or were modelled from artifact size ("estimated").
+function BasisBadge({ basis }: { basis: "measured" | "estimated" }) {
+  const measured = basis === "measured";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
+        measured
+          ? "bg-teal-500/15 border-teal-500/40 text-teal-200"
+          : "bg-amber-500/10 border-amber-500/40 text-amber-200"
+      }`}
+      title={
+        measured
+          ? "Token counts and cost are the model's real reported usage from the actual run."
+          : "Token counts and cost were modelled from artifact size, not measured from a live run."
+      }
+    >
+      {measured ? "measured" : "estimated"}
+    </span>
   );
 }
