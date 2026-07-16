@@ -336,9 +336,15 @@ export function verifyTraceChain(traceId: string): ChainVerification {
 
 // ── Public trace (for the shareable receipt timeline) ─────────────────────────
 
+// Whether a step's token/cost figures are the provider's real reported usage
+// ("measured") or were modelled from artifact size ("estimated"). null when a
+// step carries no figures to qualify.
+export type CostBasis = "measured" | "estimated" | null;
+
 export interface PublicTraceEvent extends TraceEvent {
   fromName: string | null;
   toName: string | null;
+  costBasis: CostBasis;
 }
 
 export interface PublicTrace {
@@ -352,6 +358,7 @@ export interface PublicTrace {
     totalOutputTokens: number | null;
     totalCostUsd: number | null;
     totalLatencyMs: number | null;
+    costBasis: CostBasis; // measured unless any step's figures are estimated
     agents: number; // distinct agents that performed work
   };
 }
@@ -381,11 +388,58 @@ export function getPublicTrace(taskId: string): PublicTrace | null {
   };
   const workers = new Set(steps.map((e) => e.toAgent).filter(Boolean) as string[]);
 
+  // The measured-costs launch: network-activity tasks began running against a
+  // live model (real reported usage) at this instant. Events on/after it are
+  // measured even if they predate the explicit basis marker (which shipped a
+  // little later); before it, network-activity token/cost was modelled from
+  // artifact size. Real hires were always measured, whichever side of this.
+  //
+  // Set to the FIRST confirmed measured receipt (bb9e4056, 13:05:34Z) rather
+  // than the rough deploy time — deliberately conservative so an old-build run
+  // in the deploy window can never be over-claimed as measured (under-claiming
+  // a genuine one is the safe direction for a proof marker).
+  const MEASURED_SINCE = "2026-07-16T13:05:30.000Z";
+
+  // Per-task facts needed to infer an unmarked step's basis. Cached per taskId.
+  const taskCache = new Map<string | null, { net: boolean; completedAt: string | null }>();
+  const taskFacts = (tid: string | null): { net: boolean; completedAt: string | null } => {
+    const hit = taskCache.get(tid);
+    if (hit) return hit;
+    let facts = { net: false, completedAt: null as string | null };
+    if (tid) {
+      const r = db.prepare("SELECT started_by, context, completed_at FROM tasks WHERE task_id = ?").get(tid) as
+        | { started_by: string | null; context: string | null; completed_at: string | null }
+        | undefined;
+      if (r) {
+        facts = {
+          net: r.started_by === "cron" || (r.context ?? "").includes("axon-network-activity"),
+          completedAt: r.completed_at,
+        };
+      }
+    }
+    taskCache.set(tid, facts);
+    return facts;
+  };
+  // A step's basis: its own marker if present, else inferred. Real hires are
+  // measured; network activity is measured only if it ran on/after the launch
+  // (ISO timestamps compare lexicographically), else it's the old estimate.
+  const basisOf = (e: TraceEvent): CostBasis => {
+    if (e.kind !== "step.model" || (e.inputTokens == null && e.outputTokens == null)) return null;
+    const declared = e.meta && typeof e.meta.basis === "string" ? e.meta.basis : null;
+    if (declared === "measured" || declared === "estimated") return declared;
+    const t = taskFacts(e.taskId);
+    if (!t.net) return "measured";
+    return t.completedAt != null && t.completedAt >= MEASURED_SINCE ? "measured" : "estimated";
+  };
+  // The receipt is only as measured as its least-measured priced step.
+  const stepBases = steps.map(basisOf).filter((b): b is "measured" | "estimated" => b != null);
+  const summaryBasis: CostBasis = stepBases.length === 0 ? null : stepBases.includes("estimated") ? "estimated" : "measured";
+
   return {
     taskId,
     traceId,
     verified: verifyTraceChain(traceId).valid,
-    events: events.map((e) => ({ ...e, fromName: nameOf(e.fromAgent), toName: nameOf(e.toAgent) })),
+    events: events.map((e) => ({ ...e, fromName: nameOf(e.fromAgent), toName: nameOf(e.toAgent), costBasis: basisOf(e) })),
     summary: {
       steps: steps.length,
       totalInputTokens: sum((e) => e.inputTokens),
@@ -395,6 +449,7 @@ export function getPublicTrace(taskId: string): PublicTrace | null {
         return c == null ? null : Math.round(c * 1_000_000) / 1_000_000;
       })(),
       totalLatencyMs: sum((e) => e.latencyMs),
+      costBasis: summaryBasis,
       agents: workers.size,
     },
   };

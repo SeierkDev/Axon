@@ -215,3 +215,73 @@ describe("traceEvents — lifecycle capture + privacy", () => {
     expect(JSON.stringify(trace)).not.toContain(SECRET_PROGRESS);
   });
 });
+
+describe("traceEvents — measured vs estimated basis", () => {
+  // Build one task + a priced model step, varying whether it's cron-issued
+  // network activity, whether the step carries the "measured" marker, and when
+  // it completed (to exercise the launch cutoff for un-marked events).
+  function traceFor(opts: {
+    networkActivity: boolean;
+    marker?: "measured" | "estimated";
+    withFigures?: boolean;
+    completedAt?: string; // backdate the completion to test the launch cutoff
+  }) {
+    const from = makeAgent();
+    const to = makeAgent();
+    createAgent(from);
+    createAgent(to);
+    const task = createTask({
+      fromAgent: from.agentId,
+      toAgent: to.agentId,
+      task: "t",
+      context: opts.networkActivity ? { source: "axon-network-activity", automated: true } : undefined,
+    });
+    startTask(task.taskId, opts.networkActivity ? "cron" : "api");
+    const figures = opts.withFigures !== false;
+    appendTraceEvent({
+      traceId: task.traceId ?? task.taskId,
+      taskId: task.taskId,
+      kind: "step.model",
+      fromAgent: from.agentId,
+      toAgent: to.agentId,
+      model: "claude-sonnet-5",
+      inputTokens: figures ? 300 : null,
+      outputTokens: figures ? 120 : null,
+      costUsd: figures ? 0.0012 : null,
+      meta: opts.marker ? { basis: opts.marker } : null,
+    });
+    completeTask(task.taskId, "out");
+    if (opts.completedAt) {
+      getDb().prepare("UPDATE tasks SET completed_at = ? WHERE task_id = ?").run(opts.completedAt, task.taskId);
+    }
+    return getPublicTrace(task.taskId)!;
+  }
+
+  it("a real hire's figures read as measured — no marker needed, any era", () => {
+    const t = traceFor({ networkActivity: false, completedAt: "2026-01-01T00:00:00.000Z" });
+    expect(t.summary.costBasis).toBe("measured");
+    expect(t.events.find((e) => e.kind === "step.model")!.costBasis).toBe("measured");
+  });
+
+  it("pre-launch network-activity (no marker) reads as estimated", () => {
+    const t = traceFor({ networkActivity: true, completedAt: "2026-07-01T00:00:00.000Z" });
+    expect(t.summary.costBasis).toBe("estimated");
+    expect(t.events.find((e) => e.kind === "step.model")!.costBasis).toBe("estimated");
+  });
+
+  it("post-launch network-activity (no marker yet) reads as measured — the launch cutoff", () => {
+    const t = traceFor({ networkActivity: true, completedAt: "2026-07-16T13:06:00.000Z" });
+    expect(t.summary.costBasis).toBe("measured");
+  });
+
+  it("the measured marker wins regardless of when it completed", () => {
+    const t = traceFor({ networkActivity: true, marker: "measured", completedAt: "2026-07-01T00:00:00.000Z" });
+    expect(t.summary.costBasis).toBe("measured");
+  });
+
+  it("a step with no token figures has null basis — nothing to label", () => {
+    const t = traceFor({ networkActivity: false, withFigures: false });
+    expect(t.summary.costBasis).toBeNull();
+    expect(t.events.find((e) => e.kind === "step.model")!.costBasis).toBeNull();
+  });
+});

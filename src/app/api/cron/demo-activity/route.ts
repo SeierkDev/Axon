@@ -231,6 +231,10 @@ export async function POST(req: NextRequest) {
         outputTokens: step.outputTokens || null,
         costUsd: estimateCostUsd(step.model ?? modelFor(item.toAgent), step.inputTokens, step.outputTokens),
         latencyMs: step.latencyMs,
+        // These figures are the provider's real reported usage — mark them
+        // MEASURED so the receipt can say so (older network-activity events,
+        // which lack this marker, are inferred as estimated on read).
+        meta: { basis: "measured" },
       });
       // Only settle if the task actually flipped to completed — never write a
       // settlement for a task that wasn't completed (mirrors the worker).
