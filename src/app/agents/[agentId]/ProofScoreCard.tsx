@@ -31,6 +31,7 @@ type Verification = {
 export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; agentId: string }) {
   const [state, setState] = useState<"idle" | "checking" | "ok" | "fail">("idle");
   const [v, setV] = useState<Verification | null>(null);
+  const [showMath, setShowMath] = useState(false);
 
   async function verify() {
     setState("checking");
@@ -95,6 +96,18 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
           </div>
         )}
 
+        {/* The math — expandable, so the score is recomputable by hand, not just by the Verify button */}
+        <div className="mb-5">
+          <button
+            onClick={() => setShowMath((s) => !s)}
+            className="text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline"
+          >
+            {showMath ? "Hide the math" : "Show the math — exactly how this score is computed"}
+          </button>
+
+          {showMath && <ScoreMath proof={proof} />}
+        </div>
+
         {/* Verify */}
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
           {proof.evidenceCount > 0 ? (
@@ -139,6 +152,102 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
           <code className="font-mono">{proof.contentHash.slice(0, 16)}…</code>
         </p>
       </div>
+    </div>
+  );
+}
+
+// The recompute-it-yourself breakdown: the two components' raw math, the inputs
+// (all derivable from public receipts), and the native settled receipts the
+// score is actually built from. Pure + always-rendered, so it's render-testable.
+export function ScoreMath({ proof }: { proof: ProofScore }) {
+  const q = proof.components.quality;
+  const pw = proof.components.provenWork;
+  const qMax = Math.round(q.weight * proof.method.scale); // e.g. 600
+  const pwMax = Math.round(pw.weight * proof.method.scale); // e.g. 400
+  const native = (proof.evidence ?? []).filter((e) => e.network === "axon");
+  const inputs = proof.inputs;
+  const pct = (x: number) => `${Math.round(x * 100)}%`;
+  // The two component points sum to a fractional total that the formula ROUNDS
+  // to the final score — show that rounding step so the recompute reconciles
+  // (594 + 383.6 = 977.6 → 978), never leaving a silent gap.
+  const sum = Math.round((q.points + pw.points) * 100) / 100;
+  const rounded = sum !== proof.score;
+
+  return (
+    <div className="mt-3 space-y-5 rounded-md border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40 p-4">
+      {/* the computation */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">The computation</p>
+        <div className="space-y-1.5 font-mono text-xs text-gray-600 dark:text-gray-300">
+          <div className="flex items-center justify-between gap-2">
+            <span>Quality<span className="text-gray-400"> · how well it works</span></span>
+            <span className="tabular-nums whitespace-nowrap">{q.factor} × {qMax} = {q.points}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span>Proven work<span className="text-gray-400"> · settled on-chain</span></span>
+            <span className="tabular-nums whitespace-nowrap">{pw.factor} × {pwMax} = {pw.points}</span>
+          </div>
+          {rounded && (
+            <div className="flex items-center justify-between gap-2 border-t border-gray-200 dark:border-gray-700 pt-1.5 text-gray-500 dark:text-gray-400">
+              <span>Sum</span>
+              <span className="tabular-nums">{sum}</span>
+            </div>
+          )}
+          <div className={`flex items-center justify-between gap-2 font-semibold text-gray-900 dark:text-white ${rounded ? "" : "border-t border-gray-200 dark:border-gray-700 pt-1.5"}`}>
+            <span>Proof Score{rounded ? " (rounded)" : ""}</span>
+            <span className="tabular-nums">{proof.score}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* the inputs — all derivable from public receipts */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">The inputs</p>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+          <Fact k="Reputation" v={`${inputs.reputation} / 10`} />
+          <Fact k="Settled value" v={`${inputs.settledUsdc} USDC`} />
+          <Fact k="Tasks completed" v={String(inputs.tasksCompleted)} />
+          <Fact k="Tasks failed" v={String(inputs.tasksFailed)} />
+          <Fact k="Success rate" v={pct(inputs.successRate)} />
+          <Fact k="Payment reliability" v={pct(inputs.paymentReliability)} />
+          <Fact k="Avg response" v={`${inputs.avgResponseSec}s`} />
+          <Fact k="Settled tasks" v={String(proof.evidenceCount)} />
+        </dl>
+      </div>
+
+      {/* the receipts the score is actually built from */}
+      {native.length > 0 && (
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
+            The settled tasks behind it{proof.evidenceCount > native.length ? ` — ${native.length} of ${proof.evidenceCount}` : ""}
+          </p>
+          <ul className="space-y-1">
+            {native.map((e) => (
+              <li key={e.taskId} className="flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-300">
+                <span className="tabular-nums text-gray-400 dark:text-gray-500">{new Date(e.completedAt).toISOString().slice(0, 10)}</span>
+                <span className="flex-1 text-center tabular-nums">{e.settledUsdc} USDC</span>
+                <a href={e.receipt} target="_blank" rel="noopener noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline whitespace-nowrap">
+                  receipt<ExtArrow />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="text-[11px] text-gray-400 dark:text-gray-500">
+        Refetch each receipt to confirm it settled on-chain, apply the formula to the inputs, and you get {proof.score}. The full
+        method (formula, weights, anchors) is in the raw proof below.
+      </p>
+    </div>
+  );
+}
+
+function Fact({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <dt className="text-gray-400 dark:text-gray-500">{k}</dt>
+      <dd className="font-mono text-gray-700 dark:text-gray-200 tabular-nums">{v}</dd>
     </div>
   );
 }
