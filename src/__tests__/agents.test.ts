@@ -218,6 +218,28 @@ describe("searchAgents: maxPrice filter", () => {
 
 // ── searchAgents: price sort ──────────────────────────────────────────────────
 
+describe("searchAgents: proven (Proof Score) sort", () => {
+  const PREFIX = "provensort";
+
+  it("ranks higher Proof Score first, and any score beats an un-scored agent — even one with higher reputation", () => {
+    createAgent(makeAgent({ agentId: `${PREFIX}-hi`, capabilities: ["analysis"], reputation: 1 }));
+    createAgent(makeAgent({ agentId: `${PREFIX}-lo`, capabilities: ["analysis"], reputation: 1 }));
+    // un-scored (proof_score NULL) but the highest reputation of the three
+    createAgent(makeAgent({ agentId: `${PREFIX}-none`, capabilities: ["analysis"], reputation: 9 }));
+    const db = getDb();
+    db.prepare("UPDATE agents SET proof_score = ? WHERE agent_id = ?").run(820, `${PREFIX}-hi`);
+    db.prepare("UPDATE agents SET proof_score = ? WHERE agent_id = ?").run(310, `${PREFIX}-lo`);
+
+    const ids = searchAgents({ sort: "proven", limit: 500 }).map((a) => a.agentId);
+    const hi = ids.indexOf(`${PREFIX}-hi`);
+    const lo = ids.indexOf(`${PREFIX}-lo`);
+    const none = ids.indexOf(`${PREFIX}-none`);
+    expect(hi).toBeGreaterThanOrEqual(0);
+    expect(hi).toBeLessThan(lo); // higher Proof Score ranks first
+    expect(lo).toBeLessThan(none); // a scored agent beats an un-scored one (NULLS LAST), reputation notwithstanding
+  });
+});
+
 describe("searchAgents: price sort", () => {
   const PREFIX = "psort";
 
