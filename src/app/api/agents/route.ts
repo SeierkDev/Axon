@@ -15,7 +15,7 @@ import { withRequestContext } from "@/lib/withRequestContext";
 import { verifyAgentEndpoint } from "@/lib/verification";
 import { notifyNewAgent } from "@/lib/telegram";
 
-const VALID_SORT_FIELDS = new Set<string>(["reputation", "price", "createdAt", "activity", "successRate", "latency", "reviews"]);
+const VALID_SORT_FIELDS = new Set<string>(["proven", "reputation", "price", "createdAt", "activity", "successRate", "latency", "reviews"]);
 const VALID_PROVIDERS: InferenceProvider[] = ["anthropic", "ollama", "openai", "grok"];
 
 // Terms that would impersonate the Axon platform

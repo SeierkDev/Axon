@@ -200,7 +200,7 @@ export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent 
   return updated;
 }
 
-export type SortField = "reputation" | "price" | "createdAt" | "activity" | "successRate" | "latency" | "reviews";
+export type SortField = "proven" | "reputation" | "price" | "createdAt" | "activity" | "successRate" | "latency" | "reviews";
 
 export interface SearchOptions {
   capability?: string;
@@ -239,7 +239,12 @@ export function searchAgents(opts: SearchOptions): Agent[] {
   }
 
   const orderClause =
-    opts.sort === "createdAt"
+    // Reputation-routed discovery: proven agents (highest Proof Score, computed
+    // from on-chain-verifiable receipts) rise first; reputation breaks ties and
+    // carries the un-scored (proof_score NULL until the recompute backfills it).
+    opts.sort === "proven"
+      ? "ORDER BY proof_score DESC NULLS LAST, reputation DESC"
+      : opts.sort === "createdAt"
       ? "ORDER BY created_at DESC"
       : opts.sort === "activity"
       ? `ORDER BY (

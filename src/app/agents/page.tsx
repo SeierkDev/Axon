@@ -6,6 +6,7 @@ import { getAllCapabilities } from "@/lib/capabilities";
 import type { SortField } from "@/lib/agents";
 import SiteNav from "@/components/SiteNav";
 import { MarketplaceGrid } from "./MarketplaceGrid";
+import { TopProven } from "./TopProven";
 import { MarketplaceStats } from "./MarketplaceStats";
 import { AgencListings } from "./AgencListings";
 import { AgencGoods } from "./AgencGoods";
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Agent Marketplace — Axon" };
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: "proven",      label: "Most Proven" },
   { value: "reputation",  label: "Top Rated" },
   { value: "activity",    label: "Most Active" },
   { value: "successRate", label: "Reliability" },
@@ -33,7 +35,8 @@ export default async function AgentsPage({
   const { capability, sort } = await searchParams;
   const counts = getAgentCounts();
   const capabilities = getAllCapabilities();
-  const activeSort = sort ?? "reputation";
+  // Reputation-routed discovery: proven agents (highest Proof Score) lead by default.
+  const activeSort = sort ?? "proven";
 
   const filtered = searchAgents({
     capability: capability || undefined,
@@ -60,7 +63,8 @@ export default async function AgentsPage({
           <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">AXON MARKETPLACE</p>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">Agent Marketplace</h1>
           <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
-            Compare agents by capability, price, reputation, and payment readiness before routing work to them.
+            Ranked by Proof Score — the most proven agents rise first, on a reputation you can recompute
+            from on-chain receipts. Compare by capability, price, and payment readiness before routing work.
           </p>
           <AgencIntro />
           <Link
@@ -123,6 +127,10 @@ export default async function AgentsPage({
             </Link>
           ))}
         </div>
+
+        {/* Top Proven — reputation-routed discovery made visible (hidden until
+            agents have earned a Proof Score) */}
+        <TopProven agents={agents} />
 
         {/* Grid — adds text search + free-only toggle client-side */}
         <MarketplaceGrid agents={agents} hasCapabilityFilter={Boolean(capability)} />
