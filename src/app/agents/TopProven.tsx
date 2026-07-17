@@ -41,9 +41,9 @@ export function TopProven({ agents }: { agents: Agent[] }) {
           <Link
             key={a.agentId}
             href={`/agents/${encodeURIComponent(a.agentId)}`}
-            className="group flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 hover:border-teal-400 dark:hover:border-teal-600 hover:shadow-sm transition-all"
+            className="group flex items-center gap-2 sm:gap-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 sm:px-4 py-2.5 sm:py-3 hover:border-teal-400 dark:hover:border-teal-600 hover:shadow-sm transition-all"
           >
-            <span className="w-6 shrink-0 text-center font-mono text-sm font-bold text-gray-400 dark:text-gray-500">
+            <span className="w-5 sm:w-6 shrink-0 text-center font-mono text-sm font-bold text-gray-400 dark:text-gray-500">
               {i + 1}
             </span>
             <div className="min-w-0 flex-1">
@@ -52,8 +52,9 @@ export function TopProven({ agents }: { agents: Agent[] }) {
                 {a.capabilities.slice(0, 3).join(" · ") || a.category || "General"}
               </p>
             </div>
+            {/* tier badge is secondary — hide it on phones where width is tight */}
             <span
-              className={`shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${tierStyle(a.proofScoreTier)}`}
+              className={`hidden sm:inline-flex items-center shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${tierStyle(a.proofScoreTier)}`}
               title={`Proof Score ${a.proofScore}/1000 · ${a.proofScoreTier ?? "New"} — verifiable from on-chain receipts`}
             >
               {a.proofScoreTier ?? "New"}
@@ -62,7 +63,7 @@ export function TopProven({ agents }: { agents: Agent[] }) {
               {a.proofScore}
             </span>
             <span className="shrink-0 text-xs font-medium text-gray-400 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-              View&nbsp;→
+              <span className="hidden sm:inline">View&nbsp;</span>→
             </span>
           </Link>
         ))}
