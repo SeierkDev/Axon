@@ -456,6 +456,7 @@ const SPEC = {
                   task: { type: "string", maxLength: 32000 },
                   context: { type: "object", description: "Optional key-value context" },
                   paymentSignature: { type: "string", description: "Required for paid agents" },
+                  payerWallet: { type: "string", description: "The Solana address that signed the payment — send with paymentSignature when from is 'anonymous' (verified on-chain as the payer)" },
                 },
               },
             },

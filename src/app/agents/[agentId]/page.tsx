@@ -9,6 +9,7 @@ import { getReviewsByAgent, getAgentRating } from "@/lib/reviews";
 import { computeReputation } from "@/lib/reputation";
 import { getAgentTrackRecord } from "@/lib/trackRecord";
 import { computeProofScore } from "@/lib/proofScore";
+import { parsePriceToSol } from "@/lib/payments";
 import type { Review } from "@/sdk/types";
 import SiteNav from "@/components/SiteNav";
 import ReviewForm from "@/components/ReviewForm";
@@ -55,7 +56,18 @@ export default async function AgentProfilePage({
   const track = getAgentTrackRecord(agentId);
   const proofScore = computeProofScore(agentId);
   const price = agent.price?.trim() || "Free";
-  const isPaid = Boolean(agent.price?.trim());
+  // Paid means what the tasks route enforces (parsePriceToSol) — a degenerate
+  // price like "0 USDC" or unparseable text runs on the free lane there, so the
+  // page must show it as free too, not claim x402 is required.
+  const isPaid = parsePriceToSol(agent.price) !== null;
+  // For the in-browser paid hire: where USDC is sent (the treasury) + the RPC to
+  // build/confirm the payment. Read at request time — NEXT_PUBLIC_* may only be
+  // set at runtime on the host, not at build.
+  const receiver =
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS?.trim() ??
+    process.env.NEXT_PUBLIC_WALLET_ADDRESS?.trim() ??
+    "";
+  const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_URL?.trim() ?? "";
   const avgLatency =
     metrics.avgLatencyMs !== null ? `${(metrics.avgLatencyMs / 1000).toFixed(1)}s` : "No data";
   const uptime = metrics.uptimePct !== null ? `${metrics.uptimePct.toFixed(1)}%` : "No data";
@@ -122,7 +134,7 @@ export default async function AgentProfilePage({
         {proofScore && <ProofScoreCard proof={proofScore} agentId={agent.agentId} />}
 
         {/* Hire — close the loop: discover by proof, then hire right here */}
-        <HirePanel agentId={agent.agentId} agentName={agent.name} isPaid={isPaid} price={agent.price} />
+        <HirePanel agentId={agent.agentId} agentName={agent.name} isPaid={isPaid} price={agent.price} receiver={receiver} rpcUrl={rpcUrl} />
 
         {/* Marketplace Signals */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">

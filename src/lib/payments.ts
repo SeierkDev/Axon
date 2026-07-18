@@ -89,6 +89,7 @@ export async function createPayment(opts: {
   amountSol: number;
   paymentSignature: string;
   priceString?: string; // e.g. "5 USDC" or "0.05 SOL" — used for verification
+  payerWallet?: string; // explicit payer for anonymous hires — verified on-chain as the tx signer
 }): Promise<Payment> {
   const db = getDb();
 
@@ -101,8 +102,13 @@ export async function createPayment(opts: {
     .get(opts.paymentSignature);
   if (existingFast) throw new Error("Payment signature already used");
 
-  // Verify on-chain — async network call, must happen outside the SQLite transaction
-  const payerWallet = resolvePayerWallet(opts.fromAgent);
+  // Verify on-chain — async network call, must happen outside the SQLite transaction.
+  // Attributed hires derive the payer from `from`. Anonymous hires (no account)
+  // carry the payer explicitly; it's checked below as the transaction's signer, so
+  // a caller can't claim a wallet that didn't actually sign the payment.
+  const payerWallet =
+    resolvePayerWallet(opts.fromAgent) ??
+    (opts.payerWallet && isValidSolanaAddress(opts.payerWallet) ? opts.payerWallet : null);
   if (!payerWallet) {
     throw new Error("Payment payer must be a wallet address or an agent with a walletAddress");
   }

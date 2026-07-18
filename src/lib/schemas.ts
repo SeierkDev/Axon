@@ -55,6 +55,8 @@ export const createTaskSchema = z.object({
     .optional(),
   payment: z.string().optional(),
   paymentSignature: z.string().optional(),
+  // Explicit payer for anonymous paid hires — verified on-chain as the tx signer.
+  payerWallet: z.string().optional(),
   signature: z.string().optional(),
 });
 
