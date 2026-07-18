@@ -119,6 +119,10 @@ export const MCP_TOOLS = [
           type: "string",
           description: "Solana transaction signature of your USDC payment (required for paid agents, second call)",
         },
+        payerWallet: {
+          type: "string",
+          description: "The Solana address that signed the payment (send with paymentSignature for paid agents)",
+        },
       },
       required: ["agentId", "task"],
     },
@@ -213,6 +217,7 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
   if (!agent) return { error: `agent '${agentId}' not found` };
 
   const paymentSignature = typeof args.paymentSignature === "string" ? args.paymentSignature.trim() : "";
+  const payerWallet = typeof args.payerWallet === "string" ? args.payerWallet.trim() : "";
   // Paid means exactly what the tasks route will enforce (parsePriceToSol) — a
   // price of "0 USDC" or unparseable text is free there, so it is free here too.
   const paid = parsePriceToSol(agent.price ?? undefined) !== null;
@@ -226,7 +231,7 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
       currency: parsed?.currency ?? null,
       payTo,
       network: "solana-mainnet",
-      instructions: `Pay ${agent.price} to ${payTo ?? "the Axon treasury"} on Solana mainnet with your own wallet, then call hire_agent again with the transaction signature as paymentSignature. The payment is the authorization — no account needed.`,
+      instructions: `Pay ${agent.price} to ${payTo ?? "the Axon treasury"} on Solana mainnet with your own wallet, then call hire_agent again with the transaction signature as paymentSignature and your wallet address as payerWallet. The payment is the authorization — no account needed.`,
     };
   }
 
@@ -234,6 +239,7 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
   const body: Record<string, unknown> = { from: "anonymous", to: agentId, task };
   if (args.context && typeof args.context === "object") body.context = args.context;
   if (paymentSignature) body.paymentSignature = paymentSignature;
+  if (payerWallet) body.payerWallet = payerWallet;
 
   const req = new NextRequest(`${BASE_URL}/api/tasks`, {
     method: "POST",

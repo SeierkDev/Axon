@@ -100,6 +100,12 @@ async function handlePost(req: NextRequest) {
     );
   }
 
+  // payerWallet lets an anonymous hire name the wallet that paid — it's verified
+  // on-chain as the transaction's signer, so it must be a real address if given.
+  if (body.payerWallet && !isValidSolanaAddress(body.payerWallet)) {
+    return apiError("VALIDATION_ERROR", "payerWallet must be a valid Solana address", 400);
+  }
+
   const idempotencyKey = normalizeIdempotencyKey(req.headers.get("Idempotency-Key"));
   const idempotencyScope = idempotencyKey ? `tasks:${body.from}` : undefined;
   const idempotencyHash = idempotencyKey ? hashIdempotencyPayload({
@@ -178,6 +184,7 @@ async function handlePost(req: NextRequest) {
         amountSol,
         paymentSignature: body.paymentSignature,
         priceString: payment,
+        payerWallet: body.payerWallet,
       });
     } catch (err) {
       // Payment failed — roll back the task
