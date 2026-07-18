@@ -8,6 +8,7 @@ import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { hashIdempotencyPayload, normalizeIdempotencyKey, validateIdempotencyKey } from "@/lib/idempotency";
+import { claimTokenFor } from "@/lib/mcpServer";
 import { createTaskSchema, parseBody } from "@/lib/schemas";
 import { withRequestContext } from "@/lib/withRequestContext";
 
@@ -15,8 +16,16 @@ import { withRequestContext } from "@/lib/withRequestContext";
 const RATE_LIMIT = 60;
 const RATE_WINDOW_MS = 60_000;
 
-function taskResponse(task: Task, status: number, replayHeader?: "idempotency" | "payment", rlHeaders?: Record<string, string>) {
-  return NextResponse.json(task, {
+function taskResponse(
+  task: Task,
+  status: number,
+  replayHeader?: "idempotency" | "payment",
+  rlHeaders?: Record<string, string>,
+  claimToken?: string,
+) {
+  // claimToken (anonymous hires only) is the read permission for this task's
+  // private output — the browser/MCP caller keeps it to poll the result.
+  return NextResponse.json(claimToken ? { ...task, claimToken } : task, {
     status,
     headers: {
       ...(replayHeader === "idempotency" ? { "X-Idempotent-Replay": "true" } : {}),
@@ -197,5 +206,8 @@ async function handlePost(req: NextRequest) {
     task = confirmedTask;
   }
 
-  return taskResponse(task, 201, undefined, rateLimitHeaders(rl, RATE_LIMIT));
+  // Anonymous hires (no API key) get a claimToken back — the only way to read
+  // the private output — so a browser/MCP caller can poll the result.
+  const claimToken = body.from === "anonymous" ? claimTokenFor(task.taskId) : undefined;
+  return taskResponse(task, 201, undefined, rateLimitHeaders(rl, RATE_LIMIT), claimToken);
 }

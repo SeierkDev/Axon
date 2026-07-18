@@ -462,7 +462,7 @@ const SPEC = {
           },
         },
         responses: {
-          201: { description: "Task created", content: { "application/json": { schema: { $ref: "#/components/schemas/Task" } } } },
+          201: { description: "Task created. Anonymous hires (from: 'anonymous') also receive a `claimToken` — the read permission for this task's private output; keep it to poll the result.", content: { "application/json": { schema: { $ref: "#/components/schemas/Task" } } } },
           400: { $ref: "#/components/responses/ValidationError" },
           402: { description: "Payment required" },
         },
@@ -472,11 +472,16 @@ const SPEC = {
     "/tasks/{taskId}": {
       parameters: [{ name: "taskId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
       get: {
-        summary: "Get task by ID",
+        summary: "Get task status + output",
+        description: "Authorize with an API key that owns the from/to agent, OR — for an anonymous hire — the X-Claim-Token header (the claimToken returned when the task was created). The claimToken is the read permission for this task's private output.",
         operationId: "getTask",
         tags: ["Tasks"],
+        parameters: [
+          { name: "X-Claim-Token", in: "header", required: false, schema: { type: "string" }, description: "The claimToken from an anonymous hire — reads this task's output without an API key." },
+        ],
         responses: {
           200: { description: "Task", content: { "application/json": { schema: { $ref: "#/components/schemas/Task" } } } },
+          403: { description: "Invalid claim token, or the API key lacks access to this task" },
           404: { $ref: "#/components/responses/NotFound" },
         },
       },

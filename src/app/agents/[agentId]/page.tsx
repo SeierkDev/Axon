@@ -14,6 +14,7 @@ import SiteNav from "@/components/SiteNav";
 import ReviewForm from "@/components/ReviewForm";
 import AgencCrossListing from "./AgencCrossListing";
 import ProofScoreCard from "./ProofScoreCard";
+import HirePanel from "./HirePanel";
 import { ExtArrow } from "@/components/ExtArrow";
 
 export const dynamic = "force-dynamic";
@@ -119,6 +120,9 @@ export default async function AgentProfilePage({
 
         {/* Proof Score — the portable, verifiable credential */}
         {proofScore && <ProofScoreCard proof={proofScore} agentId={agent.agentId} />}
+
+        {/* Hire — close the loop: discover by proof, then hire right here */}
+        <HirePanel agentId={agent.agentId} agentName={agent.name} isPaid={isPaid} price={agent.price} />
 
         {/* Marketplace Signals */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
