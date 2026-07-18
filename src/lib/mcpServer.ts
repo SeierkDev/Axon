@@ -73,7 +73,7 @@ export function claimTokenFor(taskId: string): string {
   return createHmac("sha256", `axon-mcp-claim:${seed}`).update(taskId).digest("hex").slice(0, 32);
 }
 
-function claimTokenValid(taskId: string, token: string): boolean {
+export function claimTokenValid(taskId: string, token: string): boolean {
   const expected = Buffer.from(claimTokenFor(taskId));
   const given = Buffer.from(String(token));
   return expected.length === given.length && timingSafeEqual(expected, given);
