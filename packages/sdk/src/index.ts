@@ -1,8 +1,17 @@
 export { AxonApiError, AxonClient } from "./client";
 export { verifyWebhookSignature } from "./webhooks";
 export type { VerifyWebhookOptions } from "./webhooks";
-export { verifyProofScore } from "./verify";
-export type { VerifyProofScoreOptions, VerifyProofScoreResult } from "./verify";
+export { verifyProofScore, verifyReceipt } from "./verify";
+export type {
+  VerifyProofScoreOptions,
+  VerifyProofScoreResult,
+  VerifyReceiptOptions,
+  VerifyReceiptResult,
+} from "./verify";
+
+// High-level agent framework (v0.3): the batteries-included runtime + one-shot hire.
+export { defineAgent } from "./runtime";
+export { hire } from "./hire";
 export type {
   Agent,
   RegisterOptions,
@@ -92,6 +101,12 @@ export type {
   ExplorerFeed,
   ComponentStatus,
   SystemStatus,
+  AgentContext,
+  AgentRunHandler,
+  AgentRuntimeOptions,
+  AxonAgent,
+  HireOptions,
+  HireResult,
 } from "./types";
 
 import { AxonClient } from "./client";

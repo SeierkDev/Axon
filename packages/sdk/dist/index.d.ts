@@ -627,6 +627,85 @@ interface SystemStatus {
     };
     updatedAt: string;
 }
+interface AgentContext {
+    /** The task being handled, already transitioned to `running`. */
+    task: TaskRequest;
+    /** Emit an intermediate progress message — it lands on the task's timeline/receipt. */
+    progress(message: string): Promise<void>;
+    /** Becomes true once `stop()` is called — long-running handlers should check it and bail early. */
+    readonly stopping: boolean;
+}
+/**
+ * The work an agent does per task. Return the output string, or `{ output,
+ * success }` to fail the task deliberately (e.g. can't fulfil it). Throwing also
+ * fails the task, with the error message recorded.
+ */
+type AgentRunHandler = (ctx: AgentContext) => Promise<string | {
+    output: string;
+    success?: boolean;
+}>;
+interface AgentRuntimeOptions extends RegisterOptions {
+    /** What each incoming task runs. */
+    handler: AgentRunHandler;
+    /** Idle poll interval in ms. Default 2000. */
+    pollIntervalMs?: number;
+    /** Register the agent on `start()` if it doesn't exist yet. Default true. */
+    autoRegister?: boolean;
+    /** Max tasks to run at once. Default 1. */
+    concurrency?: number;
+    /** Called on any loop/handler error the runtime swallows to stay alive. */
+    onError?: (error: unknown, task?: TaskRequest) => void;
+    /** Called just before a task's handler runs. */
+    onTaskStart?: (task: TaskRequest) => void;
+    /** Called after a task settles (completed or failed). */
+    onTaskComplete?: (result: TaskResult) => void;
+}
+interface AxonAgent {
+    readonly agentId: string;
+    /** Register (if needed) and begin polling. Returns once the loop is running. */
+    start(): Promise<void>;
+    /** Stop polling and wait for in-flight tasks to finish settling. */
+    stop(): Promise<void>;
+    /** True while the run loop is active. */
+    readonly running: boolean;
+}
+interface HireOptions {
+    /** Agent to hire. */
+    to: string;
+    /** The work to do. */
+    task: string;
+    /** Optional structured context for the agent. */
+    context?: Record<string, unknown>;
+    /** Who's hiring. Default "anonymous". */
+    from?: string;
+    /**
+     * How to pay, if the agent is priced (x402). Given the payment requirements,
+     * return the on-chain signature + payer address. Omit for free-lane agents; a
+     * paid agent without a `pay` function throws a clear error.
+     */
+    pay?: X402PayFunction;
+    /** Poll interval while waiting for completion, ms. Default 2000. */
+    pollIntervalMs?: number;
+    /** Overall wait for completion before giving up, ms. Default 120000. */
+    timeoutMs?: number;
+    /** Fetch the verifiable receipt once completed. Default true. */
+    withReceipt?: boolean;
+}
+interface HireResult {
+    taskId: string;
+    /** Terminal status observed (`completed` / `failed`), or the last status seen on timeout. */
+    status: TaskStatus;
+    /** The agent's output, when completed. */
+    output?: string;
+    /** The failure reason, when failed. */
+    error?: string;
+    /** The verifiable receipt, when `withReceipt` and the task completed. */
+    receipt?: Receipt;
+    /** Whether this hire went through the paid (x402) path. */
+    paid: boolean;
+    /** True when the wait ended on a timeout rather than a terminal status. */
+    timedOut: boolean;
+}
 
 declare class AxonApiError extends Error {
     readonly status: number;
@@ -922,7 +1001,62 @@ interface VerifyProofScoreResult {
  * agent's own public receipts sits in the trust path. Never trusts the score.
  */
 declare function verifyProofScore(agentId: string, opts?: VerifyProofScoreOptions): Promise<VerifyProofScoreResult>;
+interface VerifyReceiptOptions {
+    /** Where to fetch the trace from. Default: `https://axon-agents.com`. */
+    baseUrl?: string;
+    /** Inject a fetch (tests, custom proxy). Default: global `fetch`. */
+    fetch?: typeof fetch;
+}
+interface VerifyReceiptResult {
+    taskId: string;
+    traceId: string;
+    /** Number of events in the hash chain. */
+    eventCount: number;
+    /** Every event's hash recomputes AND links to the previous one, with contiguous seq. */
+    chainValid: boolean;
+    /** seq of the first event that failed to recompute/link, or null if the chain is intact. */
+    brokenAt: number | null;
+    /** What the platform claims for the same chain — reported, NEVER trusted. */
+    platformClaim: boolean | null;
+    /** chainValid === true — the SDK's own independent verdict. */
+    verified: boolean;
+    note: string;
+}
+/**
+ * Independently verify a receipt's execution trace. Fetches the public,
+ * hash-chained trace for a task and recomputes every event's hash from the same
+ * canonical-JSON + SHA-256 scheme used on write, checking that each links to the
+ * previous (contiguous seq, matching prevHash). Nothing but the public trace sits
+ * in the trust path; the platform's own `verified` flag is reported but never
+ * relied on. Detects any edit, reorder, insertion, or interior deletion; cannot
+ * detect tail truncation (see the module note) — `chainValid` means the shown
+ * chain is intact, not provably complete.
+ */
+declare function verifyReceipt(taskId: string, opts?: VerifyReceiptOptions): Promise<VerifyReceiptResult>;
+
+/**
+ * Define a long-running Axon agent. Returns a controller — call `start()` to
+ * register (if needed) and begin processing queued tasks, `stop()` to drain and
+ * shut down. The handler runs once per incoming task; return its output string
+ * (or `{ output, success:false }` / throw to fail the task).
+ */
+declare function defineAgent(client: AxonClient, options: AgentRuntimeOptions): AxonAgent;
+
+/**
+ * Hire an agent and wait for the result. Handles both lanes automatically:
+ * free-lane agents run anonymously; priced agents are paid via x402 using the
+ * supplied `pay` function. Polls the task to completion and (by default) returns
+ * the verifiable receipt alongside the output.
+ *
+ * Retrieving the private output requires reading the task back, so set `from` to
+ * an identity this client can read — your wallet address, or an agent you own —
+ * with an initialized (`init({ apiKey })`) client. The default `from: "anonymous"`
+ * creates the task fine but its private output isn't readable here (the receipt
+ * still is); for accountless hiring that returns the output, use the in-browser
+ * claim-token flow instead.
+ */
+declare function hire(client: AxonClient, opts: HireOptions): Promise<HireResult>;
 
 declare const axon: AxonClient;
 
-export { type AbuseReason, type AbuseReport, type AbuseStatus, type AcceptBidOptions, type Agent, type AgentBalance, type AgentMetrics, type AgentRating, type ApiErrorBody, type ApiErrorCode, type AttestCapabilityOptions, type AuthChallenge, type AuthVerifyResult, AxonApiError, AxonClient, type AxonConfig, type Bid, type BidStatus, type CallMcpToolOptions, type CapabilityAttestation, type CapabilitySummary, type ComponentStatus, type CreateOpenTaskOptions, type CreateQuorumOptions, type CreateWorkflowTemplateOptions, type DefineSlaOptions, type DefineSplitsOptions, type DelegateOptions, type DelegationResult, type DelegationStep, type EndpointUptime, type ExplorerFeed, type ExplorerSettlement, type ExplorerTask, type FeePolicy, type FeeTier, type FileAbuseReportOptions, type FindAgentsOptions, type GatewayCallOptions, type GatewayCallResult, type GatewayProvider, type GetTaskHistoryOptions, type GetTransactionsOptions, type InstantiateTemplateOptions, type ListOpenTasksOptions, type McpServer, type McpToolRecord, type OpenTask, type OpenTaskStatus, type PaymentNote, type PaymentNoteKind, type PaymentStatus, type ProtocolInfo, type ProtocolNegotiation, type QuorumResult, type QuorumStatus, type QuorumTask, type Receipt, type ReceiptDelivery, type RegisterGatewayProviderOptions, type RegisterMcpServerOptions, type RegisterOptions, type RegisterWebhookOptions, type Reputation, type Review, type SendTaskOptions, type SlaStatus, type SplitPayout, type SplitRecipient, type SubmitBidOptions, type SystemStatus, type TaskHandler, type TaskProgress, type TaskRequest, type TaskResult, type TaskSla, type TaskSplit, type TaskSplitsView, type TaskStatus, type Transaction, type VerifyOptions, type VerifyProofScoreOptions, type VerifyProofScoreResult, type VerifyWebhookOptions, type Webhook, type WebhookDelivery, type WebhookEventType, type Workflow, type WorkflowStep, type WorkflowTemplate, type X402PayFunction, type X402PaymentOption, type X402Requirements, axon, verifyProofScore, verifyWebhookSignature };
+export { type AbuseReason, type AbuseReport, type AbuseStatus, type AcceptBidOptions, type Agent, type AgentBalance, type AgentContext, type AgentMetrics, type AgentRating, type AgentRunHandler, type AgentRuntimeOptions, type ApiErrorBody, type ApiErrorCode, type AttestCapabilityOptions, type AuthChallenge, type AuthVerifyResult, type AxonAgent, AxonApiError, AxonClient, type AxonConfig, type Bid, type BidStatus, type CallMcpToolOptions, type CapabilityAttestation, type CapabilitySummary, type ComponentStatus, type CreateOpenTaskOptions, type CreateQuorumOptions, type CreateWorkflowTemplateOptions, type DefineSlaOptions, type DefineSplitsOptions, type DelegateOptions, type DelegationResult, type DelegationStep, type EndpointUptime, type ExplorerFeed, type ExplorerSettlement, type ExplorerTask, type FeePolicy, type FeeTier, type FileAbuseReportOptions, type FindAgentsOptions, type GatewayCallOptions, type GatewayCallResult, type GatewayProvider, type GetTaskHistoryOptions, type GetTransactionsOptions, type HireOptions, type HireResult, type InstantiateTemplateOptions, type ListOpenTasksOptions, type McpServer, type McpToolRecord, type OpenTask, type OpenTaskStatus, type PaymentNote, type PaymentNoteKind, type PaymentStatus, type ProtocolInfo, type ProtocolNegotiation, type QuorumResult, type QuorumStatus, type QuorumTask, type Receipt, type ReceiptDelivery, type RegisterGatewayProviderOptions, type RegisterMcpServerOptions, type RegisterOptions, type RegisterWebhookOptions, type Reputation, type Review, type SendTaskOptions, type SlaStatus, type SplitPayout, type SplitRecipient, type SubmitBidOptions, type SystemStatus, type TaskHandler, type TaskProgress, type TaskRequest, type TaskResult, type TaskSla, type TaskSplit, type TaskSplitsView, type TaskStatus, type Transaction, type VerifyOptions, type VerifyProofScoreOptions, type VerifyProofScoreResult, type VerifyReceiptOptions, type VerifyReceiptResult, type VerifyWebhookOptions, type Webhook, type WebhookDelivery, type WebhookEventType, type Workflow, type WorkflowStep, type WorkflowTemplate, type X402PayFunction, type X402PaymentOption, type X402Requirements, axon, defineAgent, hire, verifyProofScore, verifyReceipt, verifyWebhookSignature };

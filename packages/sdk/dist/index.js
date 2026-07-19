@@ -723,6 +723,305 @@ async function verifyProofScore(agentId, opts = {}) {
     note
   };
 }
+function canonicalStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(canonicalStringify).join(",")}]`;
+  const obj = value;
+  const keys = Object.keys(obj).filter((k) => obj[k] !== void 0).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalStringify(obj[k])}`).join(",")}}`;
+}
+async function sha256hex(input) {
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  const { createHash } = await import('crypto');
+  return createHash("sha256").update(input, "utf8").digest("hex");
+}
+async function verifyReceipt(taskId, opts = {}) {
+  const base = (opts.baseUrl ?? "https://axon-agents.com").replace(/\/+$/, "");
+  const f = opts.fetch ?? globalThis.fetch;
+  const id = encodeURIComponent(taskId);
+  const res = await f(`${base}/api/receipts/${id}/trace`);
+  if (!res.ok) throw new Error(`trace fetch failed: HTTP ${res.status}`);
+  const trace = await res.json();
+  let prevHash = null;
+  let expectedSeq = 1;
+  let brokenAt = null;
+  for (const e of trace.events) {
+    const metaStr = e.meta == null ? null : canonicalStringify(e.meta);
+    const recomputed = await sha256hex(
+      canonicalStringify({
+        traceId: trace.traceId,
+        seq: e.seq,
+        taskId: e.taskId,
+        kind: e.kind,
+        fromAgent: e.fromAgent,
+        toAgent: e.toAgent,
+        workflowId: e.workflowId,
+        stepIndex: e.stepIndex,
+        inputHash: e.inputHash,
+        outputHash: e.outputHash,
+        model: e.model,
+        inputTokens: e.inputTokens,
+        outputTokens: e.outputTokens,
+        costUsd: e.costUsd,
+        latencyMs: e.latencyMs,
+        meta: metaStr,
+        createdAt: e.createdAt,
+        prevHash: e.prevHash
+      })
+    );
+    if (e.seq !== expectedSeq || e.prevHash !== prevHash || e.hash !== recomputed) {
+      brokenAt = e.seq;
+      break;
+    }
+    prevHash = e.hash;
+    expectedSeq += 1;
+  }
+  const chainValid = brokenAt === null && trace.events.length > 0;
+  const platformClaim = typeof trace.verified === "boolean" ? trace.verified : null;
+  const note = chainValid ? `Recomputed all ${trace.events.length} event${trace.events.length !== 1 ? "s" : ""}; the hash chain is intact.` : trace.events.length === 0 ? "Trace has no events to verify." : `Hash chain breaks at event #${brokenAt} \u2014 the recomputed hash or link does not match.`;
+  return {
+    taskId: trace.taskId,
+    traceId: trace.traceId,
+    eventCount: trace.events.length,
+    chainValid,
+    brokenAt,
+    platformClaim,
+    verified: chainValid,
+    note
+  };
+}
+
+// src/runtime.ts
+var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+function isNotFound(err) {
+  return err instanceof AxonApiError && (err.status === 404 || err.code === "NOT_FOUND");
+}
+function isStateConflict(err) {
+  return err instanceof AxonApiError && (err.status === 409 || err.code === "TASK_STATE_CONFLICT");
+}
+function defineAgent(client, options) {
+  const {
+    handler,
+    pollIntervalMs = 2e3,
+    autoRegister = true,
+    concurrency = 1,
+    onError,
+    onTaskStart,
+    onTaskComplete,
+    ...registration
+  } = options;
+  const agentId = registration.agentId;
+  let running = false;
+  let stopping = false;
+  let loopPromise = null;
+  const inFlight = /* @__PURE__ */ new Set();
+  const claiming = /* @__PURE__ */ new Set();
+  async function ensureRegistered() {
+    if (!autoRegister) return;
+    try {
+      await client.getAgent(agentId);
+    } catch (err) {
+      if (isNotFound(err)) {
+        await client.register(registration);
+        return;
+      }
+      throw err;
+    }
+  }
+  function safeCall(fn, ...args) {
+    if (!fn) return;
+    try {
+      fn(...args);
+    } catch {
+    }
+  }
+  async function settle(started, ok, text) {
+    const attempts = 4;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        if (ok) await client.completeTask(started.taskId, text);
+        else await client.failTask(started.taskId, text);
+        return true;
+      } catch (err) {
+        if (isStateConflict(err)) return true;
+        if (i === attempts - 1) {
+          safeCall(onError, err, started);
+          return false;
+        }
+        await sleep2(Math.min(2e3, 200 * 2 ** i));
+      }
+    }
+    return false;
+  }
+  async function runOne(task) {
+    let started;
+    try {
+      started = await client.startTask(task.taskId);
+    } catch (err) {
+      if (isStateConflict(err)) return;
+      safeCall(onError, err, task);
+      return;
+    }
+    safeCall(onTaskStart, started);
+    const ctx = {
+      task: started,
+      // Progress is best-effort telemetry — a failed emit must never fail the
+      // task the handler is otherwise completing fine.
+      progress: (message) => client.emitProgress(started.taskId, message).then(
+        () => void 0,
+        () => void 0
+      ),
+      get stopping() {
+        return stopping;
+      }
+    };
+    let ok;
+    let text;
+    try {
+      const result = await handler(ctx);
+      if (typeof result === "string") {
+        ok = true;
+        text = result;
+      } else {
+        ok = result.success !== false;
+        text = ok ? result.output : result.output || "Task failed";
+      }
+    } catch (err) {
+      ok = false;
+      text = err instanceof Error ? err.message : String(err);
+      safeCall(onError, err, started);
+    }
+    const settled = await settle(started, ok, text);
+    if (settled) {
+      safeCall(onTaskComplete, {
+        taskId: started.taskId,
+        success: ok,
+        output: ok ? text : "",
+        error: ok ? void 0 : text,
+        completedAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    }
+  }
+  async function loop() {
+    while (running) {
+      let launched = 0;
+      try {
+        const slots = concurrency - inFlight.size;
+        if (slots > 0) {
+          const queued = await client.getTaskHistory({ agentId, role: "recipient", status: "queued", limit: slots });
+          for (const task of queued) {
+            if (!running) break;
+            if (claiming.has(task.taskId)) continue;
+            claiming.add(task.taskId);
+            const p = runOne(task).finally(() => {
+              inFlight.delete(p);
+              claiming.delete(task.taskId);
+            });
+            inFlight.add(p);
+            launched++;
+          }
+        }
+      } catch (err) {
+        safeCall(onError, err);
+      }
+      if (launched === 0) await sleep2(pollIntervalMs);
+    }
+  }
+  return {
+    get agentId() {
+      return agentId;
+    },
+    get running() {
+      return running;
+    },
+    async start() {
+      if (running) return;
+      running = true;
+      stopping = false;
+      try {
+        await ensureRegistered();
+      } catch (err) {
+        running = false;
+        throw err;
+      }
+      loopPromise = loop();
+    },
+    async stop() {
+      stopping = true;
+      running = false;
+      await Promise.allSettled([...inFlight]);
+      if (loopPromise) await loopPromise;
+      loopPromise = null;
+    }
+  };
+}
+
+// src/hire.ts
+var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
+async function hire(client, opts) {
+  const {
+    to,
+    task,
+    context,
+    from = "anonymous",
+    pay,
+    pollIntervalMs = 2e3,
+    timeoutMs = 12e4,
+    withReceipt = true
+  } = opts;
+  let requirements = null;
+  try {
+    requirements = await client.getX402Requirements(to);
+  } catch {
+    requirements = null;
+  }
+  const paid = requirements !== null;
+  if (paid && !pay) {
+    throw new Error(
+      `Agent "${to}" is priced (x402) \u2014 pass a \`pay\` function to hire it. Free-lane agents need no payment.`
+    );
+  }
+  let created;
+  if (paid && pay) {
+    created = await client.submitTaskX402(to, task, pay, { from, context });
+  } else {
+    created = await client.sendTask({ from, to, task, context });
+  }
+  const deadline = Date.now() + timeoutMs;
+  let current = created;
+  while (current.status !== "completed" && current.status !== "failed") {
+    if (Date.now() >= deadline) {
+      return { taskId: current.taskId, status: current.status, paid, timedOut: true };
+    }
+    await sleep3(pollIntervalMs);
+    try {
+      current = await client.getTask(current.taskId);
+    } catch {
+    }
+  }
+  const result = {
+    taskId: current.taskId,
+    status: current.status,
+    paid,
+    timedOut: false
+  };
+  if (current.status === "completed") {
+    result.output = current.output ?? "";
+    if (withReceipt) {
+      try {
+        const receipt = (await client.getReceipt(current.taskId)).receipt;
+        result.receipt = receipt;
+      } catch {
+      }
+    }
+  } else {
+    result.error = current.error ?? "Task failed";
+  }
+  return result;
+}
 
 // src/index.ts
 var axon = new AxonClient();
@@ -730,7 +1029,10 @@ var axon = new AxonClient();
 exports.AxonApiError = AxonApiError;
 exports.AxonClient = AxonClient;
 exports.axon = axon;
+exports.defineAgent = defineAgent;
+exports.hire = hire;
 exports.verifyProofScore = verifyProofScore;
+exports.verifyReceipt = verifyReceipt;
 exports.verifyWebhookSignature = verifyWebhookSignature;
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map
