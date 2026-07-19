@@ -139,3 +139,167 @@ export async function verifyProofScore(
     note,
   };
 }
+
+// ── Receipt / execution-trace verification ──────────────────────────────────
+// Every Axon receipt is backed by a hash-chained execution trace (the "flight
+// recorder"): each event commits to the previous event's hash, so editing,
+// reordering, inserting, or deleting any NON-FINAL event breaks the chain from
+// that point on. verifyReceipt fetches the public trace and RECOMPUTES the whole
+// chain locally — the exact canonical-JSON + SHA-256 scheme the platform uses —
+// so tamper-evidence holds without trusting Axon's own "verified" flag.
+//
+// Caveat, inherent to any head-less hash chain: truncating the TAIL (dropping the
+// most recent events) leaves a shorter, still-internally-valid chain. verifyReceipt
+// confirms the chain it is shown is intact; it cannot prove that chain is complete,
+// since the trace publishes no committed length or head hash to check against.
+
+// Deterministic JSON: keys sorted recursively, `undefined` dropped. Byte-identical
+// to the scheme the trace was hashed with on write.
+function canonicalStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(canonicalStringify).join(",")}]`;
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).filter((k) => obj[k] !== undefined).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalStringify(obj[k])}`).join(",")}}`;
+}
+
+// SHA-256 hex — Web Crypto (browser + Node 18+), falling back to Node's crypto.
+async function sha256hex(input: string): Promise<string> {
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+  const { createHash } = await import("crypto");
+  return createHash("sha256").update(input, "utf8").digest("hex");
+}
+
+interface PublicTraceEvent {
+  seq: number;
+  taskId: string | null;
+  kind: string;
+  fromAgent: string | null;
+  toAgent: string | null;
+  workflowId: string | null;
+  stepIndex: number | null;
+  inputHash: string | null;
+  outputHash: string | null;
+  model: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  costUsd: number | null;
+  latencyMs: number | null;
+  meta: Record<string, unknown> | null;
+  prevHash: string | null;
+  hash: string;
+  createdAt: string;
+}
+
+export interface VerifyReceiptOptions {
+  /** Where to fetch the trace from. Default: `https://axon-agents.com`. */
+  baseUrl?: string;
+  /** Inject a fetch (tests, custom proxy). Default: global `fetch`. */
+  fetch?: typeof fetch;
+}
+
+export interface VerifyReceiptResult {
+  taskId: string;
+  traceId: string;
+  /** Number of events in the hash chain. */
+  eventCount: number;
+  /** Every event's hash recomputes AND links to the previous one, with contiguous seq. */
+  chainValid: boolean;
+  /** seq of the first event that failed to recompute/link, or null if the chain is intact. */
+  brokenAt: number | null;
+  /** What the platform claims for the same chain — reported, NEVER trusted. */
+  platformClaim: boolean | null;
+  /** chainValid === true — the SDK's own independent verdict. */
+  verified: boolean;
+  note: string;
+}
+
+/**
+ * Independently verify a receipt's execution trace. Fetches the public,
+ * hash-chained trace for a task and recomputes every event's hash from the same
+ * canonical-JSON + SHA-256 scheme used on write, checking that each links to the
+ * previous (contiguous seq, matching prevHash). Nothing but the public trace sits
+ * in the trust path; the platform's own `verified` flag is reported but never
+ * relied on. Detects any edit, reorder, insertion, or interior deletion; cannot
+ * detect tail truncation (see the module note) — `chainValid` means the shown
+ * chain is intact, not provably complete.
+ */
+export async function verifyReceipt(
+  taskId: string,
+  opts: VerifyReceiptOptions = {},
+): Promise<VerifyReceiptResult> {
+  const base = (opts.baseUrl ?? "https://axon-agents.com").replace(/\/+$/, "");
+  const f = opts.fetch ?? globalThis.fetch;
+  const id = encodeURIComponent(taskId);
+
+  const res = await f(`${base}/api/receipts/${id}/trace`);
+  if (!res.ok) throw new Error(`trace fetch failed: HTTP ${res.status}`);
+  const trace = (await res.json()) as {
+    taskId: string;
+    traceId: string;
+    verified?: boolean;
+    events: PublicTraceEvent[];
+  };
+
+  let prevHash: string | null = null;
+  let expectedSeq = 1;
+  let brokenAt: number | null = null;
+
+  for (const e of trace.events) {
+    // meta is hashed as its canonical STRING; re-canonicalize the parsed object
+    // so the recompute is byte-identical to the stored bytes.
+    const metaStr = e.meta == null ? null : canonicalStringify(e.meta);
+    const recomputed = await sha256hex(
+      canonicalStringify({
+        traceId: trace.traceId,
+        seq: e.seq,
+        taskId: e.taskId,
+        kind: e.kind,
+        fromAgent: e.fromAgent,
+        toAgent: e.toAgent,
+        workflowId: e.workflowId,
+        stepIndex: e.stepIndex,
+        inputHash: e.inputHash,
+        outputHash: e.outputHash,
+        model: e.model,
+        inputTokens: e.inputTokens,
+        outputTokens: e.outputTokens,
+        costUsd: e.costUsd,
+        latencyMs: e.latencyMs,
+        meta: metaStr,
+        createdAt: e.createdAt,
+        prevHash: e.prevHash,
+      }),
+    );
+    if (e.seq !== expectedSeq || e.prevHash !== prevHash || e.hash !== recomputed) {
+      brokenAt = e.seq;
+      break;
+    }
+    prevHash = e.hash;
+    expectedSeq += 1;
+  }
+
+  const chainValid = brokenAt === null && trace.events.length > 0;
+  const platformClaim = typeof trace.verified === "boolean" ? trace.verified : null;
+  const note = chainValid
+    ? `Recomputed all ${trace.events.length} event${trace.events.length !== 1 ? "s" : ""}; the hash chain is intact.`
+    : trace.events.length === 0
+      ? "Trace has no events to verify."
+      : `Hash chain breaks at event #${brokenAt} — the recomputed hash or link does not match.`;
+
+  return {
+    taskId: trace.taskId,
+    traceId: trace.traceId,
+    eventCount: trace.events.length,
+    chainValid,
+    brokenAt,
+    platformClaim,
+    verified: chainValid,
+    note,
+  };
+}

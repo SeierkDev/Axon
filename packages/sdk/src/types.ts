@@ -772,3 +772,98 @@ export interface SystemStatus {
   };
   updatedAt: string;
 }
+
+// ─── Agent runtime (v0.3) ─────────────────────────────────────────────────────
+// The batteries-included worker: register once, then poll → run → settle in a
+// loop. Turns the low-level task primitives into a live, earning agent.
+
+export interface AgentContext {
+  /** The task being handled, already transitioned to `running`. */
+  task: TaskRequest;
+  /** Emit an intermediate progress message — it lands on the task's timeline/receipt. */
+  progress(message: string): Promise<void>;
+  /** Becomes true once `stop()` is called — long-running handlers should check it and bail early. */
+  readonly stopping: boolean;
+}
+
+/**
+ * The work an agent does per task. Return the output string, or `{ output,
+ * success }` to fail the task deliberately (e.g. can't fulfil it). Throwing also
+ * fails the task, with the error message recorded.
+ */
+export type AgentRunHandler = (
+  ctx: AgentContext
+) => Promise<string | { output: string; success?: boolean }>;
+
+export interface AgentRuntimeOptions extends RegisterOptions {
+  /** What each incoming task runs. */
+  handler: AgentRunHandler;
+  /** Idle poll interval in ms. Default 2000. */
+  pollIntervalMs?: number;
+  /** Register the agent on `start()` if it doesn't exist yet. Default true. */
+  autoRegister?: boolean;
+  /** Max tasks to run at once. Default 1. */
+  concurrency?: number;
+  /** Called on any loop/handler error the runtime swallows to stay alive. */
+  onError?: (error: unknown, task?: TaskRequest) => void;
+  /** Called just before a task's handler runs. */
+  onTaskStart?: (task: TaskRequest) => void;
+  /** Called after a task settles (completed or failed). */
+  onTaskComplete?: (result: TaskResult) => void;
+}
+
+export interface AxonAgent {
+  readonly agentId: string;
+  /** Register (if needed) and begin polling. Returns once the loop is running. */
+  start(): Promise<void>;
+  /** Stop polling and wait for in-flight tasks to finish settling. */
+  stop(): Promise<void>;
+  /** True while the run loop is active. */
+  readonly running: boolean;
+}
+
+// ─── One-shot hire (v0.3) ─────────────────────────────────────────────────────
+// Discover → (pay, if the agent is priced) → submit → poll to completion →
+// receipt, in a single call. The demand-side mirror of the runtime.
+
+export interface HireOptions {
+  /** Agent to hire. */
+  to: string;
+  /** The work to do. */
+  task: string;
+  /** Optional structured context for the agent. */
+  context?: Record<string, unknown>;
+  /** Who's hiring. Default "anonymous". */
+  from?: string;
+  /**
+   * How to pay, if the agent is priced (x402). Given the payment requirements,
+   * return the on-chain signature + payer address. Omit for free-lane agents; a
+   * paid agent without a `pay` function throws a clear error.
+   */
+  pay?: X402PayFunction;
+  /** Poll interval while waiting for completion, ms. Default 2000. */
+  pollIntervalMs?: number;
+  /** Overall wait for completion before giving up, ms. Default 120000. */
+  timeoutMs?: number;
+  /** Fetch the verifiable receipt once completed. Default true. */
+  withReceipt?: boolean;
+}
+
+export interface HireResult {
+  taskId: string;
+  /** Terminal status observed (`completed` / `failed`), or the last status seen on timeout. */
+  status: TaskStatus;
+  /** The agent's output, when completed. */
+  output?: string;
+  /** The failure reason, when failed. */
+  error?: string;
+  /** The verifiable receipt, when `withReceipt` and the task completed. */
+  receipt?: Receipt;
+  /** Whether this hire went through the paid (x402) path. */
+  paid: boolean;
+  /** True when the wait ended on a timeout rather than a terminal status. */
+  timedOut: boolean;
+}
+
+// Receipt / trace verification (v0.3) lives in ./verify alongside the other
+// verify primitives — see VerifyReceiptOptions / VerifyReceiptResult there.
