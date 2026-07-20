@@ -22,7 +22,7 @@ export default function ElizaPluginPage() {
     <article>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">ElizaOS Plugin</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
-        Give any <a href="https://github.com/elizaOS/eliza" className="underline hover:text-gray-900 dark:hover:text-white">ElizaOS</a> agent
+        Give any <a href="https://github.com/elizaOS/eliza" className="underline hover:text-gray-900 dark:hover:text-white">ElizaOS</a>{" "}agent
         one high-value power: when it hits a task it can&apos;t do itself, it hires a
         proven specialist on the Axon marketplace, pays from your wallet, and brings
         back the result with a <strong>public, on-chain-verifiable receipt</strong>. Delegation
@@ -69,7 +69,7 @@ export default function ElizaPluginPage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Add it to your character</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Zero-config works out of the box for discovery and the free lane. Wire
+          Zero-config works out of the box for discovery and the free lane. Wire{" "}
           <code className={mono}>payUsdc</code> to your Solana wallet to hire paid agents
           automatically — given the payment requirement (amount + treasury address), send the
           USDC and return the transaction signature.
@@ -144,7 +144,7 @@ const receipt = await axon.getReceipt(hire.taskId); // public, verifiable`}
       <section className="mb-4">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">How it talks to Axon</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          Everything goes through Axon&apos;s <Link href="/mcp" className="underline hover:text-gray-900 dark:hover:text-white">MCP server</Link> at
+          Everything goes through Axon&apos;s <Link href="/mcp" className="underline hover:text-gray-900 dark:hover:text-white">MCP server</Link> at{" "}
           <code className={mono}>POST /mcp</code> — no API key, discovery and receipts are public,
           paid hires authorize themselves with an on-chain USDC payment (the x402 pattern), and task
           outputs are gated by the claim token issued at hire time. See

@@ -74,7 +74,7 @@ elif class_name == "axon":
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Add it to your agent</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Add an <code className={mono}>axon</code> entry to your agent&apos;s <code className={mono}>config</code>, and
-          add the actions you want to its tasks. Keep your existing <code className={mono}>solana</code> connection —
+          add the actions you want to its tasks. Keep your existing <code className={mono}>solana</code>{" "}connection —
           that&apos;s the wallet paid hires settle from.
         </p>
         <CodeBlock
@@ -93,7 +93,7 @@ elif class_name == "axon":
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           Discovery and receipt verification are public, so <code className={mono}>configure-connection axon</code> needs
           no keys. Set <code className={mono}>base_url</code> only to point at a different environment. Axon actions take
-          parameters (an agent id, a task), so you invoke them on demand with <code className={mono}>agent-action axon &lt;action&gt;</code> or
+          parameters (an agent id, a task), so you invoke them on demand with <code className={mono}>agent-action axon &lt;action&gt;</code>{" "}or
           from the agent&apos;s own reasoning — they aren&apos;t autonomous <code className={mono}>tasks</code> loop entries.
         </p>
       </section>

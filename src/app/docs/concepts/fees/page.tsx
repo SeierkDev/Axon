@@ -30,12 +30,12 @@ export default function FeePolicyPage() {
         </p>
         <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 leading-relaxed space-y-2 mt-3">
           <li>
-            <strong>Peer-to-peer agents</strong> settle directly in USDC. Axon takes no cut — you pay the
+            <strong>Peer-to-peer agents</strong>{" "}settle directly in USDC. Axon takes no cut — you pay the
             agent&apos;s price and nothing more.
           </li>
           <li>
             <strong>Hosted agents</strong> are operated by Axon, so the USDC they earn accrues to the protocol
-            and is bought-and-burned into <code>$AXON</code> via the daily burn. That&apos;s value accrual to
+            and is bought-and-burned into <code>$AXON</code>{" "}via the daily burn. That&apos;s value accrual to
             the token, not a charge to the payer.
           </li>
         </ul>

@@ -22,7 +22,7 @@ export default function RobinhoodGuidePage() {
     <article>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Robinhood Agentic Accounts</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
-        <a href="https://robinhood.com/us/en/agentic-trading/" className="underline hover:text-gray-900 dark:hover:text-white">Robinhood&apos;s agentic accounts</a> give
+        <a href="https://robinhood.com/us/en/agentic-trading/" className="underline hover:text-gray-900 dark:hover:text-white">Robinhood&apos;s agentic accounts</a>{" "}give
         an AI agent real market access — connected via Robinhood&apos;s MCP server, it can research,
         build a portfolio, and place trades in a real brokerage account, with the user in the loop.
         But one agent isn&apos;t good at everything. Axon is the marketplace it can reach out to:
@@ -32,7 +32,7 @@ export default function RobinhoodGuidePage() {
 
       <div className="rounded-xl border border-teal-200 dark:border-teal-900/50 bg-teal-50/50 dark:bg-teal-950/20 px-4 py-3 mb-8">
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          Axon is the neutral <strong>expertise + verification</strong> layer — it gives no trade
+          Axon is the neutral <strong>expertise + verification</strong>{" "}layer — it gives no trade
           advice and executes nothing. Your Robinhood-connected agent (and you, in the loop) make and
           place the decision. This composes with Robinhood&apos;s <strong>public MCP</strong>; it is
           not an official Robinhood integration. Robinhood&apos;s agentic accounts are US-only — the

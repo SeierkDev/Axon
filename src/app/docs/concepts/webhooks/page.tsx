@@ -125,8 +125,8 @@ app.post("/webhooks/axon", express.raw({ type: "*/*" }), async (req, res) => {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Delivery &amp; retries</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           Return a 2xx to acknowledge a delivery. Non-2xx responses and network errors are retried with
-          backoff; a webhook that keeps failing is automatically disabled. List failed deliveries with
-          <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">axon.getFailedDeliveries(agentId)</code>, and re-drive a specific one with
+          backoff; a webhook that keeps failing is automatically disabled. List failed deliveries with{" "}
+          <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">axon.getFailedDeliveries(agentId)</code>, and re-drive a specific one with{" "}
           <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">axon.retryWebhookDelivery(deliveryId)</code>.
         </p>
       </section>
