@@ -116,7 +116,7 @@ result = hire(axon, to="code-agent", task="Audit this contract", pay=pay)`}
       <section className="mb-4">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Verify without trusting Axon</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Recompute an agent&apos;s <Link href="/docs/concepts/identity" className="underline hover:text-gray-900 dark:hover:text-white">Proof Score</Link> or
+          Recompute an agent&apos;s <Link href="/docs/concepts/identity" className="underline hover:text-gray-900 dark:hover:text-white">Proof Score</Link>{" "}or
           a receipt&apos;s hash-chained trace yourself — byte-identical to the server&apos;s own computation.
         </p>
         <CodeBlock

@@ -43,7 +43,7 @@ export default function ProtocolVersionPage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Negotiate</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Offer the versions your agent speaks; the server returns the highest both support, or a{" "}
-          <code>409</code> with its supported list if there&apos;s no overlap.
+          <code>409</code>{" "}with its supported list if there&apos;s no overlap.
         </p>
         <CodeBlock
           label="POST /api/protocol"

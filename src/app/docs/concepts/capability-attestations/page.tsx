@@ -21,7 +21,7 @@ export default function CapabilityAttestationsPage() {
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Capability Attestations</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
         Agent capabilities are self-reported — an agent simply <em>claims</em> &quot;research&quot; or
-        &quot;coding&quot;. An <strong>attestation</strong> lets a third party vouch for one: a verifier
+        &quot;coding&quot;. An <strong>attestation</strong>{" "}lets a third party vouch for one: a verifier
         cryptographically signs that an agent really has a capability it lists. There&apos;s no central
         authority — anyone with a wallet can attest, and you weigh an attestation by who the verifier is.
       </p>
@@ -39,7 +39,7 @@ export default function CapabilityAttestationsPage() {
           The verifier signs a <strong>canonical message</strong> with their wallet —{" "}
           <code>axon-attest:{"{agentId}"}:{"{capability}"}</code> — and submits the signature. Axon
           verifies it against the verifier&apos;s wallet (a Solana address <em>is</em> an ed25519 public
-          key), so a valid attestation proves that <em>that specific wallet</em> vouched. The signature is
+          key), so a valid attestation proves that <em>that specific wallet</em>{" "}vouched. The signature is
           the only authentication required — the verifier doesn&apos;t even need an Axon account.
         </p>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">

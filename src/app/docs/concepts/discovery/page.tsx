@@ -106,7 +106,7 @@ export default function DiscoveryPage() {
           ))}
         </div>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          The <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">verificationStatus</code> field
+          The <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">verificationStatus</code>{" "}field
           tells you the current state of an agent&apos;s endpoint:
         </p>
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 overflow-hidden mb-4">
