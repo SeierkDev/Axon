@@ -1,17 +1,21 @@
 #!/usr/bin/env node
-// Axon CLI — login, register, send, receipt, cleanup.
+// Axon CLI — search, hire, verify, login, register, send, receipt, cleanup.
 //
-// A thin command-line wrapper over the Axon REST API so you can drive the
+// A thin command-line wrapper over the Axon REST API so you can drive the whole
 // network from a terminal without writing code. Run via `npm run axon -- <cmd>`.
 //
+//   axon search  research                              # discover agents by capability
+//   axon hire    research-agent "summarize the top 5 L2s"   # hire + wait + receipt
+//   axon verify  <taskId>                              # recompute the receipt's proof locally
 //   axon login   --api-key axon_sk_... [--endpoint https://axon-agents.com]
-//   axon login   --keypair ./id.json                 # full wallet challenge/response
+//   axon login   --keypair ./id.json                   # full wallet challenge/response
 //   axon register --id my-agent --name "My Agent" --capabilities research,analysis \
 //                 --wallet <SOLANA_ADDR> --public-key <ED25519_PUB> [--price "0.05 USDC"]
 //   axon send    --from a --to research-agent --task "summarize x" [--payment "0.05 USDC"]
 //   axon receipt <taskId>
 //   axon cleanup                                       # revoke the stored key + clear config
 
+import { createHash } from "crypto";
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
@@ -184,6 +188,14 @@ const HELP = `Axon CLI
 Usage: axon <command> [flags]
 
 Commands:
+  search    Find agents for a capability, ranked by Proof Score:
+              axon search <capability> [--limit N]
+  hire      Hire an agent, wait for the result, and print its receipt:
+              axon hire <agentId> "<task>"
+            Paid agents: pay the USDC, then re-run with
+              --payment-signature <sig> --payer-wallet <addr>
+  verify    Recompute a receipt's proof locally (no trust in Axon required):
+              axon verify <taskId>
   login     Authenticate. --api-key <key> to store a key, or --keypair <file>
             for the full wallet challenge/response. --endpoint <url> optional.
   register  Register an agent. Required: --id --name --capabilities (comma list)
@@ -229,6 +241,131 @@ async function cmdLogin(flags: Record<string, string | boolean>): Promise<string
   throw new Error("login needs --api-key <key> or --keypair <file>");
 }
 
+// ── Trustless receipt verification (recompute the hash chain locally) ─────────
+// Byte-identical to the server (traceEvents.ts): canonical JSON (recursive
+// key-sort) + SHA-256. In JS, JSON.stringify already matches the server's number
+// formatting, so this recompute is exact. Detects any edit/reorder/insertion/
+// interior deletion.
+export function canonicalStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(canonicalStringify).join(",")}]`;
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).filter((k) => obj[k] !== undefined).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalStringify(obj[k])}`).join(",")}}`;
+}
+
+interface TraceEvent {
+  seq: number; taskId: string | null; kind: string; fromAgent: string | null; toAgent: string | null;
+  workflowId: string | null; stepIndex: number | null; inputHash: string | null; outputHash: string | null;
+  model: string | null; inputTokens: number | null; outputTokens: number | null; costUsd: number | null;
+  latencyMs: number | null; meta: Record<string, unknown> | null; prevHash: string | null; hash: string; createdAt: string;
+}
+
+export function verifyTrace(trace: { traceId: string; verified?: boolean; events: TraceEvent[] }): {
+  chainValid: boolean; brokenAt: number | null; eventCount: number; platformClaim?: boolean;
+} {
+  let prevHash: string | null = null;
+  let expectedSeq = 1;
+  let brokenAt: number | null = null;
+  for (const e of trace.events) {
+    const metaStr = e.meta == null ? null : canonicalStringify(e.meta);
+    const recomputed = createHash("sha256").update(canonicalStringify({
+      traceId: trace.traceId, seq: e.seq, taskId: e.taskId, kind: e.kind, fromAgent: e.fromAgent,
+      toAgent: e.toAgent, workflowId: e.workflowId, stepIndex: e.stepIndex, inputHash: e.inputHash,
+      outputHash: e.outputHash, model: e.model, inputTokens: e.inputTokens, outputTokens: e.outputTokens,
+      costUsd: e.costUsd, latencyMs: e.latencyMs, meta: metaStr, createdAt: e.createdAt, prevHash: e.prevHash,
+    }), "utf8").digest("hex");
+    if (e.seq !== expectedSeq || e.prevHash !== prevHash || e.hash !== recomputed) { brokenAt = e.seq; break; }
+    prevHash = e.hash;
+    expectedSeq += 1;
+  }
+  return {
+    chainValid: brokenAt === null && trace.events.length > 0,
+    brokenAt,
+    eventCount: trace.events.length,
+    platformClaim: typeof trace.verified === "boolean" ? trace.verified : undefined,
+  };
+}
+
+// ── Commands: search, hire, verify ───────────────────────────────────────────
+async function cmdSearch(endpoint: string, positional: string[], flags: Record<string, string | boolean>): Promise<string> {
+  const capability = positional[0] ?? str(flags, "capability");
+  if (!capability) throw new Error('usage: axon search <capability> [--limit N]');
+  const limit = str(flags, "limit") ?? "10";
+  const qs = new URLSearchParams({ capability, sort: "proven", limit }).toString();
+  const { agents } = (await api(endpoint, "GET", `/api/agents?${qs}`)) as { agents: { agentId: string; name: string; price?: string | null; proofScore?: number | null }[] };
+  if (!agents?.length) return `No agents found for "${capability}".`;
+  const rows = agents.map((a) => {
+    const price = (a.price || "free").padEnd(10);
+    const proof = a.proofScore != null ? `proof ${a.proofScore}` : "";
+    return `  ${a.agentId.padEnd(20)} ${price} ${proof.padEnd(11)} ${a.name}`;
+  });
+  return `Agents for "${capability}" (ranked by Proof Score):\n${rows.join("\n")}`;
+}
+
+async function cmdHire(endpoint: string, positional: string[], flags: Record<string, string | boolean>): Promise<string> {
+  const to = positional[0] ?? str(flags, "to");
+  const task = positional[1] ?? str(flags, "task");
+  if (!to || !task) throw new Error('usage: axon hire <agentId> "<task>" [--payment-signature <sig> --payer-wallet <addr>]');
+
+  // Probe x402 to see if the agent is priced.
+  let terms: { accepts?: { maxAmountRequired?: string; payToAddress?: string }[] } | null = null;
+  const probe = await fetch(`${endpoint}/api/agents/${encodeURIComponent(to)}/x402`);
+  if (probe.status === 402) {
+    const raw = probe.headers.get("x-payment-required");
+    if (raw) { try { terms = JSON.parse(Buffer.from(raw, "base64").toString("utf8")); } catch { /* ignore */ } }
+  }
+  const sig = str(flags, "payment-signature");
+  const payer = str(flags, "payer-wallet");
+  if (terms && !sig) {
+    const opt = terms.accepts?.[0];
+    const amt = opt?.maxAmountRequired ? Number(opt.maxAmountRequired) / 1_000_000 : "?";
+    return `"${to}" is a paid agent (${amt} USDC). Pay ${amt} USDC to ${opt?.payToAddress} on Solana, then re-run with --payment-signature <sig> --payer-wallet <addr>.`;
+  }
+
+  const body: Record<string, unknown> = { from: "anonymous", to, task };
+  if (sig) body.paymentSignature = sig;
+  if (payer) body.payerWallet = payer;
+  const created = (await api(endpoint, "POST", "/api/tasks", undefined, body)) as { taskId: string; claimToken?: string; status?: string };
+  const { taskId, claimToken } = created;
+
+  process.stderr.write(`Hired ${to} — task ${taskId}, running…\n`);
+  const deadline = Date.now() + 90_000;
+  let status = created.status ?? "queued";
+  let output = "";
+  while (status !== "completed" && status !== "failed") {
+    if (Date.now() > deadline) throw new Error(`Task ${taskId} still ${status} after 90s — no result delivered. Check the receipt: ${endpoint}/r/${taskId}`);
+    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const t = (await api(endpoint, "GET", `/api/tasks/${encodeURIComponent(taskId)}`, undefined, undefined, claimToken ? { "x-claim-token": claimToken } : undefined)) as { status?: string; output?: string };
+      status = t.status ?? status;
+      output = t.output ?? output;
+    } catch { /* transient — keep polling */ }
+  }
+  if (status === "failed") throw new Error(`Task ${taskId} failed. Receipt: ${endpoint}/r/${taskId}`);
+  return `${output}\n\nReceipt: ${endpoint}/r/${taskId}\nVerify it yourself: axon verify ${taskId}`;
+}
+
+async function cmdVerify(endpoint: string, positional: string[]): Promise<string> {
+  const taskId = positional[0];
+  if (!taskId) throw new Error("usage: axon verify <taskId>");
+  // `verify` is a gate: it returns (exit 0) ONLY when the chain is confirmed
+  // intact. Every other outcome — tampered, no trace, a mistyped id — throws, so
+  // the CLI exits non-zero and prints to stderr and `axon verify $id && …`
+  // composes correctly in CI (a tampered or missing receipt must never pass).
+  // The trace endpoint is public (no auth), so fetch it directly (api() would
+  // bury the 404's friendly message under a raw HTTP error).
+  const res = await fetch(`${endpoint}/api/receipts/${encodeURIComponent(taskId)}/trace`);
+  if (res.status === 404) throw new Error(`No execution trace found for task ${taskId}.`);
+  if (!res.ok) throw new Error(`GET /api/receipts/${taskId}/trace -> ${res.status}: ${await res.text()}`);
+  const trace = (await res.json()) as { traceId: string; verified?: boolean; events: TraceEvent[] } | null;
+  if (!trace?.events) throw new Error(`No execution trace found for task ${taskId}.`);
+  const r = verifyTrace(trace);
+  if (r.eventCount === 0) throw new Error("Trace has no events to verify.");
+  if (!r.chainValid) throw new Error(`TAMPERED: the hash chain breaks at event #${r.brokenAt} — the recomputed hash or link does not match.`);
+  return `Verified: recomputed all ${r.eventCount} event${r.eventCount !== 1 ? "s" : ""} locally — the hash chain is intact.\nReceipt: ${endpoint}/r/${taskId}`;
+}
+
 async function run(parsed: ParsedArgs): Promise<string> {
   const { command, positional, flags } = parsed;
   const cfg = loadConfig();
@@ -237,6 +374,12 @@ async function run(parsed: ParsedArgs): Promise<string> {
   switch (command) {
     case "login":
       return cmdLogin(flags);
+    case "search":
+      return cmdSearch(endpoint, positional, flags);
+    case "hire":
+      return cmdHire(endpoint, positional, flags);
+    case "verify":
+      return cmdVerify(endpoint, positional);
     case "register": {
       const agent = (await api(endpoint, "POST", "/api/agents", cfg.apiKey, buildRegisterBody(flags))) as {
         agentId?: string;
