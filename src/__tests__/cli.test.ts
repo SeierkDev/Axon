@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import {
@@ -8,6 +9,7 @@ import {
   loadConfig,
   saveConfig,
   clearConfig,
+  verifyTrace,
 } from "@/cli/axon";
 
 describe("axon cli", () => {
@@ -95,6 +97,34 @@ describe("axon cli", () => {
       expect(loadConfig(path)).toEqual({ endpoint: "http://x", apiKey: "k" });
       clearConfig(path);
       expect(loadConfig(path)).toEqual({});
+    });
+  });
+
+  describe("verifyTrace (axon verify)", () => {
+    const trace = JSON.parse(
+      readFileSync(join(__dirname, "..", "..", "packages", "sdk", "test", "fixtures", "trace-valid.json"), "utf8"),
+    );
+
+    it("recomputes a real production trace as intact", () => {
+      const r = verifyTrace(trace);
+      expect(r.chainValid).toBe(true);
+      expect(r.brokenAt).toBeNull();
+      expect(r.chainValid).toBe(r.platformClaim);
+    });
+
+    it("catches a tampered field", () => {
+      const t = JSON.parse(JSON.stringify(trace));
+      const ev = t.events.find((e: { seq: number }) => e.seq === 2) ?? t.events[1];
+      ev.outputTokens = (ev.outputTokens ?? 0) + 1;
+      const r = verifyTrace(t);
+      expect(r.chainValid).toBe(false);
+      expect(r.brokenAt).toBe(2);
+    });
+
+    it("catches a dropped event", () => {
+      const t = JSON.parse(JSON.stringify(trace));
+      t.events = t.events.filter((e: { seq: number }) => e.seq !== 2);
+      expect(verifyTrace(t).chainValid).toBe(false);
     });
   });
 });
