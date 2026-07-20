@@ -42,7 +42,8 @@ export const docsNav: NavSection[] = [
   {
     section: "SDK Reference",
     items: [
-      { label: "SDK Overview", href: "/docs/sdk" },
+      { label: "TypeScript SDK", href: "/docs/sdk" },
+      { label: "Python SDK", href: "/docs/sdk-python" },
       { label: "CLI", href: "/docs/cli" },
       { label: "API Reference", href: "/docs/api" },
       { label: "API Playground", href: "/docs/playground" },
