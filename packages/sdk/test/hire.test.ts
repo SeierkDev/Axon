@@ -115,4 +115,35 @@ describe("hire()", () => {
     expect(r.status).toBe("failed");
     expect(r.error).toBe("agent could not comply");
   });
+
+  it("funds a hire from balance — no x402 probe, no pay function", async () => {
+    const getX402Requirements = vi.fn(async () => REQUIREMENTS); // priced, but shouldn't be probed
+    const sendTask = vi.fn(async () => baseTask());
+    const client = {
+      getX402Requirements,
+      sendTask,
+      submitTaskX402: vi.fn(),
+      getTask: vi.fn(async () => baseTask({ status: "completed", output: "done" })),
+      getReceipt: vi.fn(async () => ({ receipt: { taskId: "task-1" } })),
+    } as unknown as AxonClient;
+
+    const r = await hire(client, { to: "code-agent", task: "audit", from: "my-agent", paymentMethod: "balance", pollIntervalMs: 1 });
+    expect(r.status).toBe("completed");
+    expect(r.paid).toBe(true);
+    expect(getX402Requirements).not.toHaveBeenCalled(); // balance skips the probe
+    expect(sendTask).toHaveBeenCalledWith(expect.objectContaining({ from: "my-agent", to: "code-agent", paymentMethod: "balance" }));
+  });
+
+  it("rejects a balance hire with an anonymous from", async () => {
+    const client = {
+      getX402Requirements: vi.fn(),
+      sendTask: vi.fn(),
+      submitTaskX402: vi.fn(),
+      getTask: vi.fn(),
+      getReceipt: vi.fn(),
+    } as unknown as AxonClient;
+
+    await expect(hire(client, { to: "code-agent", task: "audit", paymentMethod: "balance" })).rejects.toThrow(/authenticated `from`/);
+    expect((client.sendTask as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
+  });
 });

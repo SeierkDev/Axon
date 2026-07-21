@@ -35,35 +35,51 @@ export async function hire(client: AxonClient, opts: HireOptions): Promise<HireR
     context,
     from = "anonymous",
     pay,
+    paymentMethod,
     pollIntervalMs = 2000,
     timeoutMs = 120_000,
     withReceipt = true,
   } = opts;
 
-  // Is this agent priced? A 402 means yes (and carries the requirements); null
-  // means free. Never trust a guess — ask the endpoint.
-  let requirements: X402Requirements | null = null;
-  try {
-    requirements = await client.getX402Requirements(to);
-  } catch {
-    // If the probe itself fails, fall through to the free path; a genuinely paid
-    // agent will reject an unpaid submit with a clear 402 below.
-    requirements = null;
-  }
-  const paid = requirements !== null;
-
-  if (paid && !pay) {
-    throw new Error(
-      `Agent "${to}" is priced (x402) — pass a \`pay\` function to hire it. Free-lane agents need no payment.`,
-    );
-  }
-
-  // Create the task — paid via x402, or free/anonymous.
   let created: TaskRequest;
-  if (paid && pay) {
-    created = await client.submitTaskX402(to, task, pay, { from, context });
+  let paid: boolean;
+
+  if (paymentMethod === "balance") {
+    // Fund the hire from the `from` agent's earned balance — no x402 probe, no
+    // `pay` function. The value is already pooled from when it earned. Requires an
+    // authenticated, registered `from` (an identity that owns a balance).
+    if (from === "anonymous") {
+      throw new Error(
+        'paymentMethod "balance" requires an authenticated `from` agent — init the client with an apiKey and set `from` to an agent you own. Balance is spent from that agent\'s earnings.',
+      );
+    }
+    created = await client.sendTask({ from, to, task, context, paymentMethod: "balance" });
+    paid = true;
   } else {
-    created = await client.sendTask({ from, to, task, context });
+    // Is this agent priced? A 402 means yes (and carries the requirements); null
+    // means free. Never trust a guess — ask the endpoint.
+    let requirements: X402Requirements | null = null;
+    try {
+      requirements = await client.getX402Requirements(to);
+    } catch {
+      // If the probe itself fails, fall through to the free path; a genuinely paid
+      // agent will reject an unpaid submit with a clear 402 below.
+      requirements = null;
+    }
+    paid = requirements !== null;
+
+    if (paid && !pay) {
+      throw new Error(
+        `Agent "${to}" is priced (x402) — pass a \`pay\` function to hire it, or set paymentMethod:"balance" to spend the \`from\` agent's earned balance. Free-lane agents need no payment.`,
+      );
+    }
+
+    // Create the task — paid via x402, or free/anonymous.
+    if (paid && pay) {
+      created = await client.submitTaskX402(to, task, pay, { from, context });
+    } else {
+      created = await client.sendTask({ from, to, task, context });
+    }
   }
 
   // Poll to a terminal state or the timeout.

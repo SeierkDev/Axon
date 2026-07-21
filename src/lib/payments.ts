@@ -56,6 +56,7 @@ interface PaymentRow {
   created_at: string;
   settled_at: string | null;
   burn_status: string | null;
+  funding_source: string | null;
 }
 
 function rowToPayment(row: PaymentRow): Payment {
@@ -260,12 +261,14 @@ function releaseWithSplits(
     db.prepare("UPDATE transactions SET status='split', settled_at=? WHERE tx_id=?").run(settledAt, escrow.tx_id);
     const insert = db.prepare(
       `INSERT INTO transactions
-         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status)
-       VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?, ?)`
+         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status, funding_source)
+       VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?, ?, ?)`
     );
     for (const p of payouts) {
       const burn = getAgentById(p.agentId)?.verificationStatus === "platform" ? "pending" : null;
-      insert.run(randomUUID(), escrow.task_id, escrow.from_agent, p.agentId, p.amount, escrow.currency, settledAt, settledAt, burn);
+      // Carry the original escrow's funding source onto each payout so a
+      // balance-funded split still counts as balance spend for the payer.
+      insert.run(randomUUID(), escrow.task_id, escrow.from_agent, p.agentId, p.amount, escrow.currency, settledAt, settledAt, burn, escrow.funding_source ?? null);
     }
   })();
 
@@ -351,12 +354,14 @@ export function releaseWithPenalty(taskId: string, penaltyBps: number): Payment 
     db.prepare("UPDATE transactions SET status='split', settled_at=? WHERE tx_id=?").run(settledAt, row.tx_id);
     const insert = db.prepare(
       `INSERT INTO transactions
-         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status)
-       VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?, ?)`
+         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status, funding_source)
+       VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?, ?, ?)`
     );
     for (const p of payouts) {
       const burn = getAgentById(p.agentId)?.verificationStatus === "platform" ? "pending" : null;
-      insert.run(randomUUID(), row.task_id, row.from_agent, p.agentId, p.amount, row.currency, settledAt, settledAt, burn);
+      // Carry the escrow's funding source so a balance-funded hire still counts
+      // as balance spend for the payer even when settled with an SLA penalty.
+      insert.run(randomUUID(), row.task_id, row.from_agent, p.agentId, p.amount, row.currency, settledAt, settledAt, burn, row.funding_source ?? null);
     }
     // Penalty returned to the client (from_agent). A 'refunded' row documents the
     // return without crediting it as agent earnings.
@@ -550,6 +555,91 @@ export function getAgentBalance(agentId: string): AgentBalance {
     netBalance: earned - spent,
     tasksPaid,
   };
+}
+
+// USDC an agent can spend from its earnings right now: everything it has earned,
+// minus what it has already spent FROM BALANCE, minus what balance-funded hires
+// are holding in escrow. This is the agent's credit on the pooled receiver
+// wallet, NOT its own on-chain wallet.
+//
+// Only balance-funded spends draw this down. On-chain and MPP hires are funded
+// externally (the agent's wallet / a pre-paid channel) and merely pass through
+// the pool, so they must not reduce earned balance — they carry no
+// funding_source='balance' tag and are excluded here.
+//
+// KNOWN LIMITATION: `earned` counts every settled credit, including MPP
+// immediate-settlements. An MPP credit settles at hire time (before the work),
+// and is reversed if the earning agent then FAILS that task while the channel is
+// open (refundDebitForTask). So an agent that spends an MPP credit and then fails
+// can go negative here. It's fail-safe — a negative balance blocks all further
+// balance spending, and normally-settled earnings (releasePayment, on completion)
+// are final and never clawed back — but the already-settled spend isn't recovered.
+// A stricter "finalised earnings only" definition (excluding still-reversible MPP
+// credits) is deferred until MPP + entrepreneur usage makes it worth the coupling.
+export function getAvailableBalance(agentId: string): number {
+  const db = getDb();
+  const v = (sql: string) => (db.prepare(sql).get(agentId) as { v: number }).v;
+  const earned = v("SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE to_agent=? AND status='completed' AND currency='USDC'");
+  const spent = v("SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE from_agent=? AND status='completed' AND currency='USDC' AND funding_source='balance'");
+  const escrow = v("SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE from_agent=? AND status='escrow' AND currency='USDC' AND funding_source='balance'");
+  return earned - spent - escrow;
+}
+
+// Pay for a task from an agent's earned ledger balance instead of a fresh
+// on-chain transfer. The value is already pooled from when the agent earned it,
+// so this just creates an escrow that moves ledger entries — funded internally
+// (incoming_signature NULL), settled by the normal releasePayment/refundPayment
+// lifecycle exactly like an on-chain escrow. USDC only; the payer must be a
+// registered agent (a balance belongs to an identity). Throws (non-transient) if
+// the agent doesn't have enough available balance.
+export function createBalancePayment(opts: {
+  taskId?: string;
+  fromAgent: string;
+  toAgent: string;
+  amountSol: number;
+  priceString?: string;
+}): Payment {
+  const db = getDb();
+  const base = parsePaymentAmount(opts.priceString ?? `${opts.amountSol} USDC`);
+  if (!base || base.currency !== "USDC") {
+    throw new Error("Balance payments must be a positive USDC amount");
+  }
+  if (!getAgentById(opts.fromAgent)) {
+    throw new Error("Balance payments require a registered paying agent");
+  }
+
+  const txId = randomUUID();
+  const createdAt = new Date().toISOString();
+
+  // Atomic: the balance read and the escrow insert commit together, so two
+  // concurrent hires can't both pass the check and overspend the same funds
+  // (the second sees the first's escrow row).
+  db.transaction(() => {
+    const available = getAvailableBalance(opts.fromAgent);
+    if (available < base.amount - 1e-9) {
+      throw new Error(
+        `Insufficient balance: ${available.toFixed(2)} USDC available, need ${base.amount.toFixed(2)} USDC`
+      );
+    }
+    checkBudget(opts.fromAgent, opts.toAgent, base.amount);
+    db.prepare(`
+      INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, funding_source)
+      VALUES (?, ?, ?, ?, ?, 'escrow', NULL, 0, ?, ?, 'balance')
+    `).run(txId, opts.taskId ?? null, opts.fromAgent, opts.toAgent, base.amount, base.currency, createdAt);
+  })();
+
+  const payment = getPaymentById(txId);
+  if (!payment) throw new Error(`Failed to retrieve balance payment after insert: ${txId}`);
+  logger.info("payment.created", "Payment funded from balance and escrowed", {
+    txId: payment.txId,
+    taskId: payment.taskId,
+    fromAgent: payment.fromAgent,
+    toAgent: payment.toAgent,
+    amount: base.amount,
+    currency: base.currency,
+  });
+  void syncToTurso();
+  return payment;
 }
 
 

@@ -966,27 +966,39 @@ async function hire(client, opts) {
     context,
     from = "anonymous",
     pay,
+    paymentMethod,
     pollIntervalMs = 2e3,
     timeoutMs = 12e4,
     withReceipt = true
   } = opts;
-  let requirements = null;
-  try {
-    requirements = await client.getX402Requirements(to);
-  } catch {
-    requirements = null;
-  }
-  const paid = requirements !== null;
-  if (paid && !pay) {
-    throw new Error(
-      `Agent "${to}" is priced (x402) \u2014 pass a \`pay\` function to hire it. Free-lane agents need no payment.`
-    );
-  }
   let created;
-  if (paid && pay) {
-    created = await client.submitTaskX402(to, task, pay, { from, context });
+  let paid;
+  if (paymentMethod === "balance") {
+    if (from === "anonymous") {
+      throw new Error(
+        'paymentMethod "balance" requires an authenticated `from` agent \u2014 init the client with an apiKey and set `from` to an agent you own. Balance is spent from that agent\'s earnings.'
+      );
+    }
+    created = await client.sendTask({ from, to, task, context, paymentMethod: "balance" });
+    paid = true;
   } else {
-    created = await client.sendTask({ from, to, task, context });
+    let requirements = null;
+    try {
+      requirements = await client.getX402Requirements(to);
+    } catch {
+      requirements = null;
+    }
+    paid = requirements !== null;
+    if (paid && !pay) {
+      throw new Error(
+        `Agent "${to}" is priced (x402) \u2014 pass a \`pay\` function to hire it, or set paymentMethod:"balance" to spend the \`from\` agent's earned balance. Free-lane agents need no payment.`
+      );
+    }
+    if (paid && pay) {
+      created = await client.submitTaskX402(to, task, pay, { from, context });
+    } else {
+      created = await client.sendTask({ from, to, task, context });
+    }
   }
   const deadline = Date.now() + timeoutMs;
   let current = created;

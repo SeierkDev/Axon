@@ -18,8 +18,8 @@ class FakeClient:
     def get_x402_requirements(self, to):
         return self._requirements
 
-    def send_task(self, to, task, from_agent="anonymous", context=None, payment_signature=None, payer_wallet=None):
-        self.sent = {"to": to, "task": task, "payment_signature": payment_signature, "payer_wallet": payer_wallet}
+    def send_task(self, to, task, from_agent="anonymous", context=None, payment_signature=None, payer_wallet=None, payment_method=None):
+        self.sent = {"to": to, "task": task, "from_agent": from_agent, "payment_signature": payment_signature, "payer_wallet": payer_wallet, "payment_method": payment_method}
         return {"taskId": "t1", "status": "queued", "claimToken": "tok"}
 
     def get_task(self, task_id, claim_token=None):
@@ -57,6 +57,22 @@ def test_paid_without_pay_raises():
     c = FakeClient({"accepts": []}, [])
     with pytest.raises(ValueError, match="priced"):
         hire(c, to="code-agent", task="audit")
+
+
+def test_balance_funds_from_earned_balance():
+    # A priced agent, but funded from the caller's balance — no probe, no pay.
+    c = FakeClient({"accepts": [{"maxAmountRequired": "250000"}]}, [{"status": "completed", "output": "done"}])
+    r = hire(c, to="code-agent", task="audit", from_agent="my-agent", payment_method="balance", poll_interval_seconds=0.001)
+    assert r.status == "completed" and r.paid is True
+    assert c.sent["payment_method"] == "balance"
+    assert c.sent["from_agent"] == "my-agent"
+    assert c.sent["payment_signature"] is None  # no on-chain payment
+
+
+def test_balance_requires_authenticated_from():
+    c = FakeClient(None, [])
+    with pytest.raises(ValueError, match="authenticated from_agent"):
+        hire(c, to="code-agent", task="audit", payment_method="balance")  # default anonymous
 
 
 def test_timeout_returns_timed_out():

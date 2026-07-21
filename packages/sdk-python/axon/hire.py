@@ -44,6 +44,7 @@ def hire(
     context: Optional[Dict[str, Any]] = None,
     from_agent: str = "anonymous",
     pay: Optional[PayFunction] = None,
+    payment_method: Optional[str] = None,
     poll_interval_seconds: float = 2.0,
     timeout_seconds: float = 120.0,
     with_receipt: bool = True,
@@ -53,31 +54,53 @@ def hire(
     requirements, it returns the on-chain signature + payer wallet). A priced
     agent without ``pay`` raises.
 
+    Pass ``payment_method="balance"`` to fund a paid hire from ``from_agent``'s
+    earned balance instead of a fresh on-chain transfer — no ``pay`` needed. It
+    requires an authenticated client (``AxonClient(api_key=...)``) and a
+    registered ``from_agent`` that owns the balance.
+
     To read the private output back, use an identity this client can read — the
     default anonymous hire returns a claim token that this call uses to poll."""
-    requirements = None
-    try:
-        requirements = client.get_x402_requirements(to)
-    except Exception:  # noqa: BLE001
-        # A caller who supplied `pay` intends to pay — don't silently downgrade to
-        # an unpaid submit on a probe blip; surface it. With no `pay`, fall through
-        # to the free path (a genuinely priced agent rejects the unpaid submit).
-        if pay is not None:
-            raise
-        requirements = None
-    paid = requirements is not None
-
-    if paid and pay is None:
-        raise ValueError(
-            f'Agent "{to}" is priced (x402) — pass a `pay` function to hire it. Free-lane agents need none.'
-        )
-
-    if paid and pay is not None:
-        signature, payer_wallet = pay(requirements)
+    if payment_method == "balance":
+        # Fund from from_agent's earned balance — no x402 probe, no `pay`. The value
+        # is already pooled from when it earned; a registered, authenticated
+        # from_agent is required (an identity that owns a balance).
+        if from_agent == "anonymous":
+            raise ValueError(
+                'payment_method "balance" requires an authenticated from_agent — '
+                "construct AxonClient(api_key=...) and set from_agent to an agent you own. "
+                "Balance is spent from that agent's earnings."
+            )
+        paid = True
         created = client.send_task(to, task, from_agent=from_agent, context=context,
-                                   payment_signature=signature, payer_wallet=payer_wallet)
+                                   payment_method="balance")
     else:
-        created = client.send_task(to, task, from_agent=from_agent, context=context)
+        requirements = None
+        try:
+            requirements = client.get_x402_requirements(to)
+        except Exception:  # noqa: BLE001
+            # A caller who supplied `pay` intends to pay — don't silently downgrade
+            # to an unpaid submit on a probe blip; surface it. With no `pay`, fall
+            # through to the free path (a genuinely priced agent rejects the unpaid
+            # submit).
+            if pay is not None:
+                raise
+            requirements = None
+        paid = requirements is not None
+
+        if paid and pay is None:
+            raise ValueError(
+                f'Agent "{to}" is priced (x402) — pass a `pay` function to hire it, or set '
+                'payment_method="balance" to spend from_agent\'s earned balance. '
+                "Free-lane agents need none."
+            )
+
+        if paid and pay is not None:
+            signature, payer_wallet = pay(requirements)
+            created = client.send_task(to, task, from_agent=from_agent, context=context,
+                                       payment_signature=signature, payer_wallet=payer_wallet)
+        else:
+            created = client.send_task(to, task, from_agent=from_agent, context=context)
 
     task_id = created["taskId"]
     claim_token = created.get("claimToken")
