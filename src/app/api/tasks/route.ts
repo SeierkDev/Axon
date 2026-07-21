@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createTask, getTaskById, getTaskByIdempotency, markTaskPaymentConfirmed, type Task } from "@/lib/tasks";
 import { syncToTurso } from "@/lib/db-turso";
 import { getAgentById } from "@/lib/agents";
-import { createPayment, getPaymentByIncomingSignature, parsePriceToSol, refundPayment } from "@/lib/payments";
+import { createPayment, createBalancePayment, getPaymentByIncomingSignature, parsePriceToSol, refundPayment } from "@/lib/payments";
 import { isValidSolanaAddress } from "@/lib/solana";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
@@ -91,11 +91,20 @@ async function handlePost(req: NextRequest) {
   const payment = agent.price;
   const amountSol = parsePriceToSol(payment);
 
-  // Paid tasks require a payment signature proving USDC was sent to the receiver wallet
-  if (amountSol !== null && !body.paymentSignature) {
+  // "balance" funds a paid hire from the paying agent's earned ledger balance
+  // instead of a fresh on-chain transfer — so an agent can reinvest what it earns.
+  // It belongs to an identity, so it requires an authenticated registered agent
+  // (the auth block above already proved `from` is owned by the caller).
+  const useBalance = amountSol !== null && body.paymentMethod === "balance";
+  if (useBalance && !getAgentById(body.from)) {
+    return apiError("VALIDATION_ERROR", "balance payments require a registered paying agent", 400);
+  }
+
+  // Paid tasks require either a payment signature (on-chain) or balance funding.
+  if (amountSol !== null && !body.paymentSignature && !useBalance) {
     return apiError(
       "PAYMENT_REQUIRED",
-      "paymentSignature is required for paid tasks — complete the x402 payment first",
+      "paymentSignature is required for paid tasks — complete the x402 payment first, or set paymentMethod:\"balance\" to spend your earned balance",
       402
     );
   }
@@ -115,6 +124,7 @@ async function handlePost(req: NextRequest) {
     context: body.context ?? null,
     payment: payment ?? null,
     paymentSignature: body.paymentSignature ?? null,
+    paymentMethod: body.paymentMethod ?? null,
     signature: body.signature ?? null,
   }) : undefined;
 
@@ -175,17 +185,27 @@ async function handlePost(req: NextRequest) {
     throw err;
   }
 
-  if (amountSol !== null && body.paymentSignature) {
+  if (amountSol !== null && (body.paymentSignature || useBalance)) {
     try {
-      await createPayment({
-        taskId: task.taskId,
-        fromAgent: body.from,
-        toAgent: body.to,
-        amountSol,
-        paymentSignature: body.paymentSignature,
-        priceString: payment,
-        payerWallet: body.payerWallet,
-      });
+      if (useBalance) {
+        createBalancePayment({
+          taskId: task.taskId,
+          fromAgent: body.from,
+          toAgent: body.to,
+          amountSol,
+          priceString: payment,
+        });
+      } else {
+        await createPayment({
+          taskId: task.taskId,
+          fromAgent: body.from,
+          toAgent: body.to,
+          amountSol,
+          paymentSignature: body.paymentSignature!,
+          priceString: payment,
+          payerWallet: body.payerWallet,
+        });
+      }
     } catch (err) {
       // Payment failed — roll back the task
       const { getDb } = await import("@/lib/db");

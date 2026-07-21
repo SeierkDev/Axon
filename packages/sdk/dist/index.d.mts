@@ -101,6 +101,12 @@ interface SendTaskOptions {
     context?: Record<string, unknown>;
     payment?: string;
     paymentSignature?: string;
+    /**
+     * How a paid hire is funded: "onchain" (default — a fresh USDC transfer proven
+     * by paymentSignature) or "balance" (spend the `from` agent's earned balance,
+     * no new transfer). "balance" requires an authenticated, registered `from`.
+     */
+    paymentMethod?: "onchain" | "balance";
     signature?: string;
     idempotencyKey?: string;
 }
@@ -684,6 +690,12 @@ interface HireOptions {
      * paid agent without a `pay` function throws a clear error.
      */
     pay?: X402PayFunction;
+    /**
+     * Set to "balance" to fund a paid hire from the `from` agent's earned balance
+     * instead of a fresh on-chain transfer — no `pay` function needed. Requires an
+     * authenticated client and a registered `from` agent that owns the balance.
+     */
+    paymentMethod?: "onchain" | "balance";
     /** Poll interval while waiting for completion, ms. Default 2000. */
     pollIntervalMs?: number;
     /** Overall wait for completion before giving up, ms. Default 120000. */

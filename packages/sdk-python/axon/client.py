@@ -146,6 +146,7 @@ class AxonClient:
         context: Optional[Dict[str, Any]] = None,
         payment_signature: Optional[str] = None,
         payer_wallet: Optional[str] = None,
+        payment_method: Optional[str] = None,
         idempotency_key: Optional[str] = None,
     ) -> Dict[str, Any]:
         body: Dict[str, Any] = {"from": from_agent, "to": to, "task": task}
@@ -155,6 +156,10 @@ class AxonClient:
             body["paymentSignature"] = payment_signature
         if payer_wallet:
             body["payerWallet"] = payer_wallet
+        # "balance" funds a paid hire from from_agent's earned balance instead of a
+        # fresh on-chain transfer (authenticated, registered from_agent only).
+        if payment_method:
+            body["paymentMethod"] = payment_method
         # An Idempotency-Key makes the create safe to retry — the server replays the
         # same task instead of creating a second one.
         headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None

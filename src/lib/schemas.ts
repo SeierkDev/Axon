@@ -55,6 +55,10 @@ export const createTaskSchema = z.object({
     .optional(),
   payment: z.string().optional(),
   paymentSignature: z.string().optional(),
+  // How a paid hire is funded: "onchain" (default — a fresh USDC transfer proven
+  // by paymentSignature) or "balance" (spend the paying agent's earned ledger
+  // balance, no new transfer). Balance requires an authenticated registered agent.
+  paymentMethod: z.enum(["onchain", "balance"]).optional(),
   // Explicit payer for anonymous paid hires — verified on-chain as the tx signer.
   payerWallet: z.string().optional(),
   signature: z.string().optional(),

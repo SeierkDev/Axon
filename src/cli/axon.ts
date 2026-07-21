@@ -194,6 +194,8 @@ Commands:
               axon hire <agentId> "<task>"
             Paid agents: pay the USDC, then re-run with
               --payment-signature <sig> --payer-wallet <addr>
+            Or spend a registered agent's earned balance (needs an API key):
+              axon hire <agentId> "<task>" --pay-from-balance --from <your-agent>
   verify    Recompute a receipt's proof locally (no trust in Axon required):
               axon verify <taskId>
   login     Authenticate. --api-key <key> to store a key, or --keypair <file>
@@ -303,41 +305,61 @@ async function cmdSearch(endpoint: string, positional: string[], flags: Record<s
   return `Agents for "${capability}" (ranked by Proof Score):\n${rows.join("\n")}`;
 }
 
-async function cmdHire(endpoint: string, positional: string[], flags: Record<string, string | boolean>): Promise<string> {
+async function cmdHire(endpoint: string, positional: string[], flags: Record<string, string | boolean>, apiKey?: string): Promise<string> {
   const to = positional[0] ?? str(flags, "to");
   const task = positional[1] ?? str(flags, "task");
-  if (!to || !task) throw new Error('usage: axon hire <agentId> "<task>" [--payment-signature <sig> --payer-wallet <addr>]');
+  if (!to || !task) throw new Error('usage: axon hire <agentId> "<task>" [--pay-from-balance --from <your-agent>] | [--payment-signature <sig> --payer-wallet <addr>]');
 
-  // Probe x402 to see if the agent is priced.
-  let terms: { accepts?: { maxAmountRequired?: string; payToAddress?: string }[] } | null = null;
-  const probe = await fetch(`${endpoint}/api/agents/${encodeURIComponent(to)}/x402`);
-  if (probe.status === 402) {
-    const raw = probe.headers.get("x-payment-required");
-    if (raw) { try { terms = JSON.parse(Buffer.from(raw, "base64").toString("utf8")); } catch { /* ignore */ } }
+  let taskId: string;
+  let status = "queued";
+  let pollKey: string | undefined;                 // API-key auth (balance hires)
+  let pollHeaders: Record<string, string> | undefined; // claim-token auth (anonymous hires)
+
+  if (flags["pay-from-balance"] === true) {
+    // Fund the hire from an agent's earned balance — authenticated, no on-chain
+    // payment. Spends the `--from` agent's balance, so it needs your API key and
+    // an agent you own.
+    const from = str(flags, "from");
+    if (!from) throw new Error("--pay-from-balance needs --from <your-agent-id> (the agent whose earned balance pays for the hire)");
+    if (!apiKey) throw new Error("--pay-from-balance needs an API key — run `axon login --api-key <key>` first");
+    const created = (await api(endpoint, "POST", "/api/tasks", apiKey, { from, to, task, paymentMethod: "balance" })) as { taskId: string; status?: string };
+    taskId = created.taskId;
+    status = created.status ?? "queued";
+    pollKey = apiKey; // the owning agent reads its own task's output
+    process.stderr.write(`Hired ${to} from ${from}'s balance — task ${taskId}, running…\n`);
+  } else {
+    // Probe x402 to see if the agent is priced.
+    let terms: { accepts?: { maxAmountRequired?: string; payToAddress?: string }[] } | null = null;
+    const probe = await fetch(`${endpoint}/api/agents/${encodeURIComponent(to)}/x402`);
+    if (probe.status === 402) {
+      const raw = probe.headers.get("x-payment-required");
+      if (raw) { try { terms = JSON.parse(Buffer.from(raw, "base64").toString("utf8")); } catch { /* ignore */ } }
+    }
+    const sig = str(flags, "payment-signature");
+    const payer = str(flags, "payer-wallet");
+    if (terms && !sig) {
+      const opt = terms.accepts?.[0];
+      const amt = opt?.maxAmountRequired ? Number(opt.maxAmountRequired) / 1_000_000 : "?";
+      return `"${to}" is a paid agent (${amt} USDC). Pay ${amt} USDC to ${opt?.payToAddress} on Solana, then re-run with --payment-signature <sig> --payer-wallet <addr> — or, if you're a registered agent with earnings, --pay-from-balance --from <your-agent>.`;
+    }
+
+    const body: Record<string, unknown> = { from: "anonymous", to, task };
+    if (sig) body.paymentSignature = sig;
+    if (payer) body.payerWallet = payer;
+    const created = (await api(endpoint, "POST", "/api/tasks", undefined, body)) as { taskId: string; claimToken?: string; status?: string };
+    taskId = created.taskId;
+    status = created.status ?? "queued";
+    pollHeaders = created.claimToken ? { "x-claim-token": created.claimToken } : undefined;
+    process.stderr.write(`Hired ${to} — task ${taskId}, running…\n`);
   }
-  const sig = str(flags, "payment-signature");
-  const payer = str(flags, "payer-wallet");
-  if (terms && !sig) {
-    const opt = terms.accepts?.[0];
-    const amt = opt?.maxAmountRequired ? Number(opt.maxAmountRequired) / 1_000_000 : "?";
-    return `"${to}" is a paid agent (${amt} USDC). Pay ${amt} USDC to ${opt?.payToAddress} on Solana, then re-run with --payment-signature <sig> --payer-wallet <addr>.`;
-  }
 
-  const body: Record<string, unknown> = { from: "anonymous", to, task };
-  if (sig) body.paymentSignature = sig;
-  if (payer) body.payerWallet = payer;
-  const created = (await api(endpoint, "POST", "/api/tasks", undefined, body)) as { taskId: string; claimToken?: string; status?: string };
-  const { taskId, claimToken } = created;
-
-  process.stderr.write(`Hired ${to} — task ${taskId}, running…\n`);
   const deadline = Date.now() + 90_000;
-  let status = created.status ?? "queued";
   let output = "";
   while (status !== "completed" && status !== "failed") {
     if (Date.now() > deadline) throw new Error(`Task ${taskId} still ${status} after 90s — no result delivered. Check the receipt: ${endpoint}/r/${taskId}`);
     await new Promise((r) => setTimeout(r, 2000));
     try {
-      const t = (await api(endpoint, "GET", `/api/tasks/${encodeURIComponent(taskId)}`, undefined, undefined, claimToken ? { "x-claim-token": claimToken } : undefined)) as { status?: string; output?: string };
+      const t = (await api(endpoint, "GET", `/api/tasks/${encodeURIComponent(taskId)}`, pollKey, undefined, pollHeaders)) as { status?: string; output?: string };
       status = t.status ?? status;
       output = t.output ?? output;
     } catch { /* transient — keep polling */ }
@@ -377,7 +399,7 @@ async function run(parsed: ParsedArgs): Promise<string> {
     case "search":
       return cmdSearch(endpoint, positional, flags);
     case "hire":
-      return cmdHire(endpoint, positional, flags);
+      return cmdHire(endpoint, positional, flags, cfg.apiKey);
     case "verify":
       return cmdVerify(endpoint, positional);
     case "register": {
