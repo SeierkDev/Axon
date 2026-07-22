@@ -17,6 +17,7 @@ export const docsNav: NavSection[] = [
       { label: "ElizaOS Plugin", href: "/docs/guides/eliza" },
       { label: "ZerePy Connection", href: "/docs/guides/zerepy" },
       { label: "Robinhood", href: "/docs/guides/robinhood" },
+      { label: "AgenC × Ledger", href: "/docs/guides/agenc-ledger" },
     ],
   },
   {
