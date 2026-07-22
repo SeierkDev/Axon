@@ -433,6 +433,41 @@ export async function sendUsdcRefund(
   }));
 }
 
+// ── Pay USDC from an arbitrary funded wallet ──────────────────────────────────
+// Signs a USDC transfer from `payerSecret`'s wallet to `toAddress` (e.g. Axon's
+// payment receiver, to fund a hire) and returns the confirmed signature + the
+// payer's address. Used by the grow-yourself agent to pay specialists directly
+// from its own wallet — the non-custodial path (the agent holds its own key).
+// `payerSecret` is a base64 64-byte secret key, or a JSON array of 64 bytes.
+function parseSecretKey(s: string): Uint8Array {
+  const t = s.trim();
+  if (t.startsWith("[")) return Uint8Array.from(JSON.parse(t) as number[]);
+  return Uint8Array.from(Buffer.from(t, "base64"));
+}
+
+export async function payUsdc(
+  payerSecret: string,
+  toAddress: string,
+  amountUsdc: number,
+): Promise<{ signature: string; payerWallet: string }> {
+  const payer = Keypair.fromSecretKey(parseSecretKey(payerSecret));
+  const mintPubkey = new PublicKey(USDC_MINT);
+  const toPubkey = new PublicKey(toAddress);
+  const fromAta = getAssociatedTokenAddressSync(mintPubkey, payer.publicKey, true);
+  const toAta = getAssociatedTokenAddressSync(mintPubkey, toPubkey, true);
+
+  const parsed = parseUsdcAmount(amountUsdc);
+  if (!parsed) throw new Error("payUsdc: amount must be a positive USDC value with at most 6 decimals");
+
+  const tx = new Transaction().add(
+    createAssociatedTokenAccountIdempotentInstruction(payer.publicKey, toAta, toPubkey, mintPubkey),
+    createTransferCheckedInstruction(fromAta, mintPubkey, toAta, payer.publicKey, parsed.units, USDC_DECIMALS),
+  );
+
+  const signature = await withHelius(conn => sendAndConfirmTransaction(conn, tx, [payer], { commitment: "confirmed" }));
+  return { signature, payerWallet: payer.publicKey.toBase58() };
+}
+
 // ── Memo transactions ─────────────────────────────────────────────────────────
 // Posts an arbitrary UTF-8 string to Solana via the standard Memo program.
 // Signed by the REFUND_SIGNER_PRIVATE_KEY keypair (same wallet that receives payments).

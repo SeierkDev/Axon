@@ -133,6 +133,10 @@ export default async function Home() {
               <Link href="/how-it-works" className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
                 See how it works →
               </Link>
+              <span className="text-gray-200 dark:text-gray-700">·</span>
+              <Link href="/experiment" className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
+                Watch the live experiment →
+              </Link>
             </div>
           </FadeIn>
         </div>
@@ -523,6 +527,7 @@ export default async function Home() {
             <Link href="https://github.com/SeierkDev/Axon" target="_blank" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">GitHub</Link>
             <Link href="/docs"      className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Docs</Link>
             <Link href="/world"     className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">World</Link>
+            <Link href="/experiment" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Experiment</Link>
             <Link href="/litepaper" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Litepaper</Link>
           </div>
         </div>

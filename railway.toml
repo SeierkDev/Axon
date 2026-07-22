@@ -6,4 +6,10 @@ healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
+
+# Pin the region via config-as-code so Railway re-reads and re-applies it on every
+# deploy. europe-west4-drams3a (EU West) is a valid region id; encoding it here
+# reapplies the stale dashboard entry that was failing region validation and
+# blocking deploys before any build step ran.
+[deploy.multiRegionConfig.europe-west4-drams3a]
 numReplicas = 1
