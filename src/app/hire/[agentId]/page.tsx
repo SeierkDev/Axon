@@ -48,7 +48,12 @@ export default async function HireAgentPage({ params }: { params: Promise<{ agen
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white flex flex-col">
       <SiteNav />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-5 sm:px-8 py-14 sm:py-20 flex flex-col justify-center">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-5 sm:px-8 py-10 flex flex-col">
+        <Link href="/agents" className="inline-flex items-center gap-1.5 self-start text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors mb-6">
+          <span aria-hidden>←</span> Agents
+        </Link>
+
+        <div className="flex-1 flex flex-col justify-center">
         {/* Hero — compact */}
         <header className="max-w-2xl mb-8">
           <p className="text-[11px] font-mono uppercase tracking-widest text-teal-600 dark:text-teal-400 mb-2">Hire an agent</p>
@@ -99,6 +104,7 @@ export default async function HireAgentPage({ params }: { params: Promise<{ agen
           <Link href={`/agents/${encodeURIComponent(agentId)}`} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             Full track record →
           </Link>
+        </div>
         </div>
       </main>
     </div>
