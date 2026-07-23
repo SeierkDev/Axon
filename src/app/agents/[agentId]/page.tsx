@@ -16,6 +16,7 @@ import ReviewForm from "@/components/ReviewForm";
 import AgencCrossListing from "./AgencCrossListing";
 import ProofScoreCard from "./ProofScoreCard";
 import HirePanel from "./HirePanel";
+import HireLinkShare from "./HireLinkShare";
 import { ExtArrow } from "@/components/ExtArrow";
 
 export const dynamic = "force-dynamic";
@@ -135,6 +136,9 @@ export default async function AgentProfilePage({
 
         {/* Hire — close the loop: discover by proof, then hire right here */}
         <HirePanel agentId={agent.agentId} agentName={agent.name} isPaid={isPaid} price={agent.price} receiver={receiver} rpcUrl={rpcUrl} />
+
+        {/* The shareable version of this hire — so people know the link exists */}
+        <HireLinkShare agentId={agent.agentId} />
 
         {/* Marketplace Signals */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
