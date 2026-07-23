@@ -6,6 +6,7 @@ import {
   Transaction,
   TransactionInstruction,
   sendAndConfirmTransaction,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddressSync,
@@ -445,6 +446,87 @@ function parseSecretKey(s: string): Uint8Array {
   return Uint8Array.from(Buffer.from(t, "base64"));
 }
 
+// ── Transaction reliability ───────────────────────────────────────────────────
+// Solana drops or falsely times out transactions during congestion. Two guards:
+// a dynamic priority fee so the tx is worth including, and rebroadcasting the SAME
+// signed bytes while we poll — failing only when the blockhash truly expires.
+const PRIORITY_FEE_FLOOR = 10_000;    // micro-lamports/CU — enough in calm conditions
+const PRIORITY_FEE_CEIL = 1_000_000;  // hard cap so a fee spike can't overpay wildly
+const COMPUTE_UNIT_LIMIT = 60_000;    // ample for an idempotent ATA-create + token transfer
+
+// A dynamic priority fee from recent network prioritization (75th percentile), clamped
+// to a sane band. Falls back to the floor if the RPC can't report fees.
+async function getPriorityFeeMicroLamports(conn: Connection): Promise<number> {
+  try {
+    const recent = await conn.getRecentPrioritizationFees();
+    const fees = recent.map((r) => r.prioritizationFee).filter((f) => f > 0).sort((a, b) => a - b);
+    if (fees.length === 0) return PRIORITY_FEE_FLOOR;
+    const p = fees[Math.floor(fees.length * 0.75)] ?? PRIORITY_FEE_FLOOR;
+    return Math.min(PRIORITY_FEE_CEIL, Math.max(PRIORITY_FEE_FLOOR, p));
+  } catch {
+    return PRIORITY_FEE_FLOOR;
+  }
+}
+
+// Absolute cap on the confirmation wait — a blockhash lives ~150 slots (~60-90s), so this
+// only trips if the RPC can't even report block height for that long. Prevents an unbounded
+// spin when the endpoint is down (getBlockHeight below can't then fire the expiry branch).
+const CONFIRM_HARD_DEADLINE_MS = 120_000;
+
+// Send a signed transaction and keep rebroadcasting the same bytes while polling for
+// confirmation — a first broadcast can be dropped under load, and a naive send-and-
+// confirm then falsely times out. Resolves on confirmation; throws only when the
+// blockhash actually expires with nothing landed (no funds moved) or the tx errors.
+async function sendWithRebroadcast(conn: Connection, rawTx: Buffer | Uint8Array, lastValidBlockHeight: number): Promise<string> {
+  const signature = await conn.sendRawTransaction(rawTx, { skipPreflight: false, maxRetries: 0 });
+  let lastRebroadcast = Date.now();
+  const startedAt = Date.now();
+  for (;;) {
+    // A transient status read must NOT abort the wait — the tx may still be in flight, and
+    // treating a blip as failure is the same false-negative the expiry check guards against.
+    let value: Awaited<ReturnType<Connection["getSignatureStatus"]>>["value"] = null;
+    try {
+      ({ value } = await conn.getSignatureStatus(signature, { searchTransactionHistory: false }));
+    } catch {
+      await sleep(1000);
+      continue;
+    }
+    if (value?.err) throw new Error(`transaction failed on-chain: ${JSON.stringify(value.err)}`);
+    if (value && (value.confirmationStatus === "confirmed" || value.confirmationStatus === "finalized")) {
+      return signature;
+    }
+
+    let height = 0;
+    try { height = await conn.getBlockHeight("confirmed"); } catch { /* transient — treat as not-yet-expired */ }
+    if (height > lastValidBlockHeight) {
+      // Blockhash expired: no NEW inclusion is possible. But the tx may have landed in the
+      // final valid block just as we observed expiry. Do ONE authoritative history-searching
+      // check before declaring no funds moved — otherwise a real, irreversible payment could
+      // be reported as a no-op and the caller (which treats a throw as "nothing happened")
+      // would silently lose it.
+      const final = await conn.getSignatureStatus(signature, { searchTransactionHistory: true });
+      if (final.value?.err) throw new Error(`transaction failed on-chain: ${JSON.stringify(final.value.err)}`);
+      if (final.value) return signature; // already in a block — funds moved; downstream verify waits for confirmed
+      throw new Error("blockhash expired before confirmation (network congestion) — no funds moved");
+    }
+
+    if (Date.now() - startedAt > CONFIRM_HARD_DEADLINE_MS) {
+      // Couldn't reach a verdict within the blockhash lifetime — do NOT claim no funds moved
+      // (the tx could still be live). Surface an honest unknown so nothing is double-spent.
+      const final = await conn.getSignatureStatus(signature, { searchTransactionHistory: true });
+      if (final.value?.err) throw new Error(`transaction failed on-chain: ${JSON.stringify(final.value.err)}`);
+      if (final.value) return signature;
+      throw new Error("payment confirmation could not be verified (RPC unreachable) — check the wallet before retrying");
+    }
+
+    if (Date.now() - lastRebroadcast >= 2000) {
+      try { await conn.sendRawTransaction(rawTx, { skipPreflight: true, maxRetries: 0 }); } catch { /* keep waiting */ }
+      lastRebroadcast = Date.now();
+    }
+    await sleep(1000);
+  }
+}
+
 export async function payUsdc(
   payerSecret: string,
   toAddress: string,
@@ -459,12 +541,22 @@ export async function payUsdc(
   const parsed = parseUsdcAmount(amountUsdc);
   if (!parsed) throw new Error("payUsdc: amount must be a positive USDC value with at most 6 decimals");
 
+  const conn = getConnection();
+  const priorityFee = await getPriorityFeeMicroLamports(conn);
+  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
+
   const tx = new Transaction().add(
+    ComputeBudgetProgram.setComputeUnitLimit({ units: COMPUTE_UNIT_LIMIT }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }),
     createAssociatedTokenAccountIdempotentInstruction(payer.publicKey, toAta, toPubkey, mintPubkey),
     createTransferCheckedInstruction(fromAta, mintPubkey, toAta, payer.publicKey, parsed.units, USDC_DECIMALS),
   );
+  tx.recentBlockhash = blockhash;
+  tx.feePayer = payer.publicKey;
+  tx.sign(payer);
 
-  const signature = await withHelius(conn => sendAndConfirmTransaction(conn, tx, [payer], { commitment: "confirmed" }));
+  // Rebroadcast the same signed tx while awaiting confirmation — survives congestion.
+  const signature = await sendWithRebroadcast(conn, tx.serialize(), lastValidBlockHeight);
   return { signature, payerWallet: payer.publicKey.toBase58() };
 }
 
