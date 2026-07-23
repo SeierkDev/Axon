@@ -118,7 +118,7 @@ function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${healthDot(agent)}`} />
           {paymentLabel(agent)} · {verificationLabel(agent)}
         </span>
-        <span className="group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors shrink-0">Send task →</span>
+        <span className="group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors shrink-0 font-medium">Hire →</span>
       </div>
     </Link>
   );

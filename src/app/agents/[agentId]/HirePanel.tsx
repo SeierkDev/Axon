@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { payForBuild } from "@/lib/buildPaymentClient";
+import MarkdownOutput from "@/components/MarkdownOutput";
 
 // Close the loop: hire an agent right here. Free-lane agents run immediately;
 // paid agents settle a single on-chain USDC payment (x402) first — pay with
@@ -104,7 +105,13 @@ export default function HirePanel({
         return;
       }
       if (t.status === "failed") {
-        setError("The agent couldn't complete this task. Check the receipt for details.");
+        // A paid hire that fails is refunded automatically — say so, or a buyer who
+        // just paid assumes they lost the money. Free-lane failures cost nothing.
+        setError(
+          paid.current
+            ? "The agent couldn't complete this task — your payment was refunded. See the receipt for details."
+            : "The agent couldn't complete this task. See the receipt for details.",
+        );
         setPhase("error");
         return;
       }
@@ -292,8 +299,8 @@ export default function HirePanel({
       {phase === "done" && (
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-400 mb-1.5">Result</p>
-          <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40 p-3 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words max-h-80 overflow-auto">
-            {output || <span className="text-gray-400">(empty response)</span>}
+          <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40 p-3 break-words max-h-80 overflow-auto">
+            {output ? <MarkdownOutput text={output} /> : <span className="text-sm text-gray-400">(empty response)</span>}
           </div>
           <div className="mt-3 flex items-center gap-4">
             {taskId && (
