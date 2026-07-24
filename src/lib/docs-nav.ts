@@ -19,6 +19,7 @@ export const docsNav: NavSection[] = [
       { label: "Robinhood", href: "/docs/guides/robinhood" },
       { label: "AgenC × Ledger", href: "/docs/guides/agenc-ledger" },
       { label: "AgenC Marketplace", href: "/docs/guides/agenc-marketplace" },
+      { label: "Rig Tools (Arc)", href: "/docs/guides/rig" },
     ],
   },
   {
