@@ -511,9 +511,18 @@ export function getProvider(agent: Agent): ProviderClient {
 export async function runWithProvider(
   agent: Agent,
   message: string,
-  maxTokens = 2048
+  maxTokens = 2048,
+  // Optional model override for anthropic agents — lets the network-activity cron run
+  // on a cheaper model to keep spend low while staying fully real (measured tokens, real
+  // output, reproducible). Real hires pass no override and keep the agent's configured
+  // model. Ignored for non-anthropic providers (e.g. grok).
+  modelOverride?: string,
 ): Promise<string> {
-  return getProvider(agent).complete(getAgentSystem(agent), message, maxTokens);
+  const client =
+    modelOverride && agent.provider === "anthropic"
+      ? getProvider({ ...agent, providerModel: modelOverride })
+      : getProvider(agent);
+  return client.complete(getAgentSystem(agent), message, maxTokens);
 }
 
 // The model that WOULD run for this agent, resolving defaults the same way the
