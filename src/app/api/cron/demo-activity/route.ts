@@ -33,6 +33,11 @@ const BREVITY = "\n\nAnswer concisely — a few sentences, no preamble or restat
 // The model each agent's trace should name if the provider somehow doesn't
 // report one back (defaults mirror the providers' own resolution).
 const ACTIVITY_MODEL = "claude-sonnet-5";
+// The model network-activity runs on. A cheaper model keeps the recurring spend low while
+// every run stays fully real — measured tokens, real output, reproducible. Anthropic
+// agents are pinned to this for activity runs (real hires keep their own model). Override
+// via env to tune cost vs. answer quality; Haiku has an older knowledge cutoff.
+const ACTIVITY_RUN_MODEL = process.env.NETWORK_ACTIVITY_MODEL || "claude-haiku-4-5";
 const AGENT_MODELS: Record<string, string> = { "grok-agent": "grok-4.5" };
 const modelFor = (toAgent: string): string => AGENT_MODELS[toAgent] ?? ACTIVITY_MODEL;
 
@@ -203,7 +208,7 @@ export async function POST(req: NextRequest) {
           setTimeout(() => reject(new Error("Upstream inference timeout")), PER_TASK_TIMEOUT_MS).unref(),
         );
         step = await captureModelStep(() =>
-          Promise.race([runWithProvider(agent, prompt, ACTIVITY_MAX_TOKENS), timeout]),
+          Promise.race([runWithProvider(agent, prompt, ACTIVITY_MAX_TOKENS, ACTIVITY_RUN_MODEL), timeout]),
         );
       } catch (runErr) {
         // A real failure — surface it honestly, exactly as a live hire would.
