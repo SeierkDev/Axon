@@ -1,5 +1,5 @@
 {
-  "name": "axonsdk",
+  "name": "@axonprotocol/sdk",
   "version": "0.3.0",
   "description": "TypeScript SDK for Axon — open-source agent-to-agent infrastructure",
   "main": "./dist/index.js",
