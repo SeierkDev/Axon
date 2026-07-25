@@ -25,6 +25,12 @@ import type {
   CallMcpToolOptions,
   X402Requirements,
   X402PayFunction,
+  HireOptions,
+  HireResult,
+  RunOptions,
+  RunResult,
+  AxonTool,
+  AxonToolsOptions,
   Webhook,
   WebhookDelivery,
   RegisterWebhookOptions,
@@ -62,6 +68,8 @@ import type {
   ExplorerFeed,
   SystemStatus,
 } from "./types";
+import { hire as hireHelper } from "./hire";
+import { buildAxonTools } from "./tools";
 
 function pathPart(value: string): string {
   return encodeURIComponent(value);
@@ -130,6 +138,13 @@ export class AxonClient {
   private config: AxonConfig = {};
   private taskHandler: TaskHandler | null = null;
 
+  /** Configure at construction — `new AxonClient({ endpoint, apiKey, pay })` — or
+   *  construct empty and call `init()` later. Both are equivalent. */
+  constructor(config: AxonConfig = {}) {
+    this.config = config;
+  }
+
+  /** (Re)configure the client — same options as the constructor. */
   init(config: AxonConfig): void {
     this.config = config;
   }
@@ -338,6 +353,57 @@ export class AxonClient {
 
   async getReceipt(taskId: string): Promise<{ receipt: Receipt }> {
     return this.get(`/api/receipts/${pathPart(taskId)}`) as Promise<{ receipt: Receipt }>;
+  }
+
+  /**
+   * Hire an agent and wait for the result — discover pricing, pay, submit, poll to
+   * completion, and return the output plus the verifiable receipt. Priced agents are
+   * paid with the per-call `pay`, or the client's configured `pay` (e.g. `solanaPayer`)
+   * if none is given. Free-lane agents need no payer.
+   */
+  async hire(opts: HireOptions): Promise<HireResult> {
+    return hireHelper(this, { ...opts, pay: opts.pay ?? this.config.pay });
+  }
+
+  /**
+   * One call for the whole flow: pick the best agent for a capability (highest Proof
+   * Score), hire it, pay, and wait for the result. Pass `agentId` to skip discovery.
+   * Uses the client's configured `pay` unless a per-call `pay` is supplied.
+   */
+  async run(opts: RunOptions): Promise<RunResult> {
+    let agentId = opts.agentId;
+    if (!agentId) {
+      const agents = await this.findAgents({
+        capability: opts.capability,
+        limit: opts.candidateLimit ?? 10,
+      });
+      if (agents.length === 0) {
+        throw new Error(`No agents found${opts.capability ? ` for capability "${opts.capability}"` : ""}`);
+      }
+      agentId = [...agents].sort((a, b) => (b.proofScore ?? 0) - (a.proofScore ?? 0))[0].agentId;
+    }
+    const result = await this.hire({
+      to: agentId,
+      task: opts.task,
+      context: opts.context,
+      from: opts.from,
+      pay: opts.pay,
+      paymentMethod: opts.paymentMethod,
+      pollIntervalMs: opts.pollIntervalMs,
+      timeoutMs: opts.timeoutMs,
+      withReceipt: opts.withReceipt,
+    });
+    return { ...result, agentId };
+  }
+
+  /**
+   * Axon as LLM tools — a ready-to-use tool set (hire a specialist / find specialists /
+   * get a receipt) that any function-calling agent can use to reach the marketplace.
+   * Format with `toOpenAITools` / `toAnthropicTools`, or hand the JSON Schema to the
+   * Vercel AI SDK. Priced hires the agent makes use the client's configured `pay`.
+   */
+  tools(opts: AxonToolsOptions = {}): AxonTool[] {
+    return buildAxonTools(this, { ...opts, pay: opts.pay ?? this.config.pay });
   }
 
   // Attach a dispute (or general) note to a task's payment. Only parties to the
@@ -766,7 +832,9 @@ export class AxonClient {
   // HTTP helpers
 
   private baseUrl(): string {
-    return this.config.endpoint ?? (typeof window !== "undefined" ? "" : "http://localhost:3000");
+    // Browser: same-origin (the dapp serves the API). Node/server with no endpoint
+    // set: talk to production — a published SDK should just work, not hit localhost.
+    return this.config.endpoint ?? (typeof window !== "undefined" ? "" : "https://axon-agents.com");
   }
 
   private headers(extra?: Record<string, string>): Record<string, string> {

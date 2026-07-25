@@ -1,5 +1,179 @@
 'use strict';
 
+// src/hire.ts
+var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function hire(client, opts) {
+  const {
+    to,
+    task,
+    context,
+    from = "anonymous",
+    pay,
+    paymentMethod,
+    pollIntervalMs = 2e3,
+    timeoutMs = 12e4,
+    withReceipt = true
+  } = opts;
+  let created;
+  let paid;
+  if (paymentMethod === "balance") {
+    if (from === "anonymous") {
+      throw new Error(
+        'paymentMethod "balance" requires an authenticated `from` agent \u2014 init the client with an apiKey and set `from` to an agent you own. Balance is spent from that agent\'s earnings.'
+      );
+    }
+    created = await client.sendTask({ from, to, task, context, paymentMethod: "balance" });
+    paid = true;
+  } else {
+    let requirements = null;
+    try {
+      requirements = await client.getX402Requirements(to);
+    } catch {
+      requirements = null;
+    }
+    paid = requirements !== null;
+    if (paid && !pay) {
+      throw new Error(
+        `Agent "${to}" is priced (x402) \u2014 pass a \`pay\` function to hire it, or set paymentMethod:"balance" to spend the \`from\` agent's earned balance. Free-lane agents need no payment.`
+      );
+    }
+    if (paid && pay) {
+      created = await client.submitTaskX402(to, task, pay, { from, context });
+    } else {
+      created = await client.sendTask({ from, to, task, context });
+    }
+  }
+  const deadline = Date.now() + timeoutMs;
+  let current = created;
+  while (current.status !== "completed" && current.status !== "failed") {
+    if (Date.now() >= deadline) {
+      return { taskId: current.taskId, status: current.status, paid, timedOut: true };
+    }
+    await sleep(pollIntervalMs);
+    try {
+      current = await client.getTask(current.taskId);
+    } catch {
+    }
+  }
+  const result = {
+    taskId: current.taskId,
+    status: current.status,
+    paid,
+    timedOut: false
+  };
+  if (current.status === "completed") {
+    result.output = current.output ?? "";
+    if (withReceipt) {
+      try {
+        const receipt = (await client.getReceipt(current.taskId)).receipt;
+        result.receipt = receipt;
+      } catch {
+      }
+    }
+  } else {
+    result.error = current.error ?? "Task failed";
+  }
+  return result;
+}
+
+// src/tools.ts
+var DEFAULT_ORIGIN = "https://axon-agents.com";
+function buildAxonTools(client, opts = {}) {
+  const origin = (opts.origin ?? DEFAULT_ORIGIN).replace(/\/$/, "");
+  const receiptUrl = (taskId) => `${origin}/r/${taskId}`;
+  return [
+    {
+      name: "axon_hire_specialist",
+      description: `Hire a proven specialist agent on the Axon marketplace to do a task you can't do yourself. Give a "capability" (e.g. "research", "code", "trading") to auto-pick the highest-Proof-Score agent, or an exact "agent_id". It hires, pays in USDC, and returns a verifiable receipt (plus the specialist's output when this client is configured with a readable identity). Use this when the task needs a skill you lack.`,
+      parameters: {
+        type: "object",
+        properties: {
+          task: { type: "string", description: "the work for the specialist to do" },
+          capability: { type: "string", description: 'capability to hire for, e.g. "research" (picks the best agent)' },
+          agent_id: { type: "string", description: "hire this exact agent instead of auto-picking" }
+        },
+        required: ["task"]
+      },
+      execute: async (args) => {
+        const task = String(args.task ?? "").trim();
+        if (!task) throw new Error("axon_hire_specialist requires a non-empty `task`");
+        const r = await client.run({
+          task,
+          capability: args.capability != null ? String(args.capability) : void 0,
+          agentId: args.agent_id != null ? String(args.agent_id) : void 0,
+          from: opts.from,
+          pay: opts.pay,
+          candidateLimit: opts.candidateLimit,
+          // The tool returns a public receipt URL built from the taskId, so skip the
+          // authenticated /api/receipts fetch (it 401s on anonymous hires anyway).
+          withReceipt: false
+        });
+        return {
+          agentId: r.agentId,
+          status: r.status,
+          output: r.output ?? null,
+          paid: r.paid,
+          taskId: r.taskId,
+          receiptUrl: receiptUrl(r.taskId),
+          error: r.error ?? null
+        };
+      }
+    },
+    {
+      name: "axon_find_specialists",
+      description: "Search proven specialist agents on the Axon marketplace by capability. Returns each agent's id, name, capabilities, price, and verifiable Proof Score \u2014 so you can pick one with a real track record before hiring.",
+      parameters: {
+        type: "object",
+        properties: {
+          capability: { type: "string", description: 'capability to search for, e.g. "research"' },
+          limit: { type: "integer", description: "max agents to return" }
+        }
+      },
+      execute: async (args) => {
+        const limit = args.limit != null && Number.isFinite(Number(args.limit)) ? Number(args.limit) : void 0;
+        const agents = await client.findAgents({
+          capability: args.capability != null ? String(args.capability) : void 0,
+          limit
+        });
+        return agents.map((a) => ({
+          agentId: a.agentId,
+          name: a.name,
+          capabilities: a.capabilities,
+          price: a.price ?? null,
+          proofScore: a.proofScore ?? null
+        }));
+      }
+    },
+    {
+      name: "axon_receipt",
+      description: "Get the public, on-chain-verifiable receipt URL for a completed Axon task. Anyone can open it to see the parties, input/output hashes, settlement, and execution trace, and recompute the proof.",
+      parameters: {
+        type: "object",
+        properties: { task_id: { type: "string", description: "the taskId from a hire" } },
+        required: ["task_id"]
+      },
+      execute: async (args) => {
+        const taskId = String(args.task_id ?? "");
+        return { taskId, receiptUrl: receiptUrl(taskId) };
+      }
+    }
+  ];
+}
+function toOpenAITools(tools) {
+  return tools.map((t) => ({
+    type: "function",
+    function: { name: t.name, description: t.description, parameters: t.parameters }
+  }));
+}
+function toAnthropicTools(tools) {
+  return tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }));
+}
+async function runAxonTool(tools, name, args) {
+  const tool = tools.find((t) => t.name === name);
+  if (!tool) throw new Error(`unknown Axon tool: "${name}"`);
+  return tool.execute(args);
+}
+
 // src/client.ts
 function pathPart(value) {
   return encodeURIComponent(value);
@@ -42,10 +216,14 @@ var AxonApiError = class extends Error {
   }
 };
 var AxonClient = class {
-  constructor() {
+  /** Configure at construction — `new AxonClient({ endpoint, apiKey, pay })` — or
+   *  construct empty and call `init()` later. Both are equivalent. */
+  constructor(config = {}) {
     this.config = {};
     this.taskHandler = null;
+    this.config = config;
   }
+  /** (Re)configure the client — same options as the constructor. */
   init(config) {
     this.config = config;
   }
@@ -196,6 +374,54 @@ var AxonClient = class {
   }
   async getReceipt(taskId) {
     return this.get(`/api/receipts/${pathPart(taskId)}`);
+  }
+  /**
+   * Hire an agent and wait for the result — discover pricing, pay, submit, poll to
+   * completion, and return the output plus the verifiable receipt. Priced agents are
+   * paid with the per-call `pay`, or the client's configured `pay` (e.g. `solanaPayer`)
+   * if none is given. Free-lane agents need no payer.
+   */
+  async hire(opts) {
+    return hire(this, { ...opts, pay: opts.pay ?? this.config.pay });
+  }
+  /**
+   * One call for the whole flow: pick the best agent for a capability (highest Proof
+   * Score), hire it, pay, and wait for the result. Pass `agentId` to skip discovery.
+   * Uses the client's configured `pay` unless a per-call `pay` is supplied.
+   */
+  async run(opts) {
+    let agentId = opts.agentId;
+    if (!agentId) {
+      const agents = await this.findAgents({
+        capability: opts.capability,
+        limit: opts.candidateLimit ?? 10
+      });
+      if (agents.length === 0) {
+        throw new Error(`No agents found${opts.capability ? ` for capability "${opts.capability}"` : ""}`);
+      }
+      agentId = [...agents].sort((a, b) => (b.proofScore ?? 0) - (a.proofScore ?? 0))[0].agentId;
+    }
+    const result = await this.hire({
+      to: agentId,
+      task: opts.task,
+      context: opts.context,
+      from: opts.from,
+      pay: opts.pay,
+      paymentMethod: opts.paymentMethod,
+      pollIntervalMs: opts.pollIntervalMs,
+      timeoutMs: opts.timeoutMs,
+      withReceipt: opts.withReceipt
+    });
+    return { ...result, agentId };
+  }
+  /**
+   * Axon as LLM tools — a ready-to-use tool set (hire a specialist / find specialists /
+   * get a receipt) that any function-calling agent can use to reach the marketplace.
+   * Format with `toOpenAITools` / `toAnthropicTools`, or hand the JSON Schema to the
+   * Vercel AI SDK. Priced hires the agent makes use the client's configured `pay`.
+   */
+  tools(opts = {}) {
+    return buildAxonTools(this, { ...opts, pay: opts.pay ?? this.config.pay });
   }
   // Attach a dispute (or general) note to a task's payment. Only parties to the
   // task may file one; it then surfaces on the receipt's `notes`.
@@ -508,7 +734,7 @@ var AxonClient = class {
   }
   // HTTP helpers
   baseUrl() {
-    return this.config.endpoint ?? (typeof window !== "undefined" ? "" : "http://localhost:3000");
+    return this.config.endpoint ?? (typeof window !== "undefined" ? "" : "https://axon-agents.com");
   }
   headers(extra) {
     const headers = { ...extra ?? {} };
@@ -553,7 +779,7 @@ var AxonClient = class {
       } catch (err) {
         const timedOut = err instanceof Error && err.name === "TimeoutError";
         if (idempotent && attempt < maxRetries) {
-          await sleep(backoffMs(baseMs, attempt));
+          await sleep2(backoffMs(baseMs, attempt));
           continue;
         }
         throw new AxonApiError({
@@ -566,7 +792,7 @@ var AxonClient = class {
       }
       if (res.ok) return parseJson(res);
       if (idempotent && attempt < maxRetries && (res.status === 429 || res.status >= 500)) {
-        await sleep(retryAfterMs(res) ?? backoffMs(baseMs, attempt));
+        await sleep2(retryAfterMs(res) ?? backoffMs(baseMs, attempt));
         continue;
       }
       throw await this.apiErrorFromResponse(res, method, path);
@@ -597,7 +823,7 @@ var AxonClient = class {
     return new AxonApiError({ status, method, path, message, code: parsed?.code, details: parsed?.details, body });
   }
 };
-function sleep(ms) {
+function sleep2(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 function backoffMs(base, attempt) {
@@ -795,7 +1021,7 @@ async function verifyReceipt(taskId, opts = {}) {
 }
 
 // src/runtime.ts
-var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
 function isNotFound(err) {
   return err instanceof AxonApiError && (err.status === 404 || err.code === "NOT_FOUND");
 }
@@ -851,7 +1077,7 @@ function defineAgent(client, options) {
           safeCall(onError, err, started);
           return false;
         }
-        await sleep2(Math.min(2e3, 200 * 2 ** i));
+        await sleep3(Math.min(2e3, 200 * 2 ** i));
       }
     }
     return false;
@@ -927,7 +1153,7 @@ function defineAgent(client, options) {
       } catch (err) {
         safeCall(onError, err);
       }
-      if (launched === 0) await sleep2(pollIntervalMs);
+      if (launched === 0) await sleep3(pollIntervalMs);
     }
   }
   return {
@@ -959,90 +1185,18 @@ function defineAgent(client, options) {
   };
 }
 
-// src/hire.ts
-var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
-async function hire(client, opts) {
-  const {
-    to,
-    task,
-    context,
-    from = "anonymous",
-    pay,
-    paymentMethod,
-    pollIntervalMs = 2e3,
-    timeoutMs = 12e4,
-    withReceipt = true
-  } = opts;
-  let created;
-  let paid;
-  if (paymentMethod === "balance") {
-    if (from === "anonymous") {
-      throw new Error(
-        'paymentMethod "balance" requires an authenticated `from` agent \u2014 init the client with an apiKey and set `from` to an agent you own. Balance is spent from that agent\'s earnings.'
-      );
-    }
-    created = await client.sendTask({ from, to, task, context, paymentMethod: "balance" });
-    paid = true;
-  } else {
-    let requirements = null;
-    try {
-      requirements = await client.getX402Requirements(to);
-    } catch {
-      requirements = null;
-    }
-    paid = requirements !== null;
-    if (paid && !pay) {
-      throw new Error(
-        `Agent "${to}" is priced (x402) \u2014 pass a \`pay\` function to hire it, or set paymentMethod:"balance" to spend the \`from\` agent's earned balance. Free-lane agents need no payment.`
-      );
-    }
-    if (paid && pay) {
-      created = await client.submitTaskX402(to, task, pay, { from, context });
-    } else {
-      created = await client.sendTask({ from, to, task, context });
-    }
-  }
-  const deadline = Date.now() + timeoutMs;
-  let current = created;
-  while (current.status !== "completed" && current.status !== "failed") {
-    if (Date.now() >= deadline) {
-      return { taskId: current.taskId, status: current.status, paid, timedOut: true };
-    }
-    await sleep3(pollIntervalMs);
-    try {
-      current = await client.getTask(current.taskId);
-    } catch {
-    }
-  }
-  const result = {
-    taskId: current.taskId,
-    status: current.status,
-    paid,
-    timedOut: false
-  };
-  if (current.status === "completed") {
-    result.output = current.output ?? "";
-    if (withReceipt) {
-      try {
-        const receipt = (await client.getReceipt(current.taskId)).receipt;
-        result.receipt = receipt;
-      } catch {
-      }
-    }
-  } else {
-    result.error = current.error ?? "Task failed";
-  }
-  return result;
-}
-
 // src/index.ts
 var axon = new AxonClient();
 
 exports.AxonApiError = AxonApiError;
 exports.AxonClient = AxonClient;
 exports.axon = axon;
+exports.buildAxonTools = buildAxonTools;
 exports.defineAgent = defineAgent;
 exports.hire = hire;
+exports.runAxonTool = runAxonTool;
+exports.toAnthropicTools = toAnthropicTools;
+exports.toOpenAITools = toOpenAITools;
 exports.verifyProofScore = verifyProofScore;
 exports.verifyReceipt = verifyReceipt;
 exports.verifyWebhookSignature = verifyWebhookSignature;

@@ -513,6 +513,12 @@ export interface AxonConfig {
   wallet?: string;
   network?: "mainnet-beta" | "devnet" | "testnet";
   endpoint?: string;
+  /**
+   * Default payment function for priced hires — set it once and every `hire`/`run`
+   * pays automatically. Build one from a wallet with `solanaPayer` (from the
+   * `@axonprotocol/sdk/solana` subpath). A per-call `pay` still overrides it.
+   */
+  pay?: X402PayFunction;
   /** Per-request timeout in ms (aborts + surfaces a TIMEOUT error). Default 30000. */
   timeoutMs?: number;
   /**
@@ -831,6 +837,62 @@ export interface AxonAgent {
 // ─── One-shot hire (v0.3) ─────────────────────────────────────────────────────
 // Discover → (pay, if the agent is priced) → submit → poll to completion →
 // receipt, in a single call. The demand-side mirror of the runtime.
+
+/**
+ * A framework-agnostic LLM tool: a name, a description, a JSON-Schema for its args,
+ * and an `execute` that runs it. Drop into any function-calling agent — format for
+ * OpenAI/Anthropic with `toOpenAITools`/`toAnthropicTools`, or hand the JSON Schema
+ * straight to the Vercel AI SDK.
+ */
+export interface AxonTool {
+  name: string;
+  description: string;
+  /** JSON Schema for the tool's arguments. */
+  parameters: Record<string, unknown>;
+  execute: (args: Record<string, unknown>) => Promise<unknown>;
+}
+
+export interface AxonToolsOptions {
+  /** Public origin used to build receipt URLs. Default https://axon-agents.com. */
+  origin?: string;
+  /** Payment function for priced hires the agent makes. Falls back to the client's `pay`. */
+  pay?: X402PayFunction;
+  /** Cap how many candidates a hire-by-capability weighs. Default 10. */
+  candidateLimit?: number;
+  /**
+   * Who's hiring — set this to an identity the client can read (your wallet address,
+   * or an agent you own) on an authenticated (`apiKey`) client, and `axon_hire_specialist`
+   * returns the specialist's output, not just the receipt URL. Default "anonymous",
+   * which still hires and leaves a public receipt but can't read the private output back.
+   */
+  from?: string;
+}
+
+export interface RunOptions {
+  /** The work to do. */
+  task: string;
+  /** Hire this exact agent. If omitted, the highest-Proof-Score agent for `capability` is picked. */
+  agentId?: string;
+  /** Capability to search for when `agentId` is omitted, e.g. "research". */
+  capability?: string;
+  /** How many candidates to weigh before picking the best one. Default 10. */
+  candidateLimit?: number;
+  /** Optional structured context for the agent. */
+  context?: Record<string, unknown>;
+  /** Who's hiring. Default "anonymous". */
+  from?: string;
+  /** Payment function for a priced agent. Falls back to the client's configured `pay`. */
+  pay?: X402PayFunction;
+  paymentMethod?: "onchain" | "balance";
+  pollIntervalMs?: number;
+  timeoutMs?: number;
+  withReceipt?: boolean;
+}
+
+/** What `run` returns — the hire result plus which agent it chose. */
+export interface RunResult extends HireResult {
+  agentId: string;
+}
 
 export interface HireOptions {
   /** Agent to hire. */

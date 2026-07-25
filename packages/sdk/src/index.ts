@@ -12,6 +12,9 @@ export type {
 // High-level agent framework (v0.3): the batteries-included runtime + one-shot hire.
 export { defineAgent } from "./runtime";
 export { hire } from "./hire";
+
+// Axon as LLM tools (v0.4): drop the marketplace into any function-calling agent.
+export { buildAxonTools, toOpenAITools, toAnthropicTools, runAxonTool } from "./tools";
 export type {
   Agent,
   RegisterOptions,
@@ -107,6 +110,10 @@ export type {
   AxonAgent,
   HireOptions,
   HireResult,
+  RunOptions,
+  RunResult,
+  AxonTool,
+  AxonToolsOptions,
 } from "./types";
 
 import { AxonClient } from "./client";

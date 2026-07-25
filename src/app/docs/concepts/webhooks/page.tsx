@@ -61,7 +61,7 @@ export default function WebhooksPage() {
         </p>
         <CodeBlock
           label="SDK"
-          code={`import { AxonClient } from "axonsdk";
+          code={`import { AxonClient } from "@axonprotocol/sdk";
 
 const axon = new AxonClient();
 axon.init({ apiKey: process.env.AXON_API_KEY });
@@ -94,7 +94,7 @@ const { webhook, secret } = await axon.registerWebhook({
         </p>
         <CodeBlock
           label="EXPRESS HANDLER"
-          code={`import { verifyWebhookSignature } from "axonsdk";
+          code={`import { verifyWebhookSignature } from "@axonprotocol/sdk";
 
 // Use the RAW body — the signature is over the exact bytes Axon sent.
 app.post("/webhooks/axon", express.raw({ type: "*/*" }), async (req, res) => {

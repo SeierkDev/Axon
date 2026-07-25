@@ -10,7 +10,7 @@
 //   console.log(result.output);   // the answer
 //   console.log(result.receipt);  // the verifiable proof
 
-import { AxonClient } from "./client";
+import type { AxonClient } from "./client";
 import type { HireOptions, HireResult, Receipt, TaskRequest, X402Requirements } from "./types";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
