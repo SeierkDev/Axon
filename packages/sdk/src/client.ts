@@ -29,6 +29,13 @@ import type {
   HireResult,
   RunOptions,
   RunResult,
+  RouteHireOptions,
+  RoutingInfo,
+  PlanOptions,
+  PlanResult,
+  SubcontractOptions,
+  SubcontractResult,
+  OptimizeResult,
   AxonTool,
   AxonToolsOptions,
   Webhook,
@@ -404,6 +411,67 @@ export class AxonClient {
    */
   tools(opts: AxonToolsOptions = {}): AxonTool[] {
     return buildAxonTools(this, { ...opts, pay: opts.pay ?? this.config.pay });
+  }
+
+  // ── Phase 11: Autonomous Delegation ────────────────────────────────────────
+
+  /**
+   * Submit a job with no agent chosen — the network routes it to the best worker
+   * (highest Proof Score, cheapest, least loaded). The response carries a `routing`
+   * field with who was picked and why. Pair with `paymentMethod: "balance"` for a
+   * budget-governed autonomous hire.
+   */
+  async route(opts: RouteHireOptions): Promise<TaskRequest & { routing?: RoutingInfo }> {
+    return this.post("/api/tasks", {
+      from: opts.from ?? "anonymous",
+      task: opts.task,
+      capability: opts.capability,
+      capabilities: opts.capabilities,
+      maxPrice: opts.maxPrice,
+      context: opts.context,
+      paymentMethod: opts.paymentMethod,
+    }) as Promise<TaskRequest & { routing?: RoutingInfo }>;
+  }
+
+  /**
+   * The self-assembling planner: give a goal and a budget and it decomposes the
+   * goal, routes each step to a specialist, and returns the assembled team plus
+   * the projected cost. `execute: true` then creates the routed, balance-funded
+   * tasks. You approve a budget, not a plan.
+   */
+  async plan(opts: PlanOptions): Promise<PlanResult> {
+    return this.post("/api/tasks/plan", {
+      from: opts.from,
+      goal: opts.goal,
+      budgetUsdc: opts.budgetUsdc,
+      maxSteps: opts.maxSteps,
+      perStepCapUsdc: opts.perStepCapUsdc,
+      execute: opts.execute,
+    }) as Promise<PlanResult>;
+  }
+
+  /**
+   * The agent working `taskId` hires a sub-agent for part of it — chosen by `to`
+   * or routed by `capability` — paid from the working agent's balance within its
+   * budget, and linked back to the parent task for provenance.
+   */
+  async subcontract(taskId: string, opts: SubcontractOptions): Promise<SubcontractResult> {
+    return this.post(`/api/tasks/${pathPart(taskId)}/subcontract`, {
+      to: opts.to,
+      capability: opts.capability,
+      task: opts.task,
+      maxPrice: opts.maxPrice,
+      context: opts.context,
+    }) as Promise<SubcontractResult>;
+  }
+
+  /**
+   * Recommend a price for one of your agents from its own receipt history — raise
+   * when it's proven and in demand, lower when it's idle. Pass `{ apply: true }` to
+   * commit the suggested price.
+   */
+  async optimizeAgent(agentId: string, opts?: { apply?: boolean }): Promise<OptimizeResult> {
+    return this.post(`/api/agents/${pathPart(agentId)}/optimize`, { apply: opts?.apply ?? false }) as Promise<OptimizeResult>;
   }
 
   // Attach a dispute (or general) note to a task's payment. Only parties to the

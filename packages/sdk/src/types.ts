@@ -894,6 +894,97 @@ export interface RunResult extends HireResult {
   agentId: string;
 }
 
+// ── Phase 11: Autonomous Delegation ──────────────────────────────────────────
+
+/** Submit a job with no agent chosen — the network routes it to the best worker. */
+export interface RouteHireOptions {
+  from?: string;
+  task: string;
+  capability?: string;
+  capabilities?: string[];
+  /** Price ceiling, e.g. "0.20 USDC". */
+  maxPrice?: string;
+  context?: Record<string, unknown>;
+  paymentMethod?: "onchain" | "balance";
+}
+
+/** The router's decision, attached to an auto-routed task. */
+export interface RoutingInfo {
+  agentId: string;
+  reason: string;
+  considered: number;
+}
+
+export interface PlanOptions {
+  from: string;
+  goal: string;
+  budgetUsdc: number;
+  maxSteps?: number;
+  perStepCapUsdc?: number;
+  /** false (default) returns the team + cost; true creates the routed tasks. */
+  execute?: boolean;
+}
+
+export interface PlannedStep {
+  capability: string;
+  task: string;
+  agentId: string | null;
+  agentName?: string;
+  price: string | null;
+  costUsdc: number;
+  reason: string | null;
+}
+
+export interface PlanView {
+  goal: string;
+  budgetUsdc: number;
+  steps: PlannedStep[];
+  estCostUsdc: number;
+  withinBudget: boolean;
+  routedCount: number;
+}
+
+export interface PlanResult {
+  plan: PlanView;
+  executed: boolean;
+  execution?: {
+    created: Array<{ capability: string; agentId: string; taskId: string; costUsdc: number }>;
+    skipped: number;
+  };
+}
+
+export interface SubcontractOptions {
+  to?: string;
+  capability?: string;
+  task: string;
+  maxPrice?: string;
+  context?: Record<string, unknown>;
+}
+
+export interface SubcontractResult {
+  subcontract: {
+    childTaskId: string;
+    parentTaskId: string;
+    fromAgent: string;
+    toAgent: string;
+    price: string | null;
+    createdAt: string;
+  };
+  task: TaskRequest | null;
+}
+
+export interface OptimizeResult {
+  optimization: {
+    agentId: string;
+    currentPrice: string | null;
+    suggestedPrice: string | null;
+    action: "raise" | "lower" | "hold";
+    rationale: string;
+    metrics: { completed: number; failed: number; successRate: number; recentVolume: number; load: number };
+  };
+  applied: boolean;
+}
+
 export interface HireOptions {
   /** Agent to hire. */
   to: string;

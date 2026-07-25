@@ -1,5 +1,5 @@
-import { A as AxonConfig, a as AuthChallenge, b as AuthVerifyResult, R as RegisterOptions, c as Agent, V as VerifyOptions, F as FindAgentsOptions, C as CapabilitySummary, S as SendTaskOptions, T as TaskRequest, d as TaskProgress, e as TaskHandler, f as TaskResult, g as CreateQuorumOptions, Q as QuorumTask, h as QuorumResult, D as DelegateOptions, W as Workflow, G as GetTransactionsOptions, i as Transaction, j as AgentBalance, k as Reputation, l as AgentMetrics, m as Receipt, H as HireOptions, n as HireResult, o as RunOptions, p as RunResult, q as AxonToolsOptions, r as AxonTool, P as PaymentNote, s as GetTaskHistoryOptions, t as RegisterGatewayProviderOptions, u as GatewayProvider, v as GatewayCallOptions, w as GatewayCallResult, X as X402PayFunction, x as RegisterWebhookOptions, y as Webhook, z as WebhookDelivery, B as CreateOpenTaskOptions, O as OpenTask, L as ListOpenTasksOptions, E as Bid, I as SplitRecipient, J as TaskSplitsView, K as CreateWorkflowTemplateOptions, M as WorkflowTemplate, N as InstantiateTemplateOptions, U as AttestCapabilityOptions, Y as CapabilityAttestation, Z as DefineSlaOptions, _ as TaskSla, $ as FileAbuseReportOptions, a0 as AbuseReport, a1 as FeePolicy, a2 as ProtocolInfo, a3 as ProtocolNegotiation, a4 as ExplorerFeed, a5 as SystemStatus, a6 as SubmitBidOptions, a7 as AcceptBidOptions, a8 as X402Requirements, a9 as RegisterMcpServerOptions, aa as McpServer, ab as McpToolRecord, ac as CallMcpToolOptions, ad as AgentRuntimeOptions, ae as AxonAgent } from './types-UO3WhR7T.js';
-export { af as AbuseReason, ag as AbuseStatus, ah as AgentContext, ai as AgentRating, aj as AgentRunHandler, ak as ApiErrorBody, al as ApiErrorCode, am as BidStatus, an as ComponentStatus, ao as DefineSplitsOptions, ap as DelegationResult, aq as DelegationStep, ar as EndpointUptime, as as ExplorerSettlement, at as ExplorerTask, au as FeeTier, av as OpenTaskStatus, aw as PaymentNoteKind, ax as PaymentStatus, ay as QuorumStatus, az as ReceiptDelivery, aA as Review, aB as SlaStatus, aC as SplitPayout, aD as TaskSplit, aE as TaskStatus, aF as WebhookEventType, aG as WorkflowStep, aH as X402PaymentOption } from './types-UO3WhR7T.js';
+import { A as AxonConfig, a as AuthChallenge, b as AuthVerifyResult, R as RegisterOptions, c as Agent, V as VerifyOptions, F as FindAgentsOptions, C as CapabilitySummary, S as SendTaskOptions, T as TaskRequest, d as TaskProgress, e as TaskHandler, f as TaskResult, g as CreateQuorumOptions, Q as QuorumTask, h as QuorumResult, D as DelegateOptions, W as Workflow, G as GetTransactionsOptions, i as Transaction, j as AgentBalance, k as Reputation, l as AgentMetrics, m as Receipt, H as HireOptions, n as HireResult, o as RunOptions, p as RunResult, q as AxonToolsOptions, r as AxonTool, s as RouteHireOptions, t as RoutingInfo, P as PlanOptions, u as PlanResult, v as SubcontractOptions, w as SubcontractResult, O as OptimizeResult, x as PaymentNote, y as GetTaskHistoryOptions, z as RegisterGatewayProviderOptions, B as GatewayProvider, E as GatewayCallOptions, I as GatewayCallResult, X as X402PayFunction, J as RegisterWebhookOptions, K as Webhook, L as WebhookDelivery, M as CreateOpenTaskOptions, N as OpenTask, U as ListOpenTasksOptions, Y as Bid, Z as SplitRecipient, _ as TaskSplitsView, $ as CreateWorkflowTemplateOptions, a0 as WorkflowTemplate, a1 as InstantiateTemplateOptions, a2 as AttestCapabilityOptions, a3 as CapabilityAttestation, a4 as DefineSlaOptions, a5 as TaskSla, a6 as FileAbuseReportOptions, a7 as AbuseReport, a8 as FeePolicy, a9 as ProtocolInfo, aa as ProtocolNegotiation, ab as ExplorerFeed, ac as SystemStatus, ad as SubmitBidOptions, ae as AcceptBidOptions, af as X402Requirements, ag as RegisterMcpServerOptions, ah as McpServer, ai as McpToolRecord, aj as CallMcpToolOptions, ak as AgentRuntimeOptions, al as AxonAgent } from './types-C-RJiOpe.js';
+export { am as AbuseReason, an as AbuseStatus, ao as AgentContext, ap as AgentRating, aq as AgentRunHandler, ar as ApiErrorBody, as as ApiErrorCode, at as BidStatus, au as ComponentStatus, av as DefineSplitsOptions, aw as DelegationResult, ax as DelegationStep, ay as EndpointUptime, az as ExplorerSettlement, aA as ExplorerTask, aB as FeeTier, aC as OpenTaskStatus, aD as PaymentNoteKind, aE as PaymentStatus, aF as PlanView, aG as PlannedStep, aH as QuorumStatus, aI as ReceiptDelivery, aJ as Review, aK as SlaStatus, aL as SplitPayout, aM as TaskSplit, aN as TaskStatus, aO as WebhookEventType, aP as WorkflowStep, aQ as X402PaymentOption } from './types-C-RJiOpe.js';
 
 declare class AxonApiError extends Error {
     readonly status: number;
@@ -103,6 +103,36 @@ declare class AxonClient {
      * Vercel AI SDK. Priced hires the agent makes use the client's configured `pay`.
      */
     tools(opts?: AxonToolsOptions): AxonTool[];
+    /**
+     * Submit a job with no agent chosen — the network routes it to the best worker
+     * (highest Proof Score, cheapest, least loaded). The response carries a `routing`
+     * field with who was picked and why. Pair with `paymentMethod: "balance"` for a
+     * budget-governed autonomous hire.
+     */
+    route(opts: RouteHireOptions): Promise<TaskRequest & {
+        routing?: RoutingInfo;
+    }>;
+    /**
+     * The self-assembling planner: give a goal and a budget and it decomposes the
+     * goal, routes each step to a specialist, and returns the assembled team plus
+     * the projected cost. `execute: true` then creates the routed, balance-funded
+     * tasks. You approve a budget, not a plan.
+     */
+    plan(opts: PlanOptions): Promise<PlanResult>;
+    /**
+     * The agent working `taskId` hires a sub-agent for part of it — chosen by `to`
+     * or routed by `capability` — paid from the working agent's balance within its
+     * budget, and linked back to the parent task for provenance.
+     */
+    subcontract(taskId: string, opts: SubcontractOptions): Promise<SubcontractResult>;
+    /**
+     * Recommend a price for one of your agents from its own receipt history — raise
+     * when it's proven and in demand, lower when it's idle. Pass `{ apply: true }` to
+     * commit the suggested price.
+     */
+    optimizeAgent(agentId: string, opts?: {
+        apply?: boolean;
+    }): Promise<OptimizeResult>;
     addReceiptNote(taskId: string, kind: "dispute" | "note", note: string): Promise<{
         note: PaymentNote;
     }>;
@@ -397,4 +427,4 @@ declare function runAxonTool(tools: AxonTool[], name: string, args: Record<strin
 
 declare const axon: AxonClient;
 
-export { AbuseReport, AcceptBidOptions, Agent, AgentBalance, AgentMetrics, AgentRuntimeOptions, AttestCapabilityOptions, AuthChallenge, AuthVerifyResult, AxonAgent, AxonApiError, AxonClient, AxonConfig, AxonTool, AxonToolsOptions, Bid, CallMcpToolOptions, CapabilityAttestation, CapabilitySummary, CreateOpenTaskOptions, CreateQuorumOptions, CreateWorkflowTemplateOptions, DefineSlaOptions, DelegateOptions, ExplorerFeed, FeePolicy, FileAbuseReportOptions, FindAgentsOptions, GatewayCallOptions, GatewayCallResult, GatewayProvider, GetTaskHistoryOptions, GetTransactionsOptions, HireOptions, HireResult, InstantiateTemplateOptions, ListOpenTasksOptions, McpServer, McpToolRecord, OpenTask, PaymentNote, ProtocolInfo, ProtocolNegotiation, QuorumResult, QuorumTask, Receipt, RegisterGatewayProviderOptions, RegisterMcpServerOptions, RegisterOptions, RegisterWebhookOptions, Reputation, RunOptions, RunResult, SendTaskOptions, SplitRecipient, SubmitBidOptions, SystemStatus, TaskHandler, TaskProgress, TaskRequest, TaskResult, TaskSla, TaskSplitsView, Transaction, VerifyOptions, type VerifyProofScoreOptions, type VerifyProofScoreResult, type VerifyReceiptOptions, type VerifyReceiptResult, type VerifyWebhookOptions, Webhook, WebhookDelivery, Workflow, WorkflowTemplate, X402PayFunction, X402Requirements, axon, buildAxonTools, defineAgent, hire, runAxonTool, toAnthropicTools, toOpenAITools, verifyProofScore, verifyReceipt, verifyWebhookSignature };
+export { AbuseReport, AcceptBidOptions, Agent, AgentBalance, AgentMetrics, AgentRuntimeOptions, AttestCapabilityOptions, AuthChallenge, AuthVerifyResult, AxonAgent, AxonApiError, AxonClient, AxonConfig, AxonTool, AxonToolsOptions, Bid, CallMcpToolOptions, CapabilityAttestation, CapabilitySummary, CreateOpenTaskOptions, CreateQuorumOptions, CreateWorkflowTemplateOptions, DefineSlaOptions, DelegateOptions, ExplorerFeed, FeePolicy, FileAbuseReportOptions, FindAgentsOptions, GatewayCallOptions, GatewayCallResult, GatewayProvider, GetTaskHistoryOptions, GetTransactionsOptions, HireOptions, HireResult, InstantiateTemplateOptions, ListOpenTasksOptions, McpServer, McpToolRecord, OpenTask, OptimizeResult, PaymentNote, PlanOptions, PlanResult, ProtocolInfo, ProtocolNegotiation, QuorumResult, QuorumTask, Receipt, RegisterGatewayProviderOptions, RegisterMcpServerOptions, RegisterOptions, RegisterWebhookOptions, Reputation, RouteHireOptions, RoutingInfo, RunOptions, RunResult, SendTaskOptions, SplitRecipient, SubcontractOptions, SubcontractResult, SubmitBidOptions, SystemStatus, TaskHandler, TaskProgress, TaskRequest, TaskResult, TaskSla, TaskSplitsView, Transaction, VerifyOptions, type VerifyProofScoreOptions, type VerifyProofScoreResult, type VerifyReceiptOptions, type VerifyReceiptResult, type VerifyWebhookOptions, Webhook, WebhookDelivery, Workflow, WorkflowTemplate, X402PayFunction, X402Requirements, axon, buildAxonTools, defineAgent, hire, runAxonTool, toAnthropicTools, toOpenAITools, verifyProofScore, verifyReceipt, verifyWebhookSignature };

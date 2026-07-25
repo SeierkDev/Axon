@@ -17,7 +17,8 @@ export type AuditAction =
   | "mpp_channel.opened"
   | "mpp_channel.topped_up"
   | "mpp_channel.closed"
-  | "quorum.created";
+  | "quorum.created"
+  | "agent.self_optimized";
 
 export interface AuditEvent {
   auditId: string;

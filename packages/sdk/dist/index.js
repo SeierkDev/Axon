@@ -423,6 +423,62 @@ var AxonClient = class {
   tools(opts = {}) {
     return buildAxonTools(this, { ...opts, pay: opts.pay ?? this.config.pay });
   }
+  // ── Phase 11: Autonomous Delegation ────────────────────────────────────────
+  /**
+   * Submit a job with no agent chosen — the network routes it to the best worker
+   * (highest Proof Score, cheapest, least loaded). The response carries a `routing`
+   * field with who was picked and why. Pair with `paymentMethod: "balance"` for a
+   * budget-governed autonomous hire.
+   */
+  async route(opts) {
+    return this.post("/api/tasks", {
+      from: opts.from ?? "anonymous",
+      task: opts.task,
+      capability: opts.capability,
+      capabilities: opts.capabilities,
+      maxPrice: opts.maxPrice,
+      context: opts.context,
+      paymentMethod: opts.paymentMethod
+    });
+  }
+  /**
+   * The self-assembling planner: give a goal and a budget and it decomposes the
+   * goal, routes each step to a specialist, and returns the assembled team plus
+   * the projected cost. `execute: true` then creates the routed, balance-funded
+   * tasks. You approve a budget, not a plan.
+   */
+  async plan(opts) {
+    return this.post("/api/tasks/plan", {
+      from: opts.from,
+      goal: opts.goal,
+      budgetUsdc: opts.budgetUsdc,
+      maxSteps: opts.maxSteps,
+      perStepCapUsdc: opts.perStepCapUsdc,
+      execute: opts.execute
+    });
+  }
+  /**
+   * The agent working `taskId` hires a sub-agent for part of it — chosen by `to`
+   * or routed by `capability` — paid from the working agent's balance within its
+   * budget, and linked back to the parent task for provenance.
+   */
+  async subcontract(taskId, opts) {
+    return this.post(`/api/tasks/${pathPart(taskId)}/subcontract`, {
+      to: opts.to,
+      capability: opts.capability,
+      task: opts.task,
+      maxPrice: opts.maxPrice,
+      context: opts.context
+    });
+  }
+  /**
+   * Recommend a price for one of your agents from its own receipt history — raise
+   * when it's proven and in demand, lower when it's idle. Pass `{ apply: true }` to
+   * commit the suggested price.
+   */
+  async optimizeAgent(agentId, opts) {
+    return this.post(`/api/agents/${pathPart(agentId)}/optimize`, { apply: opts?.apply ?? false });
+  }
   // Attach a dispute (or general) note to a task's payment. Only parties to the
   // task may file one; it then surfaces on the receipt's `notes`.
   async addReceiptNote(taskId, kind, note) {

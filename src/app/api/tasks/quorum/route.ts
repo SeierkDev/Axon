@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createQuorumRecord } from "@/lib/quorum";
 import { createTask } from "@/lib/tasks";
 import { getAgentById } from "@/lib/agents";
+import { rankAgents } from "@/lib/routing";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { isValidSolanaAddress } from "@/lib/solana";
 import { syncToTurso } from "@/lib/db-turso";
@@ -27,23 +28,34 @@ const MAX_AGENTS = 10;
 
 const createQuorumSchema = z.object({
   from: z.string().min(1, "from is required"),
+  // Explicit panel, OR omit and let the network assemble one from `capability`.
   agents: z
     .array(z.string().min(1))
     .min(MIN_AGENTS, `agents must contain at least ${MIN_AGENTS} entries`)
-    .max(MAX_AGENTS, `agents must contain at most ${MAX_AGENTS} entries`),
+    .max(MAX_AGENTS, `agents must contain at most ${MAX_AGENTS} entries`)
+    .optional(),
+  // Quorum-by-default (Phase 11): the router assembles a panel of the top `count`
+  // free agents for this capability, and the job settles on their consensus.
+  capability: z.string().min(1).optional(),
+  count: z.number().int().min(MIN_AGENTS).max(MAX_AGENTS).optional(),
   task: z
     .string()
     .min(1, "task is required")
     .max(32_000, "task must be 32 000 characters or fewer"),
+  // Optional — defaults to a simple majority of the panel.
   threshold: z
     .number()
     .int("threshold must be a whole number")
-    .min(1, "threshold must be at least 1"),
+    .min(1, "threshold must be at least 1")
+    .optional(),
   context: z
     .record(z.string(), z.unknown())
     .refine((obj) => JSON.stringify(obj).length <= 50_000, "context must serialize to 50 KB or fewer")
     .optional(),
-});
+}).refine(
+  (o) => (o.agents?.length ?? 0) >= MIN_AGENTS || !!o.capability,
+  `provide \`agents\`, or a \`capability\` for the network to assemble the panel`,
+);
 
 export async function POST(req: NextRequest) {
   return withRequestContext(req, () => handlePost(req));
@@ -74,18 +86,43 @@ async function handlePost(req: NextRequest) {
     return apiError("FORBIDDEN", "from must be your wallet address or an agent owned by your wallet", 403);
   }
 
+  // Resolve the panel. Explicit `agents`, or quorum-by-default: the router picks
+  // the top `count` free agents for the capability (quorum V1 is free-only).
+  let agentIds = body.agents;
+  if (!agentIds) {
+    const count = body.count ?? 3;
+    // Weigh a wide candidate window before the free-only filter, so a panel isn't
+    // starved just because the top of the ranking happens to be paid agents.
+    const ranked = rankAgents({
+      capability: body.capability,
+      fromAgent: body.from !== "anonymous" ? body.from : undefined,
+      candidateLimit: 40,
+    });
+    agentIds = ranked.filter((c) => !c.agent.price).map((c) => c.agent.agentId).slice(0, count);
+    if (agentIds.length < MIN_AGENTS) {
+      return apiError(
+        "NO_AGENT_AVAILABLE",
+        `Need at least ${MIN_AGENTS} free agents for "${body.capability}" to form a quorum — found ${agentIds.length}`,
+        404,
+      );
+    }
+  }
+
+  // Default threshold to a simple majority of the panel.
+  const threshold = body.threshold ?? Math.floor(agentIds.length / 2) + 1;
+
   // threshold must not exceed the number of agents
-  if (body.threshold > body.agents.length) {
+  if (threshold > agentIds.length) {
     return apiError(
       "VALIDATION_ERROR",
-      `threshold (${body.threshold}) cannot exceed the number of agents (${body.agents.length})`,
+      `threshold (${threshold}) cannot exceed the number of agents (${agentIds.length})`,
       400
     );
   }
 
   // Validate all agents: must exist, be distinct, and be free (no price)
   const seen = new Set<string>();
-  for (const agentId of body.agents) {
+  for (const agentId of agentIds) {
     if (seen.has(agentId)) {
       return apiError("VALIDATION_ERROR", `Duplicate agent ID: '${agentId}'`, 400);
     }
@@ -109,13 +146,13 @@ async function handlePost(req: NextRequest) {
   const quorum = createQuorumRecord({
     fromAgent: body.from,
     taskContent: body.task,
-    threshold: body.threshold,
-    agentCount: body.agents.length,
+    threshold,
+    agentCount: agentIds.length,
   });
 
   const tasks = [];
   try {
-    for (const agentId of body.agents) {
+    for (const agentId of agentIds) {
       tasks.push(
         createTask({
           fromAgent: body.from,
@@ -146,7 +183,8 @@ async function handlePost(req: NextRequest) {
     metadata: {
       threshold: quorum.threshold,
       agentCount: quorum.agentCount,
-      agents: body.agents,
+      agents: agentIds,
+      autoAssembled: !body.agents,
     },
   });
 

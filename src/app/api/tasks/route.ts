@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createTask, getTaskById, getTaskByIdempotency, markTaskPaymentConfirmed, type Task } from "@/lib/tasks";
 import { syncToTurso } from "@/lib/db-turso";
 import { getAgentById } from "@/lib/agents";
+import { selectAgent, type RouteResult } from "@/lib/routing";
 import { createPayment, createBalancePayment, getPaymentByIncomingSignature, parsePriceToSol, refundPayment } from "@/lib/payments";
 import { isValidSolanaAddress } from "@/lib/solana";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
@@ -22,17 +23,28 @@ function taskResponse(
   replayHeader?: "idempotency" | "payment",
   rlHeaders?: Record<string, string>,
   claimToken?: string,
+  routing?: RouteResult,
 ) {
   // claimToken (anonymous hires only) is the read permission for this task's
   // private output — the browser/MCP caller keeps it to poll the result.
-  return NextResponse.json(claimToken ? { ...task, claimToken } : task, {
-    status,
-    headers: {
-      ...(replayHeader === "idempotency" ? { "X-Idempotent-Replay": "true" } : {}),
-      ...(replayHeader === "payment" ? { "X-Payment-Replay": "true" } : {}),
-      ...(rlHeaders ?? {}),
+  // routing (auto-routed tasks only) tells the caller which agent the network
+  // picked and why.
+  return NextResponse.json(
+    {
+      ...task,
+      ...(claimToken ? { claimToken } : {}),
+      ...(routing ? { routing: { agentId: routing.agent.agentId, reason: routing.reason, considered: routing.considered } } : {}),
     },
-  });
+    {
+      status,
+      headers: {
+        ...(replayHeader === "idempotency" ? { "X-Idempotent-Replay": "true" } : {}),
+        ...(replayHeader === "payment" ? { "X-Payment-Replay": "true" } : {}),
+        ...(routing ? { "X-Routed-To": routing.agent.agentId } : {}),
+        ...(rlHeaders ?? {}),
+      },
+    },
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -50,9 +62,30 @@ async function handlePost(req: NextRequest) {
   const parsed = parseBody(raw, createTaskSchema);
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
-  const agent = getAgentById(body.to);
+
+  // Phase 11 auto-routing: no `to` → the network picks the best worker for the
+  // requested capability (highest Proof Score, cheapest, least loaded, honouring
+  // the paying agent's budget allow-list). Resolve BEFORE pricing / idempotency /
+  // specHash below — all of which key on the concrete agent id.
+  let toAgentId = body.to;
+  let routing: RouteResult | undefined;
+  if (!toAgentId) {
+    routing = selectAgent({
+      capability: body.capability,
+      capabilities: body.capabilities,
+      maxPrice: body.maxPrice,
+      fromAgent: body.from !== "anonymous" ? body.from : undefined,
+    }) ?? undefined;
+    if (!routing) {
+      const want = body.capability ?? body.capabilities?.join(", ") ?? "the request";
+      return apiError("NO_AGENT_AVAILABLE", `No available agent matches ${want}`, 404);
+    }
+    toAgentId = routing.agent.agentId;
+  }
+
+  const agent = getAgentById(toAgentId);
   if (!agent) {
-    return apiError("NOT_FOUND", `Agent '${body.to}' not found`, 404);
+    return apiError("NOT_FOUND", `Agent '${toAgentId}' not found`, 404);
   }
 
   // from must be a wallet address, a registered agent ID, or "anonymous" (unauthenticated free tasks)
@@ -78,7 +111,7 @@ async function handlePost(req: NextRequest) {
     // agent is authorized by its on-chain payment (verified below), so the demo
     // quota must never block a paying hirer (e.g. MCP clients, which are always
     // anonymous and pay per task).
-    const freeRl = checkRateLimit(`free-demo:${ip}:${body.to}`, 3, 365 * 24 * 60 * 60 * 1000);
+    const freeRl = checkRateLimit(`free-demo:${ip}:${toAgentId}`, 3, 365 * 24 * 60 * 60 * 1000);
     if (!freeRl.allowed) {
       return apiError(
         "FREE_LIMIT_REACHED",
@@ -119,10 +152,19 @@ async function handlePost(req: NextRequest) {
   const idempotencyScope = idempotencyKey ? `tasks:${body.from}` : undefined;
   const idempotencyHash = idempotencyKey ? hashIdempotencyPayload({
     from: body.from,
-    to: body.to,
+    // Key on what the client SENT, not the resolved agent: auto-routing is
+    // non-deterministic (it factors live load), so hashing the resolved agent
+    // would make a legitimate retry mismatch and 409. For an explicit `to` this is
+    // the same value; for an auto-routed request it's the routing intent.
+    to: body.to ?? null,
+    capability: body.capability ?? null,
+    capabilities: body.capabilities ?? null,
+    maxPrice: body.maxPrice ?? null,
     task: body.task,
     context: body.context ?? null,
-    payment: payment ?? null,
+    // The resolved agent's price is an OUTPUT of routing — only include it for an
+    // explicit `to` (where it's deterministic), not for an auto-routed request.
+    payment: body.to ? (payment ?? null) : null,
     paymentSignature: body.paymentSignature ?? null,
     paymentMethod: body.paymentMethod ?? null,
     signature: body.signature ?? null,
@@ -148,7 +190,7 @@ async function handlePost(req: NextRequest) {
       if (
         existingTask &&
         existingPayment.fromAgent === body.from &&
-        existingPayment.toAgent === body.to &&
+        existingPayment.toAgent === toAgentId &&
         Math.abs(existingPayment.amountSol - amountSol) < 0.000001
       ) {
         return taskResponse(existingTask, 200, "payment", rateLimitHeaders(rl, RATE_LIMIT));
@@ -161,7 +203,7 @@ async function handlePost(req: NextRequest) {
   try {
     task = createTask({
       fromAgent: body.from,
-      toAgent: body.to,
+      toAgent: toAgentId,
       task: body.task,
       context: body.context,
       payment,
@@ -191,7 +233,7 @@ async function handlePost(req: NextRequest) {
         createBalancePayment({
           taskId: task.taskId,
           fromAgent: body.from,
-          toAgent: body.to,
+          toAgent: toAgentId,
           amountSol,
           priceString: payment,
         });
@@ -199,7 +241,7 @@ async function handlePost(req: NextRequest) {
         await createPayment({
           taskId: task.taskId,
           fromAgent: body.from,
-          toAgent: body.to,
+          toAgent: toAgentId,
           amountSol,
           paymentSignature: body.paymentSignature!,
           priceString: payment,
@@ -236,5 +278,5 @@ async function handlePost(req: NextRequest) {
   // Anonymous hires (no API key) get a claimToken back — the only way to read
   // the private output — so a browser/MCP caller can poll the result.
   const claimToken = body.from === "anonymous" ? claimTokenFor(task.taskId) : undefined;
-  return taskResponse(task, 201, undefined, rateLimitHeaders(rl, RATE_LIMIT), claimToken);
+  return taskResponse(task, 201, undefined, rateLimitHeaders(rl, RATE_LIMIT), claimToken, routing);
 }

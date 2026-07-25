@@ -733,6 +733,97 @@ interface RunOptions {
 interface RunResult extends HireResult {
     agentId: string;
 }
+/** Submit a job with no agent chosen — the network routes it to the best worker. */
+interface RouteHireOptions {
+    from?: string;
+    task: string;
+    capability?: string;
+    capabilities?: string[];
+    /** Price ceiling, e.g. "0.20 USDC". */
+    maxPrice?: string;
+    context?: Record<string, unknown>;
+    paymentMethod?: "onchain" | "balance";
+}
+/** The router's decision, attached to an auto-routed task. */
+interface RoutingInfo {
+    agentId: string;
+    reason: string;
+    considered: number;
+}
+interface PlanOptions {
+    from: string;
+    goal: string;
+    budgetUsdc: number;
+    maxSteps?: number;
+    perStepCapUsdc?: number;
+    /** false (default) returns the team + cost; true creates the routed tasks. */
+    execute?: boolean;
+}
+interface PlannedStep {
+    capability: string;
+    task: string;
+    agentId: string | null;
+    agentName?: string;
+    price: string | null;
+    costUsdc: number;
+    reason: string | null;
+}
+interface PlanView {
+    goal: string;
+    budgetUsdc: number;
+    steps: PlannedStep[];
+    estCostUsdc: number;
+    withinBudget: boolean;
+    routedCount: number;
+}
+interface PlanResult {
+    plan: PlanView;
+    executed: boolean;
+    execution?: {
+        created: Array<{
+            capability: string;
+            agentId: string;
+            taskId: string;
+            costUsdc: number;
+        }>;
+        skipped: number;
+    };
+}
+interface SubcontractOptions {
+    to?: string;
+    capability?: string;
+    task: string;
+    maxPrice?: string;
+    context?: Record<string, unknown>;
+}
+interface SubcontractResult {
+    subcontract: {
+        childTaskId: string;
+        parentTaskId: string;
+        fromAgent: string;
+        toAgent: string;
+        price: string | null;
+        createdAt: string;
+    };
+    task: TaskRequest | null;
+}
+interface OptimizeResult {
+    optimization: {
+        agentId: string;
+        currentPrice: string | null;
+        suggestedPrice: string | null;
+        action: "raise" | "lower" | "hold";
+        rationale: string;
+        metrics: {
+            completed: number;
+            failed: number;
+            successRate: number;
+            recentVolume: number;
+            load: number;
+        };
+    };
+    applied: boolean;
+}
 interface HireOptions {
     /** Agent to hire. */
     to: string;
@@ -777,4 +868,4 @@ interface HireResult {
     timedOut: boolean;
 }
 
-export type { FileAbuseReportOptions as $, AxonConfig as A, CreateOpenTaskOptions as B, CapabilitySummary as C, DelegateOptions as D, Bid as E, FindAgentsOptions as F, GetTransactionsOptions as G, HireOptions as H, SplitRecipient as I, TaskSplitsView as J, CreateWorkflowTemplateOptions as K, ListOpenTasksOptions as L, WorkflowTemplate as M, InstantiateTemplateOptions as N, OpenTask as O, PaymentNote as P, QuorumTask as Q, RegisterOptions as R, SendTaskOptions as S, TaskRequest as T, AttestCapabilityOptions as U, VerifyOptions as V, Workflow as W, X402PayFunction as X, CapabilityAttestation as Y, DefineSlaOptions as Z, TaskSla as _, AuthChallenge as a, AbuseReport as a0, FeePolicy as a1, ProtocolInfo as a2, ProtocolNegotiation as a3, ExplorerFeed as a4, SystemStatus as a5, SubmitBidOptions as a6, AcceptBidOptions as a7, X402Requirements as a8, RegisterMcpServerOptions as a9, Review as aA, SlaStatus as aB, SplitPayout as aC, TaskSplit as aD, TaskStatus as aE, WebhookEventType as aF, WorkflowStep as aG, X402PaymentOption as aH, McpServer as aa, McpToolRecord as ab, CallMcpToolOptions as ac, AgentRuntimeOptions as ad, AxonAgent as ae, AbuseReason as af, AbuseStatus as ag, AgentContext as ah, AgentRating as ai, AgentRunHandler as aj, ApiErrorBody as ak, ApiErrorCode as al, BidStatus as am, ComponentStatus as an, DefineSplitsOptions as ao, DelegationResult as ap, DelegationStep as aq, EndpointUptime as ar, ExplorerSettlement as as, ExplorerTask as at, FeeTier as au, OpenTaskStatus as av, PaymentNoteKind as aw, PaymentStatus as ax, QuorumStatus as ay, ReceiptDelivery as az, AuthVerifyResult as b, Agent as c, TaskProgress as d, TaskHandler as e, TaskResult as f, CreateQuorumOptions as g, QuorumResult as h, Transaction as i, AgentBalance as j, Reputation as k, AgentMetrics as l, Receipt as m, HireResult as n, RunOptions as o, RunResult as p, AxonToolsOptions as q, AxonTool as r, GetTaskHistoryOptions as s, RegisterGatewayProviderOptions as t, GatewayProvider as u, GatewayCallOptions as v, GatewayCallResult as w, RegisterWebhookOptions as x, Webhook as y, WebhookDelivery as z };
+export type { CreateWorkflowTemplateOptions as $, AxonConfig as A, GatewayProvider as B, CapabilitySummary as C, DelegateOptions as D, GatewayCallOptions as E, FindAgentsOptions as F, GetTransactionsOptions as G, HireOptions as H, GatewayCallResult as I, RegisterWebhookOptions as J, Webhook as K, WebhookDelivery as L, CreateOpenTaskOptions as M, OpenTask as N, OptimizeResult as O, PlanOptions as P, QuorumTask as Q, RegisterOptions as R, SendTaskOptions as S, TaskRequest as T, ListOpenTasksOptions as U, VerifyOptions as V, Workflow as W, X402PayFunction as X, Bid as Y, SplitRecipient as Z, TaskSplitsView as _, AuthChallenge as a, WorkflowTemplate as a0, InstantiateTemplateOptions as a1, AttestCapabilityOptions as a2, CapabilityAttestation as a3, DefineSlaOptions as a4, TaskSla as a5, FileAbuseReportOptions as a6, AbuseReport as a7, FeePolicy as a8, ProtocolInfo as a9, ExplorerTask as aA, FeeTier as aB, OpenTaskStatus as aC, PaymentNoteKind as aD, PaymentStatus as aE, PlanView as aF, PlannedStep as aG, QuorumStatus as aH, ReceiptDelivery as aI, Review as aJ, SlaStatus as aK, SplitPayout as aL, TaskSplit as aM, TaskStatus as aN, WebhookEventType as aO, WorkflowStep as aP, X402PaymentOption as aQ, ProtocolNegotiation as aa, ExplorerFeed as ab, SystemStatus as ac, SubmitBidOptions as ad, AcceptBidOptions as ae, X402Requirements as af, RegisterMcpServerOptions as ag, McpServer as ah, McpToolRecord as ai, CallMcpToolOptions as aj, AgentRuntimeOptions as ak, AxonAgent as al, AbuseReason as am, AbuseStatus as an, AgentContext as ao, AgentRating as ap, AgentRunHandler as aq, ApiErrorBody as ar, ApiErrorCode as as, BidStatus as at, ComponentStatus as au, DefineSplitsOptions as av, DelegationResult as aw, DelegationStep as ax, EndpointUptime as ay, ExplorerSettlement as az, AuthVerifyResult as b, Agent as c, TaskProgress as d, TaskHandler as e, TaskResult as f, CreateQuorumOptions as g, QuorumResult as h, Transaction as i, AgentBalance as j, Reputation as k, AgentMetrics as l, Receipt as m, HireResult as n, RunOptions as o, RunResult as p, AxonToolsOptions as q, AxonTool as r, RouteHireOptions as s, RoutingInfo as t, PlanResult as u, SubcontractOptions as v, SubcontractResult as w, PaymentNote as x, GetTaskHistoryOptions as y, RegisterGatewayProviderOptions as z };

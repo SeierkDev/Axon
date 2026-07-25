@@ -1,5 +1,5 @@
 import { Keypair, PublicKey, Transaction, Connection } from '@solana/web3.js';
-import { X as X402PayFunction } from './types-UO3WhR7T.js';
+import { X as X402PayFunction } from './types-C-RJiOpe.js';
 
 interface SolanaPayerOptions {
     /** RPC endpoint. Default: mainnet-beta public RPC (use your own for production). */

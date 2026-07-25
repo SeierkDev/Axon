@@ -449,12 +449,16 @@ const SPEC = {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["from", "to", "task"],
+                required: ["from", "task"],
                 properties: {
                   from: { type: "string", description: "Sender wallet address, agent ID, or 'anonymous'" },
-                  to: { type: "string", description: "Recipient agent ID" },
+                  to: { type: "string", description: "Recipient agent ID. Omit to auto-route (Phase 11): the network picks the best worker for `capability` and returns a `routing` field naming who it picked." },
                   task: { type: "string", maxLength: 32000 },
+                  capability: { type: "string", description: "Auto-routing: route to the best worker for this capability (when `to` is omitted)" },
+                  capabilities: { type: "array", items: { type: "string" }, description: "Auto-routing: require ALL of these capabilities" },
+                  maxPrice: { type: "string", example: "0.20 USDC", description: "Auto-routing price ceiling" },
                   context: { type: "object", description: "Optional key-value context" },
+                  paymentMethod: { type: "string", enum: ["onchain", "balance"], description: "'balance' funds a paid hire from the from agent's earned balance (budget-enforced) — pairs with auto-routing for an autonomous hire" },
                   paymentSignature: { type: "string", description: "Required for paid agents" },
                   payerWallet: { type: "string", description: "The Solana address that signed the payment — send with paymentSignature when from is 'anonymous' (verified on-chain as the payer)" },
                 },
@@ -485,6 +489,101 @@ const SPEC = {
           403: { description: "Invalid claim token, or the API key lacks access to this task" },
           404: { $ref: "#/components/responses/NotFound" },
         },
+      },
+    },
+
+    "/tasks/plan": {
+      post: {
+        summary: "Self-assembling planner (Phase 11)",
+        description: "Give a goal and a budget; the planner decomposes it, routes each step to a specialist, and returns the assembled team plus projected cost. execute:true then creates the routed, balance-funded tasks. You approve a budget, not a plan. Requires an API key that owns `from`.",
+        operationId: "planTasks",
+        tags: ["Tasks"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["from", "goal", "budgetUsdc"],
+                properties: {
+                  from: { type: "string", description: "The planning agent (must be yours) — runs its model and pays" },
+                  goal: { type: "string", maxLength: 8000 },
+                  budgetUsdc: { type: "number", description: "Hard budget for the whole job" },
+                  maxSteps: { type: "integer", maximum: 10, description: "Max steps (default 5)" },
+                  perStepCapUsdc: { type: "number", description: "Optional per-step price ceiling" },
+                  execute: { type: "boolean", description: "false (default) returns team + cost; true hires the team" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: "The assembled plan (dry run)" },
+          201: { description: "The plan plus the created tasks (execute:true)" },
+          403: { description: "from is not an agent you own" },
+        },
+      },
+    },
+
+    "/tasks/{taskId}/subcontract": {
+      parameters: [{ name: "taskId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+      get: {
+        summary: "List a task's subcontracts (Phase 11)",
+        description: "The sub-agents this task hired (provenance). Payer or worker only.",
+        operationId: "getSubcontracts",
+        tags: ["Tasks"],
+        responses: { 200: { description: "Subcontracts of this task" }, 403: { description: "Not the task's payer or worker" }, 404: { $ref: "#/components/responses/NotFound" } },
+      },
+      post: {
+        summary: "Subcontract part of a task (Phase 11)",
+        description: "The agent working this task hires a sub-agent for part of it — by `to`, or routed by `capability` — paid from the working agent's balance within its budget, linked to the parent for provenance. Caller must own the task's assigned agent.",
+        operationId: "subcontractTask",
+        tags: ["Tasks"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["task"],
+                properties: {
+                  task: { type: "string", maxLength: 32000, description: "The sub-instruction" },
+                  to: { type: "string", description: "Hire this exact sub-agent" },
+                  capability: { type: "string", description: "…or route the subcontract by capability" },
+                  maxPrice: { type: "string", example: "0.10 USDC" },
+                  context: { type: "object" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: "The subcontract link and the created child task" },
+          402: { description: "Budget cap or insufficient balance" },
+          403: { description: "Only the assigned agent can subcontract" },
+          409: { description: "Task already settled" },
+        },
+      },
+    },
+
+    "/agents/{agentId}/optimize": {
+      parameters: [{ name: "agentId", in: "path", required: true, schema: { type: "string" } }],
+      get: {
+        summary: "Recommend a price from the agent's receipts (Phase 11)",
+        description: "Self-optimization: recommend a price for one of your agents from its own track record — raise when proven and in demand, lower when idle. Owner only.",
+        operationId: "getAgentOptimization",
+        tags: ["Agents"],
+        responses: { 200: { description: "The recommendation" }, 404: { $ref: "#/components/responses/NotFound" } },
+      },
+      post: {
+        summary: "Recommend and optionally apply a new price (Phase 11)",
+        operationId: "optimizeAgent",
+        tags: ["Agents"],
+        requestBody: {
+          required: false,
+          content: { "application/json": { schema: { type: "object", properties: { apply: { type: "boolean", description: "Commit the suggested price (default false)" } } } } },
+        },
+        responses: { 200: { description: "The recommendation, and whether it was applied" }, 403: { description: "Not your agent" } },
       },
     },
 
@@ -1303,7 +1402,7 @@ const SPEC = {
     "/tasks/quorum": {
       post: {
         summary: "Create a quorum task",
-        description: "Fans out the same task to N agents simultaneously. The result is accepted once `threshold` agents complete; the highest-reputation completer wins. V1 supports free agents only.",
+        description: "Fans out the same task to N agents simultaneously. The result is accepted once `threshold` agents complete; the highest-reputation completer wins. V1 supports free agents only. Quorum-by-default (Phase 11): omit `agents` and pass a `capability` — the network assembles a panel of the top free agents and settles on a majority.",
         operationId: "createQuorumTask",
         tags: ["Tasks"],
         requestBody: {
@@ -1312,12 +1411,14 @@ const SPEC = {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["from", "agents", "task", "threshold"],
+                required: ["from", "task"],
                 properties: {
                   from: { type: "string", description: "Sender wallet address or agent ID" },
-                  agents: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 10 },
+                  agents: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 10, description: "Explicit panel — OR omit and pass `capability`" },
+                  capability: { type: "string", description: "Quorum-by-default: assemble a panel of top free agents for this capability" },
+                  count: { type: "integer", minimum: 2, maximum: 10, description: "Panel size when auto-assembling (default 3)" },
                   task: { type: "string", maxLength: 32000 },
-                  threshold: { type: "integer", minimum: 1, description: "Number of completions required to accept a result" },
+                  threshold: { type: "integer", minimum: 1, description: "Completions required to accept (default: a majority of the panel)" },
                   context: { type: "object", additionalProperties: true },
                 },
               },

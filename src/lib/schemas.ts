@@ -45,7 +45,9 @@ export const updateAgentSchema = z
 
 export const createTaskSchema = z.object({
   from: z.string().min(1, "from is required"),
-  to: z.string().min(1, "to is required"),
+  // Phase 11 auto-routing: `to` is optional. Omit it and provide a `capability`
+  // (or `capabilities`) and the network picks the best worker itself.
+  to: z.string().min(1).optional(),
   task: z
     .string()
     .min(1, "task is required")
@@ -62,7 +64,47 @@ export const createTaskSchema = z.object({
   // Explicit payer for anonymous paid hires — verified on-chain as the tx signer.
   payerWallet: z.string().optional(),
   signature: z.string().optional(),
+  // Auto-routing hints (used only when `to` is omitted): the network selects the
+  // highest-Proof-Score agent for these capabilities, within maxPrice.
+  capability: z.string().min(1).optional(),
+  capabilities: z.array(z.string().min(1)).max(20).optional(),
+  maxPrice: z.string().regex(/^\d+(\.\d+)?\s+(USDC|SOL)$/i, 'maxPrice must be an amount like "0.10 USDC"').optional(),
+}).refine(
+  (o) => !!o.to || !!o.capability || (o.capabilities?.length ?? 0) > 0,
+  "provide `to`, or a `capability`/`capabilities` for the network to route the job",
+);
+
+// ── Self-assembling planner (Phase 11) ──────────────────────────────────────
+
+export const planTaskSchema = z.object({
+  from: z.string().min(1, "from is required"),
+  goal: z.string().min(1, "goal is required").max(8_000, "goal must be 8 000 characters or fewer"),
+  budgetUsdc: z.number().positive("budgetUsdc must be positive").max(1_000_000),
+  maxSteps: z.number().int().positive().max(10).optional(),
+  perStepCapUsdc: z.number().positive().max(1_000_000).optional(),
+  // false (default) returns the assembled team + projected cost without hiring —
+  // "approve a budget, not a plan". true creates the routed tasks.
+  execute: z.boolean().optional(),
 });
+
+// ── Self-optimization (Phase 11) ────────────────────────────────────────────
+
+export const optimizeSchema = z.object({
+  // true commits the suggested price; false (default) returns the recommendation only.
+  apply: z.boolean().optional(),
+});
+
+// ── Subcontracting (Phase 11) ───────────────────────────────────────────────
+
+export const subcontractSchema = z.object({
+  to: z.string().min(1).optional(),
+  capability: z.string().min(1).optional(),
+  task: z.string().min(1, "task is required").max(32_000, "task must be 32 000 characters or fewer"),
+  maxPrice: z.string().regex(/^\d+(\.\d+)?\s+(USDC|SOL)$/i, 'maxPrice must be an amount like "0.10 USDC"').optional(),
+  context: z.record(z.string(), z.unknown())
+    .refine((obj) => JSON.stringify(obj).length <= 50_000, "context must serialize to 50 KB or fewer")
+    .optional(),
+}).refine((o) => !!o.to || !!o.capability, "provide `to`, or a `capability` for the network to route the subcontract");
 
 // ── Bidding (Phase 8) ───────────────────────────────────────────────────────
 
