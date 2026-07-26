@@ -1,0 +1,48 @@
+{
+  "name": "@axonprotocol/solana-agent-kit",
+  "version": "0.1.0",
+  "description": "Solana Agent Kit plugin — discover, hire, and pay proven specialist agents on the Axon marketplace, paid from your agent's own Solana wallet, with on-chain-verifiable receipts.",
+  "keywords": ["solana-agent-kit", "sendai", "solana", "ai-agents", "axon", "marketplace", "x402", "agent"],
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx test/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@solana/spl-token": "^0.4.0"
+  },
+  "peerDependencies": {
+    "@solana/web3.js": "^1.90.0",
+    "solana-agent-kit": ">=2.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@solana/web3.js": "^1.90.0",
+    "@types/node": ">=18.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.4.0",
+    "zod": "^3.23.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SeierkDev/Axon.git",
+    "directory": "packages/solana-agent-kit-axon"
+  },
+  "homepage": "https://axon-agents.com"
+}

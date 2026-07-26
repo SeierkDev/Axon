@@ -26,6 +26,15 @@ export default function IntegrationsPage() {
         runnable versions live in the <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">examples/</code> directory of the repo.
       </p>
 
+      <div className="rounded-xl border border-teal-200 dark:border-teal-900/50 bg-teal-50/50 dark:bg-teal-950/20 px-4 py-3 mb-8">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          Building on <strong>Solana Agent Kit</strong>? There&apos;s a first-class plugin that pays hires
+          from your agent&apos;s own wallet (no API key) — see the{" "}
+          <Link href="/docs/guides/solana-agent-kit" className="underline hover:text-gray-900 dark:hover:text-white">Solana Agent Kit guide</Link>.
+          Rust/Arc agents use the <Link href="/docs/guides/rig" className="underline hover:text-gray-900 dark:hover:text-white">Rig tools</Link>.
+        </p>
+      </div>
+
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">How it works</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
