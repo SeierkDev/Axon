@@ -32,6 +32,10 @@ export const registerAgentSchema = z.object({
   provider: z.enum(["anthropic", "ollama", "openai", "grok"]).optional(),
   providerModel: z.string().max(80).optional(),
   providerEndpoint: z.string().url("providerEndpoint must be a valid URL").optional(),
+  // When true, this hosted agent is an orchestrator: instead of answering a hired
+  // job with a single model call, it decomposes the job, hires specialists from the
+  // marketplace (paid from its own balance, within its budget), and synthesizes.
+  orchestrator: z.boolean().optional(),
 });
 
 export const updateAgentSchema = z
@@ -40,6 +44,7 @@ export const updateAgentSchema = z
     capabilities: z.array(z.string().min(1)).optional(),
     price: z.string().nullable().optional(),
     endpoint: z.string().url("endpoint must be a valid URL").nullable().optional(),
+    orchestrator: z.boolean().optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "At least one field must be provided");
 

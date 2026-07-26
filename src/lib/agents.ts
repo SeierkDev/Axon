@@ -23,6 +23,7 @@ interface AgentRow {
   last_verified_at: string | null;
   proof_score: number | null;
   proof_score_tier: string | null;
+  orchestrator: number;
   created_at: string;
 }
 
@@ -57,6 +58,7 @@ function rowToAgent(row: AgentRow): Agent {
     lastVerifiedAt: row.last_verified_at ?? undefined,
     proofScore: row.proof_score ?? undefined, // cached; NULL until the recompute backfills it
     proofScoreTier: row.proof_score_tier ?? undefined,
+    orchestrator: row.orchestrator === 1,
     createdAt: row.created_at,
   };
 }
@@ -93,8 +95,8 @@ export function createAgent(agent: Agent): Agent {
   const db = getDb();
 
   const insertAgent = db.prepare(`
-    INSERT INTO agents (agent_id, name, capabilities, public_key, endpoint, price, reputation, category, wallet_address, provider, provider_model, provider_endpoint, verification_status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO agents (agent_id, name, capabilities, public_key, endpoint, price, reputation, category, wallet_address, provider, provider_model, provider_endpoint, verification_status, orchestrator, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertCap = db.prepare(
     "INSERT OR IGNORE INTO agent_capabilities (capability, agent_id) VALUES (?, ?)"
@@ -115,6 +117,7 @@ export function createAgent(agent: Agent): Agent {
       agent.providerModel ?? null,
       agent.providerEndpoint ?? null,
       agent.verificationStatus ?? "unverified",
+      agent.orchestrator ? 1 : 0,
       agent.createdAt,
     );
     for (const cap of agent.capabilities) {
@@ -146,12 +149,13 @@ export interface AgentUpdateFields {
   capabilities?: string[];
   price?: string | null;
   endpoint?: string | null;
+  orchestrator?: boolean;
 }
 
 export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent | null {
   const db = getDb();
   const setParts: string[] = [];
-  const values: (string | null)[] = [];
+  const values: (string | number | null)[] = [];
 
   if (updates.name !== undefined) {
     setParts.push("name = ?");
@@ -173,6 +177,10 @@ export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent 
     // Always reset verification_status when endpoint changes (clearing or setting)
     setParts.push("verification_status = ?");
     values.push("unverified");
+  }
+  if (updates.orchestrator !== undefined) {
+    setParts.push("orchestrator = ?");
+    values.push(updates.orchestrator ? 1 : 0);
   }
 
   if (setParts.length === 0) return getAgentById(agentId);

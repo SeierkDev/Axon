@@ -3,6 +3,8 @@ import { refundPayment } from "../lib/payments";
 import { settleCompletedTask } from "../lib/sla";
 import { refundDebitForTask } from "../lib/mpp";
 import { getAllAgents } from "../lib/agents";
+import { runOrchestration } from "../lib/orchestrator";
+import { getSubcontractsForParent } from "../lib/subcontracts";
 import { getDb } from "../lib/db";
 import { syncToTurso } from "../lib/db-turso";
 import { listMcpServers, createMcpAgentHandler } from "../lib/mcp";
@@ -154,7 +156,12 @@ async function processTasks() {
 
   const processAgent = async (agent: (typeof agents)[number]) => {
     const mcpHandler = mcpHandlers[agent.agentId];
-    if (agent.endpoint && !mcpHandler) return;
+    // Endpoint agents run their own inference elsewhere, so the worker skips them —
+    // EXCEPT orchestrators, which always run their hiring loop here (they think via
+    // getProvider, which uses providerEndpoint, not this public endpoint). Without
+    // this exception an orchestrator registered with an endpoint would silently
+    // never run and every job hired to it would hang queued forever.
+    if (agent.endpoint && !mcpHandler && !agent.orchestrator) return;
 
     if (isCircuitOpen(agent.agentId)) {
       logger.info("worker.circuit_skipped", "Skipping agent — circuit breaker open", { agentId: agent.agentId });
@@ -181,6 +188,37 @@ async function processTasks() {
           limit: MAX_CONCURRENT_PER_AGENT,
         });
         return;
+      }
+
+      // Orchestrator agents don't answer with one model call — they hire a team.
+      // Fire the orchestration in the background (started as "orchestrator" so the
+      // "worker"-only stuck reaper leaves it alone) and move on, so the worker's
+      // next poll cycles execute the sub-hires it creates. It completes/fails the
+      // task itself when the team's work is assembled.
+      if (agent.orchestrator) {
+        const started = startTask(task.taskId, "orchestrator");
+        if (!started) continue;
+        logger.info("worker.orchestration_picked", "Orchestrator agent picked up a job", {
+          agentId: agent.agentId,
+          taskId: task.taskId,
+        });
+        // Run under the parent's traceId so every specialist it hires inherits the
+        // same trace — without this, createHiredTask → resolveTraceId() mints a
+        // fresh trace per sub-hire and the flight recorder can't show the team.
+        void runWithTraceId(task.traceId ?? task.taskId, () =>
+          runOrchestration(agent, task).catch((err) => {
+            logger.error("worker.orchestration_failed", "Orchestration crashed", {
+              err,
+              agentId: agent.agentId,
+              taskId: task.taskId,
+            });
+            if (failTask(task.taskId, err instanceof Error ? err.message : "orchestration failed")) {
+              refundPayment(task.taskId);
+              refundDebitForTask(task.taskId);
+            }
+          }),
+        );
+        continue;
       }
 
       await runWithTraceId(task.traceId ?? task.taskId, async () => {
@@ -421,6 +459,40 @@ export async function startWorkerLoops(): Promise<void> {
     .run().changes;
   if (reclaimed > 0) {
     logger.info("worker.boot_reclaim", "Requeued running tasks orphaned by the previous process", { reclaimed });
+  }
+
+  // Orchestrator tasks run their hiring loop in memory, not as a re-runnable
+  // worker step, so a process that died mid-orchestration can't resume one — and
+  // re-running would double-hire (spend the balance twice). They're also exempt
+  // from the stuck reaper (which only touches 'worker'), so nothing else recovers
+  // them. Fail + refund the buyer here so the escrow can't sit locked forever.
+  const orphanedOrchestrations = getDb()
+    .prepare("SELECT task_id FROM tasks WHERE status='running' AND started_by='orchestrator'")
+    .all() as { task_id: string }[];
+  let reclaimedSubHires = 0;
+  for (const { task_id } of orphanedOrchestrations) {
+    // Reclaim the sub-hires this orchestration created — its polling loop is gone,
+    // so nothing else will. A child still queued (especially one routed to an
+    // endpoint specialist that never runs here) is never reaped, so its balance
+    // escrow would stay locked forever, permanently shrinking the orchestrator's
+    // available balance. failTask no-ops on already-terminal children (no double refund).
+    for (const sub of getSubcontractsForParent(task_id)) {
+      if (failTask(sub.childTaskId, "parent orchestration interrupted by a restart")) {
+        refundPayment(sub.childTaskId);
+        refundDebitForTask(sub.childTaskId);
+        reclaimedSubHires++;
+      }
+    }
+    if (failTask(task_id, "Orchestration interrupted by a restart")) {
+      refundPayment(task_id);
+      refundDebitForTask(task_id);
+    }
+  }
+  if (orphanedOrchestrations.length > 0) {
+    logger.info("worker.boot_reclaim_orchestrations", "Failed + refunded orchestrations orphaned by the previous process", {
+      count: orphanedOrchestrations.length,
+      reclaimedSubHires,
+    });
   }
 
   await runPoll("startup");

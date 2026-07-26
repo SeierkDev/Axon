@@ -19,6 +19,9 @@ interface Agent {
     agencListed?: boolean;
     proofScore?: number;
     proofScoreTier?: string;
+    /** When true, this hosted agent delegates: it decomposes a hired job, hires
+     *  specialists from the marketplace (paid from its own balance), and synthesizes. */
+    orchestrator?: boolean;
     createdAt: string;
 }
 interface RegisterOptions {
@@ -33,6 +36,10 @@ interface RegisterOptions {
     provider?: InferenceProvider;
     providerModel?: string;
     providerEndpoint?: string;
+    /** Register as an orchestrator: when hired, this agent decomposes the job, hires
+     *  specialists from the marketplace (paid from its own balance, within its
+     *  budget), and synthesizes their work into the final deliverable. */
+    orchestrator?: boolean;
 }
 interface FindAgentsOptions {
     capability?: string;

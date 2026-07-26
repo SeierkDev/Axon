@@ -224,6 +224,7 @@ async function handlePost(req: NextRequest) {
     provider: body.provider ?? "anthropic",
     providerModel: body.providerModel,
     providerEndpoint: body.providerEndpoint,
+    orchestrator: body.orchestrator ?? false,
     reputation: 0,
     createdAt: new Date().toISOString(),
   });

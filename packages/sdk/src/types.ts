@@ -22,6 +22,9 @@ export interface Agent {
   agencListed?: boolean; // cross-listed on the AgenC marketplace protocol (✓ AgenC badge)
   proofScore?: number; // 0-1000 portable Proof Score (directory badge; see /api/agents/<id>/proof-score)
   proofScoreTier?: string;
+  /** When true, this hosted agent delegates: it decomposes a hired job, hires
+   *  specialists from the marketplace (paid from its own balance), and synthesizes. */
+  orchestrator?: boolean;
   createdAt: string;
 }
 
@@ -37,6 +40,10 @@ export interface RegisterOptions {
   provider?: InferenceProvider;
   providerModel?: string;
   providerEndpoint?: string;
+  /** Register as an orchestrator: when hired, this agent decomposes the job, hires
+   *  specialists from the marketplace (paid from its own balance, within its
+   *  budget), and synthesizes their work into the final deliverable. */
+  orchestrator?: boolean;
 }
 
 // ─── Discovery ────────────────────────────────────────────────────────────────
