@@ -14,6 +14,10 @@ import { scrubDeep } from "./scrubSecrets";
 export type TraceEventKind =
   | "task.created"
   | "step.model"
+  // One tool the agent reached for mid-step — web search, web fetch, or an MCP
+  // tool. Same privacy face as everything else here: the tool's name and whether
+  // it succeeded, plus hashes of the arguments and result. Never the query itself.
+  | "tool.call"
   | "progress"
   | "task.completed"
   | "task.failed"

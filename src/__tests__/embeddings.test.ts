@@ -79,6 +79,25 @@ describe("buildAgentEmbeddingText", () => {
     expect(text).toContain("search");
   });
 
+  it("spells out tool grants so semantic search can match on them", () => {
+    // Grant strings are identifiers; the embedding matches on meaning, so a
+    // query like "who can look this up right now" has something to hit.
+    const text = buildAgentEmbeddingText({
+      name: "My Agent",
+      capabilities: ["research"],
+      tools: ["web_search", "web_fetch", "mcp:srv-1"],
+    });
+    expect(text).toContain("live web search");
+    expect(text).toContain("reads web pages");
+    expect(text).toContain("external MCP tools");
+    expect(text).not.toContain("web_search");
+  });
+
+  it("omits the tools clause for an agent with no grants", () => {
+    expect(buildAgentEmbeddingText({ name: "My Agent", capabilities: ["research"] })).not.toContain("tools:");
+    expect(buildAgentEmbeddingText({ name: "My Agent", capabilities: ["research"], tools: [] })).not.toContain("tools:");
+  });
+
   it("truncates to at most 500 characters", () => {
     const text = buildAgentEmbeddingText({
       name: "n".repeat(600),

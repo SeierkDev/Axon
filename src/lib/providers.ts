@@ -15,6 +15,10 @@ import type { Agent } from "@/sdk/types";
 import { publicHttpFetch } from "./urlSecurity";
 import { logger } from "./logger";
 import { recordModelUsage } from "./modelUsage";
+// Type-only: the tool layer builds the definitions and closures, this module
+// only runs them. Keeps the DB off the model-call path at runtime.
+import type { ResolvedTools, LocalTool } from "./agentTools";
+import { MAX_TOOL_STEPS, MAX_TOOL_RESULT_CHARS } from "./agentToolLimits";
 
 // System prompts — imported from each handler so the provider uses the real
 // domain-specific prompt, not a generic fallback.
@@ -157,9 +161,49 @@ export function getAgentSystem(agent: Agent): string {
 
 // ── Provider interface ────────────────────────────────────────────────────────
 
+// One tool invocation, reported the moment it finishes so the caller can put it
+// in the receipt's flight recorder. Raw args and result are handed over so the
+// caller can hash them — nothing content-bearing is ever stored by the trace.
+export interface ToolCallEvent {
+  /** Readable name for the receipt: "web_search", or "<server>/<tool>" for MCP. */
+  tool: string;
+  kind: "web_search" | "web_fetch" | "mcp";
+  ok: boolean;
+  /** null for server-side tools, which run inside the model call and aren't timed separately. */
+  latencyMs: number | null;
+  input: string;
+  output: string;
+  error?: string;
+}
+
+export type ToolCallSink = (event: ToolCallEvent) => void;
+
+export interface ToolRunOptions {
+  /** Called as each tool finishes, so the caller can record it in the trace. */
+  onToolCall?: ToolCallSink;
+  /**
+   * Stops the loop between rounds. A tool loop is many model calls, so a caller
+   * whose client has gone away (a disconnected SSE stream) needs a way to stop
+   * paying for the rest of it.
+   */
+  signal?: AbortSignal;
+}
+
 export interface ProviderClient {
   complete(system: string, message: string, maxTokens?: number, temperature?: number): Promise<string>;
   stream(system: string, message: string, maxTokens?: number): AsyncIterable<string>;
+  /**
+   * Run the completion as a bounded tool loop: the model may search, fetch, and
+   * call MCP tools before it answers. Optional — providers without tool support
+   * omit it and the caller falls back to a plain single call.
+   */
+  completeWithTools?(
+    system: string,
+    message: string,
+    maxTokens: number,
+    tools: ResolvedTools,
+    opts?: ToolRunOptions,
+  ): Promise<string>;
 }
 
 // Joins a continuation onto a truncated output. The model may resume a few
@@ -193,6 +237,16 @@ const DEFAULT_GROK_MODEL = process.env.XAI_MODEL ?? "grok-4.5";
 
 // True when the API says the model itself can't be used by this org (not a
 // transient failure): unknown model or missing entitlement.
+// The API rejected the request shape itself (400) — not a transient failure and
+// not something a retry fixes.
+function isBadRequest(err: unknown): boolean {
+  try {
+    return err instanceof Anthropic.BadRequestError;
+  } catch {
+    return false; // SDK error classes unavailable (mocked module)
+  }
+}
+
 function isModelUnavailable(err: unknown): boolean {
   try {
     return (
@@ -201,6 +255,97 @@ function isModelUnavailable(err: unknown): boolean {
     );
   } catch {
     return false; // SDK error classes unavailable (mocked module)
+  }
+}
+
+// ── Tool-loop helpers ─────────────────────────────────────────────────────────
+
+// A loop that spent every round on tools and never wrote an answer has produced
+// nothing to deliver. Fail loudly — the task then fails and refunds, which is the
+// honest outcome. Silently completing with "" would settle payment for no work.
+function requireText(text: string): string {
+  if (!text.trim()) throw new Error("No text response from Anthropic (tool loop produced no answer)");
+  return text;
+}
+
+// Server-side tools (web search / fetch) run inside the model call, so they show
+// up as matched server_tool_use → *_tool_result pairs in the response rather than
+// as something we execute. Pair them up and report each one.
+function reportServerToolCalls(content: Anthropic.ContentBlock[], sink?: ToolCallSink): void {
+  if (!sink) return;
+  const uses = new Map<string, { name: string; input: unknown }>();
+  for (const block of content) {
+    if (block.type === "server_tool_use") uses.set(block.id, { name: block.name, input: block.input });
+  }
+  for (const block of content) {
+    if (block.type !== "web_search_tool_result" && block.type !== "web_fetch_tool_result") continue;
+    const use = uses.get(block.tool_use_id);
+    const kind = block.type === "web_search_tool_result" ? "web_search" : "web_fetch";
+    // A failed server tool returns a single error object where a success returns
+    // results; that shape difference is the only signal available here.
+    const payload = block.content as unknown;
+    const errorCode =
+      payload && typeof payload === "object" && !Array.isArray(payload)
+        ? (payload as { error_code?: string }).error_code
+        : undefined;
+    sink({
+      tool: use?.name ?? kind,
+      kind,
+      ok: !errorCode,
+      latencyMs: null,
+      input: JSON.stringify(use?.input ?? {}),
+      output: errorCode ? "" : JSON.stringify(payload ?? null),
+      ...(errorCode ? { error: errorCode } : {}),
+    });
+  }
+}
+
+// Execute one model-requested local (MCP) tool call and shape the result block.
+// A tool that throws comes back as an is_error result rather than a thrown
+// exception: the model can read the message and try something else, which is a
+// far better outcome for a paid task than failing the whole job.
+async function runLocalTool(
+  use: Anthropic.ToolUseBlock,
+  byName: Map<string, LocalTool>,
+  sink?: ToolCallSink,
+): Promise<Anthropic.ToolResultBlockParam> {
+  const tool = byName.get(use.name);
+  const args = (use.input ?? {}) as Record<string, unknown>;
+  if (!tool) {
+    return {
+      type: "tool_result",
+      tool_use_id: use.id,
+      content: `Unknown tool '${use.name}'. Use only the tools provided.`,
+      is_error: true,
+    };
+  }
+
+  const startedAt = Date.now();
+  try {
+    const raw = await tool.run(args);
+    const output =
+      raw.length > MAX_TOOL_RESULT_CHARS ? `${raw.slice(0, MAX_TOOL_RESULT_CHARS)}\n…[truncated]` : raw;
+    sink?.({
+      tool: tool.label,
+      kind: "mcp",
+      ok: true,
+      latencyMs: Date.now() - startedAt,
+      input: JSON.stringify(args),
+      output,
+    });
+    return { type: "tool_result", tool_use_id: use.id, content: output || "(no output)" };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "tool call failed";
+    sink?.({
+      tool: tool.label,
+      kind: "mcp",
+      ok: false,
+      latencyMs: Date.now() - startedAt,
+      input: JSON.stringify(args),
+      output: "",
+      error: msg,
+    });
+    return { type: "tool_result", tool_use_id: use.id, content: `Error: ${msg}`, is_error: true };
   }
 }
 
@@ -221,28 +366,33 @@ class AnthropicProvider implements ProviderClient {
   // 4096: Opus-tier agents write full deliverables — 2048 truncated pipeline
   // outputs mid-sentence.
   async complete(system: string, message: string, maxTokens = 4096, temperature?: number): Promise<string> {
+    return this.withModelFallback((model) => this.completeWith(model, system, message, maxTokens, temperature));
+  }
+
+  // Runs `attempt` on the configured model and, if that model is unavailable to
+  // this org (404/403) or declines the request outright (stop_reason "refusal",
+  // occasionally a false positive on benign work), re-runs it on the Opus
+  // fallback. A paid task must never die on either.
+  private async withModelFallback(
+    attempt: (model: string) => Promise<{ text: string; refused: boolean }>,
+  ): Promise<string> {
     let first: { text: string; refused: boolean };
     try {
-      first = await this.completeWith(this.model, system, message, maxTokens, temperature);
+      first = await attempt(this.model);
     } catch (err) {
-      // The org may not have access to the primary model at all (404/403, e.g.
-      // a Fable-class model without the required retention setting). A paid
-      // build must never die on that — re-run on the Opus fallback.
       if (this.model !== REFUSAL_FALLBACK_MODEL && isModelUnavailable(err)) {
         logger.warn("provider.model_fallback", "Primary model unavailable — falling back", {
           model: this.model,
           fallback: REFUSAL_FALLBACK_MODEL,
           reason: err instanceof Error ? err.message : String(err),
         });
-        const rescued = await this.completeWith(REFUSAL_FALLBACK_MODEL, system, message, maxTokens, temperature);
+        const rescued = await attempt(REFUSAL_FALLBACK_MODEL);
         if (rescued.refused) throw new Error("Model declined the request (fallback included)");
         return rescued.text;
       }
       throw err;
     }
     if (!first.refused) return first.text;
-    // Fable-class models can decline a request outright (stop_reason "refusal",
-    // occasionally a false positive on benign work) — same fallback.
     if (this.model === REFUSAL_FALLBACK_MODEL) {
       throw new Error(`Model ${this.model} declined the request`);
     }
@@ -251,9 +401,114 @@ class AnthropicProvider implements ProviderClient {
       fallback: REFUSAL_FALLBACK_MODEL,
       reason: "refusal",
     });
-    const second = await this.completeWith(REFUSAL_FALLBACK_MODEL, system, message, maxTokens, temperature);
+    const second = await attempt(REFUSAL_FALLBACK_MODEL);
     if (second.refused) throw new Error("Model declined the request (fallback included)");
     return second.text;
+  }
+
+  // ── Tool loop ───────────────────────────────────────────────────────────────
+  // The agent gets to look things up before it answers: the model may call web
+  // search, web fetch, and any granted MCP tool, and we feed each result back
+  // until it stops asking. Bounded by MAX_TOOL_STEPS, then forced to answer.
+
+  async completeWithTools(
+    system: string,
+    message: string,
+    maxTokens: number,
+    tools: ResolvedTools,
+    opts: ToolRunOptions = {},
+  ): Promise<string> {
+    return this.withModelFallback((model) => this.toolLoop(model, system, message, maxTokens, tools, opts));
+  }
+
+  private async toolLoop(
+    model: string,
+    system: string,
+    message: string,
+    maxTokens: number,
+    tools: ResolvedTools,
+    { onToolCall, signal }: ToolRunOptions,
+  ): Promise<{ text: string; refused: boolean }> {
+    const timeoutMs = Math.max(120_000, maxTokens * 30);
+    const byName = new Map<string, LocalTool>(tools.localTools.map((t) => [t.name, t]));
+    const toolDefs: Anthropic.Messages.ToolUnion[] = [
+      ...tools.serverTools,
+      ...tools.localTools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.inputSchema as Anthropic.Messages.Tool.InputSchema,
+      })),
+    ];
+
+    const messages: Anthropic.MessageParam[] = [{ role: "user", content: message }];
+    let lastText = "";
+
+    // One extra pass past the cap, with tools switched off, so a loop that runs
+    // long still ends with a real deliverable instead of a dangling tool call.
+    for (let step = 0; step <= MAX_TOOL_STEPS; step++) {
+      // Checked before every model call, so an abandoned request stops costing
+      // money at the next round boundary rather than running the loop out.
+      if (signal?.aborted) throw new Error("Tool loop aborted");
+      const exhausted = step === MAX_TOOL_STEPS;
+      const msg = await withRetry(
+        () =>
+          this.client.messages
+            .stream(
+              {
+                model,
+                max_tokens: maxTokens,
+                system,
+                messages,
+                tools: toolDefs,
+                ...(exhausted ? { tool_choice: { type: "none" as const } } : {}),
+              },
+              { timeout: timeoutMs },
+            )
+            .finalMessage(),
+        3,
+        1000,
+        `anthropic-tools:${model}`,
+      );
+
+      try {
+        if (msg.usage) recordModelUsage(model, msg.usage.input_tokens ?? 0, msg.usage.output_tokens ?? 0);
+      } catch {
+        /* usage capture is optional */
+      }
+
+      if ((msg.stop_reason as string) === "refusal") return { text: "", refused: true };
+
+      reportServerToolCalls(msg.content, onToolCall);
+
+      const text = msg.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
+        .trim();
+      if (text) lastText = text;
+
+      // A long server-tool run pauses the turn; resume by replaying it back with
+      // no new user message. Costs a step, which is the point of the cap.
+      if ((msg.stop_reason as string) === "pause_turn") {
+        messages.push({ role: "assistant", content: msg.content as Anthropic.ContentBlockParam[] });
+        continue;
+      }
+
+      const toolUses = msg.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+      if (toolUses.length === 0) return { text: requireText(lastText), refused: false };
+
+      // Truncation can cut a tool call off mid-arguments. Running it would call
+      // the tool with the wrong input, so stop here and deliver what we have.
+      if ((msg.stop_reason as string) === "max_tokens") return { text: requireText(lastText), refused: false };
+
+      messages.push({ role: "assistant", content: msg.content as Anthropic.ContentBlockParam[] });
+      // Parallel tool calls arrive in one message and all results must go back in
+      // one user message — splitting them teaches the model to stop parallelising.
+      const results = await Promise.all(toolUses.map((use) => runLocalTool(use, byName, onToolCall)));
+      messages.push({ role: "user", content: results });
+    }
+
+    return { text: requireText(lastText), refused: false };
   }
 
   private async completeWith(
@@ -523,6 +778,47 @@ export async function runWithProvider(
       ? getProvider({ ...agent, providerModel: modelOverride })
       : getProvider(agent);
   return client.complete(getAgentSystem(agent), message, maxTokens);
+}
+
+// Same as runWithProvider, but the agent gets to use its granted tools first:
+// search the live web, fetch a page, call an MCP tool, then answer. Providers
+// without tool support fall back to a single call, so a grant on (say) an Ollama
+// agent degrades to today's behaviour instead of failing the task.
+export async function runWithProviderTools(
+  agent: Agent,
+  message: string,
+  maxTokens: number,
+  tools: ResolvedTools,
+  opts: ToolRunOptions = {},
+): Promise<string> {
+  const client = getProvider(agent);
+  const system = getAgentSystem(agent);
+  if (!client.completeWithTools) {
+    logger.warn("provider.tools_unsupported", "Provider has no tool support — running without tools", {
+      agentId: agent.agentId,
+      provider: agent.provider,
+      grants: tools.grants,
+    });
+    return client.complete(system, message, maxTokens);
+  }
+  try {
+    return await client.completeWithTools(system, message, maxTokens, tools, opts);
+  } catch (err) {
+    // The request itself was rejected — an agent pinned to a model that doesn't
+    // offer server tools, or an MCP server publishing a schema the API won't
+    // accept. Answer the job without tools rather than failing a paid task over
+    // a misconfiguration; the receipt records only the calls that really ran.
+    if (isBadRequest(err)) {
+      logger.warn("provider.tools_rejected", "Tool request rejected — answering without tools", {
+        agentId: agent.agentId,
+        model: agent.providerModel ?? null,
+        grants: tools.grants,
+        reason: err instanceof Error ? err.message : String(err),
+      });
+      return client.complete(system, message, maxTokens);
+    }
+    throw err;
+  }
 }
 
 // The model that WOULD run for this agent, resolving defaults the same way the

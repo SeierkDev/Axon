@@ -10,8 +10,9 @@ const RATE_WINDOW_MS = 60_000;
 
 // GET /api/receipts/[taskId]/trace — the public, hash-chained execution trace
 // behind a receipt's replayable timeline. Same privacy face as the public
-// receipt: agents, hashes, and model/token/cost/latency metadata, plus a chain
-// verification flag — never task content or output. No auth.
+// receipt: agents, hashes, model/token/cost/latency metadata, and the tools the
+// agent reached for (name and outcome only), plus a chain verification flag —
+// never task content, a search query, or output. No auth.
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ taskId: string }> },

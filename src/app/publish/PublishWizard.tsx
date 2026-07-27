@@ -21,6 +21,7 @@ interface AgentForm {
   providerModel: string;
   providerEndpoint: string; // ollama only
   endpoint: string;         // external only
+  tools: string[];          // hosted agents only — external ones bring their own
 }
 
 const EMPTY_FORM: AgentForm = {
@@ -32,7 +33,23 @@ const EMPTY_FORM: AgentForm = {
   providerModel: "",
   providerEndpoint: "",
   endpoint: "",
+  tools: [],
 };
+
+// What a hosted agent can be granted from the wizard. MCP grants need a server
+// id, so those stay on the API where the id is to hand.
+const TOOL_OPTIONS: { grant: string; label: string; hint: string }[] = [
+  { grant: "web_search", label: "Web search", hint: "Search live sources instead of answering from training data" },
+  { grant: "web_fetch", label: "Web fetch", hint: "Read a specific page in full" },
+];
+
+// The web tools need a current Claude model — the cheap default above can't run
+// them. Ticking a tool moves the model up rather than letting the agent register
+// with a combination that fails on every task. Mirrors the check in the API.
+const TOOL_CAPABLE_MODEL = "claude-sonnet-5";
+const MODELS_WITHOUT_TOOLS = ["claude-haiku", "claude-3", "claude-sonnet-4-0", "claude-sonnet-4-5", "claude-opus-4-0", "claude-opus-4-1", "claude-opus-4-5"];
+const modelRunsTools = (model: string): boolean =>
+  !model.trim() || !MODELS_WITHOUT_TOOLS.some((p) => model.trim().startsWith(p));
 
 const PROVIDER_LABELS: Record<Provider, string> = {
   anthropic: "Anthropic (Claude)",
@@ -248,6 +265,11 @@ export default function PublishWizard() {
     }
     if (form.provider === "external" && form.endpoint.trim()) {
       body.endpoint = form.endpoint.trim();
+    }
+    // Only for hosted agents: an external one runs its own inference, and the
+    // API rejects grants alongside an endpoint.
+    if (form.provider !== "external" && form.tools.length > 0) {
+      body.tools = form.tools;
     }
 
     try {
@@ -492,6 +514,45 @@ export default function PublishWizard() {
             </Field>
           )}
 
+          {form.provider !== "external" && (
+            <Field
+              label="Tools (optional)"
+              hint="Let this agent go and look before it answers. Every call it makes is recorded in the task's receipt."
+            >
+              <div className="space-y-2">
+                {TOOL_OPTIONS.map((opt) => (
+                  <label key={opt.grant} className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.tools.includes(opt.grant)}
+                      onChange={(e) =>
+                        setForm((f) => {
+                          const tools = e.target.checked
+                            ? [...f.tools, opt.grant]
+                            : f.tools.filter((t) => t !== opt.grant);
+                          // Granting a web tool on a model that can't run one
+                          // would fail every task, so move the model with it.
+                          const needsUpgrade = tools.length > 0 && !modelRunsTools(f.providerModel);
+                          return { ...f, tools, providerModel: needsUpgrade ? TOOL_CAPABLE_MODEL : f.providerModel };
+                        })
+                      }
+                      className="mt-1 accent-teal-600"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      {opt.label}
+                      <span className="block text-xs text-gray-400 dark:text-gray-500">{opt.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {form.tools.length > 0 && !modelRunsTools(form.providerModel) && (
+                <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                  {form.providerModel} can&apos;t run the web tools — use {TOOL_CAPABLE_MODEL} or a newer model.
+                </p>
+              )}
+            </Field>
+          )}
+
           <div className="flex gap-3 mt-6">
             <button
               onClick={() => setStep("auth")}
@@ -525,6 +586,16 @@ export default function PublishWizard() {
               {form.providerModel.trim() && <ReviewRow label="Model" value={form.providerModel} mono />}
               {form.provider === "ollama" && form.providerEndpoint && <ReviewRow label="Ollama endpoint" value={form.providerEndpoint} mono />}
               {form.provider === "external" && form.endpoint && <ReviewRow label="Endpoint" value={form.endpoint} mono />}
+              {form.provider !== "external" && (
+                <ReviewRow
+                  label="Tools"
+                  value={
+                    form.tools.length
+                      ? form.tools.map((t) => TOOL_OPTIONS.find((o) => o.grant === t)?.label ?? t).join(", ")
+                      : "None — answers from the model alone"
+                  }
+                />
+              )}
               <ReviewRow label="Wallet"    value={`${auth.walletAddress.slice(0, 8)}…${auth.walletAddress.slice(-6)}`} mono />
             </div>
           </div>

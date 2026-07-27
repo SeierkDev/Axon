@@ -195,6 +195,63 @@ describe("traceEvents — lifecycle capture + privacy", () => {
     expect(trace.verified).toBe(true);
   });
 
+  it("records the tools an agent reached for, without the query and without distorting the step summary", () => {
+    const from = makeAgent();
+    const to = makeAgent();
+    createAgent(from);
+    createAgent(to);
+
+    const task = createTask({ fromAgent: from.agentId, toAgent: to.agentId, task: "what is the TVL?" });
+    startTask(task.taskId);
+    // Tool calls land as they happen, before the step that used them completes.
+    appendTraceEvent({
+      traceId: task.traceId ?? task.taskId,
+      taskId: task.taskId,
+      kind: "tool.call",
+      fromAgent: to.agentId,
+      inputHash: "c".repeat(64),
+      outputHash: "d".repeat(64),
+      latencyMs: 1200,
+      meta: { tool: "web_search", toolKind: "web_search", ok: true },
+    });
+    appendTraceEvent({
+      traceId: task.traceId ?? task.taskId,
+      taskId: task.taskId,
+      kind: "tool.call",
+      fromAgent: to.agentId,
+      latencyMs: 400,
+      meta: { tool: "analyst/lookup", toolKind: "mcp", ok: false, error: "server unreachable" },
+    });
+    appendTraceEvent({
+      traceId: task.traceId ?? task.taskId,
+      taskId: task.taskId,
+      kind: "step.model",
+      fromAgent: from.agentId,
+      toAgent: to.agentId,
+      model: "claude-sonnet-5",
+      inputTokens: 400,
+      outputTokens: 200,
+      costUsd: estimateCostUsd("claude-sonnet-5", 400, 200),
+      latencyMs: 5000,
+    });
+    completeTask(task.taskId, "TVL is $4.2B");
+
+    const trace = getPublicTrace(task.taskId)!;
+    const toolEvents = trace.events.filter((e) => e.kind === "tool.call");
+    expect(toolEvents).toHaveLength(2);
+    expect(toolEvents[0].meta).toMatchObject({ tool: "web_search", ok: true });
+    expect(toolEvents[1].meta).toMatchObject({ tool: "analyst/lookup", ok: false });
+    // The query itself is never stored — only its hash.
+    expect(JSON.stringify(trace.events)).not.toContain("TVL");
+
+    // Tool calls are not model steps: they must not inflate the step count, the
+    // token totals, or the cost the buyer is shown.
+    expect(trace.summary.steps).toBe(1);
+    expect(trace.summary.totalOutputTokens).toBe(200);
+    expect(trace.summary.totalLatencyMs).toBe(5000);
+    expect(trace.verified).toBe(true);
+  });
+
   it("captures progress events into the chain without leaking the message", () => {
     const from = makeAgent();
     const to = makeAgent();

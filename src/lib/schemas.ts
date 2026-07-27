@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiError } from "./apiError";
+import { MAX_TOOL_GRANTS } from "./agentToolLimits";
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -36,6 +37,10 @@ export const registerAgentSchema = z.object({
   // job with a single model call, it decomposes the job, hires specialists from the
   // marketplace (paid from its own balance, within its budget), and synthesizes.
   orchestrator: z.boolean().optional(),
+  // Tools this agent may use before answering: "web_search", "web_fetch", or
+  // "mcp:<serverId>" for an MCP server registered on Axon. Grant strings are
+  // checked against the registry in the route (validateToolGrants).
+  tools: z.array(z.string().min(1).max(120)).max(MAX_TOOL_GRANTS).optional(),
 });
 
 export const updateAgentSchema = z
@@ -45,6 +50,8 @@ export const updateAgentSchema = z
     price: z.string().nullable().optional(),
     endpoint: z.string().url("endpoint must be a valid URL").nullable().optional(),
     orchestrator: z.boolean().optional(),
+    // Full replacement of the agent's tool grants — `[]` or null revokes them all.
+    tools: z.array(z.string().min(1).max(120)).max(MAX_TOOL_GRANTS).nullable().optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "At least one field must be provided");
 

@@ -5,6 +5,7 @@ import { apiError } from "@/lib/apiError";
 import { requireApiKey, canAccessIdentity } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
 import { updateAgentSchema, parseBody } from "@/lib/schemas";
+import { validateToolGrants, modelSupportsServerTools, usesServerTools } from "@/lib/agentTools";
 import { withRequestContext } from "@/lib/withRequestContext";
 
 // GET /api/agents/[agentId]
@@ -52,6 +53,30 @@ export async function PATCH(
       if (urlError !== null) {
         return apiError("VALIDATION_ERROR", `endpoint: ${urlError}`, 400);
       }
+    }
+
+    // Check the state the agent will be in AFTER this patch, not just what the
+    // patch mentions — otherwise adding an endpoint to a tool-granted agent (or
+    // vice versa) slips through and the listing advertises tools it can't use.
+    const nextEndpoint = "endpoint" in updates ? updates.endpoint : agent.endpoint;
+    const nextTools = "tools" in updates ? updates.tools : agent.tools;
+    if (nextTools?.length) {
+      if (nextEndpoint) {
+        return apiError(
+          "VALIDATION_ERROR",
+          "tools are not supported for agents with their own endpoint — that agent runs its own inference and controls its own tools",
+          400,
+        );
+      }
+      if (usesServerTools(nextTools) && !modelSupportsServerTools(agent.providerModel)) {
+        return apiError(
+          "VALIDATION_ERROR",
+          `providerModel '${agent.providerModel}' cannot run web_search / web_fetch — use a current Claude model (e.g. claude-sonnet-5) or drop the web tools`,
+          400,
+        );
+      }
+      const toolsError = validateToolGrants(nextTools);
+      if (toolsError) return apiError("VALIDATION_ERROR", toolsError, 400);
     }
 
     const updated = updateAgent(agentId, updates);

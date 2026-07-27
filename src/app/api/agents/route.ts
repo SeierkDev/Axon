@@ -10,6 +10,7 @@ import { parsePaymentAmount } from "@/lib/solana";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
 import { registerAgentSchema, parseBody } from "@/lib/schemas";
+import { validateToolGrants, modelSupportsServerTools, usesServerTools } from "@/lib/agentTools";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { withRequestContext } from "@/lib/withRequestContext";
 import { verifyAgentEndpoint } from "@/lib/verification";
@@ -199,6 +200,27 @@ async function handlePost(req: NextRequest) {
       400
     );
   }
+  if (body.tools?.length) {
+    // An endpoint agent runs its own inference, so Axon never runs a tool loop
+    // for it. Accepting grants would put tools on its public listing that it
+    // does not actually have.
+    if (body.endpoint) {
+      return apiError(
+        "VALIDATION_ERROR",
+        "tools are not supported for agents with their own endpoint — that agent runs its own inference and controls its own tools",
+        400,
+      );
+    }
+    if (usesServerTools(body.tools) && !modelSupportsServerTools(body.providerModel)) {
+      return apiError(
+        "VALIDATION_ERROR",
+        `providerModel '${body.providerModel}' cannot run web_search / web_fetch — use a current Claude model (e.g. claude-sonnet-5) or drop the web tools`,
+        400,
+      );
+    }
+    const toolsError = validateToolGrants(body.tools);
+    if (toolsError) return apiError("VALIDATION_ERROR", toolsError, 400);
+  }
 
 
   const price = body.price?.trim() || undefined;
@@ -225,6 +247,7 @@ async function handlePost(req: NextRequest) {
     providerModel: body.providerModel,
     providerEndpoint: body.providerEndpoint,
     orchestrator: body.orchestrator ?? false,
+    tools: body.tools,
     reputation: 0,
     createdAt: new Date().toISOString(),
   });

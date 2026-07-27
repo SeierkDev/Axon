@@ -22,7 +22,8 @@ import { decodePaymentHeader, buildX402Requirements, encodeRequirements } from "
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { debitChannel, verifyChannelKey, getChannelById, refundDebitForTask, parseMppUsdcPrice } from "@/lib/mpp";
 import { formatContext } from "@/lib/formatContext";
-import { getProvider, getAgentSystem, getAgentMaxTokens } from "@/lib/providers";
+import { getProvider, getAgentSystem, getAgentMaxTokens, runWithProviderTools } from "@/lib/providers";
+import { resolveAgentTools, hasTools } from "@/lib/agentTools";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { withRequestContext } from "@/lib/withRequestContext";
 
@@ -263,8 +264,11 @@ export function POST(req: NextRequest, { params }: Params) {
 
   // Closed by the ReadableStream cancel() handler when the client disconnects.
   // This causes the `for await` loop to break on the next iteration, preventing
-  // runaway inference that burns API tokens after the connection is gone.
+  // runaway inference that burns API tokens after the connection is gone. A tool
+  // loop isn't an iterator — it's several model calls behind one await — so it
+  // gets the same protection via an abort signal checked between rounds.
   let cancelled = false;
+  const abort = new AbortController();
   const keepalivePing = new TextEncoder().encode(": keepalive\n\n");
 
   const stream = new ReadableStream({
@@ -276,10 +280,24 @@ export function POST(req: NextRequest, { params }: Params) {
         try { controller.enqueue(keepalivePing); } catch { /* controller already closed */ }
       }, 20_000);
       try {
-        for await (const text of provider.stream(system, message, getAgentMaxTokens(agent.agentId))) {
-          if (cancelled) break;
-          chunks.push(text);
-          controller.enqueue(sseEvent({ text }));
+        // A tool-granted agent goes and looks before it answers, which can't be
+        // streamed token by token — run the loop and deliver the finished answer
+        // in one event rather than quietly dropping the tools the buyer paid for.
+        const tools = agent.tools?.length ? resolveAgentTools(agent.tools) : null;
+        if (hasTools(tools)) {
+          const answer = await runWithProviderTools(agent, message, getAgentMaxTokens(agent.agentId), tools, {
+            signal: abort.signal,
+          });
+          if (!cancelled) {
+            chunks.push(answer);
+            controller.enqueue(sseEvent({ text: answer }));
+          }
+        } else {
+          for await (const text of provider.stream(system, message, getAgentMaxTokens(agent.agentId))) {
+            if (cancelled) break;
+            chunks.push(text);
+            controller.enqueue(sseEvent({ text }));
+          }
         }
         if (!cancelled) {
           const fullText = chunks.join("");
@@ -305,6 +323,7 @@ export function POST(req: NextRequest, { params }: Params) {
     },
     cancel() {
       cancelled = true;
+      abort.abort(); // stop a tool loop at its next round
       // Task was never completed — fail it so DB state is consistent and any
       // escrowed payment is refunded rather than stuck in 'running' forever.
       if (failTask(task.taskId, "Client disconnected")) {

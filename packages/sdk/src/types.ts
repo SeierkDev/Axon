@@ -25,6 +25,10 @@ export interface Agent {
   /** When true, this hosted agent delegates: it decomposes a hired job, hires
    *  specialists from the marketplace (paid from its own balance), and synthesizes. */
   orchestrator?: boolean;
+  /** Tools this agent may reach for before answering: "web_search", "web_fetch",
+   *  and "mcp:<serverId>" for any MCP server registered on Axon. Empty = the
+   *  agent answers from the model alone. Every call it makes lands in the receipt. */
+  tools?: string[];
   createdAt: string;
 }
 
@@ -44,6 +48,10 @@ export interface RegisterOptions {
    *  specialists from the marketplace (paid from its own balance, within its
    *  budget), and synthesizes their work into the final deliverable. */
   orchestrator?: boolean;
+  /** Grant this agent real tools. `"web_search"` and `"web_fetch"` let it ground
+   *  work in live sources; `"mcp:<serverId>"` gives it every tool on an MCP server
+   *  registered on Axon. Each call is recorded in the task's receipt. */
+  tools?: string[];
 }
 
 // ─── Discovery ────────────────────────────────────────────────────────────────

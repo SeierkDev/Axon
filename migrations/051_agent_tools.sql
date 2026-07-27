@@ -1,0 +1,11 @@
+-- Agents that can go and look.
+--
+-- Until now a hosted agent was exactly one model call: whatever it knew, it knew
+-- from training. This column grants an agent real tools — live web search, web
+-- fetch, and any MCP server registered on Axon — which the inference layer runs
+-- in a bounded tool loop before the agent answers. Every call it makes lands in
+-- the receipt's trace, so a buyer can see what the agent did, not just what it said.
+--
+-- Stored as a JSON array of grant strings: ["web_search","web_fetch","mcp:<serverId>"].
+-- NULL / empty means no tools — the previous single-call behaviour, unchanged.
+ALTER TABLE agents ADD COLUMN tools TEXT;

@@ -12,6 +12,7 @@ import { POST as agentPOST } from "@/app/api/agents/route";
 import { GET as agentByIdGET } from "@/app/api/agents/[agentId]/route";
 import { createAgent } from "@/lib/agents";
 import { createApiKey } from "@/lib/identity";
+import { createMcpServer } from "@/lib/mcp";
 import { startTask, createTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
 
@@ -569,6 +570,97 @@ describe("POST /api/agents", () => {
       }, bearer(apiKey))
     );
     expect(res.status).toBe(409);
+  });
+
+  it("registers a hosted agent with tool grants", async () => {
+    const { apiKey } = createApiKey(WALLET_A);
+    const agentId = uid();
+    const res = await agentPOST(
+      jsonReq("http://localhost/api/agents", "POST", {
+        agentId,
+        name: "Tooled Agent",
+        capabilities: ["research"],
+        publicKey: `pk-tooled-${agentId}`,
+        walletAddress: WALLET_A,
+        tools: ["web_search", "web_fetch"],
+      }, bearer(apiKey))
+    );
+    expect(res.status).toBe(201);
+    expect((await res.json() as { tools: string[] }).tools).toEqual(["web_search", "web_fetch"]);
+  });
+
+  it("rejects an unknown tool grant", async () => {
+    const { apiKey } = createApiKey(WALLET_A);
+    const res = await agentPOST(
+      jsonReq("http://localhost/api/agents", "POST", {
+        agentId: uid(),
+        name: "Bad Grant Agent",
+        capabilities: ["research"],
+        publicKey: "pk-bad-grant",
+        walletAddress: WALLET_A,
+        tools: ["shell"],
+      }, bearer(apiKey))
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json() as { error: string }).error).toMatch(/unknown tool grant/);
+  });
+
+  it("rejects web tools on a model that cannot run them", async () => {
+    // The publish wizard's cheap default is a haiku model; pairing it with the
+    // web tools would 400 on every task and degrade to a tool-free answer, so
+    // the owner has to hear about it now rather than never.
+    const { apiKey } = createApiKey(WALLET_A);
+    const res = await agentPOST(
+      jsonReq("http://localhost/api/agents", "POST", {
+        agentId: uid(),
+        name: "Haiku Tools Agent",
+        capabilities: ["research"],
+        publicKey: "pk-haiku-tools",
+        walletAddress: WALLET_A,
+        providerModel: "claude-haiku-4-5-20251001",
+        tools: ["web_search"],
+      }, bearer(apiKey))
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json() as { error: string }).error).toMatch(/cannot run web_search/);
+  });
+
+  it("allows an MCP-only grant on a model without server-tool support", async () => {
+    // MCP tools are executed by Axon, not the model provider, so the model
+    // restriction must not over-reach onto them.
+    const { apiKey } = createApiKey(WALLET_A);
+    const server = createMcpServer({ name: `Route MCP ${uid()}`, endpoint: "https://mcp.example.com/rpc" });
+    const res = await agentPOST(
+      jsonReq("http://localhost/api/agents", "POST", {
+        agentId: uid(),
+        name: "Haiku MCP Agent",
+        capabilities: ["research"],
+        publicKey: "pk-haiku-mcp",
+        walletAddress: WALLET_A,
+        providerModel: "claude-haiku-4-5-20251001",
+        tools: [`mcp:${server.serverId}`],
+      }, bearer(apiKey))
+    );
+    expect(res.status).toBe(201);
+  });
+
+  it("rejects tool grants on an agent that runs its own endpoint", async () => {
+    // Axon never runs a tool loop for an endpoint agent, so accepting grants
+    // would advertise a capability it does not have.
+    const { apiKey } = createApiKey(WALLET_A);
+    const res = await agentPOST(
+      jsonReq("http://localhost/api/agents", "POST", {
+        agentId: uid(),
+        name: "Endpoint Agent",
+        capabilities: ["research"],
+        publicKey: "pk-endpoint-tools",
+        walletAddress: WALLET_A,
+        endpoint: "https://example.com/agent",
+        tools: ["web_search"],
+      }, bearer(apiKey))
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json() as { error: string }).error).toMatch(/own endpoint/);
   });
 
   it("returns 201 and the new agent on a valid registration", async () => {

@@ -23,13 +23,24 @@ export function buildAgentEmbeddingText(agent: {
   name: string;
   capabilities: string[];
   category?: string;
+  tools?: string[];
 }): string {
   const parts: string[] = [
     agent.name,
     `capabilities: ${agent.capabilities.join(", ")}`,
     agent.category ? `category: ${agent.category}` : "",
+    // Reaching live sources is a real, searchable difference between two agents
+    // with the same capabilities — "who can actually look this up right now?"
+    agent.tools?.length ? `tools: ${agent.tools.map(toolPhrase).join(", ")}` : "",
   ].filter(Boolean);
   return parts.join(". ").slice(0, MAX_TEXT_CHARS);
+}
+
+// Grant strings are identifiers; embeddings match on meaning, so spell them out.
+function toolPhrase(grant: string): string {
+  if (grant === "web_search") return "live web search";
+  if (grant === "web_fetch") return "reads web pages";
+  return grant.startsWith("mcp:") ? "external MCP tools" : grant;
 }
 
 // ── API call ──────────────────────────────────────────────────────────────────

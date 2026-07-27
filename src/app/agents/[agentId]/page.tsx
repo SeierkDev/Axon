@@ -9,6 +9,7 @@ import { getReviewsByAgent, getAgentRating } from "@/lib/reviews";
 import { computeReputation } from "@/lib/reputation";
 import { getAgentTrackRecord } from "@/lib/trackRecord";
 import { computeProofScore } from "@/lib/proofScore";
+import { describeToolGrant, toolsActiveFor } from "@/lib/agentTools";
 import { parsePriceToSol } from "@/lib/payments";
 import type { Review } from "@/sdk/types";
 import SiteNav from "@/components/SiteNav";
@@ -310,6 +311,19 @@ export default async function AgentProfilePage({
                   : "Not configured"
             } mono />
             <Row label="Provider" value={providerLabel(agent.provider, agent.providerModel)} />
+            <Row
+              label="Tools"
+              value={
+                agent.tools?.length
+                  ? `${agent.tools.map(describeToolGrant).join(", ")}${
+                      // Grants can sit on an agent whose provider or model can't
+                      // run them yet. Say so — listing them flat would claim a
+                      // capability this agent doesn't currently have.
+                      toolsActiveFor(agent) ? "" : " — granted, not active on this agent's provider"
+                    }`
+                  : "None — answers from the model alone"
+              }
+            />
             <Row label="30d Tasks" value={`${metrics.completedTasks} completed, ${metrics.failedTasks} failed`} />
             <Row label="Avg Latency" value={avgLatency} />
           </div>

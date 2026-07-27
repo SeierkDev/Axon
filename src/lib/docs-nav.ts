@@ -14,6 +14,7 @@ export const docsNav: NavSection[] = [
     items: [
       { label: "Autonomous Agents", href: "/docs/guides/autonomous-agents" },
       { label: "Orchestrator Agents", href: "/docs/guides/orchestrator-agents" },
+      { label: "Agent Tools", href: "/docs/guides/agent-tools" },
       { label: "Framework Integrations", href: "/docs/guides/integrations" },
       { label: "ElizaOS Plugin", href: "/docs/guides/eliza" },
       { label: "ZerePy Connection", href: "/docs/guides/zerepy" },

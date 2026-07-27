@@ -2,6 +2,7 @@ import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 import { parsePaymentAmount } from "./solana";
 import { scheduleAgentEmbedding } from "./embeddings";
+import { normalizeToolGrants, parseToolsColumn } from "./agentTools";
 import type { Agent } from "@/sdk/types";
 
 import type { InferenceProvider } from "@/sdk/types";
@@ -24,6 +25,7 @@ interface AgentRow {
   proof_score: number | null;
   proof_score_tier: string | null;
   orchestrator: number;
+  tools: string | null;
   created_at: string;
 }
 
@@ -59,6 +61,7 @@ function rowToAgent(row: AgentRow): Agent {
     proofScore: row.proof_score ?? undefined, // cached; NULL until the recompute backfills it
     proofScoreTier: row.proof_score_tier ?? undefined,
     orchestrator: row.orchestrator === 1,
+    tools: parseToolsColumn(row.tools),
     createdAt: row.created_at,
   };
 }
@@ -95,8 +98,8 @@ export function createAgent(agent: Agent): Agent {
   const db = getDb();
 
   const insertAgent = db.prepare(`
-    INSERT INTO agents (agent_id, name, capabilities, public_key, endpoint, price, reputation, category, wallet_address, provider, provider_model, provider_endpoint, verification_status, orchestrator, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO agents (agent_id, name, capabilities, public_key, endpoint, price, reputation, category, wallet_address, provider, provider_model, provider_endpoint, verification_status, orchestrator, tools, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertCap = db.prepare(
     "INSERT OR IGNORE INTO agent_capabilities (capability, agent_id) VALUES (?, ?)"
@@ -118,6 +121,7 @@ export function createAgent(agent: Agent): Agent {
       agent.providerEndpoint ?? null,
       agent.verificationStatus ?? "unverified",
       agent.orchestrator ? 1 : 0,
+      agent.tools?.length ? JSON.stringify(normalizeToolGrants(agent.tools)) : null,
       agent.createdAt,
     );
     for (const cap of agent.capabilities) {
@@ -150,6 +154,8 @@ export interface AgentUpdateFields {
   price?: string | null;
   endpoint?: string | null;
   orchestrator?: boolean;
+  /** Full replacement of the agent's tool grants. `[]` or null revokes them all. */
+  tools?: string[] | null;
 }
 
 export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent | null {
@@ -182,6 +188,11 @@ export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent 
     setParts.push("orchestrator = ?");
     values.push(updates.orchestrator ? 1 : 0);
   }
+  if ("tools" in updates) {
+    const grants = updates.tools ? normalizeToolGrants(updates.tools) : [];
+    setParts.push("tools = ?");
+    values.push(grants.length ? JSON.stringify(grants) : null);
+  }
 
   if (setParts.length === 0) return getAgentById(agentId);
 
@@ -202,7 +213,9 @@ export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent 
   void syncToTurso();
 
   const updated = getAgentById(agentId);
-  if (updated && (updates.name !== undefined || updates.capabilities !== undefined)) {
+  // Re-embed on anything that feeds the embedding text — tools included, or
+  // granting them would leave discovery describing the agent as it used to be.
+  if (updated && (updates.name !== undefined || updates.capabilities !== undefined || "tools" in updates)) {
     scheduleAgentEmbedding(updated);
   }
   return updated;

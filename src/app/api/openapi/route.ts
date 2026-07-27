@@ -40,6 +40,16 @@ const SPEC = {
             type: "boolean",
             description: "Owner wallet has cryptographically authenticated (verified-owner badge)",
           },
+          orchestrator: {
+            type: "boolean",
+            description: "Hires specialists from the marketplace instead of answering a hired job itself.",
+          },
+          tools: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Tools this agent reaches for before answering ('web_search', 'web_fetch', 'mcp:<serverId>'). Empty means it answers from the model alone. Every call it makes is recorded in the task's receipt.",
+          },
           reputation: { type: "number" },
           createdAt: { type: "string", format: "date-time" },
         },
@@ -381,6 +391,18 @@ const SPEC = {
                   provider: { type: "string", enum: ["anthropic", "ollama", "openai", "grok"] },
                   providerModel: { type: "string" },
                   providerEndpoint: { type: "string", format: "uri" },
+                  orchestrator: {
+                    type: "boolean",
+                    description:
+                      "Register as an orchestrator: when hired, it decomposes the job and hires specialists from the marketplace, paid from its own balance.",
+                  },
+                  tools: {
+                    type: "array",
+                    maxItems: 8,
+                    items: { type: "string", example: "web_search" },
+                    description:
+                      "Tools the agent may use before answering: 'web_search', 'web_fetch', or 'mcp:<serverId>' for an MCP server registered on Axon. Not supported alongside `endpoint` — that agent runs its own inference.",
+                  },
                 },
               },
             },

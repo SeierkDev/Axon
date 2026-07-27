@@ -12,10 +12,16 @@ interface BuiltinAgent {
   price: string | null;
   provider?: InferenceProvider; // default anthropic
   providerModel?: string;
+  // Tools this agent may reach for before answering — see src/lib/agentTools.ts.
+  // Omitted means it answers from the model alone.
+  tools?: string[];
 }
 
 const BUILTIN_AGENTS: BuiltinAgent[] = [
-  { agentId: "research-agent", name: "Research Agent",  capabilities: ["research", "analysis", "summarization", "search"], category: "Research",     price: "0.10 USDC" },
+  // Grounded in live sources: research is the capability that most obviously
+  // breaks when an agent can only answer from training data, so it's the first
+  // platform agent to get tools.
+  { agentId: "research-agent", name: "Research Agent",  capabilities: ["research", "analysis", "summarization", "search"], category: "Research",     price: "0.10 USDC", tools: ["web_search", "web_fetch"] },
   { agentId: "crypto-agent",   name: "Crypto Agent",    capabilities: ["crypto", "blockchain", "analysis"],                 category: "Finance",      price: "0.15 USDC" },
   { agentId: "trading-agent",  name: "Trading Agent",   capabilities: ["trading", "analysis", "crypto"],                   category: "Finance",      price: "0.20 USDC" },
   { agentId: "audit-agent",    name: "Audit Agent",     capabilities: ["smart-contract-audit", "security", "coding"],      category: "Development",  price: "0.50 USDC" },
@@ -29,7 +35,10 @@ const BUILTIN_AGENTS: BuiltinAgent[] = [
   { agentId: "social-agent",   name: "Social Agent",    capabilities: ["writing", "social", "creative"],                   category: "Content",      price: "0.10 USDC" },
   { agentId: "email-agent",    name: "Email Agent",     capabilities: ["writing", "email", "creative"],                    category: "Content",      price: "0.10 USDC" },
   { agentId: "report-agent",   name: "Report Agent",    capabilities: ["writing", "analysis", "research"],                 category: "Research",     price: "0.25 USDC" },
-  { agentId: "web-agent",          name: "Web Agent",          capabilities: ["research", "search", "web"],                 category: "Research", price: "0.10 USDC" },
+  // Named "Web Agent", lists "web" and "search", and until now could not touch
+  // the web. Its prompt already promises to analyse a given URL in full depth —
+  // these grants are what make that true.
+  { agentId: "web-agent",          name: "Web Agent",          capabilities: ["research", "search", "web"],                 category: "Research", price: "0.10 USDC", tools: ["web_search", "web_fetch"] },
   // Runs on xAI's Grok 4.5 (OpenAI-compatible API) — the one visibly-Grok agent
   // in the marketplace. Requires XAI_API_KEY at runtime.
   { agentId: "grok-agent",         name: "Grok Agent",         capabilities: ["research", "analysis", "writing"],           category: "Research", price: "0.15 USDC", provider: "grok" },
@@ -59,6 +68,7 @@ export function getBuiltinAgent(agentId: string): Agent | null {
     category: def.category,
     provider: def.provider ?? "anthropic",
     providerModel: def.providerModel ?? undefined,
+    tools: def.tools ?? [],
     verificationStatus: "platform",
     createdAt: "1970-01-01T00:00:00.000Z",
   };
@@ -112,8 +122,8 @@ export function seedBuiltinAgents(db: Database): void {
 
   const upsertAgent = db.prepare(`
     INSERT INTO agents
-      (agent_id, name, capabilities, public_key, price, reputation, category, provider, provider_model, wallet_address, verification_status, created_at)
-    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, ?, ?, ?, 'platform', ?)
+      (agent_id, name, capabilities, public_key, price, reputation, category, provider, provider_model, tools, wallet_address, verification_status, created_at)
+    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, ?, ?, ?, ?, 'platform', ?)
     ON CONFLICT(agent_id) DO UPDATE SET
       name                = excluded.name,
       capabilities        = excluded.capabilities,
@@ -121,6 +131,9 @@ export function seedBuiltinAgents(db: Database): void {
       category            = excluded.category,
       provider            = excluded.provider,
       provider_model      = excluded.provider_model,
+      -- Platform agents are defined entirely by this table, so grants track it
+      -- on every deploy: added here, they appear; removed here, they're revoked.
+      tools               = excluded.tools,
       wallet_address      = excluded.wallet_address,
       verification_status = 'platform'
   `);
@@ -140,6 +153,7 @@ export function seedBuiltinAgents(db: Database): void {
         agent.category,
         agent.provider ?? "anthropic",
         agent.providerModel ?? null,
+        agent.tools?.length ? JSON.stringify(agent.tools) : null,
         treasuryWallet,
         now,
       );

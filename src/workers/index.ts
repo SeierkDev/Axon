@@ -11,7 +11,9 @@ import { listMcpServers, createMcpAgentHandler } from "../lib/mcp";
 import { deliverPendingWebhooks } from "../lib/webhooks";
 import { recordTaskLatency } from "../lib/metrics";
 import { formatContext } from "../lib/formatContext";
-import { runWithProvider, getAgentMaxTokens } from "../lib/providers";
+import { runWithProvider, runWithProviderTools, getAgentMaxTokens } from "../lib/providers";
+import type { ToolCallEvent } from "../lib/providers";
+import { resolveAgentTools, hasTools } from "../lib/agentTools";
 import { safeAppendTraceEvent, hashContent, estimateCostUsd, captureModelStep } from "../lib/traceEvents";
 import { verifyAgentEndpoint } from "../lib/verification";
 import { logger } from "../lib/logger";
@@ -27,7 +29,11 @@ const POLL_INTERVAL_MS = 3_000;
 const HEALTH_INTERVAL_MS = 5 * 60 * 1000;
 const THRESHOLD_INTERVAL_MS = 5 * 60 * 1000;
 const SHUTDOWN_TIMEOUT_MS = Number.parseInt(process.env.AXON_WORKER_SHUTDOWN_TIMEOUT_MS ?? "25000", 10);
-const TASK_TIMEOUT_MS = Number.parseInt(process.env.AXON_TASK_TIMEOUT_MS ?? "600000", 10); // 10 min — allows up to 3 retries × 120 s provider timeout
+// 10 min. Sized for a single inference (up to 3 retries × 120 s provider
+// timeout); a tool-granted agent spends it across several model calls plus the
+// searches and fetches between them, so the ceiling is the whole loop, not one
+// call. Hitting it fails and refunds the task, and now also aborts the loop.
+const TASK_TIMEOUT_MS = Number.parseInt(process.env.AXON_TASK_TIMEOUT_MS ?? "600000", 10);
 const MAX_CONCURRENT_PER_AGENT = Number.parseInt(process.env.AXON_MAX_CONCURRENT_PER_AGENT ?? "1", 10);
 const MAX_STUCK_RESETS = Number.parseInt(process.env.AXON_MAX_STUCK_RESETS ?? "3", 10);
 const CIRCUIT_FAILURE_THRESHOLD = Number.parseInt(process.env.AXON_CIRCUIT_FAILURE_THRESHOLD ?? "5", 10);
@@ -234,15 +240,54 @@ async function processTasks() {
           const prices = PRICE_AGENTS.has(agent.agentId) ? livePrices : "";
           const fullMessage = task.task + formatContext(task.context) + prices;
 
+          // Promise.race abandons the loser, it doesn't stop it. For a single
+          // model call that's one wasted request; a tool loop is up to seven, so
+          // the timeout also trips an abort the loop checks between rounds.
+          const abort = new AbortController();
           const taskTimeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Task timed out after ${TASK_TIMEOUT_MS / 1000}s`)), TASK_TIMEOUT_MS).unref()
+            setTimeout(() => {
+              abort.abort();
+              reject(new Error(`Task timed out after ${TASK_TIMEOUT_MS / 1000}s`));
+            }, TASK_TIMEOUT_MS).unref()
           );
+
+          // Granted tools: this agent may search, fetch, and call MCP tools before
+          // it answers. Resolved per task so a newly synced MCP server is picked up
+          // without a restart; unresolvable grants are dropped, never fatal.
+          const tools = agent.tools?.length ? resolveAgentTools(agent.tools) : null;
+          // Every call the agent makes goes into the flight recorder as it happens,
+          // so the receipt shows what it did, not just what it said.
+          const onToolCall = (ev: ToolCallEvent) => {
+            safeAppendTraceEvent({
+              traceId: task.traceId ?? task.taskId,
+              taskId: task.taskId,
+              kind: "tool.call",
+              fromAgent: task.toAgent,
+              toAgent: null,
+              workflowId: task.workflowId ?? null,
+              stepIndex: task.stepIndex ?? null,
+              inputHash: hashContent(ev.input),
+              outputHash: ev.output ? hashContent(ev.output) : null,
+              latencyMs: ev.latencyMs,
+              meta: {
+                tool: ev.tool,
+                toolKind: ev.kind,
+                ok: ev.ok,
+                ...(ev.error ? { error: ev.error.slice(0, 200) } : {}),
+              },
+            });
+          };
 
           const step = await captureModelStep(() =>
             Promise.race([
               mcpHandler
                 ? mcpHandler(fullMessage)
-                : runWithProvider(agent, fullMessage, getAgentMaxTokens(agent.agentId)),
+                : hasTools(tools)
+                  ? runWithProviderTools(agent, fullMessage, getAgentMaxTokens(agent.agentId), tools, {
+                      onToolCall,
+                      signal: abort.signal,
+                    })
+                  : runWithProvider(agent, fullMessage, getAgentMaxTokens(agent.agentId)),
               taskTimeout,
             ]),
           );

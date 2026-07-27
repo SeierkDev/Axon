@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface TraceEvent {
   seq: number;
-  kind: "task.created" | "step.model" | "progress" | "task.completed" | "task.failed" | "settlement.completed";
+  kind: "task.created" | "step.model" | "tool.call" | "progress" | "task.completed" | "task.failed" | "settlement.completed";
   fromAgent: string | null;
   toAgent: string | null;
   fromName: string | null;
@@ -46,6 +46,7 @@ interface PublicTrace {
 const KIND_META: Record<TraceEvent["kind"], { label: string; dot: string; text: string }> = {
   "task.created": { label: "Task created", dot: "bg-gray-400", text: "text-gray-300" },
   "step.model": { label: "Model step", dot: "bg-teal-400", text: "text-teal-200" },
+  "tool.call": { label: "Tool call", dot: "bg-indigo-400", text: "text-indigo-200" },
   progress: { label: "Progress", dot: "bg-sky-400/70", text: "text-sky-200/80" },
   "task.completed": { label: "Completed", dot: "bg-emerald-400", text: "text-emerald-200" },
   "task.failed": { label: "Failed", dot: "bg-red-400", text: "text-red-200" },
@@ -216,6 +217,7 @@ export default function TimelineClient({ taskId }: { taskId: string }) {
             fmtCost(e.costUsd),
             typeof e.meta?.amount === "number" && `${e.meta.amount} ${(e.meta.currency as string) ?? ""}`.trim(),
             typeof e.meta?.errorClass === "string" && (e.meta.errorClass as string),
+            e.kind === "tool.call" && (e.meta?.ok === false ? "failed" : "recorded"),
           ].filter(Boolean) as string[];
           return (
             <li
@@ -232,6 +234,9 @@ export default function TimelineClient({ taskId }: { taskId: string }) {
                   {km.label}
                   {e.kind === "step.model" && e.stepIndex != null && (
                     <span className="text-gray-500 font-normal"> · step {e.stepIndex + 1}</span>
+                  )}
+                  {e.kind === "tool.call" && typeof e.meta?.tool === "string" && (
+                    <span className="text-gray-500 font-normal font-mono"> · {e.meta.tool}</span>
                   )}
                 </p>
                 <span className="text-[10px] font-mono text-gray-600 shrink-0">#{e.seq}</span>

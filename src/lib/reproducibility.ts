@@ -181,13 +181,17 @@ export interface ReproduceOptions {
   persist?: boolean; // default true
 }
 
-// The model that actually produced the original output (post-fallback), read from
-// the recorded execution trace so the re-run pins the same model.
-function originalModelFor(taskId: string): string | null {
+// What the recorded execution trace says about how the original run happened:
+// the model that actually produced the output (post-fallback), so the re-run can
+// pin it, and whether the agent reached for tools while producing it.
+function originalRunFacts(taskId: string): { model: string | null; usedTools: boolean } {
   const trace = getPublicTrace(taskId);
-  if (!trace) return null;
+  if (!trace) return { model: null, usedTools: false };
   const steps = trace.events.filter((e) => e.kind === "step.model" && e.model);
-  return steps.length ? (steps[steps.length - 1].model ?? null) : null;
+  return {
+    model: steps.length ? (steps[steps.length - 1].model ?? null) : null,
+    usedTools: trace.events.some((e) => e.kind === "tool.call"),
+  };
 }
 
 const defaultRunner = (ctx: ReproRunContext): Promise<string> =>
@@ -220,9 +224,20 @@ export async function reproduceTask(taskId: string, opts: ReproduceOptions = {})
   if (agent.endpoint) {
     throw new ReproError(`task '${taskId}' ran on an external agent endpoint and can't be reproduced by Axon`, 422);
   }
-  const originalModel = originalModelFor(taskId);
+  const { model: originalModel, usedTools } = originalRunFacts(taskId);
   if (originalModel === "mcp") {
     throw new ReproError(`task '${taskId}' ran via an external MCP server and can't be reproduced by Axon`, 422);
+  }
+  // The original went and looked things up — live web pages, an MCP server's
+  // current state. That content moves between runs, and the re-run below is a
+  // plain single call with no tools at all, so a comparison would report
+  // "divergent" for work that was never deterministic in the first place.
+  // Refuse, exactly as for live market data above: no proof beats a false one.
+  if (usedTools) {
+    throw new ReproError(
+      `task '${taskId}' used live tools (web search, fetch, or an MCP server) and can't be deterministically reproduced`,
+      422,
+    );
   }
 
   // Reconstruct the exact recorded input. Live data some agents append at runtime

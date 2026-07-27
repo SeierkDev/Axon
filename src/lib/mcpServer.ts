@@ -164,6 +164,10 @@ function agentSummary(a: Agent) {
     reputation: pub.reputation,
     proofScore: pub.proofScore ?? null,
     verificationStatus: pub.verificationStatus ?? null,
+    // Whether this agent can go and look things up. A caller choosing between
+    // agents needs this: it's the difference between an answer from training
+    // data and one grounded in live sources.
+    tools: pub.tools?.length ? pub.tools : null,
   };
 }
 

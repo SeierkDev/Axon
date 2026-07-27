@@ -229,6 +229,39 @@ describe("reproduceTask", () => {
     expect(getTaskById(taskId)?.status).toBe("completed");
     await expect(reproduceTask(taskId, { runner: async () => "x" })).rejects.toThrow(/external MCP/);
   });
+
+  it("refuses to reproduce a task whose agent went and looked things up", async () => {
+    // The re-run is a plain single call with no tools, and live sources move
+    // between runs — comparing them would publish "divergent" for work that was
+    // never deterministic. Refusing beats pinning a false verdict on a receipt.
+    const to = makeAgent();
+    const taskId = taskTo(to.agentId, "researched output");
+    safeAppendTraceEvent({ traceId: traceIdForTask(taskId), taskId, kind: "step.model", model: "claude-sonnet-5" });
+    safeAppendTraceEvent({
+      traceId: traceIdForTask(taskId),
+      taskId,
+      kind: "tool.call",
+      meta: { tool: "web_search", toolKind: "web_search", ok: true },
+    });
+
+    let ran = false;
+    await expect(
+      reproduceTask(taskId, { runner: async () => { ran = true; return "x"; } }),
+    ).rejects.toThrow(/live tools/);
+    // Refused before spending anything on a re-run.
+    expect(ran).toBe(false);
+  });
+
+  it("still reproduces a task from a tool-granted agent that made no tool calls", async () => {
+    // Precision matters: the refusal keys off what the run actually did, not off
+    // the agent's grants, so a tool-granted agent still accrues proofs.
+    const to = makeAgent({ tools: ["web_search", "web_fetch"] });
+    const taskId = taskTo(to.agentId, "answered from the model alone");
+    safeAppendTraceEvent({ traceId: traceIdForTask(taskId), taskId, kind: "step.model", model: "claude-sonnet-5" });
+
+    const proof = await reproduceTask(taskId, { runner: async () => "answered from the model alone" });
+    expect(proof.verdict).toBe("exact");
+  });
 });
 
 describe("sampleReproducibility", () => {
