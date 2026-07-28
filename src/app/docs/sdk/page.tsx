@@ -873,6 +873,109 @@ await axon.revokeAttestation(agentId, id, sig);`}
         example={`const status = await axon.getStatus(); // status.status === "operational"`}
       />
 
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-16 mb-2">Agent checkout</h2>
+      <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
+        Your agents propose real purchases; you sign them. Everything below hangs off{" "}
+        <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">axon.commerce</code>.
+        See the <Link href="/docs/guides/agent-commerce" className="underline hover:text-gray-900 dark:hover:text-white">Agent Checkout guide</Link> for the whole flow.
+      </p>
+
+      <Method
+        name="commerce.createProfile"
+        signature="axon.commerce.createProfile(options) → Promise<CommerceProfile>"
+        description="Store a delivery destination. Encrypted at rest, never shown to an agent, never written to a receipt."
+        params={[{ name: "options", type: "CreateProfileOptions", desc: "label, contact, address" }]}
+        returns="Promise<CommerceProfile>"
+        example={`const profile = await axon.commerce.createProfile({
+  label: "Home",
+  contact: { name: "Ada Lovelace", email: "ada@example.com" },
+  address: { line1: "1 Analytical Way", city: "London", postalCode: "E1 6AN", country: "GB" },
+});`}
+      />
+
+      <Method
+        name="commerce.grantMandate"
+        signature="axon.commerce.grantMandate(options) → Promise<SpendMandate>"
+        description="Give an agent a budget. It must already hold the 'commerce' grant. Caps apply per purchase and per period, and can be restricted to named businesses."
+        params={[{ name: "options", type: "GrantMandateOptions", desc: "agentId, profileId, maxPerPurchase, maxPerPeriod, period?, allowedHosts?" }]}
+        returns="Promise<SpendMandate>"
+        example={`await axon.commerce.grantMandate({
+  agentId: "shopper",
+  profileId: profile.profileId,
+  maxPerPurchase: 80,
+  maxPerPeriod: 200,
+  period: "week",
+  allowedHosts: ["shop.example"],
+});`}
+      />
+
+      <Method
+        name="commerce.pending"
+        signature="axon.commerce.pending() → Promise<PurchaseIntent[]>"
+        description="The purchases waiting on your decision. Use listPurchases() for everything, filtered by status."
+        params={[]}
+        returns="Promise<PurchaseIntent[]>"
+        example={`for (const intent of await axon.commerce.pending()) {
+  console.log(intent.summary, intent.amount, intent.currency, intent.businessHost);
+}`}
+      />
+
+      <Method
+        name="commerce.approve"
+        signature="axon.commerce.approve(intentId, options) → Promise<ApproveResult>"
+        description="Approve a purchase. The SDK fetches the authorisation the server will verify, parses it, checks it against `expect`, and only then signs — so a purchase that moved underneath you is refused rather than authorised. The check applies whichever way you sign, including a signature you produced out of band with a hardware wallet or custody service. A mismatch throws CommerceRefusedError with a machine-readable reason, and nothing is signed or sent. Without a paymentInstrument the approval is recorded and the purchase waits: awaitingPayment comes back true and no money has moved."
+        params={[
+          { name: "intentId", type: "string", desc: "The purchase to approve" },
+          { name: "options.sign", type: "SignMandate", desc: "Signer — mandateSigner(secretKey) from /node, or walletMandateSigner(wallet) from /solana in a browser" },
+          { name: "options.expect", type: "PurchaseExpectation", desc: "maxAmount / currency / business — checked before signing" },
+          { name: "options.paymentInstrument", type: "PaymentInstrument", desc: "Credential from one of the business's payment handlers" },
+        ]}
+        returns="Promise<ApproveResult>"
+        example={`import { mandateSigner } from "@axonprotocol/sdk/node";
+
+await axon.commerce.approve(intentId, {
+  sign: mandateSigner(secretKey),
+  expect: { maxAmount: 150, currency: "USD", business: "shop.example" },
+  paymentInstrument,
+});`}
+      />
+
+      <Method
+        name="commerce.watch"
+        signature="axon.commerce.watch(options) → WatchHandle"
+        description="Call onProposed once per purchase an agent puts up. Each intent is handed over a single time, so this can drive a notification or a queue without a de-duplication table of your own. If your handler throws, that purchase is retried on the next poll rather than dropped. The watcher keeps the process alive so a script that only watches actually runs — pass keepAlive: false when a server owns the lifecycle."
+        params={[{ name: "options", type: "WatchPurchasesOptions", desc: "onProposed, intervalMs?, onError?" }]}
+        returns="WatchHandle"
+        example={`const handle = axon.commerce.watch({
+  onProposed: (intent) => notify(\`\${intent.summary} — \${intent.amount} \${intent.currency}\`),
+});
+handle.stop();`}
+      />
+
+      <Method
+        name="commerce.autoApprove"
+        signature="axon.commerce.autoApprove(policy) → WatchHandle"
+        description="Approve matching purchases without a human in the loop. Every bound is required — an auto-approver with an open bound is a blank cheque signed with your own key, so this refuses to be constructed without an amount, a currency, and an explicit list of businesses. Anything outside the policy is left alone for you to decide, never declined on your behalf."
+        params={[{ name: "policy", type: "AutoApprovePolicy", desc: "maxAmount, currency, allowedHosts, sign, onApproved?, onSkipped?" }]}
+        returns="WatchHandle"
+        example={`axon.commerce.autoApprove({
+  maxAmount: 40,
+  currency: "USD",
+  allowedHosts: ["groceries.example"],
+  sign: mandateSigner(secretKey),
+  onSkipped: (intent, reason) => console.log("left for you:", intent.summary, reason),
+});`}
+      />
+
+      <Method
+        name="commerce.stopAllSpending"
+        signature="axon.commerce.stopAllSpending() → Promise<{ stopped: true }>"
+        description="The kill switch. Revokes every mandate and stops anything in flight, in one call."
+        params={[]}
+        returns="Promise<{ stopped: true }>"
+        example={`await axon.commerce.stopAllSpending();`}
+      />
+
       <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex justify-between">
         <Link href="/docs/concepts/reputation" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
           ← Reputation

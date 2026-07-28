@@ -6,6 +6,16 @@ Axon HTTP API, with the trust checks shipped so you can confirm claims yourself.
 """
 
 from .client import AxonClient
+from .commerce import (
+    Authorisation,
+    CommerceApi,
+    CommerceRefused,
+    SignMandate,
+    WatchHandle,
+    assert_authorisation_matches,
+    mandate_signer,
+    parse_authorisation,
+)
 from .errors import AxonApiError
 from .hire import HireResult, PayFunction, hire
 from .runtime import AgentContext, AxonAgent, Handler, define_agent
@@ -17,11 +27,19 @@ from .verify import (
     verify_trace,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.6.0"
 
 __all__ = [
     "AxonClient",
     "AxonApiError",
+    "CommerceApi",
+    "CommerceRefused",
+    "Authorisation",
+    "SignMandate",
+    "WatchHandle",
+    "parse_authorisation",
+    "assert_authorisation_matches",
+    "mandate_signer",
     "hire",
     "HireResult",
     "PayFunction",

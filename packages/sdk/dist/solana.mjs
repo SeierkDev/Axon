@@ -156,7 +156,17 @@ function walletPayer(wallet, opts = {}) {
 function payerAddress(signer) {
   return toKeypair(signer).publicKey.toBase58();
 }
+function walletMandateSigner(wallet) {
+  return async (message) => {
+    await wallet.connect?.();
+    const signed = await wallet.signMessage(new TextEncoder().encode(message), "utf8");
+    const bytes = signed instanceof Uint8Array ? signed : signed.signature;
+    let binary = "";
+    for (const b of bytes) binary += String.fromCharCode(b);
+    return typeof btoa === "function" ? btoa(binary) : Buffer.from(bytes).toString("base64");
+  };
+}
 
-export { payerAddress, solanaPayer, walletPayer };
+export { payerAddress, solanaPayer, walletMandateSigner, walletPayer };
 //# sourceMappingURL=solana.mjs.map
 //# sourceMappingURL=solana.mjs.map

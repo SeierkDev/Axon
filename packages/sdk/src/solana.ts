@@ -27,7 +27,7 @@ import {
   createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import type { X402PayFunction, X402Requirements } from "./types";
+import type { SignMandate, X402PayFunction, X402Requirements } from "./types";
 
 const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
 const PRIORITY_FEE_FLOOR = 10_000; // micro-lamports/CU
@@ -248,4 +248,39 @@ export function walletPayer(wallet: WalletLike, opts: SolanaPayerOptions = {}): 
 /** The wallet address (base58) a signer will pay from — handy for logging or `from`. */
 export function payerAddress(signer: SolanaSigner): string {
   return toKeypair(signer).publicKey.toBase58();
+}
+
+// ── Signing a purchase authorisation, in a browser ────────────────────────────
+
+/** A wallet that can sign an arbitrary message — Phantom, Solflare, Backpack. */
+export interface MessageSigningWallet {
+  signMessage(message: Uint8Array, encoding?: string): Promise<{ signature: Uint8Array } | Uint8Array>;
+  connect?: () => Promise<unknown>;
+}
+
+/**
+ * Sign purchase authorisations with the buyer's own browser wallet.
+ *
+ *   import { walletMandateSigner } from "@axonprotocol/sdk/solana";
+ *
+ *   await axon.commerce.approve(intentId, {
+ *     sign: walletMandateSigner(window.phantom.solana),
+ *     expect: { maxAmount: 150, currency: "USD", business: "shop.example" },
+ *   });
+ *
+ * The wallet shows the buyer the exact authorisation before they sign it, which
+ * is the point — this is the surface AP2 expects a payment mandate to come from.
+ * For a server-side key with no human in front of it, use `mandateSigner` from
+ * the `/node` subpath.
+ */
+export function walletMandateSigner(wallet: MessageSigningWallet): SignMandate {
+  return async (message: string) => {
+    await wallet.connect?.();
+    const signed = await wallet.signMessage(new TextEncoder().encode(message), "utf8");
+    const bytes = signed instanceof Uint8Array ? signed : signed.signature;
+    let binary = "";
+    for (const b of bytes) binary += String.fromCharCode(b);
+    // btoa in browsers; Buffer when this runs under Node in a test.
+    return typeof btoa === "function" ? btoa(binary) : Buffer.from(bytes).toString("base64");
+  };
 }

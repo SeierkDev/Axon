@@ -13,6 +13,9 @@ export type {
 export { defineAgent } from "./runtime";
 export { hire } from "./hire";
 
+// Agent checkout (v0.6): your agents propose real purchases, you sign them.
+export { CommerceApi, CommerceRefusedError, parseAuthorisation, assertAuthorisationMatches } from "./commerce";
+
 // Axon as LLM tools (v0.4): drop the marketplace into any function-calling agent.
 export { buildAxonTools, toOpenAITools, toAnthropicTools, runAxonTool } from "./tools";
 export type {
@@ -123,6 +126,27 @@ export type {
   OptimizeResult,
   AxonTool,
   AxonToolsOptions,
+  CommerceProfile,
+  CreateProfileOptions,
+  SpendMandate,
+  GrantMandateOptions,
+  PurchaseIntent,
+  PurchaseStatus,
+  SpendSummary,
+  ListPurchasesOptions,
+  PurchasesView,
+  ApprovalRequest,
+  ParsedAuthorisation,
+  PurchaseExpectation,
+  SignMandate,
+  PaymentInstrument,
+  PaymentHandlerDescriptor,
+  PaymentOptionsView,
+  ApproveOptions,
+  ApproveResult,
+  WatchPurchasesOptions,
+  WatchHandle,
+  AutoApprovePolicy,
 } from "./types";
 
 import { AxonClient } from "./client";

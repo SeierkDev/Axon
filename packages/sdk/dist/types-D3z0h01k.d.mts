@@ -356,7 +356,7 @@ interface GatewayCallResult {
     taskId: string;
     durationMs: number;
 }
-type WebhookEventType = "task.queued" | "task.completed" | "task.failed" | "payment.settled" | "payment.refunded" | "spend.threshold_exceeded" | "bid.received" | "bid.accepted";
+type WebhookEventType = "task.queued" | "task.completed" | "task.failed" | "payment.settled" | "payment.refunded" | "spend.threshold_exceeded" | "bid.received" | "bid.accepted" | "purchase.proposed" | "purchase.completed";
 interface Webhook {
     webhookId: string;
     agentId: string;
@@ -882,5 +882,224 @@ interface HireResult {
     /** True when the wait ended on a timeout rather than a terminal status. */
     timedOut: boolean;
 }
+interface CommerceProfile {
+    profileId: string;
+    label: string;
+    status: "active" | "frozen" | "deleted";
+    createdAt?: string;
+}
+interface CreateProfileOptions {
+    /** A name for this destination, e.g. "Home" or "Office". */
+    label: string;
+    contact: {
+        name: string;
+        email: string;
+        phone?: string;
+    };
+    address: {
+        line1: string;
+        line2?: string;
+        city: string;
+        region?: string;
+        postalCode: string;
+        /** Two-letter ISO country code, e.g. "GB". */
+        country: string;
+    };
+}
+interface SpendMandate {
+    mandateId: string;
+    agentId: string;
+    profileId: string;
+    maxPerPurchase: number;
+    maxPerPeriod: number;
+    period: "day" | "week" | "month";
+    currency: string;
+    status: "active" | "revoked";
+    spentThisPeriod?: number;
+    autoApproveUnder?: number;
+    allowedHosts?: string[];
+    expiresAt?: string;
+}
+interface GrantMandateOptions {
+    agentId: string;
+    profileId: string;
+    /** Ceiling for any single purchase. */
+    maxPerPurchase: number;
+    /** Ceiling for everything inside one period. */
+    maxPerPeriod: number;
+    period?: "day" | "week" | "month";
+    currency?: string;
+    /** Purchases under this are pre-cleared, so they still need your signature but
+     *  not a second decision. 0 (the default) means every purchase is decided. */
+    autoApproveUnder?: number;
+    /** Restrict the agent to these business hosts. */
+    allowedHosts?: string[];
+    expiresAt?: string;
+}
+type PurchaseStatus = "proposed" | "approved" | "purchased" | "declined" | "expired" | "failed";
+interface PurchaseIntent {
+    intentId: string;
+    agentId: string;
+    businessHost: string;
+    summary: string;
+    amount: number;
+    currency: string;
+    /** The ceiling this purchase was authorised against. */
+    maxAmount?: number;
+    status: PurchaseStatus;
+    preCleared?: boolean;
+    orderId?: string;
+    orderStatus?: string;
+    signed?: boolean;
+    expiresAt: string;
+    createdAt: string;
+    failure?: string;
+}
+interface SpendSummary {
+    /** How many purchases have actually been paid for. */
+    purchased: number;
+    /** What those purchases came to, in `currency`. */
+    totalSpent: number;
+    /**
+     * Purchases in flight — proposed *and* approved-but-not-yet-charged.
+     *
+     * Not the same set as `commerce.pending()`, which is only what is still
+     * waiting on your decision. A purchase you approved a moment ago leaves
+     * `pending()` and stays counted here until it settles.
+     */
+    pending: number;
+    /** The currency these figures are in — read from the purchases, not assumed. */
+    currency: string;
+}
+interface ListPurchasesOptions {
+    status?: PurchaseStatus;
+    limit?: number;
+    /** Ask the businesses for fresh order status while listing. Off by default —
+     *  it makes the call as slow as somebody else's store. */
+    refresh?: boolean;
+}
+interface PurchasesView {
+    intents: PurchaseIntent[];
+    summary: SpendSummary;
+}
+/** What the owner is asked to sign, exactly as the server will verify it. */
+interface ApprovalRequest {
+    intentId: string;
+    message: string;
+    wallet: string;
+    expiresAt: string;
+}
+/** The same authorisation, broken into fields you can check before signing. */
+interface ParsedAuthorisation {
+    intentId: string;
+    business: string;
+    itemsHash: string;
+    amount: number;
+    currency: string;
+    ceiling: number;
+    expiresAt: string;
+}
+/**
+ * What you believe you are approving. Anything you state here is checked against
+ * the server's own authorisation message *before* it is signed, so a purchase
+ * that changed underneath you is refused rather than authorised.
+ */
+interface PurchaseExpectation {
+    /** Refuse if the amount is above this. */
+    maxAmount?: number;
+    /** Refuse if the purchase is priced in another currency. */
+    currency?: string;
+    /** Refuse unless the business is this one (or one of these). */
+    business?: string | string[];
+}
+/** Signs the authorisation message, returning a base64 Ed25519 signature. */
+type SignMandate = (message: string) => string | Promise<string>;
+interface PaymentInstrument {
+    id: string;
+    handlerId: string;
+    type: string;
+    credential: Record<string, unknown>;
+    billingAddress?: Record<string, unknown>;
+}
+interface PaymentHandlerDescriptor {
+    namespace: string;
+    id: string;
+    version?: string;
+    config?: Record<string, unknown>;
+}
+interface PaymentOptionsView {
+    intentId: string;
+    businessHost: string;
+    status: string;
+    readyToComplete: boolean;
+    total: number;
+    currency: string;
+    approvedCeiling: number;
+    paymentHandlers: PaymentHandlerDescriptor[];
+    messages?: unknown;
+}
+interface ApproveOptions {
+    /** How to sign. Given a signer, the SDK fetches the canonical message, checks
+     *  it against `expect`, and signs it — you never construct the message. */
+    sign?: SignMandate;
+    /** A signature you produced yourself, base64. Mutually exclusive with `sign`. */
+    signature?: string;
+    /** Checked against the real authorisation before anything is signed. */
+    expect?: PurchaseExpectation;
+    /** The credential from one of the business's payment handlers. Without it the
+     *  approval is recorded and the purchase waits — nothing is charged. */
+    paymentInstrument?: PaymentInstrument;
+}
+interface ApproveResult extends PurchaseIntent {
+    /** Set when the purchase completed. */
+    orderId?: string;
+    settledAmount?: number;
+    /** True when the approval is signed and recorded but no payment credential was
+     *  supplied, so the charge has not been attempted. */
+    awaitingPayment?: boolean;
+    /** What the authorisation actually said, as signed. */
+    authorisation?: ParsedAuthorisation;
+}
+interface WatchPurchasesOptions {
+    /** Called once per purchase the agent proposes. */
+    onProposed: (intent: PurchaseIntent) => void | Promise<void>;
+    /** How often to look. Default 15 000 ms. */
+    intervalMs?: number;
+    /** Called when a poll fails, instead of throwing into the interval. */
+    onError?: (err: unknown) => void;
+    /**
+     * Whether the watcher should keep the process alive. Default true — a script
+     * that only watches would otherwise exit immediately. Set false when
+     * something else owns the lifecycle and this shouldn't be what holds it open.
+     */
+    keepAlive?: boolean;
+}
+interface WatchHandle {
+    /** Stop watching. Safe to call more than once. */
+    stop(): void;
+}
+/**
+ * A standing rule for approving purchases without a human in the loop. Every
+ * bound is required: an auto-approver with an open bound is a blank cheque, so
+ * the SDK will not construct one.
+ */
+interface AutoApprovePolicy {
+    /** Never approve more than this, per purchase. */
+    maxAmount: number;
+    /** Only these business hosts. */
+    allowedHosts: string[];
+    /** Only this currency. */
+    currency: string;
+    /** How to sign an approval. */
+    sign: SignMandate;
+    /** Produce the payment credential for a purchase that passed the policy. */
+    paymentInstrument?: (intent: PurchaseIntent, options: PaymentOptionsView) => PaymentInstrument | Promise<PaymentInstrument | undefined> | undefined;
+    /** Called for each approved purchase. */
+    onApproved?: (result: ApproveResult) => void | Promise<void>;
+    /** Called for each purchase the policy refused, with the reason. */
+    onSkipped?: (intent: PurchaseIntent, reason: string) => void | Promise<void>;
+    onError?: (err: unknown) => void;
+    intervalMs?: number;
+}
 
-export type { CreateWorkflowTemplateOptions as $, AxonConfig as A, GatewayProvider as B, CapabilitySummary as C, DelegateOptions as D, GatewayCallOptions as E, FindAgentsOptions as F, GetTransactionsOptions as G, HireOptions as H, GatewayCallResult as I, RegisterWebhookOptions as J, Webhook as K, WebhookDelivery as L, CreateOpenTaskOptions as M, OpenTask as N, OptimizeResult as O, PlanOptions as P, QuorumTask as Q, RegisterOptions as R, SendTaskOptions as S, TaskRequest as T, ListOpenTasksOptions as U, VerifyOptions as V, Workflow as W, X402PayFunction as X, Bid as Y, SplitRecipient as Z, TaskSplitsView as _, AuthChallenge as a, WorkflowTemplate as a0, InstantiateTemplateOptions as a1, AttestCapabilityOptions as a2, CapabilityAttestation as a3, DefineSlaOptions as a4, TaskSla as a5, FileAbuseReportOptions as a6, AbuseReport as a7, FeePolicy as a8, ProtocolInfo as a9, ExplorerTask as aA, FeeTier as aB, OpenTaskStatus as aC, PaymentNoteKind as aD, PaymentStatus as aE, PlanView as aF, PlannedStep as aG, QuorumStatus as aH, ReceiptDelivery as aI, Review as aJ, SlaStatus as aK, SplitPayout as aL, TaskSplit as aM, TaskStatus as aN, WebhookEventType as aO, WorkflowStep as aP, X402PaymentOption as aQ, ProtocolNegotiation as aa, ExplorerFeed as ab, SystemStatus as ac, SubmitBidOptions as ad, AcceptBidOptions as ae, X402Requirements as af, RegisterMcpServerOptions as ag, McpServer as ah, McpToolRecord as ai, CallMcpToolOptions as aj, AgentRuntimeOptions as ak, AxonAgent as al, AbuseReason as am, AbuseStatus as an, AgentContext as ao, AgentRating as ap, AgentRunHandler as aq, ApiErrorBody as ar, ApiErrorCode as as, BidStatus as at, ComponentStatus as au, DefineSplitsOptions as av, DelegationResult as aw, DelegationStep as ax, EndpointUptime as ay, ExplorerSettlement as az, AuthVerifyResult as b, Agent as c, TaskProgress as d, TaskHandler as e, TaskResult as f, CreateQuorumOptions as g, QuorumResult as h, Transaction as i, AgentBalance as j, Reputation as k, AgentMetrics as l, Receipt as m, HireResult as n, RunOptions as o, RunResult as p, AxonToolsOptions as q, AxonTool as r, RouteHireOptions as s, RoutingInfo as t, PlanResult as u, SubcontractOptions as v, SubcontractResult as w, PaymentNote as x, GetTaskHistoryOptions as y, RegisterGatewayProviderOptions as z };
+export type { PaymentNote as $, ApprovalRequest as A, Receipt as B, CreateProfileOptions as C, DelegateOptions as D, HireResult as E, FindAgentsOptions as F, GrantMandateOptions as G, HireOptions as H, RunOptions as I, RunResult as J, AxonToolsOptions as K, ListPurchasesOptions as L, AxonTool as M, RouteHireOptions as N, RoutingInfo as O, PurchasesView as P, QuorumTask as Q, RegisterOptions as R, SpendMandate as S, TaskRequest as T, PlanOptions as U, VerifyOptions as V, WatchPurchasesOptions as W, PlanResult as X, SubcontractOptions as Y, SubcontractResult as Z, OptimizeResult as _, CommerceProfile as a, ReceiptDelivery as a$, GetTaskHistoryOptions as a0, RegisterGatewayProviderOptions as a1, GatewayProvider as a2, GatewayCallOptions as a3, GatewayCallResult as a4, X402PayFunction as a5, RegisterWebhookOptions as a6, Webhook as a7, WebhookDelivery as a8, CreateOpenTaskOptions as a9, AgentRuntimeOptions as aA, AxonAgent as aB, AbuseReason as aC, AbuseStatus as aD, AgentContext as aE, AgentRating as aF, AgentRunHandler as aG, ApiErrorBody as aH, ApiErrorCode as aI, BidStatus as aJ, ComponentStatus as aK, DefineSplitsOptions as aL, DelegationResult as aM, DelegationStep as aN, EndpointUptime as aO, ExplorerSettlement as aP, ExplorerTask as aQ, FeeTier as aR, OpenTaskStatus as aS, PaymentHandlerDescriptor as aT, PaymentInstrument as aU, PaymentNoteKind as aV, PaymentStatus as aW, PlanView as aX, PlannedStep as aY, PurchaseStatus as aZ, QuorumStatus as a_, OpenTask as aa, ListOpenTasksOptions as ab, Bid as ac, SplitRecipient as ad, TaskSplitsView as ae, CreateWorkflowTemplateOptions as af, WorkflowTemplate as ag, InstantiateTemplateOptions as ah, AttestCapabilityOptions as ai, CapabilityAttestation as aj, DefineSlaOptions as ak, TaskSla as al, FileAbuseReportOptions as am, AbuseReport as an, FeePolicy as ao, ProtocolInfo as ap, ProtocolNegotiation as aq, ExplorerFeed as ar, SystemStatus as as, SubmitBidOptions as at, AcceptBidOptions as au, X402Requirements as av, RegisterMcpServerOptions as aw, McpServer as ax, McpToolRecord as ay, CallMcpToolOptions as az, PurchaseIntent as b, Review as b0, SignMandate as b1, SlaStatus as b2, SpendSummary as b3, SplitPayout as b4, TaskSplit as b5, TaskStatus as b6, WebhookEventType as b7, WorkflowStep as b8, X402PaymentOption as b9, PaymentOptionsView as c, ApproveOptions as d, ApproveResult as e, WatchHandle as f, AutoApprovePolicy as g, ParsedAuthorisation as h, PurchaseExpectation as i, AxonConfig as j, AuthChallenge as k, AuthVerifyResult as l, Agent as m, CapabilitySummary as n, SendTaskOptions as o, TaskProgress as p, TaskHandler as q, TaskResult as r, CreateQuorumOptions as s, QuorumResult as t, Workflow as u, GetTransactionsOptions as v, Transaction as w, AgentBalance as x, Reputation as y, AgentMetrics as z };

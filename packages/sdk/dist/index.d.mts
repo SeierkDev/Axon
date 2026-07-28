@@ -1,5 +1,107 @@
-import { A as AxonConfig, a as AuthChallenge, b as AuthVerifyResult, R as RegisterOptions, c as Agent, V as VerifyOptions, F as FindAgentsOptions, C as CapabilitySummary, S as SendTaskOptions, T as TaskRequest, d as TaskProgress, e as TaskHandler, f as TaskResult, g as CreateQuorumOptions, Q as QuorumTask, h as QuorumResult, D as DelegateOptions, W as Workflow, G as GetTransactionsOptions, i as Transaction, j as AgentBalance, k as Reputation, l as AgentMetrics, m as Receipt, H as HireOptions, n as HireResult, o as RunOptions, p as RunResult, q as AxonToolsOptions, r as AxonTool, s as RouteHireOptions, t as RoutingInfo, P as PlanOptions, u as PlanResult, v as SubcontractOptions, w as SubcontractResult, O as OptimizeResult, x as PaymentNote, y as GetTaskHistoryOptions, z as RegisterGatewayProviderOptions, B as GatewayProvider, E as GatewayCallOptions, I as GatewayCallResult, X as X402PayFunction, J as RegisterWebhookOptions, K as Webhook, L as WebhookDelivery, M as CreateOpenTaskOptions, N as OpenTask, U as ListOpenTasksOptions, Y as Bid, Z as SplitRecipient, _ as TaskSplitsView, $ as CreateWorkflowTemplateOptions, a0 as WorkflowTemplate, a1 as InstantiateTemplateOptions, a2 as AttestCapabilityOptions, a3 as CapabilityAttestation, a4 as DefineSlaOptions, a5 as TaskSla, a6 as FileAbuseReportOptions, a7 as AbuseReport, a8 as FeePolicy, a9 as ProtocolInfo, aa as ProtocolNegotiation, ab as ExplorerFeed, ac as SystemStatus, ad as SubmitBidOptions, ae as AcceptBidOptions, af as X402Requirements, ag as RegisterMcpServerOptions, ah as McpServer, ai as McpToolRecord, aj as CallMcpToolOptions, ak as AgentRuntimeOptions, al as AxonAgent } from './types-C7yyVODx.mjs';
-export { am as AbuseReason, an as AbuseStatus, ao as AgentContext, ap as AgentRating, aq as AgentRunHandler, ar as ApiErrorBody, as as ApiErrorCode, at as BidStatus, au as ComponentStatus, av as DefineSplitsOptions, aw as DelegationResult, ax as DelegationStep, ay as EndpointUptime, az as ExplorerSettlement, aA as ExplorerTask, aB as FeeTier, aC as OpenTaskStatus, aD as PaymentNoteKind, aE as PaymentStatus, aF as PlanView, aG as PlannedStep, aH as QuorumStatus, aI as ReceiptDelivery, aJ as Review, aK as SlaStatus, aL as SplitPayout, aM as TaskSplit, aN as TaskStatus, aO as WebhookEventType, aP as WorkflowStep, aQ as X402PaymentOption } from './types-C7yyVODx.mjs';
+import { C as CreateProfileOptions, a as CommerceProfile, G as GrantMandateOptions, S as SpendMandate, L as ListPurchasesOptions, P as PurchasesView, b as PurchaseIntent, A as ApprovalRequest, c as PaymentOptionsView, d as ApproveOptions, e as ApproveResult, W as WatchPurchasesOptions, f as WatchHandle, g as AutoApprovePolicy, h as ParsedAuthorisation, i as PurchaseExpectation, j as AxonConfig, k as AuthChallenge, l as AuthVerifyResult, R as RegisterOptions, m as Agent, V as VerifyOptions, F as FindAgentsOptions, n as CapabilitySummary, o as SendTaskOptions, T as TaskRequest, p as TaskProgress, q as TaskHandler, r as TaskResult, s as CreateQuorumOptions, Q as QuorumTask, t as QuorumResult, D as DelegateOptions, u as Workflow, v as GetTransactionsOptions, w as Transaction, x as AgentBalance, y as Reputation, z as AgentMetrics, B as Receipt, H as HireOptions, E as HireResult, I as RunOptions, J as RunResult, K as AxonToolsOptions, M as AxonTool, N as RouteHireOptions, O as RoutingInfo, U as PlanOptions, X as PlanResult, Y as SubcontractOptions, Z as SubcontractResult, _ as OptimizeResult, $ as PaymentNote, a0 as GetTaskHistoryOptions, a1 as RegisterGatewayProviderOptions, a2 as GatewayProvider, a3 as GatewayCallOptions, a4 as GatewayCallResult, a5 as X402PayFunction, a6 as RegisterWebhookOptions, a7 as Webhook, a8 as WebhookDelivery, a9 as CreateOpenTaskOptions, aa as OpenTask, ab as ListOpenTasksOptions, ac as Bid, ad as SplitRecipient, ae as TaskSplitsView, af as CreateWorkflowTemplateOptions, ag as WorkflowTemplate, ah as InstantiateTemplateOptions, ai as AttestCapabilityOptions, aj as CapabilityAttestation, ak as DefineSlaOptions, al as TaskSla, am as FileAbuseReportOptions, an as AbuseReport, ao as FeePolicy, ap as ProtocolInfo, aq as ProtocolNegotiation, ar as ExplorerFeed, as as SystemStatus, at as SubmitBidOptions, au as AcceptBidOptions, av as X402Requirements, aw as RegisterMcpServerOptions, ax as McpServer, ay as McpToolRecord, az as CallMcpToolOptions, aA as AgentRuntimeOptions, aB as AxonAgent } from './types-D3z0h01k.mjs';
+export { aC as AbuseReason, aD as AbuseStatus, aE as AgentContext, aF as AgentRating, aG as AgentRunHandler, aH as ApiErrorBody, aI as ApiErrorCode, aJ as BidStatus, aK as ComponentStatus, aL as DefineSplitsOptions, aM as DelegationResult, aN as DelegationStep, aO as EndpointUptime, aP as ExplorerSettlement, aQ as ExplorerTask, aR as FeeTier, aS as OpenTaskStatus, aT as PaymentHandlerDescriptor, aU as PaymentInstrument, aV as PaymentNoteKind, aW as PaymentStatus, aX as PlanView, aY as PlannedStep, aZ as PurchaseStatus, a_ as QuorumStatus, a$ as ReceiptDelivery, b0 as Review, b1 as SignMandate, b2 as SlaStatus, b3 as SpendSummary, b4 as SplitPayout, b5 as TaskSplit, b6 as TaskStatus, b7 as WebhookEventType, b8 as WorkflowStep, b9 as X402PaymentOption } from './types-D3z0h01k.mjs';
+
+type RequestFn = (method: string, path: string, opts?: {
+    body?: unknown;
+    headers?: Record<string, string>;
+}) => Promise<unknown>;
+/**
+ * A purchase that was stopped rather than made. `reason` is the machine-readable
+ * cause, so callers can tell "the price moved" from "you have no budget left"
+ * without matching on prose.
+ */
+declare class CommerceRefusedError extends Error {
+    readonly reason: string;
+    readonly intentId?: string;
+    constructor(message: string, reason: string, intentId?: string);
+}
+/**
+ * Read the authorisation the server will verify.
+ *
+ * Deliberately rigid: exactly the header and exactly these six fields, in this
+ * order, once each. A lenient parser here would be the weak point of the whole
+ * feature — search for a field and take the first hit, and a value carrying a
+ * newline could shadow the real one, so a signature meant for £5 covers £5 000.
+ * Nothing upstream can produce such a value today; this is what makes that not
+ * matter.
+ */
+declare function parseAuthorisation(message: string): ParsedAuthorisation;
+/**
+ * Hold an authorisation against what the caller believes they are approving.
+ * Throws rather than returning false: the only safe default when a purchase does
+ * not match its description is to not sign it.
+ */
+declare function assertAuthorisationMatches(auth: ParsedAuthorisation, expect: PurchaseExpectation, intentId?: string): void;
+declare class CommerceApi {
+    private readonly request;
+    constructor(request: RequestFn);
+    /** Every call goes through here so a refusal is a refusal, whoever made it. */
+    private call;
+    /** Store a delivery destination. Encrypted at rest; never shown to an agent. */
+    createProfile(options: CreateProfileOptions): Promise<CommerceProfile>;
+    listProfiles(): Promise<CommerceProfile[]>;
+    /** Erase the personal data on a profile, keeping the purchase history intact. */
+    forgetProfile(profileId: string): Promise<{
+        profileId: string;
+        forgotten: true;
+    }>;
+    /** Give an agent a budget. It must already hold the `commerce` grant. */
+    grantMandate(options: GrantMandateOptions): Promise<SpendMandate>;
+    listMandates(): Promise<SpendMandate[]>;
+    revokeMandate(mandateId: string): Promise<{
+        mandateId: string;
+        revoked: boolean;
+    }>;
+    /** Revoke every mandate at once and stop anything in flight. */
+    stopAllSpending(): Promise<{
+        stopped: true;
+        revoked?: number;
+    }>;
+    listPurchases(options?: ListPurchasesOptions): Promise<PurchasesView>;
+    /**
+     * The purchases waiting on you. Asks for the largest page the server will
+     * give: this drives `watch()` and `autoApprove()`, and a purchase that falls
+     * off the end of a page is one nobody is ever shown.
+     */
+    pending(): Promise<PurchaseIntent[]>;
+    /**
+     * One purchase, by id. What a `purchase.proposed` webhook gives you is an
+     * intentId, so this is the direct way to act on it — listing and searching
+     * quietly depends on it being on the first page.
+     */
+    getPurchase(intentId: string): Promise<PurchaseIntent>;
+    /** The exact text the server will verify a signature against. */
+    getApprovalRequest(intentId: string): Promise<ApprovalRequest>;
+    /** Which payment handler this purchase needs, read live from the business. */
+    getPaymentOptions(intentId: string): Promise<PaymentOptionsView>;
+    decline(intentId: string): Promise<PurchaseIntent>;
+    /**
+     * Approve a purchase.
+     *
+     * With `sign`, the authorisation is fetched, parsed, checked against `expect`,
+     * and only then signed — so the thing you authorise is the thing you were
+     * shown. A mismatch throws `CommerceRefusedError` and nothing is signed.
+     *
+     * Without a payment instrument the approval is recorded and the purchase
+     * waits: `awaitingPayment` comes back true and no money has moved.
+     */
+    approve(intentId: string, options: ApproveOptions): Promise<ApproveResult>;
+    /**
+     * Call `onProposed` once per purchase an agent puts up. Each intent is handed
+     * over a single time, so this can drive a notification, a queue, or a prompt
+     * without a de-duplication table of your own.
+     */
+    watch(options: WatchPurchasesOptions): WatchHandle;
+    /**
+     * Approve matching purchases without a human in the loop.
+     *
+     * Every bound is required. An auto-approver with an open bound is a blank
+     * cheque signed with your own key, so this refuses to be constructed without
+     * an amount, a currency, and an explicit list of businesses. Anything outside
+     * the policy is left alone for you to decide, never declined on your behalf.
+     */
+    autoApprove(policy: AutoApprovePolicy): WatchHandle;
+}
 
 declare class AxonApiError extends Error {
     readonly status: number;
@@ -21,6 +123,11 @@ declare class AxonApiError extends Error {
 declare class AxonClient {
     private config;
     private taskHandler;
+    /**
+     * Agent checkout (v0.6): profiles, spend mandates, and approving what your
+     * agents want to buy. Approving is signing — see `commerce.approve()`.
+     */
+    readonly commerce: CommerceApi;
     /** Configure at construction — `new AxonClient({ endpoint, apiKey, pay })` — or
      *  construct empty and call `init()` later. Both are equivalent. */
     constructor(config?: AxonConfig);
@@ -427,4 +534,4 @@ declare function runAxonTool(tools: AxonTool[], name: string, args: Record<strin
 
 declare const axon: AxonClient;
 
-export { AbuseReport, AcceptBidOptions, Agent, AgentBalance, AgentMetrics, AgentRuntimeOptions, AttestCapabilityOptions, AuthChallenge, AuthVerifyResult, AxonAgent, AxonApiError, AxonClient, AxonConfig, AxonTool, AxonToolsOptions, Bid, CallMcpToolOptions, CapabilityAttestation, CapabilitySummary, CreateOpenTaskOptions, CreateQuorumOptions, CreateWorkflowTemplateOptions, DefineSlaOptions, DelegateOptions, ExplorerFeed, FeePolicy, FileAbuseReportOptions, FindAgentsOptions, GatewayCallOptions, GatewayCallResult, GatewayProvider, GetTaskHistoryOptions, GetTransactionsOptions, HireOptions, HireResult, InstantiateTemplateOptions, ListOpenTasksOptions, McpServer, McpToolRecord, OpenTask, OptimizeResult, PaymentNote, PlanOptions, PlanResult, ProtocolInfo, ProtocolNegotiation, QuorumResult, QuorumTask, Receipt, RegisterGatewayProviderOptions, RegisterMcpServerOptions, RegisterOptions, RegisterWebhookOptions, Reputation, RouteHireOptions, RoutingInfo, RunOptions, RunResult, SendTaskOptions, SplitRecipient, SubcontractOptions, SubcontractResult, SubmitBidOptions, SystemStatus, TaskHandler, TaskProgress, TaskRequest, TaskResult, TaskSla, TaskSplitsView, Transaction, VerifyOptions, type VerifyProofScoreOptions, type VerifyProofScoreResult, type VerifyReceiptOptions, type VerifyReceiptResult, type VerifyWebhookOptions, Webhook, WebhookDelivery, Workflow, WorkflowTemplate, X402PayFunction, X402Requirements, axon, buildAxonTools, defineAgent, hire, runAxonTool, toAnthropicTools, toOpenAITools, verifyProofScore, verifyReceipt, verifyWebhookSignature };
+export { AbuseReport, AcceptBidOptions, Agent, AgentBalance, AgentMetrics, AgentRuntimeOptions, ApprovalRequest, ApproveOptions, ApproveResult, AttestCapabilityOptions, AuthChallenge, AuthVerifyResult, AutoApprovePolicy, AxonAgent, AxonApiError, AxonClient, AxonConfig, AxonTool, AxonToolsOptions, Bid, CallMcpToolOptions, CapabilityAttestation, CapabilitySummary, CommerceApi, CommerceProfile, CommerceRefusedError, CreateOpenTaskOptions, CreateProfileOptions, CreateQuorumOptions, CreateWorkflowTemplateOptions, DefineSlaOptions, DelegateOptions, ExplorerFeed, FeePolicy, FileAbuseReportOptions, FindAgentsOptions, GatewayCallOptions, GatewayCallResult, GatewayProvider, GetTaskHistoryOptions, GetTransactionsOptions, GrantMandateOptions, HireOptions, HireResult, InstantiateTemplateOptions, ListOpenTasksOptions, ListPurchasesOptions, McpServer, McpToolRecord, OpenTask, OptimizeResult, ParsedAuthorisation, PaymentNote, PaymentOptionsView, PlanOptions, PlanResult, ProtocolInfo, ProtocolNegotiation, PurchaseExpectation, PurchaseIntent, PurchasesView, QuorumResult, QuorumTask, Receipt, RegisterGatewayProviderOptions, RegisterMcpServerOptions, RegisterOptions, RegisterWebhookOptions, Reputation, RouteHireOptions, RoutingInfo, RunOptions, RunResult, SendTaskOptions, SpendMandate, SplitRecipient, SubcontractOptions, SubcontractResult, SubmitBidOptions, SystemStatus, TaskHandler, TaskProgress, TaskRequest, TaskResult, TaskSla, TaskSplitsView, Transaction, VerifyOptions, type VerifyProofScoreOptions, type VerifyProofScoreResult, type VerifyReceiptOptions, type VerifyReceiptResult, type VerifyWebhookOptions, WatchHandle, WatchPurchasesOptions, Webhook, WebhookDelivery, Workflow, WorkflowTemplate, X402PayFunction, X402Requirements, assertAuthorisationMatches, axon, buildAxonTools, defineAgent, hire, parseAuthorisation, runAxonTool, toAnthropicTools, toOpenAITools, verifyProofScore, verifyReceipt, verifyWebhookSignature };

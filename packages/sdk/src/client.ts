@@ -1,3 +1,4 @@
+import { CommerceApi } from "./commerce";
 import type {
   Agent,
   RegisterOptions,
@@ -145,10 +146,17 @@ export class AxonClient {
   private config: AxonConfig = {};
   private taskHandler: TaskHandler | null = null;
 
+  /**
+   * Agent checkout (v0.6): profiles, spend mandates, and approving what your
+   * agents want to buy. Approving is signing — see `commerce.approve()`.
+   */
+  readonly commerce: CommerceApi;
+
   /** Configure at construction — `new AxonClient({ endpoint, apiKey, pay })` — or
    *  construct empty and call `init()` later. Both are equivalent. */
   constructor(config: AxonConfig = {}) {
     this.config = config;
+    this.commerce = new CommerceApi((method, path, opts) => this.request(method, path, opts));
   }
 
   /** (Re)configure the client — same options as the constructor. */

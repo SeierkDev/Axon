@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
+from .commerce import CommerceApi
 from .errors import AxonApiError
 
 DEFAULT_BASE_URL = "https://axon-agents.com"
@@ -35,6 +36,9 @@ class AxonClient:
         self.max_retries = max_retries
         self.retry_base_seconds = retry_base_seconds
         self._session = session or requests.Session()
+        #: Agent checkout: profiles, spend mandates, and approving what your
+        #: agents want to buy. Approving is signing — see ``commerce.approve``.
+        self.commerce = CommerceApi(self)
 
     # ── request core ─────────────────────────────────────────────────────────
     def _request(self, method: str, path: str, *, body: Any = None, headers: Optional[Dict[str, str]] = None) -> Any:

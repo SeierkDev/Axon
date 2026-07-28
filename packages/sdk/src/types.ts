@@ -1051,3 +1051,255 @@ export interface HireResult {
 
 // Receipt / trace verification (v0.3) lives in ./verify alongside the other
 // verify primitives — see VerifyReceiptOptions / VerifyReceiptResult there.
+
+// ─── Commerce: agents that buy real things (v0.6) ─────────────────────────────
+//
+// An agent with the `commerce` grant can search real businesses and propose a
+// purchase. It cannot buy: the charge needs a signature from the owner's own
+// wallet, over a message naming this exact cart at this exact price. Everything
+// below is the owner's side of that exchange.
+
+export interface CommerceProfile {
+  profileId: string;
+  label: string;
+  status: "active" | "frozen" | "deleted";
+  createdAt?: string;
+}
+
+export interface CreateProfileOptions {
+  /** A name for this destination, e.g. "Home" or "Office". */
+  label: string;
+  contact: { name: string; email: string; phone?: string };
+  address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    region?: string;
+    postalCode: string;
+    /** Two-letter ISO country code, e.g. "GB". */
+    country: string;
+  };
+}
+
+export interface SpendMandate {
+  mandateId: string;
+  agentId: string;
+  profileId: string;
+  maxPerPurchase: number;
+  maxPerPeriod: number;
+  period: "day" | "week" | "month";
+  currency: string;
+  status: "active" | "revoked";
+  spentThisPeriod?: number;
+  autoApproveUnder?: number;
+  allowedHosts?: string[];
+  expiresAt?: string;
+}
+
+export interface GrantMandateOptions {
+  agentId: string;
+  profileId: string;
+  /** Ceiling for any single purchase. */
+  maxPerPurchase: number;
+  /** Ceiling for everything inside one period. */
+  maxPerPeriod: number;
+  period?: "day" | "week" | "month";
+  currency?: string;
+  /** Purchases under this are pre-cleared, so they still need your signature but
+   *  not a second decision. 0 (the default) means every purchase is decided. */
+  autoApproveUnder?: number;
+  /** Restrict the agent to these business hosts. */
+  allowedHosts?: string[];
+  expiresAt?: string;
+}
+
+export type PurchaseStatus =
+  | "proposed"
+  | "approved"
+  | "purchased"
+  | "declined"
+  | "expired"
+  | "failed";
+
+export interface PurchaseIntent {
+  intentId: string;
+  agentId: string;
+  businessHost: string;
+  summary: string;
+  amount: number;
+  currency: string;
+  /** The ceiling this purchase was authorised against. */
+  maxAmount?: number;
+  status: PurchaseStatus;
+  preCleared?: boolean;
+  orderId?: string;
+  orderStatus?: string;
+  signed?: boolean;
+  expiresAt: string;
+  createdAt: string;
+  failure?: string;
+}
+
+export interface SpendSummary {
+  /** How many purchases have actually been paid for. */
+  purchased: number;
+  /** What those purchases came to, in `currency`. */
+  totalSpent: number;
+  /**
+   * Purchases in flight — proposed *and* approved-but-not-yet-charged.
+   *
+   * Not the same set as `commerce.pending()`, which is only what is still
+   * waiting on your decision. A purchase you approved a moment ago leaves
+   * `pending()` and stays counted here until it settles.
+   */
+  pending: number;
+  /** The currency these figures are in — read from the purchases, not assumed. */
+  currency: string;
+}
+
+export interface ListPurchasesOptions {
+  status?: PurchaseStatus;
+  limit?: number;
+  /** Ask the businesses for fresh order status while listing. Off by default —
+   *  it makes the call as slow as somebody else's store. */
+  refresh?: boolean;
+}
+
+export interface PurchasesView {
+  intents: PurchaseIntent[];
+  summary: SpendSummary;
+}
+
+/** What the owner is asked to sign, exactly as the server will verify it. */
+export interface ApprovalRequest {
+  intentId: string;
+  message: string;
+  wallet: string;
+  expiresAt: string;
+}
+
+/** The same authorisation, broken into fields you can check before signing. */
+export interface ParsedAuthorisation {
+  intentId: string;
+  business: string;
+  itemsHash: string;
+  amount: number;
+  currency: string;
+  ceiling: number;
+  expiresAt: string;
+}
+
+/**
+ * What you believe you are approving. Anything you state here is checked against
+ * the server's own authorisation message *before* it is signed, so a purchase
+ * that changed underneath you is refused rather than authorised.
+ */
+export interface PurchaseExpectation {
+  /** Refuse if the amount is above this. */
+  maxAmount?: number;
+  /** Refuse if the purchase is priced in another currency. */
+  currency?: string;
+  /** Refuse unless the business is this one (or one of these). */
+  business?: string | string[];
+}
+
+/** Signs the authorisation message, returning a base64 Ed25519 signature. */
+export type SignMandate = (message: string) => string | Promise<string>;
+
+export interface PaymentInstrument {
+  id: string;
+  handlerId: string;
+  type: string;
+  credential: Record<string, unknown>;
+  billingAddress?: Record<string, unknown>;
+}
+
+export interface PaymentHandlerDescriptor {
+  namespace: string;
+  id: string;
+  version?: string;
+  config?: Record<string, unknown>;
+}
+
+export interface PaymentOptionsView {
+  intentId: string;
+  businessHost: string;
+  status: string;
+  readyToComplete: boolean;
+  total: number;
+  currency: string;
+  approvedCeiling: number;
+  paymentHandlers: PaymentHandlerDescriptor[];
+  messages?: unknown;
+}
+
+export interface ApproveOptions {
+  /** How to sign. Given a signer, the SDK fetches the canonical message, checks
+   *  it against `expect`, and signs it — you never construct the message. */
+  sign?: SignMandate;
+  /** A signature you produced yourself, base64. Mutually exclusive with `sign`. */
+  signature?: string;
+  /** Checked against the real authorisation before anything is signed. */
+  expect?: PurchaseExpectation;
+  /** The credential from one of the business's payment handlers. Without it the
+   *  approval is recorded and the purchase waits — nothing is charged. */
+  paymentInstrument?: PaymentInstrument;
+}
+
+export interface ApproveResult extends PurchaseIntent {
+  /** Set when the purchase completed. */
+  orderId?: string;
+  settledAmount?: number;
+  /** True when the approval is signed and recorded but no payment credential was
+   *  supplied, so the charge has not been attempted. */
+  awaitingPayment?: boolean;
+  /** What the authorisation actually said, as signed. */
+  authorisation?: ParsedAuthorisation;
+}
+
+export interface WatchPurchasesOptions {
+  /** Called once per purchase the agent proposes. */
+  onProposed: (intent: PurchaseIntent) => void | Promise<void>;
+  /** How often to look. Default 15 000 ms. */
+  intervalMs?: number;
+  /** Called when a poll fails, instead of throwing into the interval. */
+  onError?: (err: unknown) => void;
+  /**
+   * Whether the watcher should keep the process alive. Default true — a script
+   * that only watches would otherwise exit immediately. Set false when
+   * something else owns the lifecycle and this shouldn't be what holds it open.
+   */
+  keepAlive?: boolean;
+}
+
+export interface WatchHandle {
+  /** Stop watching. Safe to call more than once. */
+  stop(): void;
+}
+
+/**
+ * A standing rule for approving purchases without a human in the loop. Every
+ * bound is required: an auto-approver with an open bound is a blank cheque, so
+ * the SDK will not construct one.
+ */
+export interface AutoApprovePolicy {
+  /** Never approve more than this, per purchase. */
+  maxAmount: number;
+  /** Only these business hosts. */
+  allowedHosts: string[];
+  /** Only this currency. */
+  currency: string;
+  /** How to sign an approval. */
+  sign: SignMandate;
+  /** Produce the payment credential for a purchase that passed the policy. */
+  paymentInstrument?: (
+    intent: PurchaseIntent,
+    options: PaymentOptionsView,
+  ) => PaymentInstrument | Promise<PaymentInstrument | undefined> | undefined;
+  /** Called for each approved purchase. */
+  onApproved?: (result: ApproveResult) => void | Promise<void>;
+  /** Called for each purchase the policy refused, with the reason. */
+  onSkipped?: (intent: PurchaseIntent, reason: string) => void | Promise<void>;
+  onError?: (err: unknown) => void;
+  intervalMs?: number;
+}

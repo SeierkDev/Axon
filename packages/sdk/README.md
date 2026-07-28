@@ -208,11 +208,138 @@ const tools = axon.tools({ from: "my-agent" }); // an agent you own, or your wal
 Anonymous tools (no `from`) still hire and pay and return the public receipt URL, but
 the private output isn't readable back — the receipt is the proof.
 
+## Buy real things (agent checkout)
+
+An agent with the `commerce` grant can search real businesses and propose a purchase.
+It has no tool that buys. Between the proposal and the charge sits one thing: a
+signature from your wallet over a message naming that exact cart at that exact price.
+
+```ts
+import { AxonClient } from "@axonprotocol/sdk";
+import { mandateSigner } from "@axonprotocol/sdk/node";
+
+const axon = new AxonClient({ apiKey: process.env.AXON_API_KEY });
+
+// Once: where orders go, and what the agent may spend.
+const profile = await axon.commerce.createProfile({
+  label: "Home",
+  contact: { name: "Ada Lovelace", email: "ada@example.com" },
+  address: { line1: "1 Analytical Way", city: "London", postalCode: "E1 6AN", country: "GB" },
+});
+
+await axon.commerce.grantMandate({
+  agentId: "shopper",
+  profileId: profile.profileId,
+  maxPerPurchase: 80,
+  maxPerPeriod: 200,
+  period: "week",
+  allowedHosts: ["shop.example"],
+});
+
+// Then: decide what it proposes.
+for (const intent of await axon.commerce.pending()) {
+  console.log(intent.summary, intent.amount, intent.currency, "from", intent.businessHost);
+}
+```
+
+### Approving is signing
+
+`approve()` fetches the authorisation the server will verify, parses it, checks it
+against what you say you expect, and **only then** signs. State an expectation and a
+purchase that moved underneath you is refused rather than authorised — nothing is
+signed and nothing is sent.
+
+```ts
+await axon.commerce.approve(intentId, {
+  sign: mandateSigner(secretKey),
+  expect: { maxAmount: 150, currency: "USD", business: "shop.example" },
+  paymentInstrument,  // from one of the business's payment handlers
+});
+```
+
+In a browser, sign with the buyer's own wallet instead — it shows them the exact
+authorisation before they agree to it, which is the surface AP2 expects a payment
+mandate to come from:
+
+```ts
+import { walletMandateSigner } from "@axonprotocol/sdk/solana";
+
+await axon.commerce.approve(intentId, {
+  sign: walletMandateSigner(window.phantom.solana),
+  expect: { maxAmount: 150, currency: "USD", business: "shop.example" },
+});
+```
+
+If the business re-priced into another currency, or the amount moved above what you
+expected, or the message is addressed to a different purchase, you get a
+`CommerceRefusedError` with a `reason` you can branch on — and your key never touched it.
+
+The same type covers refusals from the server side. The checks that run at the moment
+of the charge — the live price, the currency, the budget already committed, the
+mandate still being valid — all arrive as `CommerceRefusedError` too, so one branch
+catches a purchase stopped anywhere along the way.
+
+```ts
+import { CommerceRefusedError } from "@axonprotocol/sdk";
+
+try {
+  await axon.commerce.approve(intentId, { sign, expect: { maxAmount: 150, currency: "USD" } });
+} catch (err) {
+  if (err instanceof CommerceRefusedError) console.warn("not approved:", err.reason);
+}
+```
+
+`expect` is checked whichever way you sign. If you produce the signature elsewhere —
+a hardware wallet, a remote signer, a custody service — pass it as `signature` and the
+same bounds still apply before anything is sent.
+
+Approve without a `paymentInstrument` and the approval is recorded while the purchase
+waits: `awaitingPayment` comes back true and no money has moved.
+
+### Standing over it
+
+`watch()` hands you each purchase once, as the agent proposes it — enough to drive a
+notification, a queue, or a prompt without a de-duplication table of your own.
+
+```ts
+const handle = axon.commerce.watch({
+  onProposed: (intent) => notify(`${intent.summary} — ${intent.amount} ${intent.currency}`),
+});
+// Keeps the process alive, so a script that only watches actually runs.
+// Pass `keepAlive: false` when a server or job runner owns the lifecycle.
+handle.stop();
+```
+
+A purchase whose handling fails — a timeout, a store having a bad minute — is retried on
+the next poll rather than dropped. Only a decision is final.
+
+`autoApprove()` decides for you, within a policy. Every bound is required: an
+auto-approver with an open bound is a blank cheque signed with your own key, so the
+SDK will not construct one. Anything outside the policy is left alone for you to
+decide — never declined on your behalf.
+
+```ts
+axon.commerce.autoApprove({
+  maxAmount: 40,
+  currency: "USD",
+  allowedHosts: ["groceries.example"],
+  sign: mandateSigner(secretKey),
+  onApproved: (r) => console.log("bought", r.orderId),
+  onSkipped: (intent, reason) => console.log("left for you:", intent.summary, reason),
+});
+```
+
+One call revokes every mandate and stops anything in flight:
+
+```ts
+await axon.commerce.stopAllSpending();
+```
+
 ## Verify without trusting Axon
 
-The whole point of Axon is that you don't have to take our word for anything —
-the SDK ships the checks so you can confirm claims yourself, with no Axon endpoint
-in the trust path.
+Every claim Axon publishes is independently checkable, and the SDK ships the checks.
+Each one recomputes the answer from public evidence, with no Axon endpoint in the
+trust path.
 
 ### Proof Score
 

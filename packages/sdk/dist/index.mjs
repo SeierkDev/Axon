@@ -1,3 +1,387 @@
+// src/commerce.ts
+var CommerceRefusedError = class extends Error {
+  constructor(message, reason, intentId) {
+    super(message);
+    this.name = "CommerceRefusedError";
+    this.reason = reason;
+    this.intentId = intentId;
+  }
+};
+var NUM = /^-?\d+(\.\d+)?$/;
+var FIELDS = ["intent", "business", "items", "amount", "ceiling", "expires"];
+var HEADER = "Axon purchase authorisation";
+function parseAuthorisation(message) {
+  const lines = message.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines[0] !== HEADER) {
+    throw new CommerceRefusedError(
+      "this is not an Axon purchase authorisation \u2014 refusing to sign it",
+      "UNRECOGNISED_MESSAGE"
+    );
+  }
+  if (lines.length !== FIELDS.length + 1) {
+    throw new CommerceRefusedError(
+      `the authorisation has ${lines.length - 1} fields, expected ${FIELDS.length} \u2014 refusing to sign it`,
+      "MALFORMED_MESSAGE"
+    );
+  }
+  const values = {};
+  FIELDS.forEach((name, i) => {
+    const line = lines[i + 1];
+    if (!line.startsWith(`${name}: `)) {
+      throw new CommerceRefusedError(
+        `expected '${name}' at line ${i + 2} of the authorisation \u2014 refusing to sign it`,
+        "MALFORMED_MESSAGE"
+      );
+    }
+    values[name] = line.slice(name.length + 2).trim();
+  });
+  const money = (name) => {
+    const [amount2, currency, ...rest] = values[name].split(/\s+/);
+    if (!NUM.test(amount2 ?? "") || !currency || rest.length) {
+      throw new CommerceRefusedError(
+        `could not read the ${name} in the authorisation \u2014 refusing to sign it`,
+        "MALFORMED_MESSAGE"
+      );
+    }
+    return { value: Number(amount2), currency: currency.toUpperCase() };
+  };
+  const amount = money("amount");
+  const ceiling = money("ceiling");
+  if (!values.intent || !values.business) {
+    throw new CommerceRefusedError("the authorisation is missing its subject \u2014 refusing to sign it", "MALFORMED_MESSAGE");
+  }
+  if (Number.isNaN(Date.parse(values.expires))) {
+    throw new CommerceRefusedError("the authorisation has no readable expiry \u2014 refusing to sign it", "MALFORMED_MESSAGE");
+  }
+  return {
+    intentId: values.intent,
+    business: values.business,
+    itemsHash: values.items,
+    amount: amount.value,
+    currency: amount.currency,
+    ceiling: ceiling.value,
+    expiresAt: values.expires
+  };
+}
+function assertAuthorisationMatches(auth, expect, intentId) {
+  const refuse = (msg, reason) => {
+    throw new CommerceRefusedError(msg, reason, intentId ?? auth.intentId);
+  };
+  if (expect.currency && auth.currency !== expect.currency.toUpperCase()) {
+    refuse(
+      `this purchase is priced in ${auth.currency}, not the ${expect.currency.toUpperCase()} you expected \u2014 nothing was signed`,
+      "CURRENCY_MISMATCH"
+    );
+  }
+  if (expect.maxAmount != null && auth.amount > expect.maxAmount) {
+    refuse(
+      `this purchase is ${auth.amount.toFixed(2)} ${auth.currency}, above the ${expect.maxAmount.toFixed(2)} you expected \u2014 nothing was signed`,
+      "OVER_EXPECTED_AMOUNT"
+    );
+  }
+  if (expect.business) {
+    const allowed = (Array.isArray(expect.business) ? expect.business : [expect.business]).map(
+      (h) => h.trim().toLowerCase()
+    );
+    if (!allowed.includes(auth.business.trim().toLowerCase())) {
+      refuse(
+        `this purchase is from ${auth.business}, which is not one you expected \u2014 nothing was signed`,
+        "UNEXPECTED_BUSINESS"
+      );
+    }
+  }
+  if (Date.parse(auth.expiresAt) <= Date.now()) {
+    refuse("this authorisation has already expired \u2014 nothing was signed", "EXPIRED");
+  }
+}
+function asRefusal(err, intentId) {
+  if (!err || typeof err !== "object") return null;
+  const e = err;
+  if (e.name !== "AxonApiError") return null;
+  const from = (o) => {
+    if (!o || typeof o !== "object") return void 0;
+    const r = o.reason;
+    return typeof r === "string" ? r : void 0;
+  };
+  const reason = from(e.body) ?? from(e.details);
+  if (!reason) return null;
+  const detail = e.body?.purchaseError;
+  return new CommerceRefusedError(detail ?? e.message ?? "the purchase was refused", reason, intentId);
+}
+var CommerceApi = class {
+  constructor(request) {
+    this.request = request;
+  }
+  /** Every call goes through here so a refusal is a refusal, whoever made it. */
+  async call(method, path, opts, intentId) {
+    try {
+      return await this.request(method, path, opts);
+    } catch (err) {
+      const refusal = asRefusal(err, intentId);
+      if (refusal) throw refusal;
+      throw err;
+    }
+  }
+  // ── Where orders go ────────────────────────────────────────────────────────
+  /** Store a delivery destination. Encrypted at rest; never shown to an agent. */
+  async createProfile(options) {
+    return await this.call("POST", "/api/commerce/profiles", { body: options });
+  }
+  async listProfiles() {
+    const res = await this.call("GET", "/api/commerce/profiles");
+    return res.profiles;
+  }
+  /** Erase the personal data on a profile, keeping the purchase history intact. */
+  async forgetProfile(profileId) {
+    return await this.call(
+      "DELETE",
+      `/api/commerce/profiles?id=${encodeURIComponent(profileId)}`
+    );
+  }
+  // ── What it may spend ──────────────────────────────────────────────────────
+  /** Give an agent a budget. It must already hold the `commerce` grant. */
+  async grantMandate(options) {
+    return await this.call("POST", "/api/commerce/mandates", { body: options });
+  }
+  async listMandates() {
+    const res = await this.call("GET", "/api/commerce/mandates");
+    return res.mandates;
+  }
+  async revokeMandate(mandateId) {
+    return await this.call(
+      "DELETE",
+      `/api/commerce/mandates?id=${encodeURIComponent(mandateId)}`
+    );
+  }
+  /** Revoke every mandate at once and stop anything in flight. */
+  async stopAllSpending() {
+    return await this.call("POST", "/api/commerce/kill", { body: {} });
+  }
+  // ── What it wants to buy ───────────────────────────────────────────────────
+  async listPurchases(options = {}) {
+    const q = new URLSearchParams();
+    if (options.limit != null) q.set("limit", String(options.limit));
+    if (options.status) q.set("status", options.status);
+    if (options.refresh) q.set("refresh", "1");
+    const qs = q.toString();
+    return await this.call("GET", `/api/commerce/intents${qs ? `?${qs}` : ""}`);
+  }
+  /**
+   * The purchases waiting on you. Asks for the largest page the server will
+   * give: this drives `watch()` and `autoApprove()`, and a purchase that falls
+   * off the end of a page is one nobody is ever shown.
+   */
+  async pending() {
+    return (await this.listPurchases({ status: "proposed", limit: 200 })).intents;
+  }
+  /**
+   * One purchase, by id. What a `purchase.proposed` webhook gives you is an
+   * intentId, so this is the direct way to act on it — listing and searching
+   * quietly depends on it being on the first page.
+   */
+  async getPurchase(intentId) {
+    return await this.call(
+      "GET",
+      `/api/commerce/intents/${encodeURIComponent(intentId)}`,
+      void 0,
+      intentId
+    );
+  }
+  /** The exact text the server will verify a signature against. */
+  async getApprovalRequest(intentId) {
+    return await this.call(
+      "GET",
+      `/api/commerce/intents/${encodeURIComponent(intentId)}/decision`,
+      void 0,
+      intentId
+    );
+  }
+  /** Which payment handler this purchase needs, read live from the business. */
+  async getPaymentOptions(intentId) {
+    return await this.call(
+      "GET",
+      `/api/commerce/intents/${encodeURIComponent(intentId)}/payment`,
+      void 0,
+      intentId
+    );
+  }
+  async decline(intentId) {
+    return await this.call(
+      "POST",
+      `/api/commerce/intents/${encodeURIComponent(intentId)}/decision`,
+      { body: { decision: "decline" } },
+      intentId
+    );
+  }
+  /**
+   * Approve a purchase.
+   *
+   * With `sign`, the authorisation is fetched, parsed, checked against `expect`,
+   * and only then signed — so the thing you authorise is the thing you were
+   * shown. A mismatch throws `CommerceRefusedError` and nothing is signed.
+   *
+   * Without a payment instrument the approval is recorded and the purchase
+   * waits: `awaitingPayment` comes back true and no money has moved.
+   */
+  async approve(intentId, options) {
+    if (!options.sign && !options.signature) {
+      throw new CommerceRefusedError(
+        "approving is signing \u2014 pass `sign` (a signer) or `signature` (one you made yourself)",
+        "NO_SIGNER",
+        intentId
+      );
+    }
+    if (options.sign && options.signature) {
+      throw new CommerceRefusedError(
+        "pass either `sign` or `signature`, not both",
+        "AMBIGUOUS_SIGNER",
+        intentId
+      );
+    }
+    let authorisation;
+    let signature = options.signature;
+    if (options.sign || options.expect) {
+      const request = await this.getApprovalRequest(intentId);
+      authorisation = parseAuthorisation(request.message);
+      if (authorisation.intentId !== intentId) {
+        throw new CommerceRefusedError(
+          `the authorisation is for ${authorisation.intentId}, not ${intentId} \u2014 nothing was approved`,
+          "INTENT_MISMATCH",
+          intentId
+        );
+      }
+      if (options.expect) assertAuthorisationMatches(authorisation, options.expect, intentId);
+      if (options.sign) {
+        signature = await options.sign(request.message);
+        if (!signature) {
+          throw new CommerceRefusedError("the signer returned no signature", "NO_SIGNATURE", intentId);
+        }
+      }
+    }
+    const res = await this.call(
+      "POST",
+      `/api/commerce/intents/${encodeURIComponent(intentId)}/decision`,
+      {
+        body: {
+          decision: "approve",
+          signature,
+          ...options.paymentInstrument ? { paymentInstrument: options.paymentInstrument } : {}
+        }
+      },
+      intentId
+    );
+    const awaitingPayment = res.reason === "NO_PAYMENT_INSTRUMENT" || !options.paymentInstrument && !res.orderId;
+    return { ...res, ...authorisation ? { authorisation } : {}, ...awaitingPayment ? { awaitingPayment: true } : {} };
+  }
+  // ── Standing over it ───────────────────────────────────────────────────────
+  /**
+   * Call `onProposed` once per purchase an agent puts up. Each intent is handed
+   * over a single time, so this can drive a notification, a queue, or a prompt
+   * without a de-duplication table of your own.
+   */
+  watch(options) {
+    let seen = /* @__PURE__ */ new Set();
+    let stopped = false;
+    let running = false;
+    const report = (err) => {
+      if (options.onError) options.onError(err);
+      else console.error("[axon] watch: purchase poll failed \u2014", err);
+    };
+    const tick = async () => {
+      if (stopped || running) return;
+      running = true;
+      try {
+        const pending = await this.pending();
+        for (const intent of pending) {
+          if (stopped) break;
+          if (seen.has(intent.intentId)) continue;
+          seen.add(intent.intentId);
+          try {
+            await options.onProposed(intent);
+          } catch (err) {
+            seen.delete(intent.intentId);
+            report(err);
+          }
+        }
+        if (!stopped) {
+          const live = new Set(pending.map((i) => i.intentId));
+          seen = new Set([...seen].filter((id) => live.has(id)));
+        }
+      } catch (err) {
+        report(err);
+      } finally {
+        running = false;
+      }
+    };
+    const timer = setInterval(() => void tick(), Math.max(1e3, options.intervalMs ?? 15e3));
+    if (options.keepAlive === false) {
+      timer.unref?.();
+    }
+    void tick();
+    return {
+      stop() {
+        stopped = true;
+        clearInterval(timer);
+      }
+    };
+  }
+  /**
+   * Approve matching purchases without a human in the loop.
+   *
+   * Every bound is required. An auto-approver with an open bound is a blank
+   * cheque signed with your own key, so this refuses to be constructed without
+   * an amount, a currency, and an explicit list of businesses. Anything outside
+   * the policy is left alone for you to decide, never declined on your behalf.
+   */
+  autoApprove(policy) {
+    if (!(policy.maxAmount > 0)) {
+      throw new CommerceRefusedError("autoApprove needs a positive maxAmount", "NO_LIMIT");
+    }
+    if (!policy.allowedHosts?.length) {
+      throw new CommerceRefusedError(
+        "autoApprove needs an explicit allowedHosts list \u2014 it will not approve purchases from anywhere",
+        "NO_ALLOWED_HOSTS"
+      );
+    }
+    if (!policy.currency) {
+      throw new CommerceRefusedError("autoApprove needs a currency", "NO_CURRENCY");
+    }
+    if (typeof policy.sign !== "function") {
+      throw new CommerceRefusedError("autoApprove needs a signer", "NO_SIGNER");
+    }
+    const expect = {
+      maxAmount: policy.maxAmount,
+      currency: policy.currency,
+      business: policy.allowedHosts
+    };
+    return this.watch({
+      intervalMs: policy.intervalMs,
+      onError: policy.onError,
+      onProposed: async (intent) => {
+        try {
+          let paymentInstrument;
+          if (policy.paymentInstrument) {
+            const options = await this.getPaymentOptions(intent.intentId);
+            paymentInstrument = await policy.paymentInstrument(intent, options);
+          }
+          const result = await this.approve(intent.intentId, {
+            sign: policy.sign,
+            expect,
+            paymentInstrument
+          });
+          await policy.onApproved?.(result);
+        } catch (err) {
+          if (err instanceof CommerceRefusedError) {
+            await policy.onSkipped?.(intent, err.reason);
+            return;
+          }
+          throw err;
+        }
+      }
+    });
+  }
+};
+
 // src/hire.ts
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function hire(client, opts) {
@@ -220,6 +604,7 @@ var AxonClient = class {
     this.config = {};
     this.taskHandler = null;
     this.config = config;
+    this.commerce = new CommerceApi((method, path, opts) => this.request(method, path, opts));
   }
   /** (Re)configure the client — same options as the constructor. */
   init(config) {
@@ -1242,6 +1627,6 @@ function defineAgent(client, options) {
 // src/index.ts
 var axon = new AxonClient();
 
-export { AxonApiError, AxonClient, axon, buildAxonTools, defineAgent, hire, runAxonTool, toAnthropicTools, toOpenAITools, verifyProofScore, verifyReceipt, verifyWebhookSignature };
+export { AxonApiError, AxonClient, CommerceApi, CommerceRefusedError, assertAuthorisationMatches, axon, buildAxonTools, defineAgent, hire, parseAuthorisation, runAxonTool, toAnthropicTools, toOpenAITools, verifyProofScore, verifyReceipt, verifyWebhookSignature };
 //# sourceMappingURL=index.mjs.map
 //# sourceMappingURL=index.mjs.map
