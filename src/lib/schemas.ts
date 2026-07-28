@@ -86,6 +86,38 @@ export const createTaskSchema = z.object({
   "provide `to`, or a `capability`/`capabilities` for the network to route the job",
 );
 
+// ── Commerce (real-world purchasing) ────────────────────────────────────────
+
+export const commerceProfileSchema = z.object({
+  label: z.string().min(1).max(60),
+  contact: z.object({
+    name: z.string().min(1).max(120),
+    email: z.string().email(),
+    phone: z.string().max(40).optional(),
+  }),
+  address: z.object({
+    line1: z.string().min(1).max(200),
+    line2: z.string().max(200).optional(),
+    city: z.string().min(1).max(120),
+    region: z.string().max(120).optional(),
+    postalCode: z.string().min(1).max(32),
+    country: z.string().min(2).max(2, "country must be a 2-letter ISO code"),
+  }),
+});
+
+export const spendMandateSchema = z.object({
+  agentId: agentIdField,
+  profileId: z.string().uuid(),
+  maxPerPurchase: z.number().positive().max(1_000_000),
+  maxPerPeriod: z.number().positive().max(1_000_000),
+  period: z.enum(["day", "week", "month"]).optional(),
+  currency: z.string().length(3).optional(),
+  // 0 (the default) means every purchase needs an explicit approval.
+  autoApproveUnder: z.number().min(0).max(1_000_000).optional(),
+  allowedHosts: z.array(z.string().min(3).max(255)).max(50).optional(),
+  expiresAt: z.string().datetime().optional(),
+});
+
 // ── Self-assembling planner (Phase 11) ──────────────────────────────────────
 
 export const planTaskSchema = z.object({

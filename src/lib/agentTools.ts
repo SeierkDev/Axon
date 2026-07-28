@@ -15,6 +15,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { getMcpServer, getMcpToolsByServer, callMcpTool } from "./mcp";
 import { logger } from "./logger";
+import { commerceTools } from "./commerceTools";
 
 // ── Limits ────────────────────────────────────────────────────────────────────
 // Defined in ./agentToolLimits so the inference layer can read them without
@@ -23,7 +24,7 @@ import { logger } from "./logger";
 import { MAX_TOOL_GRANTS, MAX_LOCAL_TOOLS } from "./agentToolLimits";
 export { MAX_TOOL_GRANTS, MAX_TOOL_STEPS, MAX_LOCAL_TOOLS, MAX_TOOL_RESULT_CHARS } from "./agentToolLimits";
 
-export const BUILTIN_TOOL_GRANTS = ["web_search", "web_fetch"] as const;
+export const BUILTIN_TOOL_GRANTS = ["web_search", "web_fetch", "commerce"] as const;
 export type BuiltinToolGrant = (typeof BUILTIN_TOOL_GRANTS)[number];
 
 const MCP_GRANT = /^mcp:([A-Za-z0-9_-]{1,80})$/;
@@ -171,7 +172,14 @@ function toInputSchema(schema: Record<string, unknown> | null | undefined): Reco
  * Turn stored grants into runnable tools. Unknown or unavailable grants are
  * skipped, so this always returns something usable.
  */
-export function resolveAgentTools(grants: string[]): ResolvedTools {
+export interface ResolveContext {
+  /** Whose mandate the commerce tools spend under. Required for the "commerce" grant. */
+  agentId?: string;
+  /** Ties a proposed purchase back to the job that proposed it. */
+  taskId?: string;
+}
+
+export function resolveAgentTools(grants: string[], ctx: ResolveContext = {}): ResolvedTools {
   const serverTools: Anthropic.Messages.ToolUnion[] = [];
   const localTools: LocalTool[] = [];
   const resolved: string[] = [];
@@ -187,6 +195,20 @@ export function resolveAgentTools(grants: string[]): ResolvedTools {
     }
     if (grant === "web_fetch") {
       serverTools.push({ type: "web_fetch_20260209", name: "web_fetch" });
+      resolved.push(grant);
+      continue;
+    }
+
+    if (grant === "commerce") {
+      if (!ctx.agentId) {
+        logger.warn("agentTools.commerce_no_agent", "Skipping commerce grant — resolved without an agent", {});
+        continue;
+      }
+      for (const tool of commerceTools(ctx.agentId, ctx.taskId)) {
+        if (localTools.length >= MAX_LOCAL_TOOLS) break;
+        takenNames.add(tool.name);
+        localTools.push(tool);
+      }
       resolved.push(grant);
       continue;
     }
@@ -258,6 +280,7 @@ export function toolsActiveFor(agent: {
 export function describeToolGrant(grant: string): string {
   if (grant === "web_search") return "Web search";
   if (grant === "web_fetch") return "Web fetch";
+  if (grant === "commerce") return "Commerce (shop and buy)";
   const m = MCP_GRANT.exec(grant);
   if (m) return getMcpServer(m[1])?.name ?? `MCP server ${m[1]}`;
   return grant;

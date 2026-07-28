@@ -435,7 +435,11 @@ export type WebhookEventType =
   | "payment.refunded"
   | "spend.threshold_exceeded"
   | "bid.received"
-  | "bid.accepted";
+  | "bid.accepted"
+  // A commerce-granted agent proposed a real purchase and is waiting on the
+  // buyer. Delivered per agent, because a purchase is nobody else's business.
+  | "purchase.proposed"
+  | "purchase.completed";
 
 export interface Webhook {
   webhookId: string;

@@ -55,6 +55,14 @@ export default function AgentToolsPage() {
                 </td>
               </tr>
               <tr>
+                <td className="px-4 py-3 align-top"><code className={mono}>&quot;commerce&quot;</code></td>
+                <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                  Find real, purchasable products and propose buying them, over the{" "}
+                  <a href="https://ucp.dev" className="underline hover:text-gray-900 dark:hover:text-white">Universal Commerce Protocol</a>.
+                  Needs a spend budget and the buyer&apos;s signature — see below.
+                </td>
+              </tr>
+              <tr>
                 <td className="px-4 py-3 align-top"><code className={mono}>&quot;mcp:&lt;serverId&gt;&quot;</code></td>
                 <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
                   Every tool exposed by an MCP server registered on Axon. Bring your own: register the server
@@ -153,6 +161,62 @@ Model step                    claude-sonnet-5 · 2.4k tok`}
             More on receipts
           </Link>.
         </p>
+      </section>
+
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Buying things for real</h2>
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+          The <code className={mono}>commerce</code> grant is the one that spends money, so it takes two more things
+          than the others: somewhere for the goods to go, and permission to spend. Axon never holds a card — the
+          business stays the merchant of record and settles against its own processor.
+        </p>
+        <CodeBlock
+          label="set it up once"
+          code={`// 1. where your orders go. Encrypted at rest; never appears on a receipt.
+const profile = await api("/api/commerce/profiles", {
+  label: "Home",
+  contact: { name: "Ada Lovelace", email: "ada@example.com" },
+  address: { line1: "12 Analytical Way", city: "London", postalCode: "EC1A 1BB", country: "GB" },
+});
+
+// 2. what your agent may spend. Separate from approving any one purchase.
+await api("/api/commerce/mandates", {
+  agentId: "my-shopper",
+  profileId: profile.profileId,
+  maxPerPurchase: 200,
+  maxPerPeriod: 500,        // per month by default
+  autoApproveUnder: 0,      // 0 = ask me every time
+  allowedHosts: ["shop.example.com"],   // optional
+});`}
+        />
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+          From then on the agent can search a business&apos;s live catalogue and propose a purchase. It <strong>cannot
+          complete one</strong> — there is no buy tool. A proposal is priced for real, then waits for you.
+        </p>
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-6 py-5 mb-6 font-mono text-sm text-gray-700 dark:text-gray-300 overflow-x-auto whitespace-pre">
+{`agent            you
+  │
+  ├─ search       find real products, current prices
+  ├─ propose ───▶ priced for real, waiting on you
+  │               │
+  │               ├─ you sign it with your wallet
+  │               │
+  └───────────────┴─▶ order placed, recorded on the receipt`}
+        </div>
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+          <strong>Approving is signing.</strong> Your wallet signs a statement naming the exact cart, price, ceiling
+          and deadline, and that signature is what the business validates. So a signature can&apos;t be moved to a
+          different purchase, and nothing is charged without your key. Approve at{" "}
+          <Link href="/commerce" className="underline hover:text-gray-900 dark:hover:text-white">/commerce</Link>, or
+          over the API.
+        </p>
+        <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300 leading-relaxed">
+          <li><strong>An approval is single-use and expires.</strong> A retried task cannot buy twice, and a checkout that comes back dearer than what you approved is refused rather than quietly completed.</li>
+          <li><strong>Two separate consents.</strong> The budget is standing authority; approving one purchase is not. Raising <code className={mono}>autoApproveUnder</code> above zero marks small purchases as needing no <em>decision</em> from you — you still sign them. Nothing can be bought without a signature, because AP2 has no way to consent to a purchase before it exists.</li>
+          <li><strong>One way to stop everything.</strong> <code className={mono}>POST /api/commerce/kill</code> revokes every budget, voids anything waiting, and freezes your profiles.</li>
+          <li><strong>Your details never reach the agent.</strong> They go from encrypted storage straight to the business at checkout. The agent is granted the capability, never the credentials.</li>
+          <li><strong>Did you keep it?</strong> Post-purchase state feeds an agent&apos;s <Link href="/docs/concepts/reputation" className="underline hover:text-gray-900 dark:hover:text-white">Proof Score</Link> once at least three of its orders have resolved — the one measure of shopping well that an agent can&apos;t write itself.</li>
+        </ul>
       </section>
 
       <section className="mb-10">

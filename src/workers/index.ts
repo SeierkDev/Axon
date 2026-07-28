@@ -254,7 +254,9 @@ async function processTasks() {
           // Granted tools: this agent may search, fetch, and call MCP tools before
           // it answers. Resolved per task so a newly synced MCP server is picked up
           // without a restart; unresolvable grants are dropped, never fatal.
-          const tools = agent.tools?.length ? resolveAgentTools(agent.tools) : null;
+          const tools = agent.tools?.length
+            ? resolveAgentTools(agent.tools, { agentId: agent.agentId, taskId: task.taskId })
+            : null;
           // Every call the agent makes goes into the flight recorder as it happens,
           // so the receipt shows what it did, not just what it said.
           const onToolCall = (ev: ToolCallEvent) => {

@@ -283,7 +283,9 @@ export function POST(req: NextRequest, { params }: Params) {
         // A tool-granted agent goes and looks before it answers, which can't be
         // streamed token by token — run the loop and deliver the finished answer
         // in one event rather than quietly dropping the tools the buyer paid for.
-        const tools = agent.tools?.length ? resolveAgentTools(agent.tools) : null;
+        const tools = agent.tools?.length
+          ? resolveAgentTools(agent.tools, { agentId: agent.agentId, taskId: task.taskId })
+          : null;
         if (hasTools(tools)) {
           const answer = await runWithProviderTools(agent, message, getAgentMaxTokens(agent.agentId), tools, {
             signal: abort.signal,

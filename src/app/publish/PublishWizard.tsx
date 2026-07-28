@@ -41,6 +41,11 @@ const EMPTY_FORM: AgentForm = {
 const TOOL_OPTIONS: { grant: string; label: string; hint: string }[] = [
   { grant: "web_search", label: "Web search", hint: "Search live sources instead of answering from training data" },
   { grant: "web_fetch", label: "Web fetch", hint: "Read a specific page in full" },
+  {
+    grant: "commerce",
+    label: "Commerce",
+    hint: "Find real products and propose purchases — you approve and sign each one",
+  },
 ];
 
 // The web tools need a current Claude model — the cheap default above can't run
@@ -532,7 +537,10 @@ export default function PublishWizard() {
                             : f.tools.filter((t) => t !== opt.grant);
                           // Granting a web tool on a model that can't run one
                           // would fail every task, so move the model with it.
-                          const needsUpgrade = tools.length > 0 && !modelRunsTools(f.providerModel);
+                          // Only the web tools need a current model; commerce
+                          // runs Axon-side, so it doesn't force an upgrade.
+                          const needsWeb = tools.some((t) => t === "web_search" || t === "web_fetch");
+                          const needsUpgrade = needsWeb && !modelRunsTools(f.providerModel);
                           return { ...f, tools, providerModel: needsUpgrade ? TOOL_CAPABLE_MODEL : f.providerModel };
                         })
                       }
@@ -545,7 +553,7 @@ export default function PublishWizard() {
                   </label>
                 ))}
               </div>
-              {form.tools.length > 0 && !modelRunsTools(form.providerModel) && (
+              {form.tools.some((t) => t === "web_search" || t === "web_fetch") && !modelRunsTools(form.providerModel) && (
                 <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
                   {form.providerModel} can&apos;t run the web tools — use {TOOL_CAPABLE_MODEL} or a newer model.
                 </p>

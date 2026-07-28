@@ -1,5 +1,6 @@
 import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
+import { commerceTrackRecord } from "./commerce";
 import { computeReputation } from "./reputation";
 import { getAgentById, isContractTestAgent } from "./agents";
 import { getPublicReceipt } from "./receipts";
@@ -22,7 +23,7 @@ import { createHash } from "crypto";
 // work booster. The whole bundle hashes to `contentHash`, so a score can be cited
 // once and later checked for tampering — the portable part.
 
-const METHOD_VERSION = "proof-score-v1";
+const METHOD_VERSION = "proof-score-v2";
 const SCALE = 1000;
 // Calibrated so proven, settled work meaningfully moves the score (it's the
 // un-gameable moat) rather than quality dominating: 60/40, with anchors set for a
@@ -30,6 +31,12 @@ const SCALE = 1000;
 // higher tiers are reachable as an agent builds a real settled track record.
 const QUALITY_WEIGHT = 0.6; // how WELL it works: success, latency, payment reliability, reviews (+ staleness decay)
 const VOLUME_WEIGHT = 0.4; // how MUCH proven, settled work stands behind it (native + cross-network)
+// Did buyers KEEP what the agent chose? Only counted once enough orders have
+// actually resolved — one return out of two is noise, not a track record. Agents
+// with no resolved purchases are unaffected: the weight is dropped and the
+// remaining weights renormalise, so their score is identical to v1.
+const BUYER_KEPT_WEIGHT = 0.15;
+const MIN_RESOLVED_ORDERS = 3;
 const TASKS_ANCHOR = 30; // ~full task-volume credit near this many settled tasks (log curve, diminishing returns)
 const USDC_ANCHOR = 200; // ~full settled-value credit near this much settled USDC
 const MAX_EVIDENCE = 25; // most-recent settled tasks embedded inline; evidenceCount carries the true total
@@ -59,10 +66,18 @@ export interface ProofScore {
     settledUsdc: number;
     staleDays: number | null;
     decayFactor: number; // 0..1
+    // Real-world purchases this agent made on a buyer's behalf. keepRate is null
+    // until MIN_RESOLVED_ORDERS have resolved, and only then does it score.
+    purchasesResolved: number;
+    purchasesKept: number;
+    keepRate: number | null;
   };
   components: {
     quality: { factor: number; weight: number; points: number };
     provenWork: { factor: number; weight: number; points: number };
+    // Absent when the agent has no resolved purchases — the component simply
+    // doesn't apply, rather than scoring zero.
+    buyerKept?: { factor: number; weight: number; points: number };
   };
   // The settled tasks that back the score — each independently checkable.
   evidence: ProofScoreEvidence[];
@@ -70,7 +85,7 @@ export interface ProofScore {
   method: {
     version: string;
     scale: number;
-    weights: { quality: number; provenWork: number };
+    weights: { quality: number; provenWork: number; buyerKept: number };
     anchors: { tasks: number; usdc: number };
     formula: string;
     howToVerify: string;
@@ -189,9 +204,20 @@ export function computeProofScore(agentId: string): ProofScore | null {
 
   const qualityFactor = round(rep.reputation / 10); // 0..1
   const volumeFactor = round(provenWorkFactor(settledCount, settledUsdc)); // 0..1
-  const qualityPoints = round(SCALE * QUALITY_WEIGHT * qualityFactor, 2);
-  const volumePoints = round(SCALE * VOLUME_WEIGHT * volumeFactor, 2);
-  const score = Math.round(qualityPoints + volumePoints);
+
+  // The commerce signal, if this agent has one. Weights are renormalised over
+  // the components that APPLY, so an agent that has never bought anything scores
+  // exactly as it did before this component existed.
+  const commerce = commerceTrackRecord(agentId);
+  const resolved = commerce.kept + commerce.returned;
+  const keptApplies = resolved >= MIN_RESOLVED_ORDERS && commerce.keepRate !== null;
+  const keptFactor = keptApplies ? round(commerce.keepRate!) : null;
+
+  const weightSum = QUALITY_WEIGHT + VOLUME_WEIGHT + (keptApplies ? BUYER_KEPT_WEIGHT : 0);
+  const qualityPoints = round((SCALE * QUALITY_WEIGHT * qualityFactor) / weightSum, 2);
+  const volumePoints = round((SCALE * VOLUME_WEIGHT * volumeFactor) / weightSum, 2);
+  const keptPoints = keptApplies ? round((SCALE * BUYER_KEPT_WEIGHT * keptFactor!) / weightSum, 2) : 0;
+  const score = Math.round(qualityPoints + volumePoints + keptPoints);
 
   const evidence: ProofScoreEvidence[] = work.slice(0, MAX_EVIDENCE).map((w) => ({
     taskId: w.taskId,
@@ -220,23 +246,30 @@ export function computeProofScore(agentId: string): ProofScore | null {
       settledUsdc,
       staleDays: rep.staleDays,
       decayFactor: rep.decayFactor,
+      purchasesResolved: resolved,
+      purchasesKept: commerce.kept,
+      keepRate: keptFactor,
     },
     components: {
       quality: { factor: qualityFactor, weight: QUALITY_WEIGHT, points: qualityPoints },
       provenWork: { factor: volumeFactor, weight: VOLUME_WEIGHT, points: volumePoints },
+      ...(keptApplies ? { buyerKept: { factor: keptFactor!, weight: BUYER_KEPT_WEIGHT, points: keptPoints } } : {}),
     },
     evidence,
     evidenceCount: settledCount,
     method: {
       version: METHOD_VERSION,
       scale: SCALE,
-      weights: { quality: QUALITY_WEIGHT, provenWork: VOLUME_WEIGHT },
+      weights: { quality: QUALITY_WEIGHT, provenWork: VOLUME_WEIGHT, buyerKept: BUYER_KEPT_WEIGHT },
       anchors: { tasks: TASKS_ANCHOR, usdc: USDC_ANCHOR },
       formula:
         "score = round(scale * (quality.weight*quality.factor + provenWork.weight*provenWork.factor)); " +
         "quality.factor = reputation/10 (staleness-decayed blend of success, latency, payment reliability, reviews); " +
         "provenWork.factor = min(1, 0.6*log10(1+evidenceCount)/log10(1+tasksAnchor) + 0.4*log10(1+settledUsdc)/log10(1+usdcAnchor)), " +
-        "where evidenceCount = the number of SETTLED tasks backing the score (native + cross-network, NOT inputs.tasksCompleted) and settledUsdc = their summed USDC.",
+        "where evidenceCount = the number of SETTLED tasks backing the score (native + cross-network, NOT inputs.tasksCompleted) and settledUsdc = their summed USDC. " +
+        `buyerKept.factor = inputs.keepRate (kept / (kept + returned) across the agent's real-world purchases), included ONLY when at least ${MIN_RESOLVED_ORDERS} orders have resolved; ` +
+        "when it is absent its weight is dropped and the remaining weights are renormalised, so an agent that has never bought anything scores exactly as it would without this component. " +
+        "All weights are divided by the sum of the weights that applied.",
       howToVerify:
         "Refetch each evidence[].verify receipt to confirm the task completed and settled on-chain. Cross-network items " +
         "(network != 'axon') have verify=null — confirm those via evidence[].receipt on the originating network. Evidence lists the " +

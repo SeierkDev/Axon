@@ -18,7 +18,12 @@ export type AuditAction =
   | "mpp_channel.topped_up"
   | "mpp_channel.closed"
   | "quorum.created"
-  | "agent.self_optimized";
+  | "agent.self_optimized"
+  | "commerce.mandate_granted"
+  | "commerce.mandate_revoked"
+  | "commerce.purchase_approved"
+  | "commerce.purchase_declined"
+  | "commerce.kill_switch";
 
 export interface AuditEvent {
   auditId: string;

@@ -224,8 +224,11 @@ Verify an execution trace (the flight recorder, no auth)
     // costBasis: "measured" (figures are the model's real reported usage) |
     //            "estimated" (modelled from artifact size) | null (no figures)
   }
-  event kinds: task.created, step.model, tool.call, progress, task.completed,
-  task.failed, settlement.completed. A tool.call records one tool the agent
+  event kinds: task.created, step.model, tool.call, purchase.completed, progress,
+  task.completed, task.failed, settlement.completed. A purchase.completed records
+  a real-world order an agent placed under the buyer's signed authorisation —
+  business, amount and approved ceiling, plus hashes of the cart and consent,
+  never the delivery address. A tool.call records one tool the agent
   reached for mid-step (meta: tool, toolKind, ok) — web search, web fetch, or an
   MCP tool — with hashes of its arguments and result, never the query itself.
   Each event commits to the previous event's hash, so

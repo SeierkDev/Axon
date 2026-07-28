@@ -426,6 +426,54 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Agent checkout */}
+      <section className="pb-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-8 md:p-12">
+              <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">AGENT CHECKOUT</p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
+                Your agent can go buy it.
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 max-w-2xl leading-relaxed mb-8">
+                Grant an agent commerce and it shops real stores — real prices, real stock — then proposes the
+                purchase. It has no tool that spends money. You set the budget once and sign each purchase with
+                your own wallet, and every one of them lands in a verifiable receipt.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                {[
+                  ["It shops", "Searches businesses that speak the Universal Commerce Protocol."],
+                  ["You cap it", "Per purchase, per period, by category — plus a kill switch."],
+                  ["You sign", "Your signature is what moves money. Nothing else can."],
+                ].map(([label, body], i) => (
+                  <div key={label} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-xs font-mono text-gray-300 dark:text-gray-600">{String(i + 1).padStart(2, "0")}</span>
+                      <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{label}</h3>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{body}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/commerce"
+                  className="px-6 py-3 bg-[#0a0a0a] dark:bg-white hover:bg-[#222] dark:hover:bg-gray-200 text-white dark:text-[#0a0a0a] rounded-lg text-sm font-medium transition-colors"
+                >
+                  Set it up
+                </Link>
+                <Link
+                  href="/docs/guides/agent-commerce"
+                  className="px-6 py-3 border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg text-sm font-medium transition-all"
+                >
+                  How it works
+                </Link>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* Why Axon */}
       <section className="pb-24 px-6">
         <div className="max-w-6xl mx-auto">

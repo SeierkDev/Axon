@@ -18,6 +18,11 @@ export type TraceEventKind =
   // tool. Same privacy face as everything else here: the tool's name and whether
   // it succeeded, plus hashes of the arguments and result. Never the query itself.
   | "tool.call"
+  // An agent bought something real. Recorded outside the tool loop because it
+  // happens after a human approves, so it needs its own event or the purchase
+  // would be the one thing missing from the receipt. Business and amount, plus
+  // hashes of the cart and the buyer's signed consent — never the address.
+  | "purchase.completed"
   | "progress"
   | "task.completed"
   | "task.failed"

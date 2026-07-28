@@ -23,6 +23,9 @@ function proof(over?: Partial<ProofScore>): ProofScore {
       settledUsdc: 120,
       staleDays: null,
       decayFactor: 1,
+    purchasesResolved: 0,
+    purchasesKept: 0,
+    keepRate: null,
     },
     // 594 + 383.6 = 977.6, which the formula ROUNDS to 978 — the reconciliation case.
     components: {
@@ -37,7 +40,7 @@ function proof(over?: Partial<ProofScore>): ProofScore {
     method: {
       version: "proof-score-v1",
       scale: 1000,
-      weights: { quality: 0.6, provenWork: 0.4 },
+      weights: { quality: 0.6, provenWork: 0.4, buyerKept: 0.15 },
       anchors: { tasks: 30, usdc: 200 },
       formula: "score = …",
       howToVerify: "refetch receipts …",

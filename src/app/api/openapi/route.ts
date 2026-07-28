@@ -18,6 +18,52 @@ const SPEC = {
       apiKey: { type: "apiKey", in: "header", name: "X-API-Key" },
     },
     schemas: {
+      CommerceProfile: {
+        type: "object",
+        description: "Where a buyer's orders ship. Contact and address are encrypted at rest and never returned.",
+        properties: {
+          profileId: { type: "string", format: "uuid" },
+          label: { type: "string" },
+          status: { type: "string", enum: ["active", "frozen", "deleted"] },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      SpendMandate: {
+        type: "object",
+        description: "Standing authority for one agent to spend against one profile.",
+        properties: {
+          mandateId: { type: "string", format: "uuid" },
+          agentId: { type: "string" },
+          profileId: { type: "string", format: "uuid" },
+          maxPerPurchase: { type: "number" },
+          maxPerPeriod: { type: "number" },
+          period: { type: "string", enum: ["day", "week", "month"] },
+          currency: { type: "string" },
+          autoApproveUnder: { type: "number", description: "0 means every purchase needs an explicit approval." },
+          allowedHosts: { type: "array", items: { type: "string" }, nullable: true },
+          status: { type: "string", enum: ["active", "revoked"] },
+          spentThisPeriod: { type: "number" },
+        },
+      },
+      PurchaseIntent: {
+        type: "object",
+        description:
+          "One proposed purchase. Single-use, bound to a price ceiling, and expiring — a retried task cannot buy twice.",
+        properties: {
+          intentId: { type: "string", format: "uuid" },
+          agentId: { type: "string" },
+          businessHost: { type: "string" },
+          summary: { type: "string" },
+          amount: { type: "number" },
+          maxAmount: { type: "number", description: "The ceiling the buyer approved; a dearer settlement is refused." },
+          currency: { type: "string" },
+          status: { type: "string", enum: ["proposed", "approved", "purchased", "declined", "expired", "failed"] },
+          signed: { type: "boolean", description: "The buyer has signed the AP2 mandate for this purchase." },
+          orderId: { type: "string", nullable: true },
+          orderStatus: { type: "string", nullable: true },
+          expiresAt: { type: "string", format: "date-time" },
+        },
+      },
       Agent: {
         type: "object",
         required: ["agentId", "name", "capabilities", "publicKey", "reputation", "createdAt"],
@@ -346,6 +392,79 @@ const SPEC = {
   security: [{ bearerAuth: [] }, { apiKey: [] }],
 
   paths: {
+    "/commerce/profiles": {
+      get: {
+        summary: "List your commerce profiles",
+        description: "Public shape only — the stored contact and address are never returned.",
+        tags: ["Commerce"],
+        responses: { 200: { description: "Profiles" } },
+      },
+      post: {
+        summary: "Store a delivery profile",
+        description: "Contact and address are encrypted at rest and never appear on a receipt or in a trace.",
+        tags: ["Commerce"],
+        responses: { 201: { description: "Created", content: { "application/json": { schema: { $ref: "#/components/schemas/CommerceProfile" } } } } },
+      },
+      delete: {
+        summary: "Erase a profile's stored details",
+        description:
+          "Scrubs the contact and address and revokes mandates spending against it. Purchase records are kept — they hold no personal data.",
+        tags: ["Commerce"],
+        responses: { 200: { description: "Forgotten" }, 404: { description: "Not found or already erased" } },
+      },
+    },
+    "/commerce/mandates": {
+      get: { summary: "List spend mandates, with spend to date", tags: ["Commerce"], responses: { 200: { description: "Mandates" } } },
+      post: {
+        summary: "Grant an agent a spending budget",
+        description: "Standing authority, separate from approving any single purchase. The agent must already hold the 'commerce' tool grant.",
+        tags: ["Commerce"],
+        responses: { 201: { description: "Granted", content: { "application/json": { schema: { $ref: "#/components/schemas/SpendMandate" } } } } },
+      },
+      delete: { summary: "Revoke a mandate", tags: ["Commerce"], responses: { 200: { description: "Revoked" } } },
+    },
+    "/commerce/intents": {
+      get: {
+        summary: "Purchases proposed, approved and completed",
+        description: "Pass refresh=1 to re-read post-purchase status from the businesses first.",
+        tags: ["Commerce"],
+        responses: { 200: { description: "Intents and a spend summary" } },
+      },
+    },
+    "/commerce/intents/{intentId}/decision": {
+      get: {
+        summary: "The exact text to sign to approve",
+        description: "Names the cart, price, ceiling and deadline, so what is signed is what is shown.",
+        tags: ["Commerce"],
+        responses: { 200: { description: "Mandate message" } },
+      },
+      post: {
+        summary: "Approve or decline a purchase",
+        description:
+          "Approving requires the buyer's wallet signature over the mandate message, plus a payment credential from one of the business's payment handlers. Without a credential the purchase is authorised but not charged (202).",
+        tags: ["Commerce"],
+        responses: {
+          200: { description: "Declined, or purchased" },
+          202: { description: "Approved and signed, but not charged" },
+          409: { description: "Already decided, or expired" },
+        },
+      },
+    },
+    "/commerce/intents/{intentId}/payment": {
+      get: {
+        summary: "Which payment handler to run for this purchase",
+        tags: ["Commerce"],
+        responses: { 200: { description: "Handlers, live total and the approved ceiling" } },
+      },
+    },
+    "/commerce/kill": {
+      post: {
+        summary: "Stop all agent spending immediately",
+        description: "Revokes every mandate, voids anything waiting, and freezes profiles.",
+        tags: ["Commerce"],
+        responses: { 200: { description: "Stopped" } },
+      },
+    },
     "/agents": {
       get: {
         summary: "Search agents",

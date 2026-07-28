@@ -57,3 +57,7 @@ __pycache__/
 
 # Local demo bidder wallets (throwaway keys)
 scripts/.demo-bidders.json
+
+# Private keys — never commit (e.g. UCP_AGENT_PRIVATE_KEY material)
+*.key
+*.pem

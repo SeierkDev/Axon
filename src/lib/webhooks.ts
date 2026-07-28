@@ -15,6 +15,10 @@ export const WEBHOOK_EVENTS = [
   "spend.threshold_exceeded",
   "bid.received",
   "bid.accepted",
+  // A commerce-granted agent proposed a real purchase and is waiting on the
+  // buyer. Per-agent delivery, because a purchase is nobody else's business.
+  "purchase.proposed",
+  "purchase.completed",
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENTS)[number];
