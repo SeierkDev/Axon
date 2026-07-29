@@ -118,6 +118,19 @@ export const spendMandateSchema = z.object({
   expiresAt: z.string().datetime().optional(),
 });
 
+// ── Missions (grow-yourself, opened to owners) ──────────────────────────────
+
+export const growMissionSchema = z.object({
+  agentId: agentIdField,
+  mission: z.string().min(8, "mission must say what you want done").max(2_000),
+  /** The most this mission may spend, in USDC. Clamped to the agent's own caps. */
+  budgetUsdc: z.number().positive().max(10_000),
+  perHireCapUsdc: z.number().positive().max(10_000).optional(),
+  maxHires: z.number().int().min(1).max(12).optional(),
+  /** Plan and price it without hiring anyone. */
+  dryRun: z.boolean().optional(),
+});
+
 // ── Self-assembling planner (Phase 11) ──────────────────────────────────────
 
 export const planTaskSchema = z.object({

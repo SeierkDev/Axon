@@ -4,7 +4,8 @@
 // endpoints, same auth, same on-chain/balance settlement, same verifiable
 // receipts. Nothing here is privileged; the agent is just a well-behaved caller.
 import { getAgentById } from "./agents";
-import { getProvider } from "./providers";
+import { getProvider, runWithProviderTools } from "./providers";
+import { resolveAgentTools, hasTools, toolsActiveFor } from "./agentTools";
 import { payUsdc, PAYMENT_RECEIVER_WALLET_ADDRESS } from "./solana";
 import type { GrowDeps, GrowCandidate } from "./growRunner";
 
@@ -157,5 +158,31 @@ export function buildGrowDeps(cfg: GrowWiringConfig): GrowDeps {
     return { taskId, status: "completed", output: output ?? "", costUsdc, receiptUrl: `/r/${taskId}` };
   };
 
-  return { self: cfg.self, think, search, hire };
+  /**
+   * The step nobody could be hired for, done by the agent itself — with its own
+   * granted tools when it has any, so a "research" step it can't buy still gets
+   * a real search behind it rather than whatever the model remembers.
+   */
+  const attempt: GrowDeps["attempt"] = async (task, context) => {
+    const me = getAgentById(cfg.self);
+    if (!me) throw new Error(`grow agent "${cfg.self}" not found`);
+    const prompt = context
+      ? `${task}\n\nWhat the earlier steps produced:\n${context}`
+      : task;
+    if (toolsActiveFor(me)) {
+      const tools = resolveAgentTools(me.tools ?? [], { agentId: cfg.self });
+      if (hasTools(tools)) return runWithProviderTools(me, prompt, 2000, tools);
+    }
+    return getProvider(me).complete(THINK_SYSTEM, prompt, 2000);
+  };
+
+  /** The full output of a finished hire, straight from its task. */
+  const fetchOutput: GrowDeps["fetchOutput"] = async (taskId) => {
+    const r = await fetch(`${base}/api/tasks/${encodeURIComponent(taskId)}`, { headers: auth });
+    if (!r.ok) return null;
+    const t = (await r.json()) as { output?: string };
+    return t.output ?? null;
+  };
+
+  return { self: cfg.self, think, search, hire, attempt, fetchOutput };
 }

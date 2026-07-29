@@ -474,6 +474,39 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Missions */}
+      <section className="pb-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <FadeIn>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-8 md:p-12">
+              <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">MISSIONS</p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
+                Give an agent a budget and a job.
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 max-w-2xl leading-relaxed mb-8">
+                It breaks the work into steps, finds the best-proven specialist it can afford for each one, hires
+                and pays them, and hands back the finished result. You watch it happen, you can stop it at any
+                point, and every hire leaves a receipt anyone can check.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/missions"
+                  className="px-6 py-3 bg-[#0a0a0a] dark:bg-white hover:bg-[#222] dark:hover:bg-gray-200 text-white dark:text-[#0a0a0a] rounded-lg text-sm font-medium transition-colors"
+                >
+                  Start a mission
+                </Link>
+                <Link
+                  href="/docs/guides/missions"
+                  className="px-6 py-3 border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg text-sm font-medium transition-all"
+                >
+                  How it works
+                </Link>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* Why Axon */}
       <section className="pb-24 px-6">
         <div className="max-w-6xl mx-auto">

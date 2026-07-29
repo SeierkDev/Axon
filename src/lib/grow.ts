@@ -9,16 +9,24 @@ import { syncToTurso } from "./db-turso";
 
 export type GrowStatus = "planning" | "hiring" | "synthesizing" | "completed" | "failed";
 export type GrowEventKind =
-  | "plan" | "search" | "hire" | "payment" | "result" | "synthesis" | "note" | "error";
+  | "plan" | "search" | "hire" | "payment" | "review" | "result" | "self" | "synthesis" | "note" | "error";
 
 export interface GrowRun {
   runId: string;
   agentId: string;
+  /** Whose mission this is. Null on the original platform experiment runs. */
+  ownerWallet?: string;
   mission: string;
   budgetUsdc: number;
+  perHireCapUsdc?: number;
+  maxHires?: number;
   status: GrowStatus;
+  /** The owner called it off; the runner stops at the next safe point. */
+  canceled?: boolean;
   plan?: unknown;
   deliverable?: string;
+  /** The mission receipt, once the run is finished. See ./growReceipt. */
+  manifest?: unknown;
   startedAt: string;
   updatedAt: string;
   completedAt?: string;
@@ -37,8 +45,9 @@ export interface GrowEvent {
 }
 
 interface GrowRunRow {
-  run_id: string; agent_id: string; mission: string; budget_usdc: number;
-  status: string; plan: string | null; deliverable: string | null;
+  run_id: string; agent_id: string; owner_wallet: string | null; mission: string;
+  budget_usdc: number; per_hire_cap_usdc: number | null; max_hires: number | null;
+  status: string; canceled: number; plan: string | null; deliverable: string | null; manifest: string | null;
   started_at: string; updated_at: string; completed_at: string | null;
 }
 interface GrowEventRow {
@@ -52,9 +61,11 @@ function parseJson(s: string | null): unknown {
 }
 function rowToRun(r: GrowRunRow): GrowRun {
   return {
-    runId: r.run_id, agentId: r.agent_id, mission: r.mission, budgetUsdc: r.budget_usdc,
-    status: r.status as GrowStatus, plan: parseJson(r.plan),
-    deliverable: r.deliverable ?? undefined,
+    runId: r.run_id, agentId: r.agent_id, ownerWallet: r.owner_wallet ?? undefined,
+    mission: r.mission, budgetUsdc: r.budget_usdc,
+    perHireCapUsdc: r.per_hire_cap_usdc ?? undefined, maxHires: r.max_hires ?? undefined,
+    status: r.status as GrowStatus, canceled: r.canceled === 1, plan: parseJson(r.plan),
+    deliverable: r.deliverable ?? undefined, manifest: parseJson(r.manifest),
     startedAt: r.started_at, updatedAt: r.updated_at, completedAt: r.completed_at ?? undefined,
   };
 }
@@ -66,21 +77,59 @@ function rowToEvent(r: GrowEventRow): GrowEvent {
   };
 }
 
-export function createGrowRun(opts: { agentId: string; mission: string; budgetUsdc: number }): GrowRun {
+export function createGrowRun(opts: {
+  agentId: string; mission: string; budgetUsdc: number;
+  ownerWallet?: string; perHireCapUsdc?: number; maxHires?: number;
+}): GrowRun {
   const db = getDb();
   const runId = randomUUID();
   const now = new Date().toISOString();
   db.prepare(`
-    INSERT INTO grow_runs (run_id, agent_id, mission, budget_usdc, status, started_at, updated_at)
-    VALUES (?, ?, ?, ?, 'planning', ?, ?)
-  `).run(runId, opts.agentId, opts.mission, opts.budgetUsdc, now, now);
+    INSERT INTO grow_runs
+      (run_id, agent_id, owner_wallet, mission, budget_usdc, per_hire_cap_usdc, max_hires, status, started_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'planning', ?, ?)
+  `).run(
+    runId, opts.agentId, opts.ownerWallet ?? null, opts.mission, opts.budgetUsdc,
+    opts.perHireCapUsdc ?? null, opts.maxHires ?? null, now, now,
+  );
   void syncToTurso();
   return rowToRun(db.prepare("SELECT * FROM grow_runs WHERE run_id = ?").get(runId) as GrowRunRow);
 }
 
+/** Missions belonging to one owner, newest first. */
+export function listGrowRunsForOwner(ownerWallet: string, limit = 20): GrowRun[] {
+  return (getDb().prepare(
+    "SELECT * FROM grow_runs WHERE owner_wallet = ? ORDER BY started_at DESC LIMIT ?",
+  ).all(ownerWallet, limit) as GrowRunRow[]).map(rowToRun);
+}
+
+/**
+ * Call a mission off. Cooperative rather than a hard kill: the runner checks
+ * between steps, so a stop can never land in the middle of a payment and leave
+ * money moved with nothing recorded. Only the owner can do it, and only while
+ * the run is still going.
+ */
+export function cancelGrowRun(runId: string, ownerWallet: string): GrowRun | null {
+  const db = getDb();
+  const changed = db.prepare(
+    `UPDATE grow_runs SET canceled = 1, updated_at = ?
+     WHERE run_id = ? AND owner_wallet = ? AND status NOT IN ('completed','failed')`,
+  ).run(new Date().toISOString(), runId, ownerWallet).changes;
+  void syncToTurso();
+  if (!changed) return null;
+  return getGrowRun(runId);
+}
+
+/** Has the owner called this run off? Read fresh — the runner polls it. */
+export function isGrowRunCanceled(runId: string): boolean {
+  const row = getDb().prepare("SELECT canceled FROM grow_runs WHERE run_id = ?").get(runId) as
+    | { canceled: number } | undefined;
+  return row?.canceled === 1;
+}
+
 export function updateGrowRun(
   runId: string,
-  patch: Partial<Pick<GrowRun, "status" | "plan" | "deliverable">>,
+  patch: Partial<Pick<GrowRun, "status" | "plan" | "deliverable" | "manifest">>,
 ): void {
   const db = getDb();
   const now = new Date().toISOString();
@@ -90,6 +139,7 @@ export function updateGrowRun(
       status       = COALESCE(?, status),
       plan         = COALESCE(?, plan),
       deliverable  = COALESCE(?, deliverable),
+      manifest     = COALESCE(?, manifest),
       updated_at   = ?,
       completed_at = CASE WHEN ? THEN ? ELSE completed_at END
     WHERE run_id = ?
@@ -97,6 +147,7 @@ export function updateGrowRun(
     patch.status ?? null,
     patch.plan !== undefined ? JSON.stringify(patch.plan) : null,
     patch.deliverable ?? null,
+    patch.manifest !== undefined ? JSON.stringify(patch.manifest) : null,
     now, done ? 1 : 0, now, runId,
   );
   void syncToTurso();
