@@ -1,0 +1,12 @@
+-- The mission receipt.
+--
+-- Individual hires were already provable — each is an ordinary task with a public
+-- receipt at /r/<taskId>. The DELIVERABLE was not: you could hand someone the
+-- result and they had to take your word for where it came from.
+--
+-- This column holds one signed-shape manifest per finished mission: every step in
+-- order, who did it, what it cost, the hash of what they returned, each entry
+-- chained to the last. Content hashes only — never the mission brief or the
+-- deliverable text — so the manifest is safe to publish while still pinning
+-- exactly what was produced.
+ALTER TABLE grow_runs ADD COLUMN manifest TEXT;

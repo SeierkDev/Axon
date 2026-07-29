@@ -93,7 +93,12 @@ interface TraceRow {
 
 // Deterministic JSON: keys sorted recursively, undefined dropped. Matches the
 // intent of AgenC's json-stable-v1 scheme so event hashing is order-independent.
-function canonicalStringify(value: unknown): string {
+/**
+ * Key-sorted, undefined-dropping JSON. Two callers building the same logical
+ * object must produce byte-identical output, or a hash chain can't be recomputed
+ * on the other side.
+ */
+export function canonicalStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
   if (Array.isArray(value)) return `[${value.map(canonicalStringify).join(",")}]`;
   const obj = value as Record<string, unknown>;

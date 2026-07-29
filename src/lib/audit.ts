@@ -23,7 +23,9 @@ export type AuditAction =
   | "commerce.mandate_revoked"
   | "commerce.purchase_approved"
   | "commerce.purchase_declined"
-  | "commerce.kill_switch";
+  | "commerce.kill_switch"
+  | "grow.mission_started"
+  | "grow.mission_canceled";
 
 export interface AuditEvent {
   auditId: string;

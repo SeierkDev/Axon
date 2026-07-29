@@ -118,7 +118,12 @@ interface ApiKeyRow {
   hash_algorithm: string;
 }
 
-function getBearerToken(req: NextRequest): string | null {
+/**
+ * The raw API key as presented. Needed when a caller acts *through* the public
+ * HTTP API on its own behalf — a mission hires specialists as any client would,
+ * so it has to carry a real key rather than an internal privilege.
+ */
+export function getBearerToken(req: NextRequest): string | null {
   const apiKey = req.headers.get("x-api-key");
   if (apiKey) return apiKey.trim();
 
