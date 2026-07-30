@@ -27,6 +27,11 @@ export interface GrowRun {
   deliverable?: string;
   /** The mission receipt, once the run is finished. See ./growReceipt. */
   manifest?: unknown;
+  /** The owner chose to put this on a public page. Opt-in, and reversible. */
+  published?: boolean;
+  publishedAt?: string;
+  /** Which template it started from, if any. */
+  templateId?: string;
   startedAt: string;
   updatedAt: string;
   completedAt?: string;
@@ -48,6 +53,7 @@ interface GrowRunRow {
   run_id: string; agent_id: string; owner_wallet: string | null; mission: string;
   budget_usdc: number; per_hire_cap_usdc: number | null; max_hires: number | null;
   status: string; canceled: number; plan: string | null; deliverable: string | null; manifest: string | null;
+  published: number; published_at: string | null; template_id: string | null;
   started_at: string; updated_at: string; completed_at: string | null;
 }
 interface GrowEventRow {
@@ -66,6 +72,8 @@ function rowToRun(r: GrowRunRow): GrowRun {
     perHireCapUsdc: r.per_hire_cap_usdc ?? undefined, maxHires: r.max_hires ?? undefined,
     status: r.status as GrowStatus, canceled: r.canceled === 1, plan: parseJson(r.plan),
     deliverable: r.deliverable ?? undefined, manifest: parseJson(r.manifest),
+    published: r.published === 1, publishedAt: r.published_at ?? undefined,
+    templateId: r.template_id ?? undefined,
     startedAt: r.started_at, updatedAt: r.updated_at, completedAt: r.completed_at ?? undefined,
   };
 }
@@ -79,18 +87,19 @@ function rowToEvent(r: GrowEventRow): GrowEvent {
 
 export function createGrowRun(opts: {
   agentId: string; mission: string; budgetUsdc: number;
-  ownerWallet?: string; perHireCapUsdc?: number; maxHires?: number;
+  ownerWallet?: string; perHireCapUsdc?: number; maxHires?: number; templateId?: string;
 }): GrowRun {
   const db = getDb();
   const runId = randomUUID();
   const now = new Date().toISOString();
   db.prepare(`
     INSERT INTO grow_runs
-      (run_id, agent_id, owner_wallet, mission, budget_usdc, per_hire_cap_usdc, max_hires, status, started_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'planning', ?, ?)
+      (run_id, agent_id, owner_wallet, mission, budget_usdc, per_hire_cap_usdc, max_hires, template_id,
+       status, started_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'planning', ?, ?)
   `).run(
     runId, opts.agentId, opts.ownerWallet ?? null, opts.mission, opts.budgetUsdc,
-    opts.perHireCapUsdc ?? null, opts.maxHires ?? null, now, now,
+    opts.perHireCapUsdc ?? null, opts.maxHires ?? null, opts.templateId ?? null, now, now,
   );
   void syncToTurso();
   return rowToRun(db.prepare("SELECT * FROM grow_runs WHERE run_id = ?").get(runId) as GrowRunRow);
@@ -209,6 +218,72 @@ export function getActiveGrowRun(agentId: string, staleMs = 15 * 60 * 1000): Gro
   const lastActivity = Date.parse(t ?? row.started_at);
   if (Number.isFinite(lastActivity) && Date.now() - lastActivity > staleMs) return null; // orphaned
   return rowToRun(row);
+}
+
+/**
+ * Put a finished mission on a public page, or take it back down.
+ *
+ * Only the owner, and only a run that has finished — publishing something still
+ * in flight would show a half-built result that then changes under whoever is
+ * reading it.
+ *
+ * This is the one place in Missions that makes CONTENT public. The receipt is
+ * content-free by design; a published mission shows the brief and the result in
+ * full, so it stays off by default and comes back down the moment it's asked to.
+ */
+export function setGrowRunPublished(
+  runId: string,
+  ownerWallet: string,
+  published: boolean,
+): GrowRun | null {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const changed = db.prepare(
+    `UPDATE grow_runs SET published = ?, published_at = ?, updated_at = ?
+     WHERE run_id = ? AND owner_wallet = ? AND status IN ('completed','failed')`,
+  ).run(published ? 1 : 0, published ? now : null, now, runId, ownerWallet).changes;
+  void syncToTurso();
+  return changed ? getGrowRun(runId) : null;
+}
+
+/** A published mission, by id. Null for anything not published — the same answer
+ *  as a run that doesn't exist, so an unpublished id can't be probed for. */
+export function getPublishedGrowRun(runId: string): GrowRun | null {
+  const row = getDb().prepare(
+    "SELECT * FROM grow_runs WHERE run_id = ? AND published = 1",
+  ).get(runId) as GrowRunRow | undefined;
+  return row ? rowToRun(row) : null;
+}
+
+/**
+ * The gallery: recently published missions, newest first, at most `perOwner`
+ * from any one owner.
+ *
+ * The cap is the whole point. Plain "newest first" means one person publishing
+ * a handful of missions occupies every slot — measured, seven publishes from one
+ * owner filled a six-card strip and pushed everyone else out. That is the likely
+ * case rather than the adversarial one: whoever tries Missions first will have
+ * several runs before anyone else has one, and the gallery would then show only
+ * their work under a heading promising other people's.
+ *
+ * Ownerless rows are the platform's own early experiment runs; they partition by
+ * run id so each stays its own entry instead of collapsing into a single slot.
+ *
+ * `published_at` alone does not order this. It has millisecond resolution, and
+ * seven consecutive publishes measured only two distinct values — so ties are
+ * the norm in any burst, not a corner case. SQLite's natural order among ties is
+ * rowid ascending, which hands the "newest" slot to the oldest row. rowid DESC
+ * breaks the tie the way the timestamp intended.
+ */
+export function listPublishedGrowRuns(limit = 12, perOwner = 2): GrowRun[] {
+  return (getDb().prepare(`
+    SELECT * FROM (
+      SELECT *, rowid AS rid, ROW_NUMBER() OVER (
+        PARTITION BY COALESCE(owner_wallet, run_id) ORDER BY published_at DESC, rowid DESC
+      ) AS rn
+      FROM grow_runs WHERE published = 1
+    ) WHERE rn <= ? ORDER BY published_at DESC, rid DESC LIMIT ?
+  `).all(perOwner, limit) as GrowRunRow[]).map(rowToRun);
 }
 
 /** How much of the budget has been committed to hires so far (sum of payment events). */

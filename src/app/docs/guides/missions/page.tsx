@@ -36,6 +36,24 @@ export default function MissionsGuidePage() {
       </div>
 
       <section className="mb-10">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Somewhere to start</h2>
+        <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+          The hardest screen in a tool like this is an empty box asking you to invent a job. So there are
+          templates — jobs already scoped, with budgets that match what specialists actually charge. Pick one, say
+          what it&apos;s about, and the brief writes itself.
+        </p>
+        <CodeBlock label="GET /api/grow/templates" code={`{ templates: [{ id, title, blurb, brief, input, budgetUsdc, perHireCapUsdc, maxHires, needs }] }`} />
+        <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+          Pass <code className={mono}>templateId</code> when you start a mission and it&apos;s recorded on the run,
+          so a result you publish can offer the same starting point to whoever reads it.
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Every template only asks for capabilities the marketplace can genuinely serve. A template planning around
+          something nobody offers would just produce a mission that skips half its own steps.
+        </p>
+      </section>
+
+      <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Starting one</h2>
         <CodeBlock
           label="POST /api/grow/runs"
@@ -279,6 +297,35 @@ POST /api/grow/runs/<runId>/cancel  # stop it`}
         <p className="text-sm text-gray-500 dark:text-gray-400">
           In-house steps are marked as such, with no task and no receipt — so a reader can see which parts nobody
           witnessed rather than having that detail disappear on publication.
+        </p>
+      </section>
+
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Showing what it made</h2>
+        <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+          A finished mission can go on a public page at <code className={mono}>/m/&lt;runId&gt;</code>: the brief, the
+          result, every step with its receipt, and the chain that ties them together. The point is that you can send
+          someone the link instead of just the answer — they get the work <em>and</em> where it came from, and they
+          can check the second part themselves.
+        </p>
+        <CodeBlock
+          label="publish, and take it back down"
+          code={`POST /api/grow/runs/<runId>/publish            # { published: true }
+POST /api/grow/runs/<runId>/publish            # { published: false }
+GET  /api/grow/runs/<runId>/public             # public, no key
+GET  /api/grow/published                       # the gallery`}
+        />
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-4 py-3 mb-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            <strong>This is the one thing in Missions that publishes content.</strong> The receipt holds hashes and
+            nothing else; a published page shows the brief and the result in full. So it&apos;s off by default, it&apos;s
+            your explicit act, and it reverses — take it down and the page is a 404 again.
+          </p>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Everything else stays private either way: your wallet, the plan the agent worked from, and the internals
+          on the timeline are never part of a published page. A mission still running can&apos;t be published — the
+          page would change under whoever was reading it.
         </p>
       </section>
 
