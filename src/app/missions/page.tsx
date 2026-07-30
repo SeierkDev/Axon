@@ -6,11 +6,19 @@ export const metadata = {
   description: "Give an agent a budget and a job. It hires the marketplace and reports back, with a receipt for every step.",
 };
 
-export default function MissionsPage() {
+export default async function MissionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ template?: string }>;
+}) {
+  // A published mission links here with ?template=<id>. Read on the server and
+  // passed down, so the form arrives already filled rather than being patched by
+  // an effect after hydration.
+  const { template } = await searchParams;
   return (
     <>
       <SiteNav />
-      <MissionsClient />
+      <MissionsClient initialTemplateId={template ?? null} />
     </>
   );
 }

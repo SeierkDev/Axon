@@ -611,7 +611,11 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
             kind: "result",
             summary: `${pick.name} delivered "${step.capability}".`,
             taskId: outcome.taskId, toAgent: pick.agentId,
-            data: { receiptUrl: outcome.receiptUrl, preview: outcome.output.slice(0, 280) },
+            // `capability` is what the receipt and the public page label this
+            // step with. Without it they fall back to this summary and print a
+            // whole sentence where a keyword belongs — and on the receipt that
+            // sentence is inside the hash, so it isn't only cosmetic.
+            data: { capability: step.capability, receiptUrl: outcome.receiptUrl, preview: outcome.output.slice(0, 280) },
           });
           parts.push({ task: step.task, output: outcome.output });
           hires++;
@@ -668,14 +672,14 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
       recordGrowEvent(runId, {
         kind: "self",
         summary: `Tried "${step.capability}" itself — not good enough to use (${verdict.reason || "didn't do the job"}).`,
-        data: { ok: false, reason: verdict.reason },
+        data: { ok: false, capability: step.capability, reason: verdict.reason },
       });
       return false;
     }
     recordGrowEvent(runId, {
       kind: "self",
       summary: `No specialist available for "${step.capability}" — did it itself. No hire, no payment, no receipt for this part.`,
-      data: { ok: true, preview: output.slice(0, 280) },
+      data: { ok: true, capability: step.capability, preview: output.slice(0, 280) },
     });
     parts.push({ task: step.task, output });
     selfDone++;

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { MISSION_TEMPLATES, fillMissionTemplate, type MissionTemplate } from "@/lib/missionTemplates";
 
 // Missions — give an agent you own a budget and a job, and watch it work.
 //
@@ -23,6 +24,7 @@ interface Run {
   canceled?: boolean;
   deliverable?: string;
   manifest?: { hash: string; entries: unknown[]; totals: { hires: number; inHouse: number; spentUsdc: number } };
+  published?: boolean;
   startedAt: string;
 }
 
@@ -46,6 +48,15 @@ interface Preview {
   steps: PreviewStep[];
   estimatedUsdc: number;
   withinBudget: boolean;
+}
+
+interface GalleryCard {
+  runId: string;
+  agentId: string;
+  mission: string;
+  template: { id: string; title: string } | null;
+  hires: number;
+  spentUsdc: number;
 }
 
 interface Detail {
@@ -78,17 +89,70 @@ const isStranded = (d: Detail) =>
   isLive(d.run.status) &&
   Date.now() - Date.parse(d.events.at(-1)?.createdAt ?? d.run.startedAt) > STRANDED_AFTER_MS;
 
-export default function MissionsClient() {
+export default function MissionsClient({ initialTemplateId = null }: { initialTemplateId?: string | null }) {
   const [apiKey, setApiKey] = useState("");
   const [runs, setRuns] = useState<Run[]>([]);
   const [open, setOpen] = useState<Detail | null>(null);
-  const [form, setForm] = useState({ agentId: "", mission: "", budgetUsdc: "5", perHireCapUsdc: "2", maxHires: "4" });
+  const initialTemplate = MISSION_TEMPLATES.find((t) => t.id === initialTemplateId) ?? null;
+  const [form, setForm] = useState({
+    agentId: "",
+    mission: "",
+    budgetUsdc: String(initialTemplate?.budgetUsdc ?? 5),
+    perHireCapUsdc: String(initialTemplate?.perHireCapUsdc ?? 2),
+    maxHires: String(initialTemplate?.maxHires ?? 4),
+  });
   const [state, setState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [template, setTemplate] = useState<MissionTemplate | null>(initialTemplate);
+  const [subject, setSubject] = useState("");
+  const [gallery, setGallery] = useState<GalleryCard[]>([]);
+
+  // Public — no key needed. What other people's agents actually made is the
+  // best answer to "what would I even use this for".
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/grow/published?limit=6");
+        if (res.ok) setGallery(((await res.json()) as { missions: GalleryCard[] }).missions);
+      } catch { /* the gallery is a nicety, never a blocker */ }
+    })();
+  }, []);
 
   const auth = useCallback(() => ({ Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }), [apiKey]);
+
+  // The strip promises other people's work, so it has to keep that promise once
+  // you're signed in and some of it is yours. The gallery is fetched without a
+  // key, so the filter happens here, against the runs you loaded.
+  const mine = new Set(runs.map((r) => r.runId));
+  const others = gallery.filter((g) => !mine.has(g.runId));
+
+  /** Rendered in two places, so it lives in one. */
+  const galleryStrip = others.length > 0 ? (
+    <div className="mb-8">
+      <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">
+        MADE BY OTHER PEOPLE&apos;S AGENTS
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {others.map((g) => (
+          <Link
+            key={g.runId}
+            href={`/m/${g.runId}`}
+            className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-3 hover:border-gray-400 dark:hover:border-gray-600 transition-colors"
+          >
+            <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2 break-words">{g.mission}</p>
+            <p className="mt-1 text-xs font-mono text-gray-400 dark:text-gray-500">
+              {/* Totals carry four decimals, so the raw number renders as
+                  "0.3333 USDC" here beside "0.33 USDC" on the page it links to. */}
+              {g.hires} hire{g.hires === 1 ? "" : "s"} · {g.spentUsdc.toFixed(2)} USDC
+              {g.template ? ` · ${g.template.title}` : ""}
+            </p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  ) : null;
 
   const load = useCallback(async () => {
     if (!apiKey.trim()) return;
@@ -122,10 +186,32 @@ export default function MissionsClient() {
     return () => clearInterval(t);
   }, [state, load, open, openRun]);
 
+  /** Choosing a template sets the brief and the caps it was scoped for. */
+  function pickTemplate(t: MissionTemplate | null) {
+    setTemplate(t);
+    setPreview(null);
+    setSubject("");
+    if (!t) return;
+    setForm((f) => ({
+      ...f,
+      mission: "",
+      budgetUsdc: String(t.budgetUsdc),
+      perHireCapUsdc: String(t.perHireCapUsdc),
+      maxHires: String(t.maxHires),
+    }));
+  }
+
+  /** The brief actually sent: a filled template, or whatever was typed. */
+  function briefText(): string {
+    if (template) return fillMissionTemplate(template, subject) ?? "";
+    return form.mission.trim();
+  }
+
   function missionBody(dryRun = false) {
     return {
       agentId: form.agentId.trim(),
-      mission: form.mission.trim(),
+      mission: briefText(),
+      ...(template ? { templateId: template.id } : {}),
       budgetUsdc: Number(form.budgetUsdc),
       perHireCapUsdc: Number(form.perHireCapUsdc),
       maxHires: Number(form.maxHires),
@@ -162,6 +248,7 @@ export default function MissionsClient() {
       const data = (await res.json()) as { runId?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setForm((f) => ({ ...f, mission: "" }));
+      setSubject("");
       setPreview(null);
       await load();
       if (data.runId) await openRun(data.runId);
@@ -184,6 +271,25 @@ export default function MissionsClient() {
       await openRun(runId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not resume the mission");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Put a finished mission on a public page, or take it back down. */
+  async function setPublished(runId: string, published: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/grow/runs/${runId}/publish`, {
+        method: "POST", headers: auth(), body: JSON.stringify({ published }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      await load();
+      await openRun(runId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not change visibility");
     } finally {
       setBusy(false);
     }
@@ -231,6 +337,19 @@ export default function MissionsClient() {
               </div>
             ))}
           </div>
+          <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">JOBS WORTH DOING</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6">
+            {MISSION_TEMPLATES.map((t) => (
+              <div key={t.id} className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.title}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.blurb}</p>
+                <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-1.5">
+                  ~{t.budgetUsdc} USDC · {t.needs.join(", ")}
+                </p>
+              </div>
+            ))}
+          </div>
+
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your API key</label>
           <div className="flex gap-2">
             <input
@@ -245,6 +364,13 @@ export default function MissionsClient() {
           </div>
         </div>
       ) : null}
+
+      {/* Signed out, the gallery is the answer to "what would I even use this
+          for". Signed in it's the answer to "what should I ask for next" — so it
+          renders in both, at the top when there's nothing else on the page and
+          below your own missions once there is. It used to be gated to the empty
+          state, which hid it permanently from everyone who had loaded a key. */}
+      {state !== "ready" && galleryStrip}
 
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 mb-6 text-sm text-red-600 dark:text-red-400">
@@ -272,22 +398,65 @@ export default function MissionsClient() {
                 ))}
               </div>
             </div>
-            <textarea
-              value={form.mission} onChange={(e) => setForm((f) => ({ ...f, mission: e.target.value }))}
-              placeholder="What do you want done? e.g. Research the top 5 open-source agent frameworks and write a comparison."
-              rows={3}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm mb-3"
-            />
+            <div className="flex flex-wrap gap-2 mb-3">
+              {MISSION_TEMPLATES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => pickTemplate(template?.id === t.id ? null : t)}
+                  title={t.blurb}
+                  className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                    template?.id === t.id
+                      ? "border-teal-500/50 bg-teal-500/10 text-teal-700 dark:text-teal-400"
+                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500"
+                  }`}
+                >
+                  {t.title}
+                </button>
+              ))}
+              {template && (
+                <button
+                  onClick={() => pickTemplate(null)}
+                  className="px-3 py-1.5 rounded-full text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  write my own
+                </button>
+              )}
+            </div>
+
+            {template ? (
+              <div className="mb-3">
+                <input
+                  value={subject} onChange={(e) => setSubject(e.target.value)}
+                  placeholder={template.input.placeholder}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm mb-2"
+                />
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  {template.input.label} · likely to hire {template.needs.join(", ")}
+                </p>
+                {subject.trim() && (
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-relaxed border-l-2 border-gray-200 dark:border-gray-800 pl-3">
+                    {fillMissionTemplate(template, subject)}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <textarea
+                value={form.mission} onChange={(e) => setForm((f) => ({ ...f, mission: e.target.value }))}
+                placeholder="What do you want done? e.g. Research the top 5 open-source agent frameworks and write a comparison."
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm mb-3"
+              />
+            )}
             <div className="flex items-center gap-3">
               <button
-                disabled={busy || !form.agentId.trim() || form.mission.trim().length < 8}
+                disabled={busy || !form.agentId.trim() || briefText().length < 8}
                 onClick={() => void planOnly()}
                 className="px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:border-gray-400 dark:hover:border-gray-500 disabled:opacity-40"
               >
                 {busy ? "Planning…" : "Plan it first"}
               </button>
               <button
-                disabled={busy || !form.agentId.trim() || form.mission.trim().length < 8}
+                disabled={busy || !form.agentId.trim() || briefText().length < 8}
                 onClick={() => void start()}
                 className="px-5 py-2.5 rounded-lg bg-[#0a0a0a] dark:bg-white text-white dark:text-[#0a0a0a] text-sm font-medium disabled:opacity-40"
               >
@@ -440,6 +609,43 @@ export default function MissionsClient() {
                 </div>
               )}
 
+              {!isLive(open.run.status) && (
+                <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {open.run.published ? "This mission is public" : "Show this mission"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                        {open.run.published
+                          ? "Anyone with the link can read the brief, the result, and every step."
+                          : "Publishing puts the brief and the result on a public page — everything else stays private. You can take it down again."}
+                      </p>
+                    </div>
+                    <button
+                      disabled={busy}
+                      onClick={() => void setPublished(open.run.runId, !open.run.published)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40 ${
+                        open.run.published
+                          ? "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+                          : "bg-[#0a0a0a] dark:bg-white text-white dark:text-[#0a0a0a]"
+                      }`}
+                    >
+                      {open.run.published ? "Take it down" : "Publish"}
+                    </button>
+                  </div>
+                  {open.run.published && (
+                    <Link
+                      href={`/m/${open.run.runId}`}
+                      target="_blank"
+                      className="mt-3 inline-block text-xs font-mono underline text-teal-700 dark:text-teal-400"
+                    >
+                      axon-agents.com/m/{open.run.runId.slice(0, 8)}…
+                    </Link>
+                  )}
+                </div>
+              )}
+
               {open.run.deliverable && (
                 <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4">
                   <p className="text-xs font-mono text-gray-400 mb-2">DELIVERABLE</p>
@@ -450,6 +656,8 @@ export default function MissionsClient() {
           )}
         </>
       )}
+
+      {state === "ready" && <div className="mt-10">{galleryStrip}</div>}
 
       <p className="mt-8 text-xs text-gray-400 dark:text-gray-500">
         Missions spend an agent&apos;s earned balance, never a wallet key —{" "}

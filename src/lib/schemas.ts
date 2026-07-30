@@ -129,6 +129,8 @@ export const growMissionSchema = z.object({
   maxHires: z.number().int().min(1).max(12).optional(),
   /** Plan and price it without hiring anyone. */
   dryRun: z.boolean().optional(),
+  /** The template this started from, recorded so a published result can offer it. */
+  templateId: z.string().max(64).optional(),
 });
 
 // ── Self-assembling planner (Phase 11) ──────────────────────────────────────

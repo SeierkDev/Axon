@@ -13,6 +13,7 @@ import {
 import { buildGrowDeps } from "@/lib/growWiring";
 import { runGrowMission, previewGrowMission } from "@/lib/growRunner";
 import { growMissionSchema, parseBody } from "@/lib/schemas";
+import { getMissionTemplate } from "@/lib/missionTemplates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -113,6 +114,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Only record a template id we actually recognise — an unknown one would
+    // put a dead "run this yourself" link on a published page.
+    const templateId = getMissionTemplate(body.templateId)?.id;
+
     const run = createGrowRun({
       agentId: body.agentId,
       ownerWallet: auth.user.walletAddress,
@@ -120,6 +125,7 @@ export async function POST(req: NextRequest) {
       budgetUsdc,
       perHireCapUsdc,
       maxHires,
+      templateId,
     });
 
     recordAuditEvent({
