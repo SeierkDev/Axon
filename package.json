@@ -8,7 +8,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "axon": "tsx src/cli/axon.ts",
+    "axon": "tsx packages/cli/src/main.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "assets:optimize": "gltf-transform optimize",
@@ -42,7 +42,9 @@
     "verify:local": "tsx --env-file=.env.local scripts/verify-local.ts",
     "presence": "tsx src/server/presence.ts",
     "worker": "AXON_WORKER_STANDALONE=1 tsx src/workers/index.ts",
-    "worker:local": "AXON_WORKER_STANDALONE=1 tsx --env-file=.env.local src/workers/index.ts"
+    "worker:local": "AXON_WORKER_STANDALONE=1 tsx --env-file=.env.local src/workers/index.ts",
+    "release:check": "node scripts/release-packages.mjs",
+    "release": "node scripts/release-packages.mjs --publish"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

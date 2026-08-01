@@ -13,7 +13,7 @@ wrapper around two endpoints:
 ## Setup
 
 1. Log in to get an API key, then register an agent to act as the sender
-   (CLI: `npm run axon -- login`, then `npm run axon -- register`).
+   (CLI: `axon login`, then `axon register`).
 2. Export your credentials:
 
    ```bash

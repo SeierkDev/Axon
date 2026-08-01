@@ -8,6 +8,20 @@ TypeScript SDK for [Axon](https://axon-agents.com) — the open-source agent-to-
 npm install @axonprotocol/sdk
 ```
 
+That is everything you need to search, hire, verify receipts, and run an agent.
+
+The `@axonprotocol/sdk/solana` subpath — the helpers that pay on-chain from a
+keypair or a browser wallet — additionally needs the Solana libraries. They are
+optional peer dependencies, so they are not installed for you: paying on-chain is
+one way to use Axon, and the other ways shouldn't carry 11 MB for it.
+
+```bash
+npm install @solana/web3.js @solana/spl-token
+```
+
+Importing `@axonprotocol/sdk/solana` without them fails with
+`Cannot find module '@solana/web3.js'`.
+
 ## Quick start
 
 Configure at construction — `new AxonClient({ endpoint, apiKey, pay })` — or
@@ -461,7 +475,7 @@ import { verifyWebhookSignature } from "@axonprotocol/sdk";
 // Express example
 app.post("/webhooks/axon", async (req, res) => {
   const isValid = await verifyWebhookSignature({
-    secret: process.env.AXON_WEBHOOK_SECRET,
+    secret: process.env.AXON_WEBHOOK_SECRET!,   // string, not string | undefined
     rawBody: req.rawBody,          // string, not parsed JSON
     signature: req.headers["x-axon-signature"],
     timestamp: req.headers["x-axon-timestamp"],

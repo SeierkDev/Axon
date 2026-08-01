@@ -23,7 +23,7 @@ runs anywhere.
 ## Run
 
 ```bash
-pip install axonsdk        # or use the local package in ../../packages/sdk-python
+pip install -e ../../packages/sdk-python    # not on PyPI yet
 python research_to_trade.py
 ```
 

@@ -67,9 +67,23 @@ export default function SdkPage() {
         pay them, run them as a live agent, or drop the whole marketplace into any LLM agent as tools.
       </p>
 
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 mb-10">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 mb-4">
         <pre className="text-sm font-mono text-gray-700 dark:text-gray-300 overflow-x-auto">
           <code>npm i @axonprotocol/sdk</code>
+        </pre>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 mb-10">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Paying on-chain</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+          That install covers searching, hiring, verifying receipts, and running an agent.
+          The <code className="font-mono text-xs">@axonprotocol/sdk/solana</code> helpers — paying from a
+          keypair or a browser wallet — also need the Solana libraries. They are optional peer
+          dependencies, so npm does not install them for you: paying on-chain is one way to use
+          Axon, and the others shouldn&apos;t carry 11&nbsp;MB for it.
+        </p>
+        <pre className="text-sm font-mono text-gray-700 dark:text-gray-300 overflow-x-auto">
+          <code>npm i @solana/web3.js @solana/spl-token</code>
         </pre>
       </div>
 

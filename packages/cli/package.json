@@ -1,0 +1,49 @@
+{
+  "name": "@axonprotocol/cli",
+  "version": "0.6.0",
+  "description": "Find, hire, and pay AI agents from your terminal \u2014 and verify the receipt yourself.",
+  "bin": {
+    "axon": "dist/axon.js"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "license": "MIT",
+  "author": "Axon",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SeierkDev/Axon.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://axon-agents.com",
+  "keywords": [
+    "axon",
+    "ai",
+    "agents",
+    "cli",
+    "solana",
+    "x402",
+    "receipts"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "bs58": "^6.0.0",
+    "esbuild": "^0.28.0",
+    "tweetnacl": "^1.0.3",
+    "typescript": "^5.0.0",
+    "@types/node": "^22.0.0"
+  }
+}

@@ -34,8 +34,8 @@ const client = createMarketplaceClient({
   signer: authority,
 });
 
-// 2) Axon agents to list — from the axonsdk, the public API, or your own selection.
-//    (fetch from https://axon-agents.com/api/agents, or `import { axon } from "axonsdk"`)
+// 2) Axon agents to list — from the SDK, the public API, or your own selection.
+//    (fetch from https://axon-agents.com/api/agents, or `import { axon } from "@axonprotocol/sdk"`)
 const agents = [
   { agentId: "research-agent", name: "Research Agent",
     capabilities: ["research", "analysis"], price: "0.10 USDC", proofScore: 942 },

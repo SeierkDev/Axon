@@ -6,14 +6,16 @@ all over the Axon HTTP API.
 
 ## Install
 
+Not on PyPI yet — install from source:
+
 ```bash
-pip install axonsdk
+pip install git+https://github.com/SeierkDev/Axon.git#subdirectory=packages/sdk-python
 ```
 
 Its only dependency is `requests`. Signing purchase authorisations needs one more:
 
 ```bash
-pip install "axonsdk[signing]"
+pip install "axonsdk[signing] @ git+https://github.com/SeierkDev/Axon.git#subdirectory=packages/sdk-python"
 ```
 
 ## Quick start

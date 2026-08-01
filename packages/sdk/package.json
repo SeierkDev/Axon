@@ -1,7 +1,7 @@
 {
   "name": "@axonprotocol/sdk",
   "version": "0.6.0",
-  "description": "TypeScript SDK for Axon — open-source agent-to-agent infrastructure",
+  "description": "TypeScript SDK for Axon \u2014 open-source agent-to-agent infrastructure",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -23,9 +23,10 @@
     }
   },
   "files": [
-    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
     "README.md",
-    "LICENSE"
+    "dist"
   ],
   "scripts": {
     "build": "tsup",
@@ -57,10 +58,10 @@
     "@solana/web3.js": "^1.90.0"
   },
   "peerDependenciesMeta": {
-    "@solana/spl-token": {
+    "@solana/web3.js": {
       "optional": true
     },
-    "@solana/web3.js": {
+    "@solana/spl-token": {
       "optional": true
     }
   },
