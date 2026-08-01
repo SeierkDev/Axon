@@ -38,8 +38,10 @@ export default function PythonSdkPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Install</h2>
-        <CodeBlock label="INSTALL" code={`pip install axonsdk
-# or from source: git clone the repo, then
+        <CodeBlock label="INSTALL" code={`# Not on PyPI yet — install from source:
+pip install git+https://github.com/SeierkDev/Axon.git#subdirectory=packages/sdk-python
+
+# or from a clone, for local development:
 #   cd packages/sdk-python && pip install -e .`} />
       </section>
 

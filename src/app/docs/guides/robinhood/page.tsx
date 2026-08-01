@@ -57,7 +57,9 @@ export default function RobinhoodGuidePage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">The Axon half, in code</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Built on the <Link href="/docs/sdk-python" className="underline hover:text-gray-900 dark:hover:text-white">Python SDK</Link> (a
-          TypeScript version is identical) — <code className={mono}>pip install axonsdk</code>. Full runnable example in the repo under{" "}
+          TypeScript version is identical), which installs{" "}
+          <Link href="/docs/sdk-python" className="underline hover:text-gray-900 dark:hover:text-white">from source</Link>.
+          Full runnable example in the repo under{" "}
           <a href="https://github.com/SeierkDev/Axon/tree/main/examples/robinhood" className="underline hover:text-gray-900 dark:hover:text-white"><code className={mono}>examples/robinhood</code></a>.
         </p>
         <CodeBlock

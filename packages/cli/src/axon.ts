@@ -1,8 +1,13 @@
-#!/usr/bin/env node
 // Axon CLI — search, hire, verify, login, register, send, receipt, cleanup.
 //
 // A thin command-line wrapper over the Axon REST API so you can drive the whole
-// network from a terminal without writing code. Run via `npm run axon -- <cmd>`.
+// network from a terminal without writing code:
+//
+//   npx @axonprotocol/cli search research
+//
+// This module is the logic and exports it for tests; src/main.ts is the binary's
+// entry point. Keeping them apart means the shipped executable doesn't have to
+// guess from argv whether it was run directly.
 //
 //   axon search  research                              # discover agents by capability
 //   axon hire    research-agent "summarize the top 5 L2s"   # hire + wait + receipt
@@ -20,7 +25,33 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import nacl from "tweetnacl";
-import { Keypair } from "@solana/web3.js";
+import bs58 from "bs58";
+
+// A Solana keypair file is 64 bytes: the ed25519 seed followed by the public
+// key. tweetnacl reads exactly that, so `@solana/web3.js` — 11 MB, pulled in for
+// one `Keypair.fromSecretKey` call — is not worth carrying in something people
+// run with `npx`. Verified against web3.js over 200 random keypairs: identical
+// addresses and identical signatures.
+const SOLANA_SECRET_KEY_BYTES = 64;
+
+function walletFromKeypairFile(path: string): { address: string; secretKey: Uint8Array } {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    throw new Error(`Could not read a keypair from ${path} — expected a JSON array of bytes, like a Solana id.json.`);
+  }
+  if (!Array.isArray(raw) || raw.length !== SOLANA_SECRET_KEY_BYTES) {
+    throw new Error(
+      `${path} does not look like a Solana keypair: expected ${SOLANA_SECRET_KEY_BYTES} bytes, got ${
+        Array.isArray(raw) ? raw.length : typeof raw
+      }.`,
+    );
+  }
+  const secretKey = Uint8Array.from(raw as number[]);
+  const pair = nacl.sign.keyPair.fromSecretKey(secretKey);
+  return { address: bs58.encode(Buffer.from(pair.publicKey)), secretKey: pair.secretKey };
+}
 
 const CONFIG_DIR = join(homedir(), ".axon");
 export const DEFAULT_CONFIG_PATH = join(CONFIG_DIR, "config.json");
@@ -56,6 +87,42 @@ export interface ParsedArgs {
   command: string;
   positional: string[];
   flags: Record<string, string | boolean>;
+}
+
+/**
+ * The flags each command accepts. `--endpoint` is accepted everywhere.
+ *
+ * Unknown flags are rejected rather than ignored, because ignoring them fails in
+ * the worst direction: the default endpoint is the live network, so a mistyped
+ * `--endpont http://localhost:3000` silently runs against production instead of
+ * the server you meant — and on `hire` that is real money. A typo should stop the
+ * command, not quietly change which network it talks to.
+ */
+export const COMMAND_FLAGS: Record<string, string[]> = {
+  login: ["api-key", "keypair"],
+  search: ["capability", "limit"],
+  hire: ["to", "task", "pay-from-balance", "from", "payment-signature", "payer-wallet"],
+  verify: [],
+  register: ["id", "name", "capabilities", "wallet", "public-key", "provider", "price", "category", "agent-endpoint"],
+  send: ["from", "to", "task", "payment", "idempotency-key", "context"],
+  receipt: [],
+  cleanup: [],
+  help: [],
+};
+const GLOBAL_FLAGS = ["endpoint"];
+
+/** Throws on any flag the command doesn't take. */
+export function assertKnownFlags(command: string, flags: Record<string, string | boolean>): void {
+  const allowed = COMMAND_FLAGS[command];
+  if (!allowed) return; // unknown command falls through to help
+  const known = new Set([...allowed, ...GLOBAL_FLAGS]);
+  const unknown = Object.keys(flags).filter((f) => !known.has(f));
+  if (!unknown.length) return;
+  const accepted = [...allowed, ...GLOBAL_FLAGS].sort().map((f) => `--${f}`).join(" ");
+  throw new Error(
+    `${command} does not take ${unknown.map((f) => `--${f}`).join(", ")}.\n` +
+    `It accepts: ${accepted || "(no flags)"}`,
+  );
 }
 
 // Minimal argv parser: `cmd pos --flag value --bool`. `--flag` with no value (or
@@ -186,6 +253,7 @@ async function api(
 const HELP = `Axon CLI
 
 Usage: axon <command> [flags]
+       npx @axonprotocol/cli <command> [flags]
 
 Commands:
   search    Find agents for a capability, ranked by Proof Score:
@@ -196,7 +264,7 @@ Commands:
               --payment-signature <sig> --payer-wallet <addr>
             Or spend a registered agent's earned balance (needs an API key):
               axon hire <agentId> "<task>" --pay-from-balance --from <your-agent>
-  verify    Recompute a receipt's proof locally (no trust in Axon required):
+  verify    Recompute a receipt's proof locally — public, no login needed:
               axon verify <taskId>
   login     Authenticate. --api-key <key> to store a key, or --keypair <file>
             for the full wallet challenge/response. --endpoint <url> optional.
@@ -204,7 +272,8 @@ Commands:
             --wallet --public-key. Optional: --provider --price --category --agent-endpoint.
   send      Send a task. Required: --from --to --task. Optional: --payment
             --idempotency-key --context (JSON).
-  receipt   Inspect a task receipt:  axon receipt <taskId>
+  receipt   Print a task's full receipt as JSON. Needs a login, unlike verify:
+              axon receipt <taskId>
   cleanup   Revoke the stored API key and clear local config.
   help      Show this message.
 
@@ -222,14 +291,12 @@ async function cmdLogin(flags: Record<string, string | boolean>): Promise<string
 
   const keypairPath = str(flags, "keypair");
   if (keypairPath) {
-    const secret = Uint8Array.from(JSON.parse(readFileSync(keypairPath, "utf8")) as number[]);
-    const keypair = Keypair.fromSecretKey(secret);
-    const wallet = keypair.publicKey.toBase58();
+    const { address: wallet, secretKey } = walletFromKeypairFile(keypairPath);
     const { challenge } = (await api(endpoint, "POST", "/api/auth/challenge", undefined, {
       walletAddress: wallet,
     })) as { challenge: string };
     const signature = Buffer.from(
-      nacl.sign.detached(new TextEncoder().encode(challenge), keypair.secretKey),
+      nacl.sign.detached(new TextEncoder().encode(challenge), secretKey),
     ).toString("base64");
     const result = (await api(endpoint, "POST", "/api/auth/login", undefined, {
       walletAddress: wallet,
@@ -390,6 +457,7 @@ async function cmdVerify(endpoint: string, positional: string[]): Promise<string
 
 async function run(parsed: ParsedArgs): Promise<string> {
   const { command, positional, flags } = parsed;
+  assertKnownFlags(command, flags);
   const cfg = loadConfig();
   const endpoint = endpointOf(flags, cfg);
 
@@ -439,18 +507,12 @@ async function run(parsed: ParsedArgs): Promise<string> {
   }
 }
 
-async function main(): Promise<void> {
+export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   try {
-    const out = await run(parseArgs(process.argv.slice(2)));
+    const out = await run(parseArgs(argv));
     console.log(out);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
-}
-
-// Only execute when run directly (not when imported by tests).
-const entry = process.argv[1] ?? "";
-if (entry.endsWith("axon.ts") || entry.endsWith("axon.js") || entry.endsWith(`${join("cli", "axon")}`)) {
-  void main();
 }

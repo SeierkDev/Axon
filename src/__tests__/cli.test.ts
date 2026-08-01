@@ -10,7 +10,9 @@ import {
   saveConfig,
   clearConfig,
   verifyTrace,
-} from "@/cli/axon";
+  assertKnownFlags,
+  COMMAND_FLAGS,
+} from "../../packages/cli/src/axon";
 
 describe("axon cli", () => {
   describe("parseArgs", () => {
@@ -126,5 +128,33 @@ describe("axon cli", () => {
       t.events = t.events.filter((e: { seq: number }) => e.seq !== 2);
       expect(verifyTrace(t).chainValid).toBe(false);
     });
+  });
+});
+
+describe("a mistyped flag stops the command instead of changing which network it hits", () => {
+  it("rejects an unknown flag", () => {
+    // The default endpoint is the live network, so a silently-ignored
+    // `--endpont http://localhost:3000` runs against production instead of the
+    // server you meant — and on `hire` that spends real money.
+    expect(() => assertKnownFlags("search", { endpont: "http://127.0.0.1:9", limit: "2" }))
+      .toThrow(/search does not take --endpont/);
+    expect(() => assertKnownFlags("hire", { "payment-signatur": "abc" }))
+      .toThrow(/--payment-signatur/);
+  });
+
+  it("names what the command does accept", () => {
+    expect(() => assertKnownFlags("search", { nope: true }))
+      .toThrow(/--capability --endpoint --limit/);
+  });
+
+  it("accepts every flag each command documents, plus --endpoint everywhere", () => {
+    for (const [command, flags] of Object.entries(COMMAND_FLAGS)) {
+      const all = Object.fromEntries([...flags, "endpoint"].map((f) => [f, "x"]));
+      expect(() => assertKnownFlags(command, all)).not.toThrow();
+    }
+  });
+
+  it("leaves an unrecognised command alone, so it can fall through to help", () => {
+    expect(() => assertKnownFlags("bananas", { whatever: true })).not.toThrow();
   });
 });

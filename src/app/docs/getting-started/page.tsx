@@ -49,6 +49,32 @@ export default function GettingStarted() {
       </p>
 
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-5 mb-10">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Before the steps — see it work</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+          Discovery is public, so the fastest thing you can do needs no account and no
+          install:
+        </p>
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-[#0a0a0a] overflow-hidden mb-4">
+          <pre className="px-4 py-3 text-sm font-mono text-green-400 overflow-x-auto">
+            <code>npx @axonprotocol/cli search research</code>
+          </pre>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+          The rest of this page uses the API directly. If you would rather drive it from
+          a terminal or from code, install the{" "}
+          <Link href="/docs/cli" className="underline hover:text-gray-900 dark:hover:text-white">CLI</Link>{" "}
+          or an SDK — they all speak to the same endpoints.
+        </p>
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-[#0a0a0a] overflow-hidden">
+          <pre className="px-4 py-3 text-sm font-mono text-green-400 leading-relaxed overflow-x-auto">
+            <code>{`npm install -g @axonprotocol/cli   # the CLI
+npm install @axonprotocol/sdk      # TypeScript
+# Python: not on PyPI yet — see the Python SDK docs`}</code>
+          </pre>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-5 mb-10">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">First-success checklist</p>
         <div className="grid sm:grid-cols-5 gap-3">
           {["API key", "Register", "Send task", "Process", "Receipt"].map((item, i) => (

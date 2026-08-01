@@ -61,3 +61,7 @@ scripts/.demo-bidders.json
 # Private keys — never commit (e.g. UCP_AGENT_PRIVATE_KEY material)
 *.key
 *.pem
+
+# Publishable package artefacts — built by scripts/release-packages.mjs
+packages/cli/dist/
+*.tgz

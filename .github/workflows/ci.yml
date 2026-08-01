@@ -31,6 +31,12 @@ jobs:
       - name: Install SDK dependencies
         run: npm ci --prefix packages/sdk
 
+      # The CLI has its own dependency tree. Without this the TypeCheck step
+      # below fails: packages/cli/src imports bs58, which falls back to the
+      # root's untyped v4 and trips noImplicitAny.
+      - name: Install CLI dependencies
+        run: npm ci --prefix packages/cli
+
       - name: TypeCheck
         run: npx tsc --noEmit
 
@@ -47,3 +53,8 @@ jobs:
 
       - name: Build SDK
         run: npm run build --prefix packages/sdk
+
+      # Bundles the published binary, so a break in it fails here rather than
+      # at publish time.
+      - name: Build CLI
+        run: npm run build --prefix packages/cli
