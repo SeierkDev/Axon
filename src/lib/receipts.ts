@@ -1,5 +1,5 @@
 import { getDb } from "./db";
-import type { Task } from "./tasks";
+import { getTasksByAgent, type Task } from "./tasks";
 import type { Payment } from "./payments";
 import type { WebhookDelivery } from "./webhooks";
 import { recommendPaymentPath, type PaymentPathRecommendation } from "./paymentPath";
@@ -214,4 +214,34 @@ export function getReceipt(taskId: string): Receipt {
     splits: getSplitsForTask(taskId),
     sla: getSlaForTask(taskId),
   };
+}
+
+/**
+ * The work an agent has actually done, as public receipts, newest first.
+ *
+ * The profile has always shown an agent's track record as totals — jobs
+ * completed, success rate, USDC earned — and asked you to believe them. Every one
+ * of those jobs already has a public receipt; this is what lets the page show the
+ * jobs instead of just counting them.
+ *
+ * Only work the agent *performed* (`role: "recipient"`), because that is what a
+ * track record is. Failed runs are included and left visible: the success rate is
+ * already on the page, so hiding the failures here would only make the two
+ * disagree, and a receipt exists either way.
+ *
+ * Built out of `getPublicReceipt` rather than its own query. That costs a few
+ * small reads per row, which is nothing at this size, and it means the one
+ * audited definition of "what a receipt may show" governs this page too — a
+ * parallel SELECT here could drift into exposing something the receipt never did.
+ */
+export function getAgentRecentWork(agentId: string, limit = 10): PublicReceipt[] {
+  const tasks = getTasksByAgent({ agentId, role: "recipient", limit: limit * 3 });
+  const out: PublicReceipt[] = [];
+  for (const t of tasks) {
+    if (t.status !== "completed" && t.status !== "failed") continue;
+    const receipt = getPublicReceipt(t.taskId);
+    if (receipt) out.push(receipt);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
