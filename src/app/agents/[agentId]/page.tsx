@@ -6,6 +6,7 @@ import TestAgent from "@/components/TestAgent";
 import CodeTabs from "@/components/CodeTabs";
 import { getAgentMetrics } from "@/lib/metrics";
 import { getReviewsByAgent, getAgentRating } from "@/lib/reviews";
+import { getAgentRecentWork } from "@/lib/receipts";
 import { computeReputation } from "@/lib/reputation";
 import { getAgentTrackRecord } from "@/lib/trackRecord";
 import { computeProofScore } from "@/lib/proofScore";
@@ -56,6 +57,7 @@ export default async function AgentProfilePage({
   const metrics = getAgentMetrics(agentId, 30);
   const reputation = computeReputation(agentId);
   const track = getAgentTrackRecord(agentId);
+  const recentWork = getAgentRecentWork(agentId, 8);
   const proofScore = computeProofScore(agentId);
   const price = agent.price?.trim() || "Free";
   // Paid means what the tasks route enforces (parsePriceToSol) — a degenerate
@@ -267,6 +269,66 @@ export default async function AgentProfilePage({
             </div>
           </div>
         )}
+
+        {/* Recent work — the receipts behind the numbers above.
+            The track record has always been totals you had to take on trust, on a
+            network built so you don't have to. Every job here is a public receipt
+            anyone can open and check. Nothing shown that the receipt page doesn't
+            already make public — never the task itself. */}
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">
+          <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between gap-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Recent Work
+            </p>
+            {recentWork.length > 0 && (
+              <p className="text-xs text-gray-400 dark:text-gray-500">every job below has a receipt you can check</p>
+            )}
+          </div>
+          {recentWork.length === 0 ? (
+            <div className="px-5 py-6">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No completed jobs yet. When this agent finishes work, each job appears here with
+                its own verifiable receipt.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+              {recentWork.map((r) => {
+                const done = r.status === "completed";
+                const ms =
+                  r.startedAt && r.completedAt
+                    ? new Date(r.completedAt).getTime() - new Date(r.startedAt).getTime()
+                    : null;
+                return (
+                  <li key={r.taskId}>
+                    <Link
+                      href={`/r/${r.taskId}`}
+                      className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full shrink-0 ${done ? "bg-emerald-500" : "bg-red-400"}`}
+                        aria-hidden
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm text-gray-800 dark:text-gray-200">
+                          {done ? "Delivered" : "Failed"} for{" "}
+                          <span className="font-medium">{r.fromName ?? r.fromAgent}</span>
+                        </span>
+                        <span className="block text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">
+                          {fmtWhen(r.completedAt ?? r.createdAt)}
+                          {ms !== null && ms >= 0 ? ` · ${fmtDuration(ms)}` : ""}
+                          {r.payment ? ` · ${r.payment}` : " · free"}
+                          {r.specVerified === true && r.outputHash ? " · spec pinned, output hashed" : ""}
+                        </span>
+                      </span>
+                      <span className="text-xs font-mono text-gray-400 dark:text-gray-500 shrink-0">receipt →</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
 
         {/* Trust */}
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">
@@ -621,6 +683,37 @@ function verificationLabel(agent: {
   if (agent.verificationStatus === "reachable") return "Endpoint reachable, x402 not detected";
   if (agent.verificationStatus === "unreachable") return "Endpoint unreachable on last check";
   return "Endpoint not verified yet";
+}
+
+/** "3 hours ago" for anything recent, an absolute date once it stops mattering. */
+function fmtWhen(iso: string) {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "—";
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toISOString().slice(0, 10);
+}
+
+/**
+ * How long the job took, at the precision the record actually supports.
+ *
+ * Sub-second runs are reported as "<1s" rather than "1ms". Some rows have a
+ * start and finish written in the same breath, so the millisecond figure is
+ * measurement noise, and "1ms" next to a research job reads as a broken page on
+ * the one section whose whole job is being believable. "<1s" is just as true and
+ * claims only what the timestamps can carry.
+ */
+function fmtDuration(ms: number) {
+  if (ms < 1000) return "<1s";
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 60) return `${mins}m ${Math.round((ms % 60_000) / 1000)}s`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
 function formatDate(value: string) {
