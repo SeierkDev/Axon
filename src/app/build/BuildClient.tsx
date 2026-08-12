@@ -341,7 +341,7 @@ export default function BuildClient({
       }
       buildId = data.buildId;
     } catch {
-      setError("Couldn't reach the server to start the build. Your payment is saved — use Resume to retry (you won't be charged again).");
+      setError("Couldn't reach the server to start the build. Your payment is saved, use Resume to retry (you won't be charged again).");
       setPhase("error");
       return;
     }
@@ -350,7 +350,7 @@ export default function BuildClient({
     // the build; a transient poll failure just retries on the next tick. Jobs are
     // durable server-side and auto-resume after a restart, so polling rides out a
     // redeploy (up to ~5 min of failed polls) instead of declaring failure.
-    const deadline = Date.now() + 25 * 60_000; // safety cap — QA retries on a slower coder model add up
+    const deadline = Date.now() + 25 * 60_000; // safety cap, QA retries on a slower coder model add up
     let consecutiveMisses = 0;
     let consecutiveUnknown = 0;
     while (Date.now() < deadline) {
@@ -411,7 +411,7 @@ export default function BuildClient({
       }
     }
 
-    setError("The build is taking longer than expected. Your payment is saved — use Resume to reconnect (you won't be charged again).");
+    setError("The build is taking longer than expected. Your payment is saved, use Resume to reconnect (you won't be charged again).");
     setPhase("error");
   }, [prompt]);
 
@@ -453,18 +453,18 @@ export default function BuildClient({
             `https://phantom.app/ul/browse/${encodeURIComponent(target)}?ref=${encodeURIComponent(window.location.origin)}`;
           return;
         }
-        setError("Phantom wallet not found — install the Phantom extension to pay and generate.");
+        setError("Phantom wallet not found, install the Phantom extension to pay and generate.");
         setPhase("error");
         return;
       }
       if (msg.startsWith("INSUFFICIENT_USDC:")) {
         const have = msg.split(":")[1] ?? "0";
-        setError(`Not enough USDC — this costs ${BUILD_PRICE_USDC} USDC, but your wallet only has ${have}. Add USDC and try again.`);
+        setError(`Not enough USDC, this costs ${BUILD_PRICE_USDC} USDC, but your wallet only has ${have}. Add USDC and try again.`);
         setPhase("error");
         return;
       }
       if (msg === "INSUFFICIENT_SOL") {
-        setError("Your wallet has no SOL to pay the Solana network fee. Add a little SOL (about 0.02) to your wallet and try again — USDC alone can't cover the fee.");
+        setError("Your wallet has no SOL to pay the Solana network fee. Add a little SOL (about 0.02) to your wallet and try again, USDC alone can't cover the fee.");
         setPhase("error");
         return;
       }
@@ -510,7 +510,7 @@ export default function BuildClient({
             Build a playable game from one sentence.
           </h1>
           <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400 mb-10 leading-relaxed">
-            Describe your idea. Six AI agents design, code, art, and test a complete browser game — live, in a few minutes.
+            Describe your idea. Six AI agents design, code, art, and test a complete browser game, live, in a few minutes.
           </p>
 
           {pendingPayment && (
@@ -533,7 +533,7 @@ export default function BuildClient({
 
           {isMobile && (
             <div className="mb-5 text-[12px] text-amber-700 dark:text-amber-400/90 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg px-3 py-2">
-              On mobile you can build and play, but for the best experience — smoother play, fullscreen, and open-in-new-tab — we recommend generating on a desktop or laptop.
+              On mobile you can build and play, but for the best experience, smoother play, fullscreen, and open-in-new-tab, we recommend generating on a desktop or laptop.
             </div>
           )}
 
@@ -552,7 +552,7 @@ export default function BuildClient({
 
           {mentions3D(prompt) && (
             <div className="mb-5 text-[12px] text-amber-700 dark:text-amber-400/90 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg px-3 py-2">
-              Heads up — Axon Build makes 2D games right now. 3D is coming soon. You&apos;ll get a polished 2D version of this idea.
+              Heads up | Axon Build makes 2D games right now. 3D is coming soon. You&apos;ll get a polished 2D version of this idea.
             </div>
           )}
 

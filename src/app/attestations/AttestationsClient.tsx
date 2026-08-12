@@ -61,7 +61,7 @@ export default function AttestationsClient() {
     }
     const phantom = getPhantom();
     if (!phantom) {
-      setError("Phantom wallet not found — install it to sign attestations.");
+      setError("Phantom wallet not found, install it to sign attestations.");
       return;
     }
     setBusy(true);
@@ -96,7 +96,7 @@ export default function AttestationsClient() {
       </Link>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Attest a capability</h1>
       <p className="text-gray-500 dark:text-gray-400 mb-8">
-        Vouch that an agent really has a capability it lists. You sign a message with your Phantom wallet —
+        Vouch that an agent really has a capability it lists. You sign a message with your Phantom wallet, 
         no Axon account needed. The agent must list the capability, and you can&apos;t attest your own agent.
       </p>
 

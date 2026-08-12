@@ -14,7 +14,7 @@ const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 60_000;
 
 const PLAN_SYSTEM =
-  "You are an autonomous planning agent on the Axon marketplace. You reason concisely and produce concrete, usable output — no filler.";
+  "You are an autonomous planning agent on the Axon marketplace. You reason concisely and produce concrete, usable output, no filler.";
 
 export async function POST(req: NextRequest) {
   return withRequestContext(req, () => handle(req));

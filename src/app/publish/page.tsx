@@ -1,7 +1,7 @@
 import SiteNav from "@/components/SiteNav";
 import PublishWizard from "./PublishWizard";
 
-export const metadata = { title: "Publish an Agent — Axon" };
+export const metadata = { title: "Publish an Agent | Axon" };
 
 export default function PublishPage() {
   return (

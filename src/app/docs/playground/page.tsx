@@ -84,7 +84,7 @@ export default function PlaygroundPage() {
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">API Playground</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-8">
         Build and send real requests to the Axon API right from the docs. Pick an endpoint, fill in any
-        parameters, and send — responses come straight from the live network. These are read-only
+        parameters, and send, responses come straight from the live network. These are read-only
         endpoints, so nothing is ever created or charged.
       </p>
 
@@ -132,7 +132,7 @@ export default function PlaygroundPage() {
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="axon_sk_..."
           />
-          <p className="text-xs text-gray-400 mt-1.5">Sent only to the Axon API on this domain — never stored or shared.</p>
+          <p className="text-xs text-gray-400 mt-1.5">Sent only to the Axon API on this domain, never stored or shared.</p>
         </div>
 
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-[#0a0a0a] overflow-hidden">

@@ -220,7 +220,7 @@ function ArenaValley({ arena, charmClear = 26, mood = "day", avoid }: { arena: A
       });
     }
     for (let i = 0; i < 10; i++) {
-      const a = i * 2.399963; // golden angle — even spread
+      const a = i * 2.399963; // golden angle, even spread
       const r = charmClear + (i % 14);
       if (r > arena.r - 4) continue;
       items.push({
@@ -235,7 +235,7 @@ function ArenaValley({ arena, charmClear = 26, mood = "day", avoid }: { arena: A
 
   return (
     <group>
-      {/* valley floor — the city's exact grass, past the mountains */}
+      {/* valley floor, the city's exact grass, past the mountains */}
       <mesh position={[arena.cx, -0.05, arena.cz]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[arena.r + 260, 64]} />
         <meshStandardMaterial color={mood === "grim" ? "#6fae70" : CITY_GRASS} roughness={1} />
@@ -287,7 +287,7 @@ const CLIMB_PAL = [
 function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: number; last: boolean }) {
   const r = Math.min(p.hw, p.hd) * 1.06;
   const gold = last ? "#ffd76b" : null;
-  const sky = p.y > 62; // the dream band — crates and barrels become GIANT everyday objects
+  const sky = p.y > 62; // the dream band, crates and barrels become GIANT everyday objects
   const basePal = CLIMB_PAL[sky ? 2 : p.y > 30 ? 1 : 0];
   // subtle per-platform tint so 100 platforms don't read as 3 copies — a
   // deterministic ±6% shade keyed off the index, applied to the big surfaces.
@@ -304,7 +304,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
     <group position={[p.x, p.y, p.z]}>
       {p.kind === "boulder" && (
         <group rotation={[0, p.x * 0.7, 0]}>
-          {/* one big low-poly boulder, flattened — its top IS the platform */}
+          {/* one big low-poly boulder, flattened, its top IS the platform */}
           <mesh position={[0, -r * 0.72, 0]} scale={[r * 1.0, r * 0.72, r * 1.0]} castShadow receiveShadow>
             <sphereGeometry args={[1, 8, 6]} />
             <meshStandardMaterial color={gold ?? pal.rock} roughness={1} flatShading />
@@ -317,7 +317,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
       )}
       {p.kind === "grass" && (
         <>
-          {/* a floating grass knoll — flat green top, earthen underside */}
+          {/* a floating grass knoll, flat green top, earthen underside */}
           <mesh position={[0, -r * 0.62, 0]} scale={[r * 1.0, r * 0.66, r * 1.0]} castShadow receiveShadow>
             <sphereGeometry args={[1, 16, 10]} />
             <meshStandardMaterial color={gold ?? pal.grass} roughness={1} />
@@ -347,7 +347,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
       )}
       {p.kind === "log" && (
         <group rotation={[0, p.x * 0.9, 0]}>
-          {/* one THICK felled trunk — wide enough that its curved top carries
+          {/* one THICK felled trunk, wide enough that its curved top carries
               the whole footprint */}
           <mesh position={[0, -r * 0.78, 0]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
             <cylinderGeometry args={[r * 0.8, r * 0.86, r * 1.85, 14]} />
@@ -363,7 +363,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
       )}
       {p.kind === "crate" && sky && (
         <group rotation={[0, 0.35, 0]}>
-          {/* a GIANT fallen book — its top cover is the platform */}
+          {/* a GIANT fallen book, its top cover is the platform */}
           <mesh position={[0, -0.06, 0]}>
             <boxGeometry args={[r * 1.88, 0.12, r * 1.88]} />
             <meshStandardMaterial color={gold ?? "#7a3b52"} roughness={0.8} />
@@ -411,7 +411,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
       )}
       {p.kind === "barrel" && sky && (
         <group>
-          {/* a GIANT storm lantern — you land on its metal cap */}
+          {/* a GIANT storm lantern, you land on its metal cap */}
           <mesh position={[0, -0.08, 0]}>
             <cylinderGeometry args={[r * 0.95, r * 1.0, 0.16, 12]} />
             <meshStandardMaterial color={gold ?? "#3a3f47"} metalness={0.5} roughness={0.5} />
@@ -420,7 +420,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
             <torusGeometry args={[r * 0.22, 0.05, 6, 12]} />
             <meshStandardMaterial color="#2f343b" metalness={0.5} roughness={0.5} />
           </mesh>
-          {/* the glass — a warm beacon you can see from the meadow below */}
+          {/* the glass, a warm beacon you can see from the meadow below */}
           <mesh position={[0, -0.75, 0]}>
             <cylinderGeometry args={[r * 0.78, r * 0.86, 1.2, 10]} />
             <meshStandardMaterial color="#ffe9b0" emissive="#ffb35e" emissiveIntensity={0.55} transparent opacity={0.55} />
@@ -440,7 +440,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
       )}
       {p.kind === "barrel" && !sky && (
         <group rotation={[0, p.z * 0.5, 0]}>
-          {/* a planked deck laid over the barrels — the deck is the platform */}
+          {/* a planked deck laid over the barrels, the deck is the platform */}
           <mesh position={[0, -0.12, 0]} castShadow receiveShadow>
             <cylinderGeometry args={[r * 1.02, r * 1.02, 0.1, 16]} />
             <meshStandardMaterial color={gold ?? WOOD} roughness={0.95} />
@@ -464,7 +464,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
       )}
       {p.kind === "cart" && (
         <group rotation={[0, p.x * 0.8, 0]}>
-          {/* a pallet strapped over the cart — the pallet is the platform */}
+          {/* a pallet strapped over the cart, the pallet is the platform */}
           <mesh position={[0, -0.1, 0]} castShadow receiveShadow>
             <boxGeometry args={[r * 1.85, 0.12, r * 1.85]} />
             <meshStandardMaterial color={gold ?? WOOD} roughness={0.95} />
@@ -480,7 +480,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
       )}
       {p.rest && (
         <group position={[r * 0.3, -0.04, r * 0.3]}>
-          {/* a waymark cairn — stacked stones, like hikers leave */}
+          {/* a waymark cairn, stacked stones, like hikers leave */}
           <mesh position={[0, 0.16, 0]} scale={[0.3, 0.28, 0.3]}><sphereGeometry args={[1, 6, 5]} /><meshStandardMaterial color="#9d968a" roughness={1} flatShading /></mesh>
         </group>
       )}
@@ -503,7 +503,7 @@ function ClimbPlatform({ p, idx = 0, last }: { p: (typeof CLIMB)[number]; idx?: 
 }
 
 
-const CRUMBLE_REGROW_MS = 12_000; // a broken ledge grows back — the route heals
+const CRUMBLE_REGROW_MS = 12_000; // a broken ledge grows back, the route heals
 
 // The climb's air, by altitude: meadow haze at the base → thin bright air at the
 // summit. Preallocated — lerped every frame, never rebuilt.
@@ -535,7 +535,7 @@ export function ClimbArena({ poseRef, nonce = 0 }: { poseRef?: { current: { x: n
   const summitRing = useRef<THREE.Mesh>(null);
   const padRing = useRef<THREE.Mesh>(null);
   const get = useThree((s) => s.get);
-  const daySeed = useMemo(() => dailySeed(), []); // pinned per mount — no reseed at UTC midnight mid-run
+  const daySeed = useMemo(() => dailySeed(), []); // pinned per mount, no reseed at UTC midnight mid-run
   // ── the wind: a filtered-noise loop that rises with you (see WindLoop) ──────
   useEffect(() => {
     worldWind.start();
@@ -648,7 +648,7 @@ export function ClimbArena({ poseRef, nonce = 0 }: { poseRef?: { current: { x: n
       if (standing) {
         if (!s.armAt) {
           Object.assign(s, { armAt: now, puffed: false });
-          worldSfx.crack(); // the warning — GO
+          worldSfx.crack(); // the warning, GO
         }
         // the telegraph ESCALATES: the wobble grows over the 800ms so the ledge
         // visibly loses its nerve, and halfway in it sheds a first trickle of
@@ -666,8 +666,8 @@ export function ClimbArena({ poseRef, nonce = 0 }: { poseRef?: { current: { x: n
           Object.assign(s, { fellAt: now });
           worldSfx.crack();
           arcadeFx.crumble(plat.x, plat.y, plat.z, Math.min(plat.hw, plat.hd));
-          arcadeShake.add(0.2); // it let go UNDER YOU — the camera feels it
-          setClimbPlatY(i, -999); // the collider vanishes — physics reads this array live
+          arcadeShake.add(0.2); // it let go UNDER YOU, the camera feels it
+          setClimbPlatY(i, -999); // the collider vanishes, physics reads this array live
         }
       } else if (s.armAt) {
         Object.assign(s, { armAt: 0, puffed: false });
@@ -682,13 +682,13 @@ export function ClimbArena({ poseRef, nonce = 0 }: { poseRef?: { current: { x: n
   return (
     <group>
       <ArenaValley arena={g} charmClear={26} />
-      {/* the spire — a segmented rock column (SOLID: the player can't pass
+      {/* the spire, a segmented rock column (SOLID: the player can't pass
           through it) rising off a rocky base mound, moss on the ledges */}
       <mesh position={[g.cx, 0.35, g.cz]} scale={[5.8, 2.2, 5.8]}>
         <sphereGeometry args={[1, 9, 6]} />
         <meshStandardMaterial color="#8a8371" roughness={1} flatShading />
       </mesh>
-      {/* ONE straight tapered shaft — perfectly plumb, banded by tone */}
+      {/* ONE straight tapered shaft, perfectly plumb, banded by tone */}
       {Array.from({ length: 6 }, (_, i) => {
         const h0 = (i / 6) * (SUMMIT.y + 1);
         const h1 = ((i + 1) / 6) * (SUMMIT.y + 1);
@@ -726,7 +726,7 @@ export function ClimbArena({ poseRef, nonce = 0 }: { poseRef?: { current: { x: n
           <ClimbPlatform key={i} p={p} idx={i} last={i === CLIMB.length - 1} />
         ),
       )}
-      {/* THE SUMMIT — a real prize, not a plane: banded pole, gold topper, a
+      {/* THE SUMMIT, a real prize, not a plane: banded pole, gold topper, a
           two-tone pennant that waves, a slow golden halo ring and a light beam
           you can sight from the meadow floor */}
       <group position={[SUMMIT.x, SUMMIT.y, SUMMIT.z]}>
@@ -749,12 +749,12 @@ export function ClimbArena({ poseRef, nonce = 0 }: { poseRef?: { current: { x: n
             <meshStandardMaterial color="#ffd76b" emissive="#ffd76b" emissiveIntensity={0.3} side={THREE.DoubleSide} />
           </mesh>
         </group>
-        {/* the halo — a slow golden ring floating over the cap */}
+        {/* the halo, a slow golden ring floating over the cap */}
         <mesh ref={summitRing} position={[0, 4.6, 0]} rotation={[Math.PI / 2.4, 0, 0]}>
           <torusGeometry args={[1.5, 0.05, 8, 40]} />
           <meshStandardMaterial color="#ffd76b" emissive="#ffcf5e" emissiveIntensity={0.9} toneMapped={false} transparent opacity={0.85} />
         </mesh>
-        {/* the beacon — a faint light column visible from the ground */}
+        {/* the beacon, a faint light column visible from the ground */}
         <mesh position={[0, 16, 0]}>
           <cylinderGeometry args={[0.5, 1.1, 32, 10, 1, true]} />
           <meshBasicMaterial color="#ffe9b0" transparent opacity={0.07} depthWrite={false} side={THREE.DoubleSide} />
@@ -763,7 +763,7 @@ export function ClimbArena({ poseRef, nonce = 0 }: { poseRef?: { current: { x: n
         <Label text="SUMMIT" position={[0, 4.2, 0]} color="#ffd76b" scale={2.8} />
       </group>
       <Label text="START" position={[CLIMB[0].x, CLIMB[0].y + 2.0, CLIMB[0].z]} scale={2.6} />
-      {/* SPRINGBOARDS — the daily route's three risk/reward launches: a coiled
+      {/* SPRINGBOARDS, the daily route's three risk/reward launches: a coiled
           plank on the platform rim; step on and it flings you past a hop or two */}
       {CLIMB_SPRINGS.map((sp, i) => (
         <group key={`spring${i}`} position={[sp.x, sp.y, sp.z]}>
@@ -780,7 +780,7 @@ export function ClimbArena({ poseRef, nonce = 0 }: { poseRef?: { current: { x: n
           <Label text="SPRING" position={[0, 1.2, 0]} color="#ffd76b" scale={1.2} />
         </group>
       ))}
-      {/* THE RESET PAD — no checkpoints up there and the clock never stops for a
+      {/* THE RESET PAD, no checkpoints up there and the clock never stops for a
           fall; this stone circle by the start is the one way to wipe the run.
           Reads at a glance: pale stone disc, breathing amber ring, its own sign. */}
       <group position={[CLIMB_RESET.x, 0, CLIMB_RESET.z]}>
@@ -960,7 +960,7 @@ export function GauntletArena() {
     <group>
       <ArenaValley arena={g} charmClear={34} avoid={(x, z) => Math.abs(z - g.cz) < LANE_OFF + LANE_HALF + 15 && Math.abs(x - g.cx) < 104} />
       <ArenaFog color="#e2e8cf" near={110} far={460} />
-      {/* the crusher tells — ground shadows that pool before each slam */}
+      {/* the crusher tells, ground shadows that pool before each slam */}
       {GAUNTLET_STOMPERS.map((s, i) => (
         <mesh
           key={`ssh${i}`}
@@ -972,7 +972,7 @@ export function GauntletArena() {
           <meshBasicMaterial color="#191309" transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}
-      {/* YOUR checkpoint — a teal light pillar on the flag a reset returns you to */}
+      {/* YOUR checkpoint, a teal light pillar on the flag a reset returns you to */}
       <group ref={beacon}>
         <mesh position={[0, 4.4, 0]}>
           <cylinderGeometry args={[0.34, 0.85, 8.8, 10, 1, true]} />
@@ -984,7 +984,7 @@ export function GauntletArena() {
         </mesh>
         <pointLight position={[0, 2.2, 0]} color="#2dd4bf" intensity={1.6} distance={9} />
       </group>
-      {/* SPEED PADS — teal chevron strips that reward the clean racing line */}
+      {/* SPEED PADS, teal chevron strips that reward the clean racing line */}
       {GAUNTLET_SPEED_PADS.map((sp, i) => (
         <group key={`spd${i}`} position={[sp.x, 0.03, sp.z]}>
           <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -1010,7 +1010,7 @@ export function GauntletArena() {
         const dir = ti === 0 ? 1 : -1; // east turn opens west, west turn opens east
         return (
           <group key={`turn${ti}`} position={[turn.x, 0, turn.z]}>
-            {/* the apron — lifted clear of the lane planes so the two flats
+            {/* the apron, lifted clear of the lane planes so the two flats
                 can't shimmer against each other at distance */}
             <mesh position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <circleGeometry args={[11.5, 32]} />
@@ -1036,7 +1036,7 @@ export function GauntletArena() {
                 </mesh>
               </group>
             ))}
-            {/* the divider-end pillar — a rounded hedge cap you swing around
+            {/* the divider-end pillar, a rounded hedge cap you swing around
                 (the west pivot sits further out past leg 2's last hurdles, so
                 its divider end is 18.5 back toward the course) */}
             <group position={[ti === 0 ? -8.5 : 18.5, 0, 0]}>
@@ -1052,7 +1052,7 @@ export function GauntletArena() {
           </group>
         );
       })}
-      {/* start + finish arches — crossbar SPANS the poles, gate faces the lane */}
+      {/* start + finish arches, crossbar SPANS the poles, gate faces the lane */}
       {[
         { b: GAUNTLET_START, label: "START", c: "#14b8a6" },
         { b: GAUNTLET_FINISH, label: "FINISH", c: "#ffd76b" },
@@ -1068,7 +1068,7 @@ export function GauntletArena() {
             <cylinderGeometry args={[0.09, 0.09, LANE_HALF * 2, 8]} />
             <meshStandardMaterial color="#5b4632" roughness={0.9} />
           </mesh>
-          {/* bunting along the crossbar — festival three-colour cycle */}
+          {/* bunting along the crossbar, festival three-colour cycle */}
           {[-3, -1.5, 0, 1.5, 3].map((dz, i) => (
             <mesh key={dz} position={[0, 3.22, dz]} rotation={[Math.PI, 0, 0]}>
               <coneGeometry args={[0.14, 0.34, 3]} />
@@ -1078,7 +1078,7 @@ export function GauntletArena() {
           <Label text={label} position={[0, 4.5, 0]} color={c} scale={3.2} />
         </group>
       ))}
-      {/* lane-side flag posts — INSTANCED: ~36 posts + flags → 2 draw calls */}
+      {/* lane-side flag posts, INSTANCED: ~36 posts + flags → 2 draw calls */}
       <Instances limit={fenceFlags.length} range={fenceFlags.length}>
         <cylinderGeometry args={[0.05, 0.07, 1.6, 6]} />
         <meshStandardMaterial color="#7a5c34" roughness={0.9} />
@@ -1093,8 +1093,8 @@ export function GauntletArena() {
           <Instance key={i} color={i % 2 ? "#14b8a6" : "#e07a5f"} position={[f.x + 0.22, 1.42, f.z]} />
         ))}
       </Instances>
-      {/* hurdles — striped bars on posts */}
-      {/* hurdles — INSTANCED: striped bars (per-instance colour) + posts */}
+      {/* hurdles, striped bars on posts */}
+      {/* hurdles, INSTANCED: striped bars (per-instance colour) + posts */}
       <Instances castShadow limit={GAUNTLET_HURDLES.length * 4} range={GAUNTLET_HURDLES.length * 4}>
         <boxGeometry />
         <meshStandardMaterial roughness={0.85} />
@@ -1147,7 +1147,7 @@ export function GauntletArena() {
       })}
       {/* every pond's reeds, batched into 4 draw calls */}
       <InstancedReeds spots={reedSpots} />
-      {/* hop-stone shells — INSTANCED (31 spheres → 1 draw call) */}
+      {/* hop-stone shells, INSTANCED (31 spheres → 1 draw call) */}
       <Instances limit={GAUNTLET_STONES.length} range={GAUNTLET_STONES.length}>
         <sphereGeometry args={[1, 8, 6]} />
         <meshStandardMaterial color="#cfc6b5" roughness={1} flatShading />
@@ -1161,7 +1161,7 @@ export function GauntletArena() {
       {GAUNTLET_STONES.map((p, i) => (
         <Rock key={`rk${i}`} position={[p.x, p.y - 0.7, p.z]} scale={Math.min(p.hw, p.hd) * 1.0} rotation={i * 1.7} />
       ))}
-      {/* rampart stairs — INSTANCED (block + edging) */}
+      {/* rampart stairs, INSTANCED (block + edging) */}
       <Instances castShadow limit={GAUNTLET_STAIRS.length} range={GAUNTLET_STAIRS.length}>
         <boxGeometry />
         <meshStandardMaterial roughness={1} />
@@ -1176,7 +1176,7 @@ export function GauntletArena() {
           <Instance key={i} position={[p.x, p.y + 0.03, p.z]} scale={[p.hw * 2 + 0.12, 0.06, p.hd * 2 + 0.12]} />
         ))}
       </Instances>
-      {/* slalom walls — INSTANCED (box + cap course) */}
+      {/* slalom walls, INSTANCED (box + cap course) */}
       <Instances castShadow limit={GAUNTLET_WALLS.length} range={GAUNTLET_WALLS.length}>
         <boxGeometry />
         <meshStandardMaterial color="#8f8a7d" roughness={0.95} />
@@ -1191,7 +1191,7 @@ export function GauntletArena() {
           <Instance key={i} position={[p.x, p.y + 0.06, p.z]} scale={[p.hw * 2 + 0.16, 0.12, p.hd * 2 + 0.16]} />
         ))}
       </Instances>
-      {/* spinning sweepers — striped arms off a machined hub, warning ring on the deck */}
+      {/* spinning sweepers, striped arms off a machined hub, warning ring on the deck */}
       {GAUNTLET_SWEEPERS.map((s, i) => (
         <group key={`sw${i}`} position={[s.cx, 0, s.cz]}>
           {/* warning ring painted on the ground under the swing */}
@@ -1240,7 +1240,7 @@ export function GauntletArena() {
           </group>
         </group>
       ))}
-      {/* THE STOMPERS — pistons over the lane on a fixed slam cycle. The head's
+      {/* THE STOMPERS, pistons over the lane on a fixed slam cycle. The head's
           height comes from stomperHeadY, the exact function the crush check
           reads: what flattens you is what you watched coming down. */}
       {GAUNTLET_STOMPERS.map((s, i) => (
@@ -1261,7 +1261,7 @@ export function GauntletArena() {
             <ringGeometry args={[1.1, 1.5, 24]} />
             <meshStandardMaterial color="#e0b23c" transparent opacity={0.4} roughness={1} depthWrite={false} />
           </mesh>
-          {/* the piston head — driven per-frame off stomperHeadY */}
+          {/* the piston head, driven per-frame off stomperHeadY */}
           <group ref={(el) => { stomperHeads.current[i] = el; }}>
             <mesh castShadow>
               <boxGeometry args={[2.0, 0.9, 2.0]} />
@@ -1280,7 +1280,7 @@ export function GauntletArena() {
           </group>
         </group>
       ))}
-      {/* checkpoint flags — hairpin flags on the apron rim, lane flags on the shoulder */}
+      {/* checkpoint flags, hairpin flags on the apron rim, lane flags on the shoulder */}
       {GAUNTLET_CHECKPOINTS.slice(1).map((c, i) => {
         const dz = c.z - g.cz;
         const off = Math.abs(Math.abs(dz) - 8) < 0.5 ? (dz < 0 ? -7 : 7) : dz > 8 ? LANE_HALF + 0.6 : -(LANE_HALF + 0.6);
@@ -1304,7 +1304,7 @@ export function GauntletArena() {
         </group>
         );
       })}
-      {/* the corridor hedges — INSTANCED: ~140 segments → 2 draw calls */}
+      {/* the corridor hedges, INSTANCED: ~140 segments → 2 draw calls */}
       <Instances castShadow limit={GAUNTLET_SIDEWALLS.length} range={GAUNTLET_SIDEWALLS.length}>
         <boxGeometry />
         <meshStandardMaterial color="#3e7a48" roughness={1} />
@@ -1319,7 +1319,7 @@ export function GauntletArena() {
           <Instance key={i} position={[p.x, p.y + 0.18, p.z]} scale={[p.hw * 2.05, 0.4, p.hd * 2.4]} />
         ))}
       </Instances>
-      {/* full-length grandstands — an F1 crowd walls BOTH sides of the course */}
+      {/* full-length grandstands, an F1 crowd walls BOTH sides of the course */}
       <GrandStand x={g.cx} z={g.cz - LANE_OFF - LANE_HALF - 7.4} facing={1} seed={1} />
       <GrandStand x={g.cx} z={g.cz + LANE_OFF + LANE_HALF + 7.4} facing={-1} seed={2} />
       {/* behind the stands: treelines, festival stalls, tents and balloons so
@@ -1345,7 +1345,7 @@ export function GauntletArena() {
             </mesh>
           </group>
           <group position={[g.cx - 50, 0, g.cz + side * (LANE_OFF + LANE_HALF + 12.5)]}>
-            {/* a tethered festival balloon — sheen on the skin, string to the ground */}
+            {/* a tethered festival balloon, sheen on the skin, string to the ground */}
             <mesh position={[0, 5.6, 0]}>
               <sphereGeometry args={[0.55, 8, 8]} />
               <meshStandardMaterial color={side > 0 ? '#e07a5f' : '#2dd4bf'} emissive={side > 0 ? '#e07a5f' : '#2dd4bf'} emissiveIntensity={0.12} roughness={0.3} />
@@ -1501,7 +1501,7 @@ function GrandStand({ x, z, facing, seed }: { x: number; z: number; facing: 1 | 
           <meshStandardMaterial color={row % 2 ? "#8a6a44" : "#97764e"} roughness={0.95} />
         </mesh>
       ))}
-      {/* open-air stands — just a low back wall, no roof blocking the view */}
+      {/* open-air stands, just a low back wall, no roof blocking the view */}
       <mesh position={[0, 2.2, ROWS * 1.05 - 0.3]}>
         <boxGeometry args={[LEN, 1.6, 0.3]} />
         <meshStandardMaterial color="#6b4a2a" roughness={1} />
@@ -1519,7 +1519,7 @@ function GrandStand({ x, z, facing, seed }: { x: number; z: number; facing: 1 | 
           </mesh>
         </group>
       ))}
-      {/* the crowd — instanced, 3 draw calls */}
+      {/* the crowd, instanced, 3 draw calls */}
       <instancedMesh ref={torso} args={[undefined, undefined, N]} frustumCulled={false}>
         <boxGeometry args={[0.5, 0.56, 0.32]} />
         <meshStandardMaterial roughness={1} />
@@ -1532,7 +1532,7 @@ function GrandStand({ x, z, facing, seed }: { x: number; z: number; facing: 1 | 
         <boxGeometry args={[0.74, 0.16, 0.16]} />
         <meshStandardMaterial roughness={1} />
       </instancedMesh>
-      {/* seated legs + hair caps — the same blocky look as the world's avatars */}
+      {/* seated legs + hair caps, the same blocky look as the world's avatars */}
       <instancedMesh ref={legs} args={[undefined, undefined, N]} frustumCulled={false}>
         <boxGeometry args={[0.44, 0.5, 0.24]} />
         <meshStandardMaterial roughness={1} />
@@ -1637,7 +1637,7 @@ export function ZombieArena() {
   return (
     <group>
       <ArenaValley arena={f} charmClear={34} mood="grim" avoid={(x, z) => (Math.abs(x - f.cx) < 30 && Math.abs(z - f.cz) < 22) || Math.hypot(x - (f.cx + 30), z - (f.cz + 22)) < 9 || Math.hypot(x - (f.cx - 34), z - (f.cz - 30)) < 10} />
-      {/* thick, low graveyard fog — with the night sky it closes the world in */}
+      {/* thick, low graveyard fog, with the night sky it closes the world in */}
       <ArenaFog color="#10150f" near={20} far={140} />
       {/* WALL-BUYS: a known gun at a known price, chalked on the wall */}
       {ZOMBIE_WALLBUYS.map((b) => (
@@ -1655,10 +1655,10 @@ export function ZombieArena() {
           <group position={[0, 1.5, 0.05]} rotation={[0, Math.PI / 2, 0]} scale={1.15}>
             <WeaponModel id={b.weapon} />
           </group>
-          <Label text={`${WEAPONS[b.weapon].name.toUpperCase()} — ${b.cost}`} position={[0, 2.35, 0.1]} color="#e8e2d4" scale={1.7} />
+          <Label text={`${WEAPONS[b.weapon].name.toUpperCase()}, ${b.cost}`} position={[0, 2.35, 0.1]} color="#e8e2d4" scale={1.7} />
         </group>
       ))}
-      {/* THE PERK MACHINE: one shrine-like cabinet — +50 max HP, once per run */}
+      {/* THE PERK MACHINE: one shrine-like cabinet, +50 max HP, once per run */}
       <group position={[ZOMBIE_PERK.x, 0, ZOMBIE_PERK.z]} rotation={[0, -0.5, 0]}>
         <mesh position={[0, 0.9, 0]} castShadow>
           <boxGeometry args={[0.9, 1.8, 0.7]} />
@@ -1673,9 +1673,9 @@ export function ZombieArena() {
           <meshStandardMaterial color="#3a1418" roughness={0.7} />
         </mesh>
         <pointLight position={[0, 1.4, 0.7]} color="#ff6b7d" intensity={1.6} distance={6} />
-        <Label text={`VIGOR — ${ZOMBIE_PERK.cost}`} position={[0, 2.5, 0]} color="#ff8d9a" scale={1.8} />
+        <Label text={`VIGOR, ${ZOMBIE_PERK.cost}`} position={[0, 2.5, 0]} color="#ff8d9a" scale={1.8} />
       </group>
-      {/* QUICK HANDS — the reload perk machine by the shed */}
+      {/* QUICK HANDS, the reload perk machine by the shed */}
       <group position={[ZOMBIE_PERK2.x, 0, ZOMBIE_PERK2.z]} rotation={[0, 0.6, 0]}>
         <mesh position={[0, 0.9, 0]} castShadow>
           <boxGeometry args={[0.9, 1.8, 0.7]} />
@@ -1690,7 +1690,7 @@ export function ZombieArena() {
           <meshStandardMaterial color="#0c2b28" roughness={0.7} />
         </mesh>
         <pointLight position={[0, 1.4, 0.7]} color="#2dd4bf" intensity={1.6} distance={6} />
-        <Label text={`QUICK HANDS — ${ZOMBIE_PERK2.cost}`} position={[0, 2.5, 0]} color="#7ef2e4" scale={1.8} />
+        <Label text={`QUICK HANDS, ${ZOMBIE_PERK2.cost}`} position={[0, 2.5, 0]} color="#7ef2e4" scale={1.8} />
       </group>
       {/* grave-field grounds: two darker rectangles flanking the central path */}
       {[-1, 1].map((side) => (
@@ -1708,7 +1708,7 @@ export function ZombieArena() {
         <circleGeometry args={[4.6, 24]} />
         <meshStandardMaterial color="#a99a78" roughness={1} />
       </mesh>
-      {/* THE CRYPT — a stone mausoleum you fight around (its plat collides) */}
+      {/* THE CRYPT, a stone mausoleum you fight around (its plat collides) */}
       <group position={[ZOMBIE_CRYPT.x, 0, ZOMBIE_CRYPT.z]}>
         <mesh position={[0, 1.25, 0]}>
           <boxGeometry args={[6.8, 2.5, 5.2]} />
@@ -1783,7 +1783,7 @@ export function ZombieArena() {
         ))}
         <pointLight position={[0, 1.6, 3.4]} color="#9adb76" intensity={2.5} distance={8} />
       </group>
-      {/* THE OBELISK — the memorial on the plaza (its plinth collides) */}
+      {/* THE OBELISK, the memorial on the plaza (its plinth collides) */}
       <group position={[ZOMBIE_OBELISK.x, 0, ZOMBIE_OBELISK.z]}>
         <mesh position={[0, 0.5, 0]}>
           <boxGeometry args={[1.8, 1.0, 1.8]} />
@@ -1802,7 +1802,7 @@ export function ZombieArena() {
           <meshStandardMaterial color="#b8b3a6" roughness={0.9} />
         </mesh>
       </group>
-      {/* tombstones — INSTANCED slab + dirt mound (2 draw calls); the rounded
+      {/* tombstones, INSTANCED slab + dirt mound (2 draw calls); the rounded
           crown keeps its compound tilt per-grave */}
       <Instances castShadow limit={graves.length} range={graves.length}>
         <boxGeometry />
@@ -1836,7 +1836,7 @@ export function ZombieArena() {
           </group>
         );
       })}
-      {/* ruined walls — INSTANCED (main + crumble cap → 2 draw calls) */}
+      {/* ruined walls, INSTANCED (main + crumble cap → 2 draw calls) */}
       <Instances limit={walls.length} range={walls.length}>
         <boxGeometry />
         <meshStandardMaterial color="#8f8a7d" roughness={1} />
@@ -1851,7 +1851,7 @@ export function ZombieArena() {
           <Instance key={i} position={[p.x + p.hw * 0.4, p.y + 0.2, p.z]} rotation={[0.1, 0.4, 0.12]} scale={[0.7, 0.4, Math.min(1, p.hd * 2)]} />
         ))}
       </Instances>
-      {/* crates — INSTANCED box (thin top plank kept per-crate) */}
+      {/* crates, INSTANCED box (thin top plank kept per-crate) */}
       <Instances limit={crates.length} range={crates.length}>
         <boxGeometry />
         <meshStandardMaterial color="#a9805a" roughness={0.9} />
@@ -1867,7 +1867,7 @@ export function ZombieArena() {
       ))}
       {/* the derelict barn */}
       <Barn position={[barn.x, 0, barn.z]} rotation={0.35} />
-      {/* the ruined chapel — walls collide (see layout), doorway open south */}
+      {/* the ruined chapel, walls collide (see layout), doorway open south */}
       <group position={[ZOMBIE_CHAPEL.x, 0, ZOMBIE_CHAPEL.z]}>
         {/* broken gable + rafters over the walls */}
         <mesh position={[0, 2.35, -2.8]} rotation={[0, 0, Math.PI / 4]}>
@@ -1888,7 +1888,7 @@ export function ZombieArena() {
         {/* candle glow inside */}
         <pointLight position={[0, 1.2, 0]} color="#ffb35e" intensity={3} distance={7} />
       </group>
-      {/* the SHED — walk in through the south door (walls collide via plats) */}
+      {/* the SHED, walk in through the south door (walls collide via plats) */}
       <group position={[ZOMBIE_SHED.x, 0, ZOMBIE_SHED.z]}>
         {/* plank walls (visuals matching the three wall plats) */}
         <mesh position={[-2.6, 0.95, 0]}>
@@ -1946,7 +1946,7 @@ export function ZombieArena() {
         <planeGeometry args={[34, 2.6]} />
         <meshStandardMaterial color="#9a8a6a" roughness={1} transparent opacity={0.85} />
       </mesh>
-      {/* wrought-iron fence around the graveyard (gaps for the paths) — INSTANCED:
+      {/* wrought-iron fence around the graveyard (gaps for the paths), INSTANCED:
           every post + rail across the whole ring in 1 draw call (was ~65 meshes). */}
       {(() => {
         const posts: { x: number; z: number; ry: number }[] = [];
@@ -1975,7 +1975,7 @@ export function ZombieArena() {
           </Instances>
         );
       })()}
-      {/* torches — flickering firelight over the graves */}
+      {/* torches, flickering firelight over the graves */}
       {[
         [f.cx - 14, f.cz + 4],
         [f.cx + 8, f.cz - 18],
@@ -2102,7 +2102,7 @@ export function ArcadeRunManager({
         startedAt.current = Date.now();
         samples.current = [];
         lastSampleAt.current = 0;
-        worldSfx.go(); // the run is LIVE — one clean beep, HUD flashes GO
+        worldSfx.go(); // the run is LIVE, one clean beep, HUD flashes GO
         onStart(mode, startedAt.current);
       }
       return;
@@ -2147,7 +2147,7 @@ export function GhostPlayer({ mode, startedAt }: { mode: string; startedAt: numb
     }
     const e = Date.now() - startedAt;
     if (e >= data[data.length - 1].t) {
-      el.visible = false; // the ghost has finished — it beat you to the line
+      el.visible = false; // the ghost has finished, it beat you to the line
       return;
     }
     if (e < data[idx.current]?.t) idx.current = 0;
@@ -2190,7 +2190,7 @@ export function GauntletHazards({
   onCp?: (idx: number, total: number) => void;
 }) {
   const lastReset = useRef(0);
-  const cpIdx = useRef(0); // ORDERED progress — the U cannot be short-cut
+  const cpIdx = useRef(0); // ORDERED progress, the U cannot be short-cut
   const sweeperNear = useRef<boolean[]>(GAUNTLET_SWEEPERS.map(() => false));
   const sweeperWhooshAt = useRef<number[]>(GAUNTLET_SWEEPERS.map(() => 0));
   const stomperPrevC = useRef<number[]>(GAUNTLET_STOMPERS.map(() => 0));
@@ -2404,7 +2404,7 @@ export function WeaponModel({ id }: { id: "pistol" | "revolver" | "smg" | "m4" |
           <boxGeometry args={[0.02, 0.02, 0.34]} />
           <meshStandardMaterial color="#3a3f47" metalness={0.6} roughness={0.35} />
         </mesh>
-        {/* the CYLINDER — six chambers */}
+        {/* the CYLINDER, six chambers */}
         <mesh position={[0, 0.02, 0.0]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.055, 0.055, 0.12, 6]} />
           <meshStandardMaterial color="#4a5058" metalness={0.7} roughness={0.3} flatShading />
@@ -2453,7 +2453,7 @@ export function WeaponModel({ id }: { id: "pistol" | "revolver" | "smg" | "m4" |
           <boxGeometry args={[0.09, 0.13, 0.5]} />
           <meshStandardMaterial color={GUN} metalness={0.5} roughness={0.4} />
         </mesh>
-        {/* the SCOPE — long tube, flared ends, blue-glass objective */}
+        {/* the SCOPE, long tube, flared ends, blue-glass objective */}
         <mesh position={[0, 0.13, 0.0]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.045, 0.045, 0.42, 12]} />
           <meshStandardMaterial color={DARK} metalness={0.5} roughness={0.3} />
@@ -2506,7 +2506,7 @@ export function WeaponModel({ id }: { id: "pistol" | "revolver" | "smg" | "m4" |
           <boxGeometry args={[0.06, 0.12, 0.08]} />
           <meshStandardMaterial color={DARK} roughness={0.5} />
         </mesh>
-        {/* LONG curved magazine — the smg silhouette */}
+        {/* LONG curved magazine, the smg silhouette */}
         <mesh position={[0, -0.2, 0.02]} rotation={[0.35, 0, 0]}>
           <boxGeometry args={[0.07, 0.3, 0.1]} />
           <meshStandardMaterial color={DARK} roughness={0.5} />
@@ -2558,14 +2558,14 @@ export interface WaveHud {
   wave: number;
   breather: boolean; // between waves
   breatherLeft: number; // seconds until the next wave hits (0 = none)
-  banner: string | null; // "WAVE 5" / "WAVE CLEARED" — the announce moment
+  banner: string | null; // "WAVE 5" / "WAVE CLEARED", the announce moment
   hurtAt: number; // last time a zombie connected (drives the red flash)
   hitAt: number; // last bolt that connected (crosshair hit marker)
   killAt: number; // last kill (bigger red pulse)
   critAt: number; // last HEADSHOT (gold pulse)
   popupAmt: number; // points bounty for the floating "+N"
   popupAt: number;
-  points: number; // kill currency — spend at the Mystery Box
+  points: number; // kill currency, spend at the Mystery Box
   weapon: string; // what you're holding
   mag: number; // rounds left in the magazine
   magsLeft: number; // spare magazines
@@ -2576,10 +2576,10 @@ export interface WaveHud {
   power: string | null; // active power-up (insta-kill) label, or null
   combo: number; // current kill streak (0 = no streak showing)
   comboMult: number; // the active points multiplier the streak has earned
-  comboAt: number; // last streak kill — the HUD bar drains from here
+  comboAt: number; // last streak kill, the HUD bar drains from here
   boss: number | null; // live boss HP fraction (0..1), null when no boss up
-  bossAt: number; // the boss's entrance — drives the red flash
-  grenades: number; // pocket answer count — G to throw
+  bossAt: number; // the boss's entrance, drives the red flash
+  grenades: number; // pocket answer count, G to throw
 }
 
 // ── Kill combo: chain kills inside the window and the bounty multiplies ──────
@@ -2594,7 +2594,7 @@ interface Zombie {
   alive: boolean;
   boss: boolean;
   kind: ZombieKind | "boss";
-  dieAt: number; // corpse window — the fall animation plays before the slot frees
+  dieAt: number; // corpse window, the fall animation plays before the slot frees
   seed: number;
   hitCooldownUntil: number;
 }
@@ -2626,8 +2626,8 @@ export const ZOMBIE_GAIT = { speed: 2.3 };
 export interface ZombieAnim {
   kind: ZombieKind | "boss";
   attackAt: number; // last bite lunge
-  dieAt: number; // the moment it died — drives the fall
-  hitAt: number; // last bolt that landed — drives the flinch
+  dieAt: number; // the moment it died, drives the fall
+  hitAt: number; // last bolt that landed, drives the flinch
 }
 
 function ZombieFigure({ boss, seed, idx, anims }: { boss: boolean; seed: number; idx: number; anims: { current: ZombieAnim[] } }) {
@@ -2692,7 +2692,7 @@ function ZombieFigure({ boss, seed, idx, anims }: { boss: boolean; seed: number;
   const shirt = boss ? "#3a2f2a" : seed % 3 > 1.5 ? "#54432f" : "#4a5d3a";
   return (
     <group ref={root}>
-      {/* minimal figure — many alive at once, so every mesh is a draw call
+      {/* minimal figure, many alive at once, so every mesh is a draw call
           multiplied by the horde. Legs + arms are hip/shoulder groups the gait
           loop swings; the head carries two glowing eyes. */}
       <group ref={body} rotation={[0.16, 0, 0]}>
@@ -2702,7 +2702,7 @@ function ZombieFigure({ boss, seed, idx, anims }: { boss: boolean; seed: number;
         <group ref={legR} position={[0.16, 0.84, 0.02]}>
           <mesh position={[0, -0.42, 0]}><boxGeometry args={[0.24, 0.84, 0.26]} /><meshStandardMaterial color="#3a3630" roughness={1} /></mesh>
         </group>
-        {/* torso — torn shirt (the horde's one shadow-caster: cheap, grounds it) */}
+        {/* torso, torn shirt (the horde's one shadow-caster: cheap, grounds it) */}
         <mesh position={[0, 1.12, 0]} castShadow><boxGeometry args={[0.62, 0.72, 0.36]} /><meshStandardMaterial color={shirt} roughness={1} /></mesh>
         {/* the exploder's volatile gut */}
         <mesh ref={belly} position={[0, 0.98, 0.16]} visible={false}>
@@ -2773,7 +2773,7 @@ export function ZombieWavesManager({
     const targetVec = new YVector3();
     const vehicles = Array.from({ length: ZOMBIE_CAP }, (_, i) => {
       const v = new Vehicle();
-      v.maxForce = 40; // snappy steering — matches the old instant-turn feel
+      v.maxForce = 40; // snappy steering, matches the old instant-turn feel
       v.boundingRadius = i >= 20 ? 1.5 : 1.0; // slots 20+ are the bosses
       v.updateNeighborhood = true;
       v.neighborhoodRadius = 3;
@@ -2862,7 +2862,7 @@ export function ZombieWavesManager({
   const dropRefs = useRef<(THREE.Group | null)[]>([]);
   const lastHud = useRef<WaveHud>({ hp: -1, kills: -1, wave: -1, breather: false, breatherLeft: 0, banner: null, hurtAt: 0, hitAt: 0, killAt: 0, critAt: 0, popupAmt: 0, popupAt: 0, points: -1, weapon: "", mag: -1, magsLeft: -1, reloading: false, zoomed: false, boxPrompt: null, boxMsg: null, power: null, combo: 0, comboMult: 1, comboAt: 0, boss: null, bossAt: 0, grenades: -1 });
   const trigger = useRef(false); // held for auto weapons
-  const zoomHeld = useRef(false); // right mouse — sniper scope
+  const zoomHeld = useRef(false); // right mouse, sniper scope
   const bobT = useRef(0); // viewmodel walk-bob clock
   const prevGunPos = useRef({ x: 0, z: 0 }); // planar speed estimate for the bob
   const baseFov = useRef<number | null>(null);
@@ -2986,7 +2986,7 @@ export function ZombieWavesManager({
         s.mag = s.weapon.magSize;
         s.magsLeft = s.weapon.mags;
         s.reloadUntil = 0;
-        s.boxMsg = `${s.weapon.name.toUpperCase()} — locked and loaded`;
+        s.boxMsg = `${s.weapon.name.toUpperCase()}, locked and loaded`;
         s.boxMsgUntil = now + 2200;
         worldSfx.purchase();
         return;
@@ -3002,7 +3002,7 @@ export function ZombieWavesManager({
         s.perkOwned = true;
         s.maxHp = 100 + ZOMBIE_PERK.hpBonus;
         s.hp = Math.min(s.maxHp, s.hp + ZOMBIE_PERK.hpBonus);
-        s.boxMsg = "VIGOR — +50 MAX HP";
+        s.boxMsg = "VIGOR, +50 MAX HP";
         s.boxMsgUntil = now + 2400;
         worldSfx.purchase();
         return;
@@ -3016,7 +3016,7 @@ export function ZombieWavesManager({
         }
         s.points -= ZOMBIE_PERK2.cost;
         s.perk2Owned = true;
-        s.boxMsg = "QUICK HANDS — RELOADS ~2× FASTER";
+        s.boxMsg = "QUICK HANDS, RELOADS ~2× FASTER";
         s.boxMsgUntil = now + 2400;
         worldSfx.purchase();
       }
@@ -3174,7 +3174,7 @@ export function ZombieWavesManager({
 
     // ── wave flow: breather → trickle spawns → clear → next wave
     const yk = yuka.current;
-    if (!yk) return; // effects run before the first frame — this is a TS guard
+    if (!yk) return; // effects run before the first frame, this is a TS guard
     let aliveCount = 0;
     for (const z of zombies.current) if (z.alive) aliveCount++;
     if (s.breatherUntil > now) {
@@ -3415,7 +3415,7 @@ export function ZombieWavesManager({
     const frozen = now < s.freezeUntil;
     const timeK = now < s.bossSlowUntil ? 0.35 : 1;
     const speedBase = zombieSpeed(s.wave);
-    ZOMBIE_GAIT.speed = speedBase * timeK; // every figure picks its gait off this — slow-mo reads in the animation too
+    ZOMBIE_GAIT.speed = speedBase * timeK; // every figure picks its gait off this, slow-mo reads in the animation too
     yk.targetVec.set(p.x, 0, p.z);
     if (!frozen) {
     zombies.current.forEach((z, i) => {
@@ -3462,13 +3462,13 @@ export function ZombieWavesManager({
         if (bite > 0) {
           s.hp = Math.max(0, s.hp - bite);
           s.hurtAt = now;
-          s.combo = 0; // one bite wipes the streak — that's the tension
+          s.combo = 0; // one bite wipes the streak, that's the tension
           arcadeShake.add(z.boss ? 0.4 : 0.28);
           worldSfx.hurt();
         }
       }
     });
-    } // end !frozen — the horde stands still through a hit-stop
+    } // end !frozen, the horde stands still through a hit-stop
 
     // ── kill drops: walk over one before it fades
     for (let i = drops.current.length - 1; i >= 0; i--) {
@@ -3492,7 +3492,7 @@ export function ZombieWavesManager({
       s.boxOfferUntil = now + BOX_OFFER_MS;
     }
     if (s.boxState === "offering") {
-      if (now > s.boxOfferUntil) { // stays the full BOX_OFFER_MS — no walk-away snatch
+      if (now > s.boxOfferUntil) { // stays the full BOX_OFFER_MS, no walk-away snatch
         s.boxState = "idle";
         s.boxOffer = null;
         s.boxMsg = `Kept your ${s.weapon.name.toUpperCase()}`;
@@ -3643,22 +3643,22 @@ export function ZombieWavesManager({
       ? s.boxState === "spinning"
         ? "…"
         : s.boxState === "offering" && s.boxOffer
-          ? `E — take the ${s.boxOffer.name.toUpperCase()} · walk away to keep your ${s.weapon.name.toUpperCase()}`
+          ? `E, take the ${s.boxOffer.name.toUpperCase()} · walk away to keep your ${s.weapon.name.toUpperCase()}`
           : s.points >= MYSTERY_BOX.cost
-            ? `E — open the Mystery Box (${MYSTERY_BOX.cost} pts)`
-            : `Mystery Box needs ${MYSTERY_BOX.cost} pts — you have ${s.points}`
+            ? `E, open the Mystery Box (${MYSTERY_BOX.cost} pts)`
+            : `Mystery Box needs ${MYSTERY_BOX.cost} pts, you have ${s.points}`
       : nearBuy
         ? s.points >= nearBuy.cost
-          ? `E — buy the ${WEAPONS[nearBuy.weapon].name.toUpperCase()} (${nearBuy.cost} pts)`
-          : `${WEAPONS[nearBuy.weapon].name.toUpperCase()} costs ${nearBuy.cost} pts — you have ${s.points}`
+          ? `E, buy the ${WEAPONS[nearBuy.weapon].name.toUpperCase()} (${nearBuy.cost} pts)`
+          : `${WEAPONS[nearBuy.weapon].name.toUpperCase()} costs ${nearBuy.cost} pts, you have ${s.points}`
         : nearPerk
           ? s.points >= ZOMBIE_PERK.cost
-            ? `E — VIGOR: +50 max HP (${ZOMBIE_PERK.cost} pts)`
-            : `VIGOR costs ${ZOMBIE_PERK.cost} pts — you have ${s.points}`
+            ? `E, VIGOR: +50 max HP (${ZOMBIE_PERK.cost} pts)`
+            : `VIGOR costs ${ZOMBIE_PERK.cost} pts, you have ${s.points}`
           : nearPerk2
             ? s.points >= ZOMBIE_PERK2.cost
-              ? `E — QUICK HANDS: reload ~2× faster (${ZOMBIE_PERK2.cost} pts)`
-              : `QUICK HANDS costs ${ZOMBIE_PERK2.cost} pts — you have ${s.points}`
+              ? `E, QUICK HANDS: reload ~2× faster (${ZOMBIE_PERK2.cost} pts)`
+              : `QUICK HANDS costs ${ZOMBIE_PERK2.cost} pts, you have ${s.points}`
             : null;
     const power = s.instaUntil > now ? "INSTA-KILL" : null;
     const reloading = s.reloadUntil > now;
@@ -3703,7 +3703,7 @@ export function ZombieWavesManager({
         <cylinderGeometry args={[0.035, 0.035, 1.6, 6]} />
         <meshStandardMaterial color="#ffe9a8" emissive="#ffc85e" emissiveIntensity={2.6} toneMapped={false} transparent opacity={0.9} />
       </instancedMesh>
-      {/* grenades — a pool of three tumbling shells */}
+      {/* grenades, a pool of three tumbling shells */}
       {Array.from({ length: 3 }, (_, i) => (
         <group key={`nade${i}`} ref={(el) => { nadeRefs.current[i] = el; }} visible={false}>
           <mesh castShadow>
@@ -3716,7 +3716,7 @@ export function ZombieWavesManager({
           </mesh>
         </group>
       ))}
-      {/* blood — droplet bursts */}
+      {/* blood, droplet bursts */}
       {Array.from({ length: 10 }, (_, i) => (
         <group key={`bl${i}`} ref={(el) => { splatRefs.current[i] = el; }} visible={false}>
           {DROP_DIRS.map((_, j) => (
@@ -3727,7 +3727,7 @@ export function ZombieWavesManager({
           ))}
         </group>
       ))}
-      {/* the Mystery Box — pay to OPEN it: the lid swings up, weapons spin
+      {/* the Mystery Box, pay to OPEN it: the lid swings up, weapons spin
           above it, and the offer hovers until you take it or walk away */}
       <group position={[MYSTERY_BOX.x, 0, MYSTERY_BOX.z]}>
         {/* wide stone dais with rune ring */}
@@ -3740,7 +3740,7 @@ export function ZombieWavesManager({
           <meshStandardMaterial color="#a78bfa" emissive="#8b5cf6" emissiveIntensity={0.9} toneMapped={false} transparent opacity={0.85} />
         </mesh>
         <group ref={boxRef} position={[0, 0.55, 0]}>
-          {/* chest body — big, ornate */}
+          {/* chest body, big, ornate */}
           <mesh position={[0, 0.15, 0]}>
             <boxGeometry args={[1.7, 0.95, 1.1]} />
             <meshStandardMaterial color="#3a2f4a" roughness={0.5} metalness={0.2} emissive="#6d28d9" emissiveIntensity={0.3} />
@@ -3764,7 +3764,7 @@ export function ZombieWavesManager({
             <boxGeometry args={[0.3, 0.3, 0.02]} />
             <meshStandardMaterial color="#c4b5fd" emissive="#a78bfa" emissiveIntensity={1.6} toneMapped={false} />
           </mesh>
-          {/* hinged lid — pivots at its back edge */}
+          {/* hinged lid, pivots at its back edge */}
           <group ref={boxLidRef} position={[0, 0.63, -0.55]}>
             <mesh position={[0, 0.13, 0.55]}>
               <boxGeometry args={[1.76, 0.26, 1.14]} />
@@ -3780,12 +3780,12 @@ export function ZombieWavesManager({
               <meshStandardMaterial color="#ffd76b" metalness={0.6} roughness={0.35} />
             </mesh>
           </group>
-          {/* the reveal beam — a glowing column while the box is open */}
+          {/* the reveal beam, a glowing column while the box is open */}
           <mesh ref={boxBeamRef} position={[0, 2.9, 0]} visible={false}>
             <cylinderGeometry args={[0.55, 1.05, 4.6, 14, 1, true]} />
             <meshStandardMaterial color="#c4b5fd" emissive="#a78bfa" emissiveIntensity={1.4} transparent opacity={0.32} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
           </mesh>
-          {/* the weapon carousel — LIT and BIG so the roll reads from anywhere */}
+          {/* the weapon carousel, LIT and BIG so the roll reads from anywhere */}
           {BOX_POOL.map((id, i) => (
             <group key={id} ref={(el) => { boxWeaponRefs.current[i] = el; }} visible={false} position={[0, 2.6, 0]} scale={1.9}>
               <WeaponModel id={id} />
@@ -3803,13 +3803,13 @@ export function ZombieWavesManager({
             <WeaponModel id={id} />
           </group>
         ))}
-        {/* the muzzle light — flashes on lastFire, decays in ~75ms (see useFrame) */}
+        {/* the muzzle light, flashes on lastFire, decays in ~75ms (see useFrame) */}
         <pointLight ref={muzzleLight} position={[0, -0.12, -1.15]} color="#ffc985" intensity={0} distance={11} decay={2} />
       </group>
-      {/* kill drops — a slot pool; the manager positions them and picks the icon */}
+      {/* kill drops, a slot pool; the manager positions them and picks the icon */}
       {Array.from({ length: 6 }, (_, i) => (
         <group key={`drop${i}`} ref={(el) => { dropRefs.current[i] = el; }} visible={false}>
-          {/* 0: MAX AMMO — an open ammo tin: lid thrown back, brass rows inside, a belt over the rim */}
+          {/* 0: MAX AMMO, an open ammo tin: lid thrown back, brass rows inside, a belt over the rim */}
           <group>
             <mesh position={[0, -0.12, 0]}><boxGeometry args={[0.54, 0.24, 0.36]} /><meshStandardMaterial color="#3f4a3a" roughness={0.55} metalness={0.35} /></mesh>
             <mesh position={[0, -0.02, -0.26]} rotation={[-2.2, 0, 0]}><boxGeometry args={[0.54, 0.03, 0.3]} /><meshStandardMaterial color="#37412f" roughness={0.6} metalness={0.3} /></mesh>
@@ -3828,7 +3828,7 @@ export function ZombieWavesManager({
             ))}
             <pointLight position={[0, 0.35, 0]} color="#ffd27a" intensity={0.9} distance={2.5} />
           </group>
-          {/* 1: INSTA-KILL — the skull: domed cranium, brow, cheekbones, nasal cavity, hinged jaw, a crack */}
+          {/* 1: INSTA-KILL, the skull: domed cranium, brow, cheekbones, nasal cavity, hinged jaw, a crack */}
           <group scale={1.3}>
             <mesh position={[0, 0.08, -0.02]} scale={[1, 0.96, 1.08]}><sphereGeometry args={[0.24, 14, 12]} /><meshStandardMaterial color="#e8e3d6" roughness={0.8} /></mesh>
             {/* brow ridge over the sockets */}
@@ -3850,7 +3850,7 @@ export function ZombieWavesManager({
             {[-0.08, -0.04, 0, 0.04, 0.08].map((dx) => (
               <mesh key={`ut${dx}`} position={[dx, -0.15, 0.17]}><boxGeometry args={[0.028, 0.05, 0.02]} /><meshStandardMaterial color="#f2eee2" roughness={0.8} /></mesh>
             ))}
-            {/* the mandible — slightly ajar, hinge knobs at the jawline */}
+            {/* the mandible, slightly ajar, hinge knobs at the jawline */}
             <mesh position={[0, -0.22, 0.05]} rotation={[0.18, 0, 0]}><boxGeometry args={[0.26, 0.09, 0.17]} /><meshStandardMaterial color="#dcd6c6" roughness={0.9} /></mesh>
             {[-0.14, 0.14].map((dx) => (
               <mesh key={`hj${dx}`} position={[dx, -0.14, 0.02]}><sphereGeometry args={[0.035, 6, 6]} /><meshStandardMaterial color="#d3cdbd" roughness={0.9} /></mesh>
@@ -3861,7 +3861,7 @@ export function ZombieWavesManager({
             {/* the crack across the crown */}
             <mesh position={[0.07, 0.22, 0.06]} rotation={[0.3, 0.4, 0.9]}><boxGeometry args={[0.2, 0.012, 0.012]} /><meshStandardMaterial color="#4a453c" roughness={1} /></mesh>
           </group>
-          {/* 2: FULL HEALTH — a white medkit with the red cross */}
+          {/* 2: FULL HEALTH, a white medkit with the red cross */}
           <group>
             <mesh><boxGeometry args={[0.52, 0.34, 0.36]} /><meshStandardMaterial color="#f4f1ea" roughness={0.6} /></mesh>
             <mesh position={[0, 0.18, 0]}><boxGeometry args={[0.2, 0.05, 0.12]} /><meshStandardMaterial color="#c9c4b8" roughness={0.6} /></mesh>
@@ -3906,14 +3906,14 @@ export function MinigamesOverlay({
             <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
           </div>
           <p className="text-sm text-gray-500 mb-4">
-            Compete in the world&apos;s arenas — every finish posts to the weekly and all-time leaderboards.
+            Compete in the world&apos;s arenas, every finish posts to the weekly and all-time leaderboards.
           </p>
 
-          {/* the gate — checked HERE, before you ever enter a mode */}
+          {/* the gate, checked HERE, before you ever enter a mode */}
           {gate === "guest" && (
             <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm text-amber-800">
-                Minigames need a Phantom sign-in — and the wallet must hold{" "}
+                Minigames need a Phantom sign-in, and the wallet must hold{" "}
                 <span className="font-bold">{required.toLocaleString()} $AXON</span> to play.
               </p>
               <button
@@ -3940,7 +3940,7 @@ export function MinigamesOverlay({
           )}
           {gate === "eligible" && (
             <div className="mb-4 rounded-xl bg-teal-50 border border-teal-200 px-4 py-3">
-              <p className="text-sm text-teal-800">✓ Wallet verified — {required.toLocaleString()} $AXON held. Pick your game.</p>
+              <p className="text-sm text-teal-800">✓ Wallet verified, {required.toLocaleString()} $AXON held. Pick your game.</p>
             </div>
           )}
 

@@ -19,11 +19,11 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ runId: string }> }): Promise<Metadata> {
   const { runId } = await params;
   const run = getPublishedGrowRun(runId);
-  if (!run) return { title: "Mission — Axon" };
+  if (!run) return { title: "Mission | Axon" };
 
   // Grapheme-safe: slicing by code unit cut an emoji in half here and served a
   // mangled character in the title every shared link previews with.
-  const title = `${cutWithEllipsis(run.mission, 90)} — Axon Mission`;
+  const title = `${cutWithEllipsis(run.mission, 90)} | Axon Mission`;
 
   // The numbers are the point of the share, so they go in the card text rather
   // than a line that reads the same for every mission.
@@ -62,7 +62,7 @@ export default async function PublicMissionPage({ params }: { params: Promise<{ 
       <div className="max-w-3xl mx-auto px-6 pt-32 pb-24">
         <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">A MISSION</p>
         {/* A brief can run to 2 000 characters. Unclamped it becomes a dozen lines
-            of heading and pushes the result — the thing anyone came to see —
+            of heading and pushes the result, the thing anyone came to see, 
             below the fold. Clamp it here and keep the whole thing available. */}
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 leading-snug line-clamp-3 break-words">
           {m.mission}
@@ -127,7 +127,7 @@ export default async function PublicMissionPage({ params }: { params: Promise<{ 
                       for {s.capability}
                     </>
                   ) : (
-                    <>Did {s.capability} itself — no specialist was available</>
+                    <>Did {s.capability} itself, no specialist was available</>
                   )}
                 </p>
                 <p className="mt-0.5 text-xs font-mono text-gray-400 dark:text-gray-500">
@@ -161,7 +161,7 @@ export default async function PublicMissionPage({ params }: { params: Promise<{ 
               </Link>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Every step above is chained into one record —{" "}
+              Every step above is chained into one record, {" "}
               <code className="font-mono text-xs">{m.receipt.hash.slice(0, 16)}…</code>
             </p>
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">

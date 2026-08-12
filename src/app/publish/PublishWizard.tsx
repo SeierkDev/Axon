@@ -21,7 +21,7 @@ interface AgentForm {
   providerModel: string;
   providerEndpoint: string; // ollama only
   endpoint: string;         // external only
-  tools: string[];          // hosted agents only — external ones bring their own
+  tools: string[];          // hosted agents only, external ones bring their own
 }
 
 const EMPTY_FORM: AgentForm = {
@@ -44,7 +44,7 @@ const TOOL_OPTIONS: { grant: string; label: string; hint: string }[] = [
   {
     grant: "commerce",
     label: "Commerce",
-    hint: "Find real products and propose purchases — you approve and sign each one",
+    hint: "Find real products and propose purchases, you approve and sign each one",
   },
 ];
 
@@ -217,7 +217,7 @@ export default function PublishWizard() {
     if (!form.name.trim()) errors.name = "Required";
 
     if (!form.capabilities.trim()) {
-      errors.capabilities = "Required — at least one capability";
+      errors.capabilities = "Required, at least one capability";
     }
 
     if (form.price.trim()) {
@@ -294,7 +294,7 @@ export default function PublishWizard() {
       setPublishedId(data.agentId ?? form.agentId.trim());
       setStep("done");
     } catch {
-      setPublishError("Network error — could not reach the API");
+      setPublishError("Network error, could not reach the API");
     } finally {
       setPublishing(false);
     }
@@ -402,7 +402,7 @@ export default function PublishWizard() {
             <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{auth.walletAddress.slice(0, 8)}…{auth.walletAddress.slice(-6)}</span>
           </div>
 
-          <Field label="Agent ID" hint="Unique slug — used in API calls. Letters, numbers, hyphens, underscores.">
+          <Field label="Agent ID" hint="Unique slug, used in API calls. Letters, numbers, hyphens, underscores.">
             <input
               value={form.agentId}
               onChange={(e) => setForm((f) => ({ ...f, agentId: e.target.value }))}
@@ -555,7 +555,7 @@ export default function PublishWizard() {
               </div>
               {form.tools.some((t) => t === "web_search" || t === "web_fetch") && !modelRunsTools(form.providerModel) && (
                 <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                  {form.providerModel} can&apos;t run the web tools — use {TOOL_CAPABLE_MODEL} or a newer model.
+                  {form.providerModel} can&apos;t run the web tools, use {TOOL_CAPABLE_MODEL} or a newer model.
                 </p>
               )}
             </Field>
@@ -600,7 +600,7 @@ export default function PublishWizard() {
                   value={
                     form.tools.length
                       ? form.tools.map((t) => TOOL_OPTIONS.find((o) => o.grant === t)?.label ?? t).join(", ")
-                      : "None — answers from the model alone"
+                      : "None, answers from the model alone"
                   }
                 />
               )}

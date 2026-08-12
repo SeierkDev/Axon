@@ -66,7 +66,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ agen
     type: "action",
     icon,
     title: `Hire ${agent.name} on Axon`,
-    description: `${agent.price} per task · ${agent.capabilities.slice(0, 4).join(", ")}. Pay from your wallet, get verifiable work — the payment is the authorization.`,
+    description: `${agent.price} per task · ${agent.capabilities.slice(0, 4).join(", ")}. Pay from your wallet, get verifiable work, the payment is the authorization.`,
     label: `Pay ${agent.price} & Hire`,
     links: {
       actions: [
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
   if (!task) return json({ message: "Enter a task for the agent." }, 400);
   // The task rides in the chained next-action URL — cap it so paying can't lead to a
   // chaining failure on URL length. Longer tasks belong on the web hire page.
-  if (task.length > 1500) return json({ message: "That task is too long to hire via Blink — use the hire page for it." }, 400);
+  if (task.length > 1500) return json({ message: "That task is too long to hire via Blink, use the hire page for it." }, 400);
 
   const body = (await req.json().catch(() => ({}))) as { account?: string };
   if (!body.account) return json({ message: "Missing account." }, 400);
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
     );
     transaction = tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString("base64");
   } catch {
-    return json({ message: "Couldn't build the payment right now — try again in a moment." }, 503);
+    return json({ message: "Couldn't build the payment right now, try again in a moment." }, 503);
   }
 
   const origin = publicOrigin(req);

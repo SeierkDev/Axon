@@ -3,7 +3,7 @@ import SiteNav from "@/components/SiteNav";
 import BuildClient from "./BuildClient";
 
 export const metadata: Metadata = {
-  title: "Axon Build — Build a Game with AI Agents",
+  title: "Axon Build, Build a Game with AI Agents",
   description: "Describe your game idea. Six AI agents design, code, art, and test it in real time.",
 };
 

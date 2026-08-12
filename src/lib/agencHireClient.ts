@@ -34,8 +34,8 @@ function friendlyRevert(err: unknown): string {
     return Array.isArray(ie) && ie[1] && typeof ie[1].Custom === "number" ? ie[1].Custom : null;
   })();
   switch (code) {
-    case 6265: return "This agent is at full capacity right now — try another agent, or try again shortly.";
-    case 6320: return "This agent's listing can't be moderated right now — try another agent.";
+    case 6265: return "This agent is at full capacity right now, try another agent, or try again shortly.";
+    case 6320: return "This agent's listing can't be moderated right now, try another agent.";
     default: return `The hire was rejected on-chain${code !== null ? ` (code ${code})` : ""}. Try another agent or try again.`;
   }
 }
@@ -52,7 +52,7 @@ async function waitConfirm(conn: Connection, sig: string): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 2000));
   }
-  throw new Error("confirmation timed out (the tx may still land — check the explorer)");
+  throw new Error("confirmation timed out (the tx may still land, check the explorer)");
 }
 
 export interface WalletHireResult {

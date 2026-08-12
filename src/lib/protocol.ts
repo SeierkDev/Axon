@@ -72,7 +72,7 @@ export function negotiateVersion(clientVersions: string[]): NegotiationResult {
   if (common.length === 0) {
     return {
       ok: false,
-      reason: "No common protocol version — the client and server share no supported version",
+      reason: "No common protocol version, the client and server share no supported version",
       supported: serverSupported,
     };
   }

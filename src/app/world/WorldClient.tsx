@@ -26,7 +26,7 @@ function WebGLUnsupported() {
         </p>
         <ul className="text-left text-gray-700 text-sm space-y-2 mb-2">
           <li>1. Open <span className="font-mono bg-gray-100 px-1 rounded">chrome://settings/system</span> and turn on <b>“Use hardware acceleration when available”</b>, then relaunch.</li>
-          <li>2. Still blank? Check <span className="font-mono bg-gray-100 px-1 rounded">chrome://gpu</span> — if WebGL shows “Disabled”, fully quit and reopen Chrome.</li>
+          <li>2. Still blank? Check <span className="font-mono bg-gray-100 px-1 rounded">chrome://gpu</span>, if WebGL shows “Disabled”, fully quit and reopen Chrome.</li>
           <li>3. Or open this page in another browser (Safari, Firefox, Edge).</li>
         </ul>
       </div>

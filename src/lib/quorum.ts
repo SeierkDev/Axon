@@ -139,7 +139,7 @@ export function onChildTaskCompleted(quorumId: string): void {
   `).run(winner.output, winner.to_agent, now, quorumId);
   void syncToTurso();
 
-  logger.info("quorum.completed", "Quorum reached threshold — result accepted", {
+  logger.info("quorum.completed", "Quorum reached threshold, result accepted", {
     quorumId,
     acceptedAgent: winner.to_agent,
     completedCount: completed_count,
@@ -172,7 +172,7 @@ export function onChildTaskFailed(quorumId: string): void {
   `).run(now, quorumId);
   void syncToTurso();
 
-  logger.warn("quorum.failed", "Quorum failed — too many agent failures to meet threshold", {
+  logger.warn("quorum.failed", "Quorum failed, too many agent failures to meet threshold", {
     quorumId,
     failedCount: failed_count,
     agentCount: quorum.agent_count,

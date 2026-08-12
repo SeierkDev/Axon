@@ -517,7 +517,7 @@ class WorldSfx {
   /** The boss walks in — a detuned double growl under a horn blast. */
   bossRoar(): void {
     this.tone(55, 0.9, 0.2, "sawtooth", 42);
-    this.tone(58.5, 0.9, 0.16, "sawtooth", 44); // beating detune — the dread
+    this.tone(58.5, 0.9, 0.16, "sawtooth", 44); // beating detune, the dread
     this.tone(110, 0.55, 0.14, "sawtooth", 104, 0.15);
     this.burst(0.5, 0.18, "lowpass", 420, 100, 0.05);
   }
@@ -536,7 +536,7 @@ class WindLoop {
   private gain: GainNode | null = null;
   private filter: BiquadFilterNode | null = null;
   private src: AudioBufferSourceNode | null = null;
-  private active = false; // one context per life — stop() suspends, start() resumes
+  private active = false; // one context per life, stop() suspends, start() resumes
 
   start(): void {
     if (this.active || !worldSfx.enabled) return;
@@ -623,11 +623,11 @@ export class ZombieMusic {
   private timer: ReturnType<typeof setInterval> | null = null;
   private nextBarTime = 0;
   private bar = 0;
-  private active = false; // one context per class life — stop() suspends, start() resumes
+  private active = false; // one context per class life, stop() suspends, start() resumes
   // Live game state, written by the wave manager each frame (cheap setters) and
   // read at bar-schedule time: the LOOP ITSELF escalates with the fight.
   private intensity = 0; // 0..1, from the wave number
-  private breather = false; // between waves — the beat thins out
+  private breather = false; // between waves, the beat thins out
   private duck = 1; // low-HP ducking multiplier
 
   get playing(): boolean {

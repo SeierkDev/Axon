@@ -47,7 +47,7 @@ export async function POST(
     if (Number.isFinite(lastAt) && Date.now() - lastAt < STRANDED_AFTER_MS) {
       return apiError(
         "CONFLICT",
-        "This mission is still working — give it a few minutes before resuming, or stop it first",
+        "This mission is still working, give it a few minutes before resuming, or stop it first",
         409,
         { lastActivityAt: new Date(lastAt).toISOString() },
       );
@@ -70,7 +70,7 @@ export async function POST(
     } catch (err) {
       return apiError(
         "UPSTREAM_ERROR",
-        `Could not finish the mission — ${err instanceof Error ? err.message : "the agent's model did not respond"}`,
+        `Could not finish the mission, ${err instanceof Error ? err.message : "the agent's model did not respond"}`,
         502,
       );
     }

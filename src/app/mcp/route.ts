@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   // JSON-RPC batching isn't supported — say so instead of silently accepting.
   if (Array.isArray(msg)) {
     return NextResponse.json(
-      { jsonrpc: "2.0", id: null, error: { code: -32600, message: "batch requests are not supported — send one message per request" } },
+      { jsonrpc: "2.0", id: null, error: { code: -32600, message: "batch requests are not supported, send one message per request" } },
       { status: 400, headers: CORS_HEADERS },
     );
   }

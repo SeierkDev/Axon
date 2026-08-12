@@ -68,7 +68,7 @@ export async function executeDailyBurn(): Promise<BurnResult> {
 
   if (pendingUsdc < MIN_BURN_USDC) {
     // Mark as skipped so they carry over — they'll be picked up next run
-    logger.info("burn.skipped", "Daily burn skipped — below threshold", { pendingUsdc, min: MIN_BURN_USDC });
+    logger.info("burn.skipped", "Daily burn skipped, below threshold", { pendingUsdc, min: MIN_BURN_USDC });
     return { skipped: true, reason: `Below minimum threshold ($${MIN_BURN_USDC} USDC)`, pendingUsdc, txIds };
   }
 
@@ -116,7 +116,7 @@ export async function executeDailyBurn(): Promise<BurnResult> {
     axonReceived = Number(quote.outAmount) / 10 ** AXON_DECIMALS;
     logger.info("burn.swapped", "Swapped USDC for $AXON", { pendingUsdc, axonReceived, swapSignature });
   } catch (err) {
-    logger.error("burn.swap_failed", "Jupiter swap failed — burn aborted", { err, pendingUsdc });
+    logger.error("burn.swap_failed", "Jupiter swap failed, burn aborted", { err, pendingUsdc });
     throw err;
   }
 

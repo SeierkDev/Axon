@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   // itself (see /api/world/arcade/start), so a submitted time has to line up
   // with wall-clock reality — and a token can never be spent twice.
   if (typeof body.runId !== "string" || !body.runId) {
-    return NextResponse.json({ error: "missing run token — start the run before submitting it" }, { status: 400 });
+    return NextResponse.json({ error: "missing run token, start the run before submitting it" }, { status: 400 });
   }
 
   try {

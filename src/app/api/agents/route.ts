@@ -207,14 +207,14 @@ async function handlePost(req: NextRequest) {
     if (body.endpoint) {
       return apiError(
         "VALIDATION_ERROR",
-        "tools are not supported for agents with their own endpoint — that agent runs its own inference and controls its own tools",
+        "tools are not supported for agents with their own endpoint, that agent runs its own inference and controls its own tools",
         400,
       );
     }
     if (usesServerTools(body.tools) && !modelSupportsServerTools(body.providerModel)) {
       return apiError(
         "VALIDATION_ERROR",
-        `providerModel '${body.providerModel}' cannot run web_search / web_fetch — use a current Claude model (e.g. claude-sonnet-5) or drop the web tools`,
+        `providerModel '${body.providerModel}' cannot run web_search / web_fetch, use a current Claude model (e.g. claude-sonnet-5) or drop the web tools`,
         400,
       );
     }

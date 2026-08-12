@@ -164,7 +164,7 @@ export function enforceSlaDeadlines(now: string = new Date().toISOString()): { b
   const breached: string[] = [];
   for (const { taskId } of due) {
     try {
-      if (failTask(taskId, "SLA deadline exceeded — task not delivered in time")) {
+      if (failTask(taskId, "SLA deadline exceeded, task not delivered in time")) {
         db.prepare("UPDATE task_slas SET status='breached', resolved_at=? WHERE task_id=?").run(now, taskId);
         refundPayment(taskId);
         breached.push(taskId);

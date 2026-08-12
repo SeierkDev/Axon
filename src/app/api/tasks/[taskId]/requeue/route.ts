@@ -25,7 +25,7 @@ export async function POST(
     if (!canAccess) return apiError("FORBIDDEN", "API key does not have access to this task", 403);
 
     if (task.status !== "failed") {
-      return apiError("VALIDATION_ERROR", `Task is '${task.status}' — only failed tasks can be requeued`, 400);
+      return apiError("VALIDATION_ERROR", `Task is '${task.status}', only failed tasks can be requeued`, 400);
     }
 
     const requeued = requeueTask(taskId);

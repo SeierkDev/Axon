@@ -55,7 +55,7 @@ function isCircuitOpen(agentId: string): boolean {
   if (c.state === "closed") return false;
   if (c.state === "open" && Date.now() - c.openedAt >= CIRCUIT_RECOVERY_WINDOW_MS) {
     c.state = "half-open";
-    logger.info("worker.circuit_half_open", "Circuit breaker half-open — allowing probe task", { agentId });
+    logger.info("worker.circuit_half_open", "Circuit breaker half-open, allowing probe task", { agentId });
   }
   return c.state === "open";
 }
@@ -80,7 +80,7 @@ function recordCircuitFailure(agentId: string): void {
   if (c.state === "closed" && c.failures >= CIRCUIT_FAILURE_THRESHOLD) {
     c.state = "open";
     c.openedAt = Date.now();
-    logger.error("worker.circuit_opened", "Circuit breaker opened — agent failing repeatedly", {
+    logger.error("worker.circuit_opened", "Circuit breaker opened, agent failing repeatedly", {
       agentId, consecutiveFailures: c.failures, recoveryWindowMs: CIRCUIT_RECOVERY_WINDOW_MS,
     });
   }
@@ -170,7 +170,7 @@ async function processTasks() {
     if (agent.endpoint && !mcpHandler && !agent.orchestrator) return;
 
     if (isCircuitOpen(agent.agentId)) {
-      logger.info("worker.circuit_skipped", "Skipping agent — circuit breaker open", { agentId: agent.agentId });
+      logger.info("worker.circuit_skipped", "Skipping agent, circuit breaker open", { agentId: agent.agentId });
       return;
     }
 

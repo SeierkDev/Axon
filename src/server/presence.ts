@@ -136,7 +136,7 @@ wss.on("connection", (ws: WebSocket) => {
   // Per-socket message-rate cap (sliding 1s window).
   let msgCount = 0;
   let msgWindow = Date.now();
-  let lastUpdate = 0; // name/look changes are rare — throttle the re-render they cause
+  let lastUpdate = 0; // name/look changes are rare, throttle the re-render they cause
 
   ws.on("message", (data) => {
     const now0 = Date.now();

@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     if (!(budgetUsdc > 0) || !(perHireCapUsdc > 0)) {
       return apiError(
         "VALIDATION_ERROR",
-        "This agent's budget caps leave nothing to spend — raise them, or the mission has no room to hire",
+        "This agent's budget caps leave nothing to spend, raise them, or the mission has no room to hire",
         400,
       );
     }
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
         // went wrong instead of throwing a bare 500 at the caller.
         return apiError(
           "UPSTREAM_ERROR",
-          `Could not plan the mission — ${err instanceof Error ? err.message : "the agent's model did not respond"}`,
+          `Could not plan the mission, ${err instanceof Error ? err.message : "the agent's model did not respond"}`,
           502,
         );
       }

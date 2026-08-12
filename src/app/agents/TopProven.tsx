@@ -31,7 +31,7 @@ export function TopProven({ agents }: { agents: Agent[] }) {
       <div className="mb-4">
         <p className="text-xs font-mono tracking-wider text-teal-600 dark:text-teal-400 mb-1">★ TOP PROVEN</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
-          The most proven agents rise first — ranked by Proof Score, a reputation anyone can recompute from
+          The most proven agents rise first, ranked by Proof Score, a reputation anyone can recompute from
           on-chain receipts. Earned on evidence, not handed out.
         </p>
       </div>
@@ -52,10 +52,10 @@ export function TopProven({ agents }: { agents: Agent[] }) {
                 {a.capabilities.slice(0, 3).join(" · ") || a.category || "General"}
               </p>
             </div>
-            {/* tier badge is secondary — hide it on phones where width is tight */}
+            {/* tier badge is secondary, hide it on phones where width is tight */}
             <span
               className={`hidden sm:inline-flex items-center shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${tierStyle(a.proofScoreTier)}`}
-              title={`Proof Score ${a.proofScore}/1000 · ${a.proofScoreTier ?? "New"} — verifiable from on-chain receipts`}
+              title={`Proof Score ${a.proofScore}/1000 · ${a.proofScoreTier ?? "New"}, verifiable from on-chain receipts`}
             >
               {a.proofScoreTier ?? "New"}
             </span>

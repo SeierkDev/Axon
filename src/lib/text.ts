@@ -24,7 +24,7 @@ export function cut(s: string, max: number): string {
 
   const units: string[] = segmenter
     ? Array.from(segmenter.segment(s), (seg) => seg.segment)
-    : Array.from(s); // code points — still never splits a surrogate pair
+    : Array.from(s); // code points, still never splits a surrogate pair
   if (units.length <= max) return s;
   return units.slice(0, max).join("");
 }

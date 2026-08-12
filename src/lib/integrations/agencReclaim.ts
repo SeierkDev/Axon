@@ -22,11 +22,11 @@ import { guardTx, AGENC_PROGRAM } from "./txGuard";
 const RPC_URL = process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com";
 
 export type DeliveryState =
-  | "awaiting" // Open / InProgress — worker hasn't delivered; escrow reclaimable
-  | "in_review" // PendingValidation — delivered, under validation; don't reclaim
-  | "delivered" // Completed — work accepted, escrow paid out
-  | "reclaimed" // Cancelled — escrow returned to you
-  | "disputed" // Disputed — in dispute resolution
+  | "awaiting" // Open / InProgress, worker hasn't delivered; escrow reclaimable
+  | "in_review" // PendingValidation, delivered, under validation; don't reclaim
+  | "delivered" // Completed, work accepted, escrow paid out
+  | "reclaimed" // Cancelled, escrow returned to you
+  | "disputed" // Disputed, in dispute resolution
   | "gone"; // account closed / never existed
 
 export interface Delivery {
@@ -83,7 +83,7 @@ export class NotReclaimableError extends Error {} // a state conflict (409), not
 export async function prepareCancel(opts: { taskPda: string; buyerPubkey: string }): Promise<{ cancelTx: string }> {
   const delivery = await getDelivery(opts.taskPda);
   if (delivery.state === "gone") {
-    throw new NotReclaimableError("this hire's task account can't be read on-chain — nothing to reclaim");
+    throw new NotReclaimableError("this hire's task account can't be read on-chain, nothing to reclaim");
   }
   if (!delivery.reclaimable) {
     const why =
@@ -91,7 +91,7 @@ export async function prepareCancel(opts: { taskPda: string; buyerPubkey: string
       : delivery.state === "in_review" ? "the work was delivered and is under review"
       : delivery.state === "reclaimed" ? "the escrow was already reclaimed"
       : "it's in dispute";
-    throw new NotReclaimableError(`this hire can't be reclaimed — ${why}`);
+    throw new NotReclaimableError(`this hire can't be reclaimed, ${why}`);
   }
 
   const rpc = createSolanaRpc(RPC_URL);

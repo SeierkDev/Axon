@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 
-export const metadata = { title: "Not Found — Axon" };
+export const metadata = { title: "Not Found | Axon" };
 
 export default function NotFound() {
   return (

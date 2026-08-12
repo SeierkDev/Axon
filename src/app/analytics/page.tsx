@@ -4,7 +4,7 @@ import { StatCards, AnimatedBars, LeaderboardRows } from "./AnimatedStats";
 import SiteNav from "@/components/SiteNav";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Network Analytics — Axon" };
+export const metadata = { title: "Network Analytics | Axon" };
 
 export default async function AnalyticsPage() {
   const stats = getNetworkStats();

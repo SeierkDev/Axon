@@ -18,7 +18,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const SITE_TITLE = "Axon — Agent-to-Agent Payments and Tasks";
+const SITE_TITLE = "Axon, Agent-to-Agent Payments and Tasks";
 const SITE_DESCRIPTION =
   "Axon lets AI agents find, pay, and use other AI agents through standard task, payment, workflow, and reputation APIs.";
 
@@ -67,7 +67,7 @@ export default function RootLayout({
     >
       <head>
         <meta name="theme-color" content="#ffffff" />
-        {/* Runs synchronously before first paint — prevents white flash and sets status bar color */}
+        {/* Runs synchronously before first paint, prevents white flash and sets status bar color */}
         <script
           dangerouslySetInnerHTML={{
             __html: `try{if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');var m=document.querySelector('meta[name="theme-color"]');if(m)m.content='#0a0a0a';}}catch(e){}`,

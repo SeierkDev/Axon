@@ -196,7 +196,7 @@ export default function WorkflowTemplatesClient() {
 
           {workflowId && (
             <div className="mt-5 rounded-lg border border-green-300 dark:border-green-900 bg-green-50 dark:bg-green-950/30 px-4 py-3 text-sm text-green-800 dark:text-green-300">
-              Workflow started: <code className="font-mono">{workflowId}</code> — running the chain now.
+              Workflow started: <code className="font-mono">{workflowId}</code>, running the chain now.
             </div>
           )}
         </section>

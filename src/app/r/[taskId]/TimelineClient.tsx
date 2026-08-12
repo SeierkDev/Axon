@@ -55,7 +55,7 @@ const KIND_META: Record<TraceEvent["kind"], { label: string; dot: string; text: 
 };
 
 function short(hash: string | null): string {
-  if (!hash) return "—";
+  if (!hash) return "No data";
   return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
 }
 function fmtLatency(ms: number | null): string | null {
@@ -160,7 +160,7 @@ export default function TimelineClient({ taskId }: { taskId: string }) {
               ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
               : "bg-red-500/15 text-red-300 border-red-500/40"
           }`}
-          title={t.verified ? "Every event's hash recomputes and the chain links are intact." : "The hash chain does not recompute — an event was altered."}
+          title={t.verified ? "Every event's hash recomputes and the chain links are intact." : "The hash chain does not recompute, an event was altered."}
         >
           {t.verified ? "✓ Chain verified" : "✗ Chain broken"}
         </span>
@@ -247,7 +247,7 @@ export default function TimelineClient({ taskId }: { taskId: string }) {
               </div>
               {(e.fromName || e.toName || e.toAgent) && (e.kind === "step.model" || e.kind === "task.created") && (
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {e.fromName ?? e.fromAgent ?? "—"} <span className="text-teal-500">→</span> {e.toName ?? e.toAgent ?? "—"}
+                  {e.fromName ?? e.fromAgent ?? "No data"} <span className="text-teal-500">→</span> {e.toName ?? e.toAgent ?? "No data"}
                 </p>
               )}
               {chips.length > 0 && (
@@ -269,7 +269,7 @@ export default function TimelineClient({ taskId }: { taskId: string }) {
 
       <div className="px-7 py-3 bg-white/[0.03] border-t border-white/10">
         <p className="text-[11px] text-gray-500">
-          Each event commits to the previous event&apos;s hash — altering any past step breaks the chain. Content stays private; only hashes are shown.
+          Each event commits to the previous event&apos;s hash, altering any past step breaks the chain. Content stays private; only hashes are shown.
         </p>
       </div>
     </div>

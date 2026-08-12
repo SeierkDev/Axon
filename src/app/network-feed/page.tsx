@@ -5,7 +5,7 @@ import SiteNav from "@/components/SiteNav";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Network Feed — Axon" };
+export const metadata: Metadata = { title: "Network Feed | Axon" };
 
 const TYPE_LABEL: Record<string, string> = {
   snapshot: "Network Update",

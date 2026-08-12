@@ -98,7 +98,7 @@ export default function DiscloseClient({ taskId }: { taskId: string }) {
       <div className="px-7 pt-6 pb-4 border-b border-white/10">
         <p className="text-[11px] tracking-[0.3em] font-mono text-violet-400">SELECTIVE DISCLOSURE</p>
         <p className="text-[11px] text-gray-500 mt-1">
-          Prove one fact from this receipt without revealing the rest — every other field stays an opaque hash.
+          Prove one fact from this receipt without revealing the rest, every other field stays an opaque hash.
         </p>
         <p className="text-[11px] text-gray-600 mt-2 font-mono break-all" title={commitment.root}>
           commitment root {short(commitment.root)}
@@ -154,7 +154,7 @@ export default function DiscloseClient({ taskId }: { taskId: string }) {
                 <button
                   key={d.field}
                   onClick={() => toggle(d.field)}
-                  title="This predicate is false for this receipt — disclosing it proves it is false."
+                  title="This predicate is false for this receipt, disclosing it proves it is false."
                   className={`text-xs rounded-full border px-3 py-1.5 transition opacity-70 ${
                     on ? "border-amber-400/50 bg-amber-500/15 text-amber-200" : "border-white/10 bg-white/[0.02] text-gray-500 hover:border-white/20"
                   }`}
@@ -178,7 +178,7 @@ export default function DiscloseClient({ taskId }: { taskId: string }) {
           <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-2">
             <div className="flex items-center justify-between gap-3">
               <span className={`text-xs font-semibold ${verify === "ok" ? "text-emerald-300" : verify === "bad" ? "text-amber-300" : "text-gray-400"}`}>
-                {verify === "ok" ? "✓ Verified — folds to the receipt's root" : verify === "bad" ? "✗ Did not verify" : "…"}
+                {verify === "ok" ? "✓ Verified, folds to the receipt's root" : verify === "bad" ? "✗ Did not verify" : "…"}
               </span>
               <button
                 onClick={() => { navigator.clipboard?.writeText(JSON.stringify(bundle, null, 2)); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
@@ -189,7 +189,7 @@ export default function DiscloseClient({ taskId }: { taskId: string }) {
             </div>
             <p className="text-[11px] text-gray-500">
               This bundle proves {bundle.disclosures.length} fact{bundle.disclosures.length !== 1 ? "s" : ""} and nothing else.
-              Anyone can fold each path to the root — no key, no access to the rest of the receipt.
+              Anyone can fold each path to the root, no key, no access to the rest of the receipt.
             </p>
             <pre className="text-[10px] font-mono text-gray-400 overflow-x-auto max-h-52 whitespace-pre-wrap break-all">
               {JSON.stringify(bundle, null, 2)}

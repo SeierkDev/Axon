@@ -80,7 +80,7 @@ export function validateToolGrants(grants: string[]): string | null {
     if ((BUILTIN_TOOL_GRANTS as readonly string[]).includes(g)) continue;
     const m = MCP_GRANT.exec(g);
     if (!m) {
-      return `unknown tool grant '${g}' — use ${BUILTIN_TOOL_GRANTS.join(", ")}, or mcp:<serverId>`;
+      return `unknown tool grant '${g}', use ${BUILTIN_TOOL_GRANTS.join(", ")}, or mcp:<serverId>`;
     }
     if (!getMcpServer(m[1])) {
       return `MCP server '${m[1]}' is not registered on Axon`;
@@ -201,7 +201,7 @@ export function resolveAgentTools(grants: string[], ctx: ResolveContext = {}): R
 
     if (grant === "commerce") {
       if (!ctx.agentId) {
-        logger.warn("agentTools.commerce_no_agent", "Skipping commerce grant — resolved without an agent", {});
+        logger.warn("agentTools.commerce_no_agent", "Skipping commerce grant, resolved without an agent", {});
         continue;
       }
       for (const tool of commerceTools(ctx.agentId, ctx.taskId)) {
@@ -221,7 +221,7 @@ export function resolveAgentTools(grants: string[], ctx: ResolveContext = {}): R
     const serverId = m[1];
     const server = getMcpServer(serverId);
     if (!server || server.status !== "active") {
-      logger.warn("agentTools.server_unavailable", "Skipping MCP grant — server missing or inactive", {
+      logger.warn("agentTools.server_unavailable", "Skipping MCP grant, server missing or inactive", {
         grant,
         status: server?.status ?? "missing",
       });
@@ -230,7 +230,7 @@ export function resolveAgentTools(grants: string[], ctx: ResolveContext = {}): R
 
     const tools = getMcpToolsByServer(serverId);
     if (tools.length === 0) {
-      logger.warn("agentTools.server_empty", "Skipping MCP grant — no synced tools", { grant, server: server.name });
+      logger.warn("agentTools.server_empty", "Skipping MCP grant, no synced tools", { grant, server: server.name });
       continue;
     }
 
@@ -240,7 +240,7 @@ export function resolveAgentTools(grants: string[], ctx: ResolveContext = {}): R
       const toolId = tool.toolId;
       localTools.push({
         name: toolNameFor(serverId, tool.name, takenNames),
-        description: tool.description ?? `${tool.name} — exposed by the '${server.name}' MCP server.`,
+        description: tool.description ?? `${tool.name}, exposed by the '${server.name}' MCP server.`,
         inputSchema: toInputSchema(tool.inputSchema),
         label: `${server.name}/${tool.name}`,
         run: (args) => callMcpTool(toolId, args),
@@ -250,7 +250,7 @@ export function resolveAgentTools(grants: string[], ctx: ResolveContext = {}): R
     // Only claim the grant resolved if it actually contributed a tool — hitting
     // the schema cap means this server brought nothing to this request.
     if (added > 0) resolved.push(grant);
-    else logger.warn("agentTools.schema_cap", "Skipping MCP grant — tool schema cap already reached", { grant });
+    else logger.warn("agentTools.schema_cap", "Skipping MCP grant, tool schema cap already reached", { grant });
   }
 
   return { serverTools, localTools, grants: resolved };

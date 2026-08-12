@@ -111,11 +111,11 @@ const BEHAVIOR_RULES = `
 ---
 Behavior:
 - Never open with filler phrases like "Certainly", "Of course", "Sure", "Absolutely", "Great question", or "I'd be happy to help"
-- Do not summarise what you are about to do — just do it
-- Do not hedge or qualify every statement — be direct and confident in your expertise
+- Do not summarise what you are about to do, just do it
+- Do not hedge or qualify every statement, be direct and confident in your expertise
 - Omit disclaimers about not being a financial, legal, or medical advisor unless the task specifically and genuinely requires one
 - Never pad responses with generic closing lines like "Let me know if you need anything else"
-- You are a specialist agent deployed on the Axon network — respond with the precision and directness of a domain expert, not a general-purpose assistant`;
+- You are a specialist agent deployed on the Axon network, respond with the precision and directness of a domain expert, not a general-purpose assistant`;
 
 // Per-agent token limits — build agents need much higher limits to produce
 // complete HTML5 games. All other agents use the default 2048.
@@ -144,7 +144,7 @@ export function getAgentSystem(agent: Agent): string {
     `You are ${agent.name}, a specialized agent operating on the Axon agent network. ` +
     `Your capabilities: ${agent.capabilities.join(", ")}.\n\n` +
     `Deliver expert-level responses in your domain. Structure every response with clear headers and sections. ` +
-    `Be specific — use numbers, examples, and concrete recommendations. ` +
+    `Be specific, use numbers, examples, and concrete recommendations. ` +
     `Lead with the most important information. ` +
     `Give complete answers, not overviews. ` +
     `Think like the best specialist in your field, not a general assistant.`;
@@ -154,7 +154,7 @@ export function getAgentSystem(agent: Agent): string {
   return (
     core +
     BEHAVIOR_RULES +
-    `\n\nLENGTH: Default to SHORT, dense deliverables — roughly 250-350 words. ` +
+    `\n\nLENGTH: Default to SHORT, dense deliverables, roughly 250-350 words. ` +
     `Only go longer when the task explicitly asks for exhaustive depth. Always end with a clean conclusion.`
   );
 }
@@ -381,7 +381,7 @@ class AnthropicProvider implements ProviderClient {
       first = await attempt(this.model);
     } catch (err) {
       if (this.model !== REFUSAL_FALLBACK_MODEL && isModelUnavailable(err)) {
-        logger.warn("provider.model_fallback", "Primary model unavailable — falling back", {
+        logger.warn("provider.model_fallback", "Primary model unavailable, falling back", {
           model: this.model,
           fallback: REFUSAL_FALLBACK_MODEL,
           reason: err instanceof Error ? err.message : String(err),
@@ -396,7 +396,7 @@ class AnthropicProvider implements ProviderClient {
     if (this.model === REFUSAL_FALLBACK_MODEL) {
       throw new Error(`Model ${this.model} declined the request`);
     }
-    logger.warn("provider.model_fallback", "Primary model refused — falling back", {
+    logger.warn("provider.model_fallback", "Primary model refused, falling back", {
       model: this.model,
       fallback: REFUSAL_FALLBACK_MODEL,
       reason: "refusal",
@@ -536,7 +536,7 @@ class AnthropicProvider implements ProviderClient {
               {
                 role: "user",
                 content:
-                  "Your previous response was cut off because it was too long. Continue from EXACTLY where it stopped and output ONLY the remaining content — do not repeat anything you already wrote, do not restate the file, and do not add any explanation or markdown fences.",
+                  "Your previous response was cut off because it was too long. Continue from EXACTLY where it stopped and output ONLY the remaining content, do not repeat anything you already wrote, do not restate the file, and do not add any explanation or markdown fences.",
               },
             ];
       // NOTE: `temperature` is intentionally NOT forwarded — current Claude models
@@ -794,7 +794,7 @@ export async function runWithProviderTools(
   const client = getProvider(agent);
   const system = getAgentSystem(agent);
   if (!client.completeWithTools) {
-    logger.warn("provider.tools_unsupported", "Provider has no tool support — running without tools", {
+    logger.warn("provider.tools_unsupported", "Provider has no tool support, running without tools", {
       agentId: agent.agentId,
       provider: agent.provider,
       grants: tools.grants,
@@ -809,7 +809,7 @@ export async function runWithProviderTools(
     // accept. Answer the job without tools rather than failing a paid task over
     // a misconfiguration; the receipt records only the calls that really ran.
     if (isBadRequest(err)) {
-      logger.warn("provider.tools_rejected", "Tool request rejected — answering without tools", {
+      logger.warn("provider.tools_rejected", "Tool request rejected, answering without tools", {
         agentId: agent.agentId,
         model: agent.providerModel ?? null,
         grants: tools.grants,

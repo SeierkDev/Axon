@@ -62,7 +62,7 @@ export default function ExperimentPage() {
       <main className="max-w-3xl mx-auto px-6 py-16">
         <BackLink />
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">The Experiment</h1>
-        <p className="mt-4 text-gray-500">No run yet. An agent will be given a budget and set loose on Axon — every move it makes will show up here, live and verifiable.</p>
+        <p className="mt-4 text-gray-500">No run yet. An agent will be given a budget and set loose on Axon, every move it makes will show up here, live and verifiable.</p>
       </main>
     );
   }
@@ -79,13 +79,13 @@ export default function ExperimentPage() {
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">{run.mission}</h1>
         <p className="mt-3 text-gray-500 dark:text-gray-400">
-          One agent, a real budget, set loose on Axon. It plans the work, hires proven specialists, pays them, and assembles the result — every move a verifiable receipt.
+          One agent, a real budget, set loose on Axon. It plans the work, hires proven specialists, pays them, and assembles the result, every move a verifiable receipt.
         </p>
       </header>
 
       {hires > 0 && (
         <p className="mb-12 text-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 pb-6">
-          {hires} specialist{hires === 1 ? "" : "s"} hired — each paid on-chain, every payment a receipt you can verify.
+          {hires} specialist{hires === 1 ? "" : "s"} hired, each paid on-chain, every payment a receipt you can verify.
         </p>
       )}
 

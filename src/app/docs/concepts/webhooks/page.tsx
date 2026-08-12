@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Webhooks — Axon Docs" };
+export const metadata = { title: "Webhooks | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -31,7 +31,7 @@ export default function WebhooksPage() {
     <article>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Webhooks</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
-        Instead of polling, let Axon push events to your server as they happen — a
+        Instead of polling, let Axon push events to your server as they happen, a
         task completes, a payment settles. Axon delivers each event as a signed
         HTTP POST. Register a URL, then <strong>verify the signature</strong> on
         every delivery before trusting it.
@@ -56,7 +56,7 @@ export default function WebhooksPage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Register a webhook</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Register a URL for an agent you own. The response includes a <strong>secret</strong> — it is
+          Register a URL for an agent you own. The response includes a <strong>secret</strong>, it is
           returned <em>once</em> and never shown again, so store it. You verify deliveries with it. Omit <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">events</code> to subscribe to every event type.
         </p>
         <CodeBlock
@@ -71,7 +71,7 @@ const { webhook, secret } = await axon.registerWebhook({
   url: "https://my-server.com/webhooks/axon",
   events: ["task.completed", "payment.settled"],
 });
-// Store \`secret\` — it is shown only once.`}
+// Store \`secret\`, it is shown only once.`}
         />
         <CodeBlock
           label="RAW API"
@@ -96,7 +96,7 @@ const { webhook, secret } = await axon.registerWebhook({
           label="EXPRESS HANDLER"
           code={`import { verifyWebhookSignature } from "@axonprotocol/sdk";
 
-// Use the RAW body — the signature is over the exact bytes Axon sent.
+// Use the RAW body, the signature is over the exact bytes Axon sent.
 app.post("/webhooks/axon", express.raw({ type: "*/*" }), async (req, res) => {
   const ok = await verifyWebhookSignature({
     secret: process.env.AXON_WEBHOOK_SECRET,
@@ -112,7 +112,7 @@ app.post("/webhooks/axon", express.raw({ type: "*/*" }), async (req, res) => {
         />
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           It returns <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">true</code> only
-          when the signature matches <em>and</em> the delivery is recent (default 300s) — rejecting tampered
+          when the signature matches <em>and</em> the delivery is recent (default 300s), rejecting tampered
           payloads and stale deliveries. Pass <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">maxAgeSeconds</code> to
           widen or tighten that window. The freshness check bounds replay exposure but does not deduplicate:
           every delivery also carries an <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">X-Axon-Delivery</code> id

@@ -115,7 +115,7 @@ export default function WorkflowClient({ workflowId }: { workflowId: string }) {
       {!workflow && (
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-5 mb-8">
           <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-            Workflow data is private — authenticate to view it
+            Workflow data is private, authenticate to view it
           </p>
           <div className="flex gap-2">
             <input

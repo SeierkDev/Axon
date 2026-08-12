@@ -2,7 +2,7 @@ import Link from "next/link";
 import SiteNav from "@/components/SiteNav";
 import WorkflowClient from "./WorkflowClient";
 
-export const metadata = { title: "Workflow — Axon" };
+export const metadata = { title: "Workflow | Axon" };
 
 export default async function WorkflowPage({
   params,

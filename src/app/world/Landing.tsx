@@ -349,7 +349,7 @@ function DayNight({ shadowExtent, sea, followRef, shadows = true }: { shadowExte
           <sphereGeometry args={[4.5, 24, 24]} />
           <meshBasicMaterial color="#e8ecf5" toneMapped={false} />
         </mesh>
-        {/* maria — the grey seas that make it read as THE moon */}
+        {/* maria, the grey seas that make it read as THE moon */}
         {([[1.4, 1.2, 3.9, 1.1], [-1.7, 0.4, 3.9, 0.8], [0.3, -1.6, 3.95, 0.65], [-0.6, 1.9, 3.85, 0.55]] as const).map(([mx, my, mz, mr], i) => (
           <mesh key={i} position={[mx, my, mz]}>
             <sphereGeometry args={[mr, 12, 12]} />
@@ -641,7 +641,7 @@ export function Village({
     // Seed the collision list with the fixed, hand-placed props (windmill, market
     // stalls, lamp posts) so generated trees/houses never grow into them. These
     // coordinates must match the JSX below.
-    claim(-15, 14, 4.6); // windmill — wide because of the sweeping blades
+    claim(-15, 14, 4.6); // windmill, wide because of the sweeping blades
     claim(15.5, -12.6, 3.5); // bell tower landmark
     claim(7.5, -1, 2.4); // market stall (+ its barrels)
     claim(-6.5, 4, 2.4); // market stall (+ its barrel)
@@ -842,7 +842,7 @@ export function Village({
         <cylinderGeometry args={[ISLAND_RADIUS, ISLAND_RADIUS, 1.5, 64]} />
         <meshStandardMaterial color="#7ec77f" roughness={1} />
       </mesh>
-      {/* Grassy bevel — the lawn rounds over the edge instead of a sheer drop.
+      {/* Grassy bevel, the lawn rounds over the edge instead of a sheer drop.
           Sat a hair BELOW the grass top so its top disc isn't coplanar with it
           (that coincidence was the z-fighting ring). */}
       <mesh position={[0, -0.37, 0]} receiveShadow castShadow>
@@ -890,7 +890,7 @@ export function Village({
       ))}
 
       {/* Dirt paths + central plaza. The boxes are EMBEDDED into the grass (they
-          straddle y=0) so no face is coplanar with the lawn — that coincidence was
+          straddle y=0) so no face is coplanar with the lawn, that coincidence was
           the flicker near the middle. */}
       {paths.map((p, i) => (
         <mesh key={`p${i}`} position={[Math.cos(p.angle) * p.mid, 0, Math.sin(p.angle) * p.mid]} rotation={[0, -p.angle, 0]} receiveShadow>
@@ -910,7 +910,7 @@ export function Village({
         </mesh>
       ))}
 
-      {/* Lamp posts lining the paths — offset perpendicular to the path so they
+      {/* Lamp posts lining the paths, offset perpendicular to the path so they
           sit beside it, never on it (alternating sides). */}
       {paths.flatMap((p, i) =>
         [8, 20].map((rad, j) => {
@@ -983,7 +983,7 @@ export function Village({
       {pathStones.map((s, i) => (
         <Rock key={`ps${i}`} position={s.pos} scale={s.s} rotation={s.rot} />
       ))}
-      {/* Grass tufts — skipped on low-power devices to save draw calls */}
+      {/* Grass tufts, skipped on low-power devices to save draw calls */}
       {!lowPower && grass.map((g, i) => (
         <GrassTuft key={`gt${i}`} position={g.pos} scale={g.s} color={g.color} />
       ))}
@@ -1135,7 +1135,7 @@ function SailingBoat() {
 export function WorldEnvironment({ lowPower = false, sea = true, shadowExtent = 60, ao = true, shadowFollowRef, perfTier = 0 }: { lowPower?: boolean; sea?: boolean; shadowExtent?: number; ao?: boolean; shadowFollowRef?: React.RefObject<{ x: number; z: number }>; perfTier?: number }) {
   return (
     <>
-      {/* Living sky: sun/moon arcs, keyframed light, stars — one 20-min day */}
+      {/* Living sky: sun/moon arcs, keyframed light, stars, one 20-min day */}
       <DayNight shadowExtent={shadowExtent} sea={sea} followRef={shadowFollowRef} shadows={perfTier < 2} />
       <Cloud position={[-26, 22, -24]} scale={1.5} />
       <Cloud position={[28, 26, -30]} scale={1.9} />
@@ -1143,7 +1143,7 @@ export function WorldEnvironment({ lowPower = false, sea = true, shadowExtent = 
       {sea && <Ocean />}
       {sea && <Shallows />}
       {sea && <Foam />}
-      {/* Distant hazy islands on the horizon (world-space — they don't rotate) */}
+      {/* Distant hazy islands on the horizon (world-space, they don't rotate) */}
       {sea && <DistantIsle position={[150, -2, -70]} scale={1.5} seed={11} />}
       {sea && <DistantIsle position={[-175, -2, -20]} scale={1.9} seed={22} />}
       {sea && <DistantIsle position={[70, -2, -195]} scale={1.3} seed={33} />}
@@ -1153,7 +1153,7 @@ export function WorldEnvironment({ lowPower = false, sea = true, shadowExtent = 
 
       {/* Post-processing: AO for depth (skipped on weak GPUs), warm colour grade,
           bloom for the glows, a gentle tilt-shift, anti-aliasing and a soft vignette */}
-      {/* multisampling=0: the composer defaults to 8x MSAA render targets — pure
+      {/* multisampling=0: the composer defaults to 8x MSAA render targets, pure
           fill-rate cost we don't need since SMAA is in the chain. This was the
           frame drop when foliage filled the screen. */}
       {perfTier < 1 && (
@@ -1286,7 +1286,7 @@ export default function Landing({ onEnter }: { onEnter: () => void }) {
           AXON WORLD
         </h1>
         <p className="text-white/90 text-lg max-w-md mb-10 drop-shadow">
-          This is the live Axon network — every house is a real agent.
+          This is the live Axon network, every house is a real agent.
           Walk in and explore.
         </p>
         <button

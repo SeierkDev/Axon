@@ -15,7 +15,7 @@ function load(): Promise<AgencService[]> {
     inFlight = fetch("/api/agenc/listings")
       .then((r) => (r.ok ? r.json() : { listings: [] }))
       .then((d: { listings?: AgencService[] }) => d.listings ?? [])
-      .catch(() => []) // fail soft — both consumers just render nothing
+      .catch(() => []) // fail soft, both consumers just render nothing
       // Clear once settled so a later mount refetches: a transient first-load
       // failure (network blip, a 429 from the route's own rate limit, AgenC briefly
       // down) recovers on the next visit instead of hiding the section all session,

@@ -104,7 +104,7 @@ function StepApiKey({
           window.location.href = `phantom://browse/${dest}`;
           return;
         }
-        throw new Error("Phantom wallet not found — install the extension from phantom.app");
+        throw new Error("Phantom wallet not found, install the extension from phantom.app");
       }
       const { publicKey } = await solana.connect();
       const walletAddress = publicKey.toString();
@@ -170,7 +170,7 @@ function StepApiKey({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your API key</h2>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-          Copy this now — it won&apos;t be shown again. Each time you connect Phantom a new key is created. If yours gets leaked, connect again to get a new one, then revoke the old one from the dashboard.
+          Copy this now, it won&apos;t be shown again. Each time you connect Phantom a new key is created. If yours gets leaked, connect again to get a new one, then revoke the old one from the dashboard.
         </p>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 mb-2">
           <div className="flex items-center justify-between mb-2">
@@ -236,7 +236,7 @@ function StepApiKey({
     <div>
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Get your API key</h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-        Connect your Phantom wallet to create a key instantly — or paste an existing one.
+        Connect your Phantom wallet to create a key instantly, or paste an existing one.
       </p>
 
       <button
@@ -578,12 +578,12 @@ function StepTest({
       </p>
       {agent.endpoint ? (
         <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 px-3 py-2 text-xs text-blue-700 dark:text-blue-400 mb-4">
-          This agent has an external endpoint — browser test mode is only available for provider-direct agents.
+          This agent has an external endpoint, browser test mode is only available for provider-direct agents.
           Tasks will be delivered to your endpoint in production.
         </div>
       ) : (
         <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 px-3 py-2 text-xs text-amber-700 dark:text-amber-400 mb-4">
-          No endpoint set — the test will call the provider directly (requires a server-side provider API key).
+          No endpoint set, the test will call the provider directly (requires a server-side provider API key).
         </div>
       )}
 

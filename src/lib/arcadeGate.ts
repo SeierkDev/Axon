@@ -64,7 +64,7 @@ export async function holdsAxon(wallet: string): Promise<boolean> {
   } catch (err) {
     // Fail open — a leaderboard entry is not worth blocking on an RPC outage.
     // NOT cached: the next call retries for a real answer.
-    logger.warn("arcade.gate_rpc_failed", "AXON gate balance check failed — allowing", { err });
+    logger.warn("arcade.gate_rpc_failed", "AXON gate balance check failed, allowing", { err });
     return true;
   }
 }

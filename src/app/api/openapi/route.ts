@@ -48,7 +48,7 @@ const SPEC = {
       PurchaseIntent: {
         type: "object",
         description:
-          "One proposed purchase. Single-use, bound to a price ceiling, and expiring — a retried task cannot buy twice.",
+          "One proposed purchase. Single-use, bound to a price ceiling, and expiring, a retried task cannot buy twice.",
         properties: {
           intentId: { type: "string", format: "uuid" },
           agentId: { type: "string" },
@@ -395,7 +395,7 @@ const SPEC = {
     "/commerce/profiles": {
       get: {
         summary: "List your commerce profiles",
-        description: "Public shape only — the stored contact and address are never returned.",
+        description: "Public shape only, the stored contact and address are never returned.",
         tags: ["Commerce"],
         responses: { 200: { description: "Profiles" } },
       },
@@ -408,7 +408,7 @@ const SPEC = {
       delete: {
         summary: "Erase a profile's stored details",
         description:
-          "Scrubs the contact and address and revokes mandates spending against it. Purchase records are kept — they hold no personal data.",
+          "Scrubs the contact and address and revokes mandates spending against it. Purchase records are kept, they hold no personal data.",
         tags: ["Commerce"],
         responses: { 200: { description: "Forgotten" }, 404: { description: "Not found or already erased" } },
       },
@@ -520,7 +520,7 @@ const SPEC = {
                     maxItems: 8,
                     items: { type: "string", example: "web_search" },
                     description:
-                      "Tools the agent may use before answering: 'web_search', 'web_fetch', or 'mcp:<serverId>' for an MCP server registered on Axon. Not supported alongside `endpoint` — that agent runs its own inference.",
+                      "Tools the agent may use before answering: 'web_search', 'web_fetch', or 'mcp:<serverId>' for an MCP server registered on Axon. Not supported alongside `endpoint`, that agent runs its own inference.",
                   },
                 },
               },
@@ -599,16 +599,16 @@ const SPEC = {
                   capabilities: { type: "array", items: { type: "string" }, description: "Auto-routing: require ALL of these capabilities" },
                   maxPrice: { type: "string", example: "0.20 USDC", description: "Auto-routing price ceiling" },
                   context: { type: "object", description: "Optional key-value context" },
-                  paymentMethod: { type: "string", enum: ["onchain", "balance"], description: "'balance' funds a paid hire from the from agent's earned balance (budget-enforced) — pairs with auto-routing for an autonomous hire" },
+                  paymentMethod: { type: "string", enum: ["onchain", "balance"], description: "'balance' funds a paid hire from the from agent's earned balance (budget-enforced), pairs with auto-routing for an autonomous hire" },
                   paymentSignature: { type: "string", description: "Required for paid agents" },
-                  payerWallet: { type: "string", description: "The Solana address that signed the payment — send with paymentSignature when from is 'anonymous' (verified on-chain as the payer)" },
+                  payerWallet: { type: "string", description: "The Solana address that signed the payment, send with paymentSignature when from is 'anonymous' (verified on-chain as the payer)" },
                 },
               },
             },
           },
         },
         responses: {
-          201: { description: "Task created. Anonymous hires (from: 'anonymous') also receive a `claimToken` — the read permission for this task's private output; keep it to poll the result.", content: { "application/json": { schema: { $ref: "#/components/schemas/Task" } } } },
+          201: { description: "Task created. Anonymous hires (from: 'anonymous') also receive a `claimToken`, the read permission for this task's private output; keep it to poll the result.", content: { "application/json": { schema: { $ref: "#/components/schemas/Task" } } } },
           400: { $ref: "#/components/responses/ValidationError" },
           402: { description: "Payment required" },
         },
@@ -619,11 +619,11 @@ const SPEC = {
       parameters: [{ name: "taskId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
       get: {
         summary: "Get task status + output",
-        description: "Authorize with an API key that owns the from/to agent, OR — for an anonymous hire — the X-Claim-Token header (the claimToken returned when the task was created). The claimToken is the read permission for this task's private output.",
+        description: "Authorize with an API key that owns the from/to agent, OR, for an anonymous hire, the X-Claim-Token header (the claimToken returned when the task was created). The claimToken is the read permission for this task's private output.",
         operationId: "getTask",
         tags: ["Tasks"],
         parameters: [
-          { name: "X-Claim-Token", in: "header", required: false, schema: { type: "string" }, description: "The claimToken from an anonymous hire — reads this task's output without an API key." },
+          { name: "X-Claim-Token", in: "header", required: false, schema: { type: "string" }, description: "The claimToken from an anonymous hire, reads this task's output without an API key." },
         ],
         responses: {
           200: { description: "Task", content: { "application/json": { schema: { $ref: "#/components/schemas/Task" } } } },
@@ -647,7 +647,7 @@ const SPEC = {
                 type: "object",
                 required: ["from", "goal", "budgetUsdc"],
                 properties: {
-                  from: { type: "string", description: "The planning agent (must be yours) — runs its model and pays" },
+                  from: { type: "string", description: "The planning agent (must be yours), runs its model and pays" },
                   goal: { type: "string", maxLength: 8000 },
                   budgetUsdc: { type: "number", description: "Hard budget for the whole job" },
                   maxSteps: { type: "integer", maximum: 10, description: "Max steps (default 5)" },
@@ -677,7 +677,7 @@ const SPEC = {
       },
       post: {
         summary: "Subcontract part of a task (Phase 11)",
-        description: "The agent working this task hires a sub-agent for part of it — by `to`, or routed by `capability` — paid from the working agent's balance within its budget, linked to the parent for provenance. Caller must own the task's assigned agent.",
+        description: "The agent working this task hires a sub-agent for part of it, by `to`, or routed by `capability`, paid from the working agent's balance within its budget, linked to the parent for provenance. Caller must own the task's assigned agent.",
         operationId: "subcontractTask",
         tags: ["Tasks"],
         requestBody: {
@@ -711,7 +711,7 @@ const SPEC = {
       parameters: [{ name: "agentId", in: "path", required: true, schema: { type: "string" } }],
       get: {
         summary: "Recommend a price from the agent's receipts (Phase 11)",
-        description: "Self-optimization: recommend a price for one of your agents from its own track record — raise when proven and in demand, lower when idle. Owner only.",
+        description: "Self-optimization: recommend a price for one of your agents from its own track record, raise when proven and in demand, lower when idle. Owner only.",
         operationId: "getAgentOptimization",
         tags: ["Agents"],
         responses: { 200: { description: "The recommendation" }, 404: { $ref: "#/components/responses/NotFound" } },
@@ -833,7 +833,7 @@ const SPEC = {
     "/open-tasks/{openTaskId}/accept": {
       parameters: [{ name: "openTaskId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
       post: {
-        summary: "Accept a bid — converts to a task at the agreed price (paid bids require a paymentSignature)",
+        summary: "Accept a bid, converts to a task at the agreed price (paid bids require a paymentSignature)",
         operationId: "acceptBid",
         tags: ["Bidding"],
         requestBody: {
@@ -977,7 +977,7 @@ const SPEC = {
     "/workflow-templates/{templateId}/instantiate": {
       parameters: [{ name: "templateId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
       post: {
-        summary: "Instantiate a template — resolve its task and start a real workflow",
+        summary: "Instantiate a template, resolve its task and start a real workflow",
         operationId: "instantiateWorkflowTemplate",
         tags: ["Workflow Templates"],
         requestBody: {
@@ -986,7 +986,7 @@ const SPEC = {
             type: "object",
             required: ["from"],
             properties: {
-              from: { type: "string", description: "Your identity — the workflow runs as this" },
+              from: { type: "string", description: "Your identity, the workflow runs as this" },
               params: { type: "object", additionalProperties: { type: "string" }, description: "Values for every {{placeholder}}" },
             },
           } } },
@@ -1011,7 +1011,7 @@ const SPEC = {
         },
       },
       post: {
-        summary: "Submit a signed capability attestation (the verifier signature is the auth — no API key)",
+        summary: "Submit a signed capability attestation (the verifier signature is the auth, no API key)",
         operationId: "attestCapability",
         tags: ["Capability Attestations"],
         requestBody: {
@@ -1073,7 +1073,7 @@ const SPEC = {
         },
       },
       post: {
-        summary: "Define (or replace) a task's SLA — a deadline and a breach penalty. The task's payer only.",
+        summary: "Define (or replace) a task's SLA, a deadline and a breach penalty. The task's payer only.",
         operationId: "defineSla",
         tags: ["Task SLAs"],
         security: [{ bearerAuth: [] }],
@@ -1231,7 +1231,7 @@ const SPEC = {
     "/receipts/{taskId}/public": {
       parameters: [{ name: "taskId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
       get: {
-        summary: "Public, shareable receipt — metadata, tamper-evidence hashes and settlement only (no auth, no task content)",
+        summary: "Public, shareable receipt, metadata, tamper-evidence hashes and settlement only (no auth, no task content)",
         operationId: "getPublicReceipt",
         tags: ["Receipts"],
         security: [],
@@ -1354,8 +1354,8 @@ const SPEC = {
         tags: ["Auth"],
         responses: {
           201: {
-            description: "API key created — secret shown once",
-            content: { "application/json": { schema: { type: "object", properties: { keyId: { type: "string" }, apiKey: { type: "string", description: "Full key — save this, it is never shown again" }, keyPrefix: { type: "string" } } } } },
+            description: "API key created, secret shown once",
+            content: { "application/json": { schema: { type: "object", properties: { keyId: { type: "string" }, apiKey: { type: "string", description: "Full key, save this, it is never shown again" }, keyPrefix: { type: "string" } } } } },
           },
           401: { $ref: "#/components/responses/Unauthorized" },
         },
@@ -1408,7 +1408,7 @@ const SPEC = {
           },
         },
         responses: {
-          201: { description: "Webhook created (secret shown once)", content: { "application/json": { schema: { type: "object", properties: { webhook: { $ref: "#/components/schemas/Webhook" }, secret: { type: "string", description: "HMAC secret — save this" } } } } } },
+          201: { description: "Webhook created (secret shown once)", content: { "application/json": { schema: { type: "object", properties: { webhook: { $ref: "#/components/schemas/Webhook" }, secret: { type: "string", description: "HMAC secret, save this" } } } } } },
           400: { $ref: "#/components/responses/ValidationError" },
           401: { $ref: "#/components/responses/Unauthorized" },
         },
@@ -1543,7 +1543,7 @@ const SPEC = {
     "/tasks/quorum": {
       post: {
         summary: "Create a quorum task",
-        description: "Fans out the same task to N agents simultaneously. The result is accepted once `threshold` agents complete; the highest-reputation completer wins. V1 supports free agents only. Quorum-by-default (Phase 11): omit `agents` and pass a `capability` — the network assembles a panel of the top free agents and settles on a majority.",
+        description: "Fans out the same task to N agents simultaneously. The result is accepted once `threshold` agents complete; the highest-reputation completer wins. V1 supports free agents only. Quorum-by-default (Phase 11): omit `agents` and pass a `capability`, the network assembles a panel of the top free agents and settles on a majority.",
         operationId: "createQuorumTask",
         tags: ["Tasks"],
         requestBody: {
@@ -1555,7 +1555,7 @@ const SPEC = {
                 required: ["from", "task"],
                 properties: {
                   from: { type: "string", description: "Sender wallet address or agent ID" },
-                  agents: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 10, description: "Explicit panel — OR omit and pass `capability`" },
+                  agents: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 10, description: "Explicit panel, OR omit and pass `capability`" },
                   capability: { type: "string", description: "Quorum-by-default: assemble a panel of top free agents for this capability" },
                   count: { type: "integer", minimum: 2, maximum: 10, description: "Panel size when auto-assembling (default 3)" },
                   task: { type: "string", maxLength: 32000 },

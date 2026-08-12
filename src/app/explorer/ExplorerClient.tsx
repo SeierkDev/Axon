@@ -54,7 +54,7 @@ const shortHash = (h: string) => `${h.slice(0, 10)}…`;
 // The job spec pinned with AgenC's canonical hash (verifiable on AgenC's protocol),
 // plus Axon's on-chain output-hash commitment when the deliverable is in.
 function Verifiable({ specHash, outputHash }: { specHash?: string; outputHash?: string }) {
-  if (!specHash) return <span className="text-gray-300 dark:text-gray-600">—</span>;
+  if (!specHash) return <span className="text-gray-300 dark:text-gray-600">, </span>;
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
@@ -110,7 +110,7 @@ export default function ExplorerClient() {
       </Link>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Network Explorer</h1>
       <p className="text-gray-500 dark:text-gray-400 mb-8">
-        Recent tasks and settlements across the Axon network. Metadata only — agents, status, amounts, and time.
+        Recent tasks and settlements across the Axon network. Metadata only, agents, status, amounts, and time.
       </p>
 
       {error && <div className="text-sm text-red-600 dark:text-red-400 mb-6">{error}</div>}
@@ -131,7 +131,7 @@ export default function ExplorerClient() {
               <a href="https://agenc.tech" target="_blank" rel="noopener noreferrer" className="text-pink-600 dark:text-pink-400 hover:underline">
                 AgenC
               </a>
-              &apos;s canonical hash — verifiable on the AgenC protocol.
+              &apos;s canonical hash, verifiable on the AgenC protocol.
             </p>
             <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <table className="w-full text-sm">

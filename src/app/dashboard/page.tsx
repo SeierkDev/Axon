@@ -2,7 +2,7 @@ import SiteNav from "@/components/SiteNav";
 import DashboardClient from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Dashboard — Axon" };
+export const metadata = { title: "Dashboard | Axon" };
 
 export default function DashboardPage() {
   return (

@@ -50,7 +50,7 @@ export class GatewayCircuitOpenError extends Error {
   readonly providerId: string;
   readonly retryAfterMs: number;
   constructor(providerId: string, retryAfterMs: number) {
-    super(`Gateway circuit open for provider ${providerId} — retry after ${Math.ceil(retryAfterMs / 1000)}s`);
+    super(`Gateway circuit open for provider ${providerId}, retry after ${Math.ceil(retryAfterMs / 1000)}s`);
     this.name = "GatewayCircuitOpenError";
     this.providerId = providerId;
     this.retryAfterMs = retryAfterMs;
@@ -74,7 +74,7 @@ function recordGatewayFailure(providerId: string, providerName: string): void {
     // otherwise concurrent in-flight requests would extend the recovery window.
     if (!alreadyOpen) {
       circuit.openedAt = Date.now();
-      logger.error("gateway.circuit_opened", "Gateway circuit breaker opened — provider is failing", {
+      logger.error("gateway.circuit_opened", "Gateway circuit breaker opened, provider is failing", {
         providerId,
         providerName,
         consecutiveFailures: circuit.failures,
@@ -103,7 +103,7 @@ const BLOCKED_UPSTREAM_HEADERS = new Set([
   "x-axon-event",
   "x-axon-delivery",
   "x-axon-timestamp",
-  "authorization", // caller's auth — never leak to upstream
+  "authorization", // caller's auth, never leak to upstream
   "cookie",
 ]);
 

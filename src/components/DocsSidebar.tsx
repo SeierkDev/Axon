@@ -55,7 +55,7 @@ export default function DocsSidebar({ mobileOpen, onClose }: Props) {
         {navContent}
       </aside>
 
-      {/* Desktop sidebar — always visible */}
+      {/* Desktop sidebar, always visible */}
       <aside className="hidden md:block fixed left-0 top-14 bottom-0 w-64 overflow-y-auto border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-6">
         {navContent}
       </aside>

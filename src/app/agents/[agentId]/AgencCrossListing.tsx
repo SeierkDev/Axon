@@ -14,7 +14,7 @@ interface AgencListing {
 }
 
 const STATUS_LABEL: Record<AgencListing["status"], string> = {
-  prepared: "Prepared — goes on-chain when AgenC devnet opens",
+  prepared: "Prepared, goes on-chain when AgenC devnet opens",
   "verified-sandbox": "Verified against AgenC's on-chain program (sandbox)",
   live: "Live on AgenC",
 };
@@ -53,7 +53,7 @@ export default function AgencCrossListing({ agentId }: { agentId: string }) {
       const d = (await res.json()) as { listing: AgencListing };
       setListing(d.listing);
     } catch {
-      setError("Cross-listing failed — try again.");
+      setError("Cross-listing failed, try again.");
     } finally {
       setBusy(false);
     }

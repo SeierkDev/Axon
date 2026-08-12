@@ -29,7 +29,7 @@ function friendlyRevert(err: unknown): string {
   const code = Array.isArray(ie) && ie[1] && typeof ie[1].Custom === "number" ? ie[1].Custom : null;
   // Common goods-market outcomes: sold out, listing changed price/serial under us,
   // self-purchase, delisted. Anything unmapped keeps the code for debugging.
-  return `The purchase was rejected on-chain${code !== null ? ` (code ${code})` : ""}. The good may be sold out or its price changed — refresh and try again.`;
+  return `The purchase was rejected on-chain${code !== null ? ` (code ${code})` : ""}. The good may be sold out or its price changed, refresh and try again.`;
 }
 
 async function waitConfirm(conn: Connection, sig: string): Promise<void> {
@@ -42,7 +42,7 @@ async function waitConfirm(conn: Connection, sig: string): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 2000));
   }
-  throw new Error("confirmation timed out (the tx may still land — check the explorer)");
+  throw new Error("confirmation timed out (the tx may still land, check the explorer)");
 }
 
 export interface WalletBuyResult {

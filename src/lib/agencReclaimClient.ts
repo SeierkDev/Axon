@@ -30,12 +30,12 @@ async function waitConfirm(conn: Connection, sig: string): Promise<void> {
   while (Date.now() < deadline) {
     const { value } = await conn.getSignatureStatus(sig, { searchTransactionHistory: true });
     if (value) {
-      if (value.err) throw new Error("The reclaim was rejected on-chain. The hire may have just been delivered — refresh and check its status.");
+      if (value.err) throw new Error("The reclaim was rejected on-chain. The hire may have just been delivered, refresh and check its status.");
       if (value.confirmationStatus === "confirmed" || value.confirmationStatus === "finalized") return;
     }
     await new Promise((r) => setTimeout(r, 2000));
   }
-  throw new Error("confirmation timed out (the tx may still land — check the explorer)");
+  throw new Error("confirmation timed out (the tx may still land, check the explorer)");
 }
 
 // Read a hire's live on-chain delivery status (public — no wallet).

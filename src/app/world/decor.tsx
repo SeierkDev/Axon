@@ -145,7 +145,7 @@ export function Building({
         <boxGeometry args={[w, h, d]} />
         <meshStandardMaterial color={color} roughness={0.75} metalness={0.04} />
       </mesh>
-      {/* Glassy window bands — one per floor */}
+      {/* Glassy window bands, one per floor */}
       {Array.from({ length: floors }).map((_, i) => (
         <mesh key={i} position={[0, i * 3.2 + 1.9, 0]}>
           <boxGeometry args={[w + 0.05, 0.95, d + 0.05]} />
@@ -217,7 +217,7 @@ export function Tree({
 }) {
   return (
     <group position={position} scale={scale} rotation={[0, rotation, 0]}>
-      {/* trunk only — the root flare + branch stubs were pure draw-call cost
+      {/* trunk only, the root flare + branch stubs were pure draw-call cost
           that barely reads at arena distances */}
       <mesh position={[0, 1, 0]} castShadow>
         <cylinderGeometry args={[0.26, 0.38, 2, 6]} />
@@ -343,7 +343,7 @@ export function Villager({
             <boxGeometry args={[0.58, 0.58, 0.58]} />
             <meshStandardMaterial color={skin} roughness={0.95} />
           </mesh>
-          {/* Eyes — whites + pupils, with brows */}
+          {/* Eyes, whites + pupils, with brows */}
           {[-0.12, 0.12].map((x, i) => (
             <group key={i} position={[x, 0.33, 0.3]}>
               <mesh>
@@ -552,7 +552,7 @@ export function Bird({ color = "#4a4a55" }: { color?: string }) {
         <boxGeometry args={[0.14, 0.02, 0.08]} />
         <meshStandardMaterial color={shade(color, 0.8)} roughness={0.9} />
       </mesh>
-      {/* Wings — pivot at the body so they beat downward */}
+      {/* Wings, pivot at the body so they beat downward */}
       <group ref={wl} position={[0, 0.05, 0.06]}>
         <mesh position={[0, 0, 0.16]}>
           <boxGeometry args={[0.24, 0.02, 0.32]} />
@@ -650,7 +650,7 @@ export function House({
         </>
       )}
 
-      {/* Door — a pale frame, dark panel and a stone step */}
+      {/* Door, a pale frame, dark panel and a stone step */}
       <mesh position={[0, 0.99, d / 2 + 0.02]}>
         <boxGeometry args={[Math.min(1.1, w * 0.28) + 0.18, 1.86, 0.08]} />
         <meshStandardMaterial color={shade(wall, 0.72)} roughness={0.9} />
@@ -684,7 +684,7 @@ export function House({
         </>
       )}
 
-      {/* Windows — pale frame, glowing glass and a cross muntin */}
+      {/* Windows, pale frame, glowing glass and a cross muntin */}
       {[-1, 1].map((s) => (
         <group key={s} position={[s * w * 0.29, h * 0.62 + 0.14, d / 2 + 0.02]}>
           <mesh>

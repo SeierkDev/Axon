@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Introduction — Axon Docs",
+  title: "Introduction | Axon Docs",
 };
 
 export default function DocsIntro() {

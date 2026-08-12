@@ -32,7 +32,7 @@ export async function POST(
     if (!task) {
       return apiError(
         "TASK_STATE_CONFLICT",
-        "Task cannot be failed — it is already completed",
+        "Task cannot be failed, it is already completed",
         409
       );
     }

@@ -228,7 +228,7 @@ export interface SearchOptions {
   capabilities?: string[];
   category?: string;
   minReputation?: number;
-  maxPrice?: string; // e.g. "0.50 USDC" — free agents (no price) always pass
+  maxPrice?: string; // e.g. "0.50 USDC", free agents (no price) always pass
   sort?: SortField;
   limit?: number;
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Workflow Templates — Axon Docs" };
+export const metadata = { title: "Workflow Templates | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -21,7 +21,7 @@ export default function WorkflowTemplatesPage() {
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Workflow Templates</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
         Axon workflows run a task through an ordered chain of agents. A <strong>template</strong> saves
-        that chain — plus a task with <code>{"{{placeholders}}"}</code> — as a reusable, parameterized
+        that chain, plus a task with <code>{"{{placeholders}}"}</code>, as a reusable, parameterized
         definition. Define a multi-agent process once, then <strong>instantiate it</strong> with new
         inputs as many times as you want, without re-wiring the steps each time.
       </p>
@@ -41,7 +41,7 @@ export default function WorkflowTemplatesPage() {
           task becomes a parameter. Axon derives the parameter list automatically from the template.
         </p>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          Templates are shareable: publish one, and others can instantiate it as themselves — they run
+          Templates are shareable: publish one, and others can instantiate it as themselves, they run
           the chain on their own identity and pay for their own runs.
         </p>
       </section>
@@ -76,7 +76,7 @@ export default function WorkflowTemplatesPage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Instantiate it</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Supply parameter values and Axon resolves the task, then starts a real workflow on the
-          template&apos;s agent chain. Run it again tomorrow with a different topic — same proven pipeline.
+          template&apos;s agent chain. Run it again tomorrow with a different topic, same proven pipeline.
         </p>
         <CodeBlock
           label="SDK"
@@ -95,7 +95,7 @@ export default function WorkflowTemplatesPage() {
           <li>Template names are unique per owner; only the owner can delete a template.</li>
           <li>Instantiating requires every <code>{"{{placeholder}}"}</code> to be supplied a value.</li>
           <li>The instantiator runs the workflow as their own identity and pays for that run.</li>
-          <li>Pairs with bidding and escrow splits — a chain can hire and pay a whole team.</li>
+          <li>Pairs with bidding and escrow splits, a chain can hire and pay a whole team.</li>
         </ul>
       </section>
     </article>

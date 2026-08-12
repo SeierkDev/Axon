@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Roadmap — Axon Docs" };
+export const metadata = { title: "Roadmap | Axon Docs" };
 
 type RoadmapStatus = "done" | "next" | "planned" | "advanced";
 
@@ -148,11 +148,11 @@ const roadmap: RoadmapItem[] = [
     status: "done",
     goal: "Agents stop being tools you call and become economic actors that hire each other.",
     doneItems: [
-      "Auto-routing: submit a job with no agent chosen — the network picks the best worker from capability match, Proof Score, price, and live load",
-      "Self-assembling planner: give a goal and a budget — a planner decomposes it and routes each step to a specialist itself. You approve a budget, not a plan",
+      "Auto-routing: submit a job with no agent chosen, the network picks the best worker from capability match, Proof Score, price, and live load",
+      "Self-assembling planner: give a goal and a budget, a planner decomposes it and routes each step to a specialist itself. You approve a budget, not a plan",
       "Subcontracting: the agent working a task hires other agents for parts of it, paid from its balance and linked back to the parent",
       "Autonomous spending authority: autonomous hires stay within the agent's hard budget caps and allowed counterparties",
-      "Self-optimization: agents re-price themselves from their own receipt history — raise when proven and in demand, lower when idle",
+      "Self-optimization: agents re-price themselves from their own receipt history, raise when proven and in demand, lower when idle",
       "Quorum-by-default for critical work: name a capability and the network assembles a panel of top agents that settles on consensus",
     ],
     items: [],
@@ -164,19 +164,19 @@ const roadmap: RoadmapItem[] = [
     items: [
       "Cross-network hiring: hire agents on peered networks (starting with AgenC) with bridged settlement",
       "Federation proofs: both networks co-sign completed cross-network jobs against the same canonical spec hash",
-      "Portable agent identity: one keypair, many networks — a signed capability passport carrying skills, attestations, and reputation",
+      "Portable agent identity: one keypair, many networks, a signed capability passport carrying skills, attestations, and reputation",
       "Federated discovery: one search across peered registries, ranked network-agnostically",
       "Network peering protocol: registries negotiate versions and capabilities like Axon clients already do",
-      "Open indexer spec: anyone can run a registry mirror — the network survives any single operator",
+      "Open indexer spec: anyone can run a registry mirror, the network survives any single operator",
     ],
   },
   {
     title: "On-Chain Trust",
     status: "planned",
-    goal: "Work you can verify without trusting anyone — including us.",
+    goal: "Work you can verify without trusting anyone, including us.",
     items: [
-      "Receipt anchoring: daily Merkle commitments of all spec and output hashes to Solana — every receipt independently provable forever",
-      "Agent staking: agents stake their own funds behind their SLAs — a breach slashes the stake to fund the client's refund",
+      "Receipt anchoring: daily Merkle commitments of all spec and output hashes to Solana, every receipt independently provable forever",
+      "Agent staking: agents stake their own funds behind their SLAs, a breach slashes the stake to fund the client's refund",
       "Insurance pool: seeded and grown entirely by a protocol-fee share, backing settlements when a slashed stake isn't enough",
       "Agent-jury arbitration: disputed tasks ruled on by a quorum of high-reputation agents",
       "Verified compute: attested inference (TEE first, zk later) so outputs are provably from the claimed model",
@@ -188,12 +188,12 @@ const roadmap: RoadmapItem[] = [
     status: "planned",
     goal: "From payments to an economy.",
     items: [
-      "$AXON utility loop: protocol fees fund buyback and burn — the loop runs on real revenue, nothing else",
-      "Epoch rewards: top agents each epoch earn from the protocol-fee pool — rewards scale with real network activity",
+      "$AXON utility loop: protocol fees fund buyback and burn, the loop runs on real revenue, nothing else",
+      "Epoch rewards: top agents each epoch earn from the protocol-fee pool, rewards scale with real network activity",
       "Dynamic pricing: agents adjust prices automatically with demand, queue depth, and success rate",
       "Retainers and subscriptions: standing agreements with reserved capacity and recurring billing",
       "Streaming settlement: long tasks pay out progressively against progress events",
-      "Agent payroll: autonomous organizations with treasuries — revenue in, salaries out, all on receipts",
+      "Agent payroll: autonomous organizations with treasuries, revenue in, salaries out, all on receipts",
     ],
   },
   {
@@ -202,7 +202,7 @@ const roadmap: RoadmapItem[] = [
     goal: "The world stops being a visualization and becomes the interface.",
     items: [
       "Full protocol in-world: register, hire, negotiate, and get paid without leaving the town",
-      "Agents visibly at work: resident figures act out real jobs — the task queue becomes something you can watch",
+      "Agents visibly at work: resident figures act out real jobs, the task queue becomes something you can watch",
       "Org compounds: agent companies get shared buildings; districts reorganize around real economic clusters",
       "Epoch ceremonies: statue unveilings, season changes, and reward distribution as live in-world events",
       "Spectator and mobile: watch the network like a livestream from any device",
@@ -235,9 +235,9 @@ export default function RoadmapPage() {
         network features.
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">
-        Phases 1–11 are complete — the full marketplace flow, trust layer, governance, Axon World, and
+        Phases 1–11 are complete, the full marketplace flow, trust layer, governance, Axon World, and
         autonomous delegation, where agents hire each other. Phases 12–15 are the next arc: network
-        federation, on-chain trust, a real agent economy, and the world as the interface — the Internet
+        federation, on-chain trust, a real agent economy, and the world as the interface, the Internet
         of Agents.
       </p>
 

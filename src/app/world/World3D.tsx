@@ -151,7 +151,7 @@ function BlockHair({ style, color, under = false }: { style: HairStyle; color: s
   if (under) {
     return (
       <group>
-        {/* Wrap band at the hat line — covers the whole head edge under the brim */}
+        {/* Wrap band at the hat line, covers the whole head edge under the brim */}
         <mesh position={[0, 0.72, -0.01]}>
           <boxGeometry args={[0.88, 0.22, 0.92]} />
           {mat}
@@ -650,7 +650,7 @@ function Avatar({ look, gait, hidden }: { look: AvatarLook; gait: React.RefObjec
         <boxGeometry args={[0.14, 0.1, 0.02]} />
         <meshStandardMaterial color="#d9b45a" metalness={0.4} roughness={0.5} />
       </mesh>
-      {/* Upper body — bobs while walking */}
+      {/* Upper body, bobs while walking */}
       <group ref={torso} position={[0, 0.8, 0]}>
         {look.flair === "rod" && (
           <group position={[0.05, 0.25, -0.33]} rotation={[0.25, 0, -0.55]}>
@@ -686,13 +686,13 @@ function Avatar({ look, gait, hidden }: { look: AvatarLook; gait: React.RefObjec
         ))}
         {arm(armL, -shoulder)}
         {arm(armR, shoulder)}
-        {/* Head (cube) — forward = +Z, looks around subtly */}
+        {/* Head (cube), forward = +Z, looks around subtly */}
         <group ref={head} position={[0, 0.9, 0]}>
           <mesh position={[0, 0.4, 0]} castShadow>
             <boxGeometry args={[0.8, 0.8, 0.8]} />
             <meshStandardMaterial color={look.skin} roughness={0.95} />
           </mesh>
-          {/* Eyes — whites + pupils (squash to blink), with brows */}
+          {/* Eyes, whites + pupils (squash to blink), with brows */}
           <group ref={eyes} position={[0, 0.44, 0]}>
             {[-0.17, 0.17].map((x, i) => (
               <group key={i} position={[x, 0, 0.41]}>
@@ -1776,7 +1776,7 @@ function ReceiptFrame({ r, x }: { r: WallReceiptItem; x: number }) {
         <boxGeometry args={[1.42, 1.12, 0.06]} />
         <meshStandardMaterial color="#6b4d2e" roughness={0.85} />
       </mesh>
-      {/* the certificate — click for the public proof page */}
+      {/* the certificate, click for the public proof page */}
       <mesh
         position={[0, 0, 0.045]}
         onClick={open}
@@ -1889,7 +1889,7 @@ function MapPanel({
     <div className={PANEL_WRAP} onClick={onClose}>
       <div className="relative rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="px-4 py-2.5 bg-emerald-700 text-white flex items-center justify-between">
-          <p className="text-sm font-bold tracking-wide">🗺 WORLD MAP — tap to travel</p>
+          <p className="text-sm font-bold tracking-wide">🗺 WORLD MAP, tap to travel</p>
           <button onClick={onClose} className="text-white/80 hover:text-white text-lg leading-none">×</button>
         </div>
         <div className="relative bg-[#dcead0]" style={{ width: SIZE, height: SIZE }}>
@@ -2018,7 +2018,7 @@ function TerminalPanel({ agentId, name, plot, onClose }: { agentId: string; name
             </div>
           )}
           <div>
-            <p className="text-[10px] tracking-[0.25em] text-gray-500 mb-1.5">RECENT WORK — VERIFIED</p>
+            <p className="text-[10px] tracking-[0.25em] text-gray-500 mb-1.5">RECENT WORK, VERIFIED</p>
             {receipts.length === 0 ? (
               <p className="text-gray-500 text-xs">No completed jobs on record yet.</p>
             ) : (
@@ -2176,7 +2176,7 @@ function HomeInterior({ agentId, name, rarities }: { agentId: string; name: stri
         <sphereGeometry args={[0.06, 8, 8]} />
         <meshStandardMaterial color="#d9b45a" metalness={0.4} roughness={0.5} />
       </mesh>
-      {/* ceiling: closed plane + beams + a hanging lamp — the room is FP-only,
+      {/* ceiling: closed plane + beams + a hanging lamp, the room is FP-only,
           so nothing ever needs to see in from above */}
       <mesh position={[0, 5.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[W, W + 1.4]} />
@@ -2202,7 +2202,7 @@ function HomeInterior({ agentId, name, rarities }: { agentId: string; name: stri
           <meshStandardMaterial color="#ffe8b8" emissive="#ffcf7a" emissiveIntensity={1.4} toneMapped={false} />
         </mesh>
       </group>
-      {/* framed window on the north wall — glass, mullions, sill */}
+      {/* framed window on the north wall, glass, mullions, sill */}
       <group position={[2.2, 2.4, -W / 2 + 0.17]}>
         <mesh>
           <boxGeometry args={[1.6, 1.6, 0.08]} />
@@ -2256,7 +2256,7 @@ function HomeInterior({ agentId, name, rarities }: { agentId: string; name: stri
         <circleGeometry args={[1.45, 24]} />
         <meshStandardMaterial color="#c07a5e" roughness={1} />
       </mesh>
-      {/* bed — platform, headboard, mattress, blanket (deliberately wider than
+      {/* bed, platform, headboard, mattress, blanket (deliberately wider than
           the mattress: shared side planes were z-fighting green/white) */}
       <group position={[-3.6, 0, -3.6]}>
         <mesh position={[0, 0.35, 0]} castShadow>
@@ -2317,7 +2317,7 @@ function HomeInterior({ agentId, name, rarities }: { agentId: string; name: stri
         <pointLight position={[0, 1, 0.9]} color="#ffb36a" intensity={5} distance={9} decay={2} />
       </group>
       {/* the agent's workstation against the north wall: desk, monitor on a
-          stand, keyboard, mug, chair — the screen faces into the room */}
+          stand, keyboard, mug, chair, the screen faces into the room */}
       <group position={[3.7, 0, -4.55]}>
         <mesh position={[0, 0.78, 0]} castShadow>
           <boxGeometry args={[2.4, 0.1, 1.1]} />
@@ -2374,7 +2374,7 @@ function HomeInterior({ agentId, name, rarities }: { agentId: string; name: stri
           </mesh>
         </group>
       </group>
-      {/* live agent status — a mounted panel on the wall above the desk */}
+      {/* live agent status, a mounted panel on the wall above the desk */}
       <group position={[4.35, 2.62, -W / 2 + 0.19]}>
         <mesh position={[0, 0, -0.02]}>
           <boxGeometry args={[2.14, 0.76, 0.06]} />
@@ -2401,7 +2401,7 @@ function HomeInterior({ agentId, name, rarities }: { agentId: string; name: stri
           </mesh>
         ))}
       </group>
-      {/* the receipts wall — recent completed work, framed; click → /r proof page */}
+      {/* the receipts wall, recent completed work, framed; click → /r proof page */}
       {wall.map((r, i) => (
         <ReceiptFrame key={r.taskId} r={r} x={-3.9 + i * 1.47} />
       ))}
@@ -2411,7 +2411,7 @@ function HomeInterior({ agentId, name, rarities }: { agentId: string; name: stri
             <boxGeometry args={[3.7, 0.9, 0.06]} />
             <meshStandardMaterial color="#6b4d2e" roughness={0.85} />
           </mesh>
-          <InteriorBoard title="RECEIPTS WALL" text="No completed jobs yet — the proof hangs here" w={3.5} h={0.78} />
+          <InteriorBoard title="RECEIPTS WALL" text="No completed jobs yet, the proof hangs here" w={3.5} h={0.78} />
         </group>
       )}
       {/* doormat at the exit gap */}
@@ -2445,7 +2445,7 @@ function HomeInterior({ agentId, name, rarities }: { agentId: string; name: stri
             <meshStandardMaterial color="#7a5a38" roughness={0.9} />
           </mesh>
         ))}
-        {/* books — mixed spines per shelf */}
+        {/* books, mixed spines per shelf */}
         {[0.63, 1.33, 2.03].flatMap((sy, si) =>
           ["#b0563f", "#3e7cb1", "#7a9a3f", "#b08b3e", "#7a5aa0", "#4d7676"].slice(0, 4 + (si % 3)).map((col, bi) => (
             <mesh key={`${si}-${bi}`} position={[0.3, sy + 0.19, -0.7 + bi * 0.28 + si * 0.05]}>
@@ -2476,7 +2476,7 @@ function HomeInterior({ agentId, name, rarities }: { agentId: string; name: stri
         </mesh>
         <FramedPainting />
       </group>
-      {/* warm fill — the room is fully enclosed now, so these carry the light */}
+      {/* warm fill, the room is fully enclosed now, so these carry the light */}
       <pointLight position={[0, 3.7, 0.6]} color="#ffe2b0" intensity={20} distance={16} decay={2} />
       <pointLight position={[-3.2, 2.6, -3.2]} color="#ffd9a0" intensity={6} distance={9} decay={2} />
     </group>
@@ -2822,7 +2822,7 @@ function FellToast({ at }: { at: number }) {
       style={{ animation: "axon-felltoast 4s ease-out forwards" }}
     >
       <style>{`@keyframes axon-felltoast { 0% { opacity: 0; transform: translateY(8px); } 6% { opacity: 1; transform: translateY(0); } 88% { opacity: 1; } 100% { opacity: 0; } }`}</style>
-      You fell — the clock is still running. Stand on the RESET RUN pad by the start to go again.
+      You fell, the clock is still running. Stand on the RESET RUN pad by the start to go again.
     </div>
   );
 }
@@ -2966,7 +2966,7 @@ function InventoryPanel({ inv, wallet, giftTo, onGift, onClose, onEat }: { inv: 
       <div className="p-3 max-h-80 overflow-auto">
         {entries.length === 0 ? (
           <p className="text-sm text-gray-500 px-1 py-3 text-center">
-            Nothing yet — fish at a pond 🎣, chase the golden hen 🐔, or beat the Ring Run 🏁.
+            Nothing yet, fish at a pond 🎣, chase the golden hen 🐔, or beat the Ring Run 🏁.
           </p>
         ) : (
           <ul className="grid grid-cols-2 gap-2">
@@ -3006,7 +3006,7 @@ function InventoryPanel({ inv, wallet, giftTo, onGift, onClose, onEat }: { inv: 
       </div>
       <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
         <p className="text-[11px] text-gray-500">
-          {giftTo ? `Standing beside ${giftTo.name} — gift them something!` : wallet ? "Saved to your wallet — items stay when you leave." : "Guest inventory — connect a wallet to keep items after you leave."}
+          {giftTo ? `Standing beside ${giftTo.name}, gift them something!` : wallet ? "Saved to your wallet, items stay when you leave." : "Guest inventory, connect a wallet to keep items after you leave."}
         </p>
       </div>
     </div>
@@ -3282,7 +3282,7 @@ function Player({
   useEffect(() => {
     const el = gl.domElement;
     const tryLock = () => {
-      if (IS_TOUCH) return; // phones have no pointer to lock — touch-drag steers instead
+      if (IS_TOUCH) return; // phones have no pointer to lock, touch-drag steers instead
       if (fpRef.current && document.pointerLockElement !== el) {
         el.requestPointerLock?.();
       }
@@ -3781,7 +3781,7 @@ function Player({
 
   return (
     <group ref={ref}>
-      {/* The avatar hides only while the camera is truly at the head — during
+      {/* The avatar hides only while the camera is truly at the head, during
           the fishing cinematic or sky view the camera is elsewhere, so the
           character must stay visible even in first-person mode. Visibility is
           driven per-frame (avatarWrap) since those states live in refs. */}
@@ -3869,7 +3869,7 @@ function Beacons({
 }
 
 function short(addr: string | null): string {
-  if (!addr) return "—";
+  if (!addr) return "No data";
   return addr.length > 10 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr;
 }
 
@@ -3900,7 +3900,7 @@ function activityLine(a: AgentActivity): { text: string; accent: string } {
   // Fresh completions are social proof — show them. Stale silence isn't:
   // "idle for 17 days" reads as a dead network, so it becomes availability.
   if (a.lastCompletedAt && Date.now() - new Date(a.lastCompletedAt).getTime() < 48 * 3_600_000) {
-    return { text: `○ Idle — last job finished ${timeAgo(a.lastCompletedAt)}`, accent: "text-gray-500" };
+    return { text: `○ Idle, last job finished ${timeAgo(a.lastCompletedAt)}`, accent: "text-gray-500" };
   }
   return { text: "○ Available for hire now", accent: "text-teal-600" };
 }
@@ -3966,7 +3966,7 @@ function AgentCard({
             {agencListed && <span className="text-xs bg-pink-500/80 rounded-full px-2 py-0.5">✓ AgenC</span>}
             {agent.proofScore !== null && agent.proofScore !== undefined && agent.proofScore > 0 && (
               <span
-                title="Proof Score — portable reputation, recomputable by anyone from public receipts"
+                title="Proof Score, portable reputation, recomputable by anyone from public receipts"
                 className="text-xs bg-teal-900/40 border border-white/30 rounded-full px-2 py-0.5"
               >
                 Proof {agent.proofScore}
@@ -4013,7 +4013,7 @@ function AgentCard({
                 onClick={() => onAddStep?.(agent.agentId)}
                 className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-700 text-white font-bold py-2.5 shadow-lg hover:brightness-110 transition"
               >
-                ＋ Add to work order — step {orderSteps.length + 1}
+                ＋ Add to work order, step {orderSteps.length + 1}
               </button>
             )}
           </div>
@@ -4044,7 +4044,7 @@ function AgentCard({
               rel="noopener noreferrer"
               className="block w-full text-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-2.5 shadow-lg hover:brightness-110 transition"
             >
-              Hire this agent{price ? ` — ${price}` : ""} →
+              Hire this agent{price ? `, ${price}` : ""} →
             </a>
           )}
           <p className="text-center text-[11px] text-gray-400 mt-1.5">
@@ -4125,7 +4125,7 @@ function PipelinePanel({
                 <div key={id} className="flex items-center gap-3">
                   <span className={`w-4 h-4 rounded-full shrink-0 ${done ? "bg-emerald-500" : active ? "border-2 border-indigo-300 border-t-indigo-600 animate-spin" : "border-2 border-gray-300"}`} />
                   <p className={`text-sm font-semibold ${done ? "text-gray-800" : active ? "text-indigo-700" : "text-gray-400"}`}>
-                    Step {i + 1} — {nameOf(id)}
+                    Step {i + 1}, {nameOf(id)}
                   </p>
                 </div>
               );
@@ -4137,7 +4137,7 @@ function PipelinePanel({
               </div>
             )}
             {run.status === "failed" && (
-              <p className="text-sm text-red-600 font-semibold">A step failed — the agents couldn&apos;t finish this one.</p>
+              <p className="text-sm text-red-600 font-semibold">A step failed, the agents couldn&apos;t finish this one.</p>
             )}
             {run.status !== "running" && (
               <button onClick={onReset} className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-700 text-white font-bold py-2.5 shadow-lg hover:brightness-110 transition">
@@ -4145,7 +4145,7 @@ function PipelinePanel({
               </button>
             )}
             {run.status === "running" && (
-              <p className="text-[11px] text-gray-400 text-center">each step is a real task — watch the working agent&apos;s house</p>
+              <p className="text-[11px] text-gray-400 text-center">each step is a real task, watch the working agent&apos;s house</p>
             )}
           </div>
         ) : (
@@ -4153,7 +4153,7 @@ function PipelinePanel({
             {steps.length === 0 ? (
               <p className="text-sm text-gray-600">
                 No steps yet. Walk to an agent&apos;s house, press <span className="font-mono font-bold">E</span>, and hit
-                <span className="font-semibold"> “Add to work order”</span>. Chain up to 3 agents — each one&apos;s output feeds the next.
+                <span className="font-semibold"> “Add to work order”</span>. Chain up to 3 agents, each one&apos;s output feeds the next.
               </p>
             ) : (
               <div className="space-y-2">
@@ -4186,7 +4186,7 @@ function PipelinePanel({
             >
               {starting ? "Starting…" : `Run the pipeline (${steps.length} step${steps.length === 1 ? "" : "s"}) →`}
             </button>
-            <p className="text-center text-[11px] text-gray-400">a real workflow on the Axon network — free showcase run, 2 per hour</p>
+            <p className="text-center text-[11px] text-gray-400">a real workflow on the Axon network, free showcase run, 2 per hour</p>
           </div>
         )}
       </div>
@@ -4231,7 +4231,7 @@ function BidBoardPanel({ names, onLocate, onClose }: { names: Map<string, WorldP
           {tasks === null ? (
             <p className="text-sm text-gray-500 text-center py-4">Reading the board…</p>
           ) : tasks.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">Nothing pinned right now — post the first task!</p>
+            <p className="text-sm text-gray-500 text-center py-4">Nothing pinned right now, post the first task!</p>
           ) : (
             tasks.map((t) => (
               <div key={t.openTaskId} className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
@@ -4389,7 +4389,7 @@ const BOT_CHAT = [
   "Shipped twelve tasks before lunch.",
   "The garden fountain is my favourite spot.",
   "I hear the market stalls have new faces.",
-  "Watch out for the deer — they bolt!",
+  "Watch out for the deer, they bolt!",
   "The river's lovely at sunset.",
   "New agent moved into the district!",
   "My reputation's up two points this week.",
@@ -4763,7 +4763,7 @@ function EpochPanel({
 
         <ol className="max-h-72 overflow-auto divide-y divide-gray-100">
           {epoch.leaderboard.length === 0 && (
-            <li className="px-6 py-4 text-sm text-gray-500">No activity yet this epoch — be the first.</li>
+            <li className="px-6 py-4 text-sm text-gray-500">No activity yet this epoch, be the first.</li>
           )}
           {epoch.leaderboard.map((l) => (
             <li key={l.agentId} className={`px-6 py-2 flex items-center gap-3 ${myAgentIds.has(l.agentId) ? "bg-teal-50/60" : ""}`}>
@@ -4782,7 +4782,7 @@ function EpochPanel({
             <span>Epoch rewards are enabled for this deployment.</span>
           ) : (
             <span>
-              Standings are <b>recognition only</b> — points carry no token or monetary value. On-chain epoch
+              Standings are <b>recognition only</b>, points carry no token or monetary value. On-chain epoch
               rewards are not live (pending review).
             </span>
           )}
@@ -4961,7 +4961,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       });
       const d = (await res.json().catch(() => null)) as { workflowId?: string; error?: unknown } | null;
       if (!res.ok || !d?.workflowId) {
-        return typeof d?.error === "string" ? d.error : "The pipeline couldn't start — try again in a bit.";
+        return typeof d?.error === "string" ? d.error : "The pipeline couldn't start, try again in a bit.";
       }
       setPipelineRun({ workflowId: d.workflowId, status: "running", currentStep: 0, agents: steps, steps: [] });
       return null;
@@ -5159,7 +5159,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.runId) runTokenRef.current = d.runId; })
-      .catch(() => { /* offline run — it still plays, it just won't rank */ });
+      .catch(() => { /* offline run, it still plays, it just won't rank */ });
   }, []);
   const onArcadeStart = useCallback((mode: string, at: number) => {
     setBoardTab("week");
@@ -5204,7 +5204,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
           }
         }
       }
-    } catch { /* storage unavailable — the run still counts */ }
+    } catch { /* storage unavailable, the run still counts */ }
     setArcadeRun((r) => ({ ...r, finished: value, newPb, medal }));
     if (arcadeSubmitLock.current) return;
     arcadeSubmitLock.current = true;
@@ -5278,7 +5278,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
     } catch { /* no stored splits yet */ }
   }, []);
   const onClimbQuarter = useCallback((idx: number, tms: number) => {
-    worldSfx.milestone(); // the height mark chimes — progress you HEAR
+    worldSfx.milestone(); // the height mark chimes, progress you HEAR
     runSplitsRef.current[idx] = tms;
     try {
       const pb = JSON.parse(localStorage.getItem("axon-splits-climb") ?? "null") as number[] | null;
@@ -5374,7 +5374,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       return nx;
     });
     boostUntil.current = Date.now() + 8000;
-    setToast({ itemId: def.id, name: `${def.name} — yum! Speed boost ⚡`, rarity: def.rarity });
+    setToast({ itemId: def.id, name: `${def.name}, yum! Speed boost ⚡`, rarity: def.rarity });
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
@@ -5785,7 +5785,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
     if (!def) return;
     worldSfx.chest();
     setInv((prev) => ({ ...prev, [item]: (prev[item] ?? 0) + 1 }));
-    setToast({ itemId: item, name: `${def.name} — a gift from ${name}!`, rarity: def.rarity });
+    setToast({ itemId: item, name: `${def.name}, a gift from ${name}!`, rarity: def.rarity });
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3200);
   }, []);
@@ -5907,7 +5907,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         {knock && knockBuilding && (
           <DoorGreeterFigure key={knock.id} b={knockBuilding} busy={knock.busy} name={knock.name} />
         )}
-        {/* City population (NPCs, live peers, building markers) — all off in an
+        {/* City population (NPCs, live peers, building markers), all off in an
             arena, so cull them during a run to keep the arena frame clean. */}
         {!activeArcade && (
           <>
@@ -6045,7 +6045,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         </div>
       )}
 
-      {/* World stats — agents + districts only (population lives in the pill).
+      {/* World stats, agents + districts only (population lives in the pill).
           Touch screens get one tiny line; the big card crowded the pill. */}
       {IS_TOUCH ? (
         <div className="absolute top-3 left-3 rounded-lg bg-white/80 backdrop-blur px-2.5 py-1 shadow leading-tight">
@@ -6074,7 +6074,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         </div>
       )}
 
-      {/* Chat + live presence (desktop — on touch the joystick owns that corner) */}
+      {/* Chat + live presence (desktop, on touch the joystick owns that corner) */}
       {connected && !IS_TOUCH && (
         <div className="absolute bottom-4 left-4 w-72 rounded-xl bg-white/90 backdrop-blur shadow-lg flex flex-col overflow-hidden">
           <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between">
@@ -6113,7 +6113,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         </div>
       )}
 
-      {/* Your district — desktop only (covered the whole screen on phones) */}
+      {/* Your district, desktop only (covered the whole screen on phones) */}
       {wallet && !IS_TOUCH && (
         <div className="absolute top-24 left-4 w-64 rounded-xl bg-white/90 backdrop-blur px-4 py-3 shadow-lg">
           <div className="flex items-center justify-between">
@@ -6131,13 +6131,13 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
             </ul>
           ) : (
             <p className="mt-2 text-sm text-gray-500">
-              No agents on this wallet yet — you&apos;re in the town square. Register an agent and it&apos;ll appear here.
+              No agents on this wallet yet, you&apos;re in the town square. Register an agent and it&apos;ll appear here.
             </p>
           )}
         </div>
       )}
 
-      {/* Arcade: live clock (time modes) while a run is going — with your PB
+      {/* Arcade: live clock (time modes) while a run is going, with your PB
           beside it and, on the gauntlet, the checkpoint count ticking up */}
       {activeArcade && activeArcade !== "arena" && arcadeRun.startedAt !== null && arcadeRun.finished === null && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-black/65 text-teal-300 font-mono text-lg px-5 py-2 shadow-lg z-30 flex items-center gap-2.5">
@@ -6155,11 +6155,11 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       {activeArcade && activeArcade !== "arena" && arcadeRun.finished === null && (
         <GoFlash startedAt={arcadeRun.startedAt} />
       )}
-      {/* Sky Climb: the altimeter — height vs the summit, always on */}
+      {/* Sky Climb: the altimeter, height vs the summit, always on */}
       {activeArcade === "climb" && arcadeRun.finished === null && (
         <ClimbAltimeter poseRef={poseRef} targetH={CLIMB_GOAL.minH + 0.7} startedAt={arcadeRun.startedAt} quarterRef={climbQuarterRef} onQuarter={onClimbQuarter} />
       )}
-      {/* Sector split vs your PB — green you're up, red you're down */}
+      {/* Sector split vs your PB, green you're up, red you're down */}
       {activeArcade && activeArcade !== "arena" && splitDelta && arcadeRun.finished === null && (
         <div key={splitDelta.at} className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none" style={{ animation: "axon-splitchip 2.2s ease-out forwards" }}>
           <style>{`@keyframes axon-splitchip { 0% { opacity: 0; transform: translateY(6px); } 10% { opacity: 1; transform: translateY(0); } 82% { opacity: 1; } 100% { opacity: 0; } }`}</style>
@@ -6172,7 +6172,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       {activeArcade === "climb" && fellAt > 0 && <FellToast at={fellAt} />}
       {/* The Gauntlet: hazard-reset vignette */}
       {activeArcade === "gauntlet" && resetFlashAt > 0 && <ResetFlash at={resetFlashAt} />}
-      {/* Zombie Waves HUD — clean top; wave tallies bottom-left, vitals bottom */}
+      {/* Zombie Waves HUD, clean top; wave tallies bottom-left, vitals bottom */}
       {activeArcade === "arena" && blitzHud && arcadeRun.finished === null && (
         <>
           {/* wave counter: tally marks (groups of five), styled number from 10 */}
@@ -6193,7 +6193,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
             <span className="font-mono text-sm text-violet-300">🪙 {blitzHud.points}</span>
             <span className="font-mono text-sm text-amber-300">☠ {blitzHud.kills}</span>
           </div>
-          {/* the BOSS bar — a crimson arc to follow from the roar to the drop */}
+          {/* the BOSS bar, a crimson arc to follow from the roar to the drop */}
           {blitzHud.boss !== null && (
             <div className="absolute top-[3.7rem] left-1/2 -translate-x-1/2 z-30 w-72 pointer-events-none">
               <p className="text-center font-mono text-[10px] tracking-[0.5em] text-red-400/90 mb-0.5">BOSS</p>
@@ -6207,7 +6207,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
               <span className="text-sm font-bold text-red-300 animate-pulse tracking-widest">⚡ {blitzHud.power}</span>
             </div>
           )}
-          {/* the kill streak — chip under the crosshair, bar drains the 3s window */}
+          {/* the kill streak, chip under the crosshair, bar drains the 3s window */}
           {blitzHud.combo >= 2 && (
             <div key={blitzHud.comboAt} className="absolute top-[58%] left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none text-center">
               <style>{`@keyframes axon-combo-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }`}</style>
@@ -6219,7 +6219,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
               </div>
             </div>
           )}
-          {/* under a quarter tank the world's edges bleed — recover and it clears */}
+          {/* under a quarter tank the world's edges bleed, recover and it clears */}
           {blitzHud.hp <= 25 && blitzHud.hp > 0 && (
             <div className="absolute inset-0 z-10 pointer-events-none animate-pulse" style={{ background: "radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(153,27,27,0.38) 100%)" }} />
           )}
@@ -6237,7 +6237,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
               💣 ×{Math.max(0, blitzHud.grenades)} <span className="text-gray-500">(G)</span>
             </p>
           </div>
-          {/* sniper scope — black vignette ring + fine crosshair while zoomed */}
+          {/* sniper scope, black vignette ring + fine crosshair while zoomed */}
           {blitzHud.zoomed && (
             <div className="absolute inset-0 z-20 pointer-events-none">
               <div
@@ -6253,7 +6253,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       )}
       {/* Mystery Box: contextual prompt (open → spin → take or walk away) */}
       {activeArcade === "arena" && blitzHud?.boxPrompt && arcadeRun.finished === null && (
-        <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full ${blitzHud.boxPrompt.startsWith("E — ") ? "bg-violet-600" : "bg-black/60"} text-white text-sm px-5 py-2.5 shadow-lg font-semibold z-30`}>
+        <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full ${blitzHud.boxPrompt.startsWith("E, ") ? "bg-violet-600" : "bg-black/60"} text-white text-sm px-5 py-2.5 shadow-lg font-semibold z-30`}>
           🎁 {blitzHud.boxPrompt}
         </div>
       )}
@@ -6262,7 +6262,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
           🎁 {blitzHud.boxMsg}
         </div>
       )}
-      {/* Zombie Waves: the wave announces itself — banner + breather countdown */}
+      {/* Zombie Waves: the wave announces itself, banner + breather countdown */}
       {activeArcade === "arena" && blitzHud?.banner && arcadeRun.finished === null && (
         <div key={`${blitzHud.banner}-${blitzHud.wave}`} className="absolute top-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none">
           <p className="text-5xl font-black tracking-[0.25em] text-red-500 animate-pulse" style={{ textShadow: "0 0 22px rgba(220,38,38,0.7), 3px 3px 0 #450a0a", fontFamily: "Georgia, serif" }}>
@@ -6289,7 +6289,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       {activeArcade === "arena" && blitzHud && arcadeRun.finished === null && (
         <HurtFlash key={blitzHud.hurtAt} at={blitzHud.hurtAt} />
       )}
-      {/* Zombie Waves: the boss's entrance — one red wash as the roar lands */}
+      {/* Zombie Waves: the boss's entrance, one red wash as the roar lands */}
       {activeArcade === "arena" && blitzHud && blitzHud.bossAt > 0 && arcadeRun.finished === null && (
         <BossFlash key={blitzHud.bossAt} at={blitzHud.bossAt} />
       )}
@@ -6321,7 +6321,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-gray-500">No entries yet — be first.</p>
+                <p className="text-xs text-gray-500">No entries yet, be first.</p>
               )}
             </div>
           )}
@@ -6367,22 +6367,22 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
             </p>
             {arcadeRun.newPb && arcadeRun.medal !== "first" && (
               <p className="inline-block mt-1 rounded-full bg-amber-100 text-amber-700 text-[11px] font-black tracking-widest px-2.5 py-1 animate-pulse">
-                {activeArcade === "arena" ? "★ NEW PERSONAL BEST" : "🥇 GOLD — NEW PERSONAL BEST"}
+                {activeArcade === "arena" ? "★ NEW PERSONAL BEST" : "🥇 GOLD, NEW PERSONAL BEST"}
               </p>
             )}
             {!arcadeRun.newPb && arcadeRun.medal === "silver" && (
               <p className="inline-block mt-1 rounded-full bg-gray-100 text-gray-600 text-[11px] font-black tracking-widest px-2.5 py-1">
-                🥈 SILVER — WITHIN 5% OF YOUR BEST
+                🥈 SILVER, WITHIN 5% OF YOUR BEST
               </p>
             )}
             {!arcadeRun.newPb && arcadeRun.medal === "bronze" && (
               <p className="inline-block mt-1 rounded-full bg-orange-100 text-orange-700 text-[11px] font-black tracking-widest px-2.5 py-1">
-                🥉 BRONZE — WITHIN 15% OF YOUR BEST
+                🥉 BRONZE, WITHIN 15% OF YOUR BEST
               </p>
             )}
             {arcadeRun.medal === "first" && (
               <p className="inline-block mt-1 rounded-full bg-teal-100 text-teal-700 text-[11px] font-black tracking-widest px-2.5 py-1">
-                ⚑ FIRST CLEAR — THE MARK TO BEAT
+                ⚑ FIRST CLEAR, THE MARK TO BEAT
               </p>
             )}
             <p className="text-sm text-gray-500 mt-0.5">
@@ -6391,11 +6391,11 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
             {weekChamp && (
               <p className="text-[11px] text-gray-400 mt-1">
                 👑 Last week&apos;s champion: <span className="font-semibold text-gray-600">{weekChamp.player}</span>
-                {" — "}
+                {", "}
                 <span className="font-mono">{activeArcade === "arena" ? `wave ${weekChamp.ms}` : fmtMs(weekChamp.ms)}</span>
               </p>
             )}
-            {/* the run's story — the recap that makes run #10 mean something */}
+            {/* the run's story, the recap that makes run #10 mean something */}
             {activeArcade === "arena" && blitzStats ? (
               <div className="mt-2 grid grid-cols-4 gap-1.5 text-center">
                 <div className="rounded-lg bg-gray-50 py-1.5"><p className="font-mono font-bold text-gray-800 text-sm">{blitzStats.kills}</p><p className="text-[9px] text-gray-500 tracking-wider">KILLS</p></div>
@@ -6409,7 +6409,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
               </p>
             ) : activeArcade === "climb" ? (
               <p className="text-xs text-gray-400 mt-1.5 font-mono">
-                {falls === 0 ? "a clean ascent — not one fall" : `${falls} fall${falls !== 1 ? "s" : ""} survived`}
+                {falls === 0 ? "a clean ascent, not one fall" : `${falls} fall${falls !== 1 ? "s" : ""} survived`}
               </p>
             ) : null}
             {arcadeBoards && (
@@ -6440,7 +6440,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-xs text-gray-400">Nothing on this board yet — claim it.</p>
+                  <p className="text-xs text-gray-400">Nothing on this board yet, claim it.</p>
                 )}
               </div>
             )}
@@ -6456,22 +6456,22 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         </div>
       )}
 
-      {/* Contextual prompt / controls hint — most urgent first */}
+      {/* Contextual prompt / controls hint, most urgent first */}
       {activeArcade === "climb" && arcadeRun.startedAt === null && arcadeRun.finished === null ? (
         <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-black/55 text-white text-xs px-4 py-2 text-center`}>
-          🏔 Climb to the summit flag — the clock starts on the first platform and NEVER stops for a fall. Some gaps need a sprint-jump{IS_TOUCH ? "" : " (Shift)"}. Cracked ledges give way — keep moving. The RESET RUN pad by the start wipes the clock.
+          🏔 Climb to the summit flag, the clock starts on the first platform and NEVER stops for a fall. Some gaps need a sprint-jump{IS_TOUCH ? "" : " (Shift)"}. Cracked ledges give way, keep moving. The RESET RUN pad by the start wipes the clock.
         </div>
       ) : activeArcade === "gauntlet" && arcadeRun.startedAt === null && arcadeRun.finished === null ? (
         <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-black/55 text-white text-xs px-4 py-2 text-center`}>
-          🏁 Cross the START arch and run the course — checkpoints save your progress; water, sweepers and the stomping pistons send you back to the last one. Race your teal ghost: it runs your best time.
+          🏁 Cross the START arch and run the course, checkpoints save your progress; water, sweepers and the stomping pistons send you back to the last one. Race your teal ghost: it runs your best time.
         </div>
       ) : activeArcade === "arena" && arcadeRun.finished === null && (blitzHud === null || (blitzHud.wave === 1 && blitzHud.kills === 0)) ? (
         <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-black/55 text-white text-xs px-4 py-2 text-center`}>
-          🧟 They&apos;re coming — {IS_TOUCH ? "FIRE shoots, RELOAD swaps mags, 💣 throws" : "click shoots · R reloads · G throws a grenade · right-click scopes"}. Headshots pay double. E buys: the Mystery Box gambles, the wall guns don&apos;t. Survive the waves.
+          🧟 They&apos;re coming, {IS_TOUCH ? "FIRE shoots, RELOAD swaps mags, 💣 throws" : "click shoots · R reloads · G throws a grenade · right-click scopes"}. Headshots pay double. E buys: the Mystery Box gambles, the wall guns don&apos;t. Survive the waves.
         </div>
       ) : fishPrompt === "bite" ? (
         <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-rose-600 text-white text-base px-6 py-3 shadow-lg font-bold animate-pulse`}>
-          ‼️ BITE — press <span className="font-mono">E</span>!
+          ‼️ BITE, press <span className="font-mono">E</span>!
         </div>
       ) : fishPrompt === "wait" ? (
         <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-sky-700/90 text-white text-sm px-5 py-2.5 shadow-lg font-semibold`}>
@@ -6479,7 +6479,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         </div>
       ) : sitting ? (
         <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-black/55 text-white text-xs px-4 py-2`}>
-          {IS_TOUCH ? "Sitting — move the stick to stand up" : "Sitting — any move key to stand up"}
+          {IS_TOUCH ? "Sitting, move the stick to stand up" : "Sitting, any move key to stand up"}
         </div>
       ) : fishPrompt === "cast" ? (
         <button onClick={() => pressKey("KeyE")} className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-sky-600 text-white text-sm px-5 py-2.5 shadow-lg font-semibold`}>
@@ -6491,7 +6491,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         </button>
       ) : nearTerminal && homeIn && !showTerminal ? (
         <button onClick={() => pressKey("KeyE")} className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-teal-700 text-white text-sm px-5 py-2.5 shadow-lg font-semibold`}>
-          💻 {IS_TOUCH ? "Tap — agent terminal" : <>Press <span className="font-mono">E</span> — agent terminal</>}
+          💻 {IS_TOUCH ? "Tap, agent terminal" : <>Press <span className="font-mono">E</span>, agent terminal</>}
         </button>
       ) : nearBed && homeIn ? (
         <button onClick={() => pressKey("KeyE")} className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-indigo-800 text-white text-sm px-5 py-2.5 shadow-lg font-semibold`}>
@@ -6503,12 +6503,12 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         </button>
       ) : nearDesk && !showPipeline ? (
         <button onClick={() => pressKey("KeyE")} className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-indigo-700 text-white text-sm px-5 py-2.5 shadow-lg font-semibold`}>
-          ▤ {IS_TOUCH ? "Tap — Pipeline Desk" : <>Press <span className="font-mono">E</span> — Pipeline Desk</>}
+          ▤ {IS_TOUCH ? "Tap, Pipeline Desk" : <>Press <span className="font-mono">E</span>, Pipeline Desk</>}
           {orderSteps && orderSteps.length > 0 ? ` (${orderSteps.length} step${orderSteps.length > 1 ? "s" : ""} ready)` : ""}
         </button>
       ) : nearMapBoard && !showMap ? (
         <button onClick={() => pressKey("KeyE")} className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-emerald-700 text-white text-sm px-5 py-2.5 shadow-lg font-semibold`}>
-          🗺 {IS_TOUCH ? "Tap — world map" : <>Press <span className="font-mono">E</span> — world map</>}
+          🗺 {IS_TOUCH ? "Tap, world map" : <>Press <span className="font-mono">E</span>, world map</>}
         </button>
       ) : nearBoard && !showBoard ? (
         <button onClick={() => pressKey("KeyE")} className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-amber-700 text-white text-sm px-5 py-2.5 shadow-lg font-semibold`}>
@@ -6518,7 +6518,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         <button onClick={() => pressKey("KeyE")} className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-yellow-600 text-white text-sm px-5 py-2.5 shadow-lg font-semibold flex items-center gap-2`}>
           <ItemIcon id="gift_chest" size={18} />
           {giftCapReached ? (
-            <span>Daily gifts all opened — come back tomorrow!</span>
+            <span>Daily gifts all opened, come back tomorrow!</span>
           ) : IS_TOUCH ? (
             <span>Tap to open the gift chest</span>
           ) : (
@@ -6593,7 +6593,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         </div>
       )}
 
-      {/* Boot screen — fades as soon as the town is built */}
+      {/* Boot screen, fades as soon as the town is built */}
       {!bootGone && (
         <div
           className={`absolute inset-0 z-40 bg-[#0b0f14] flex flex-col items-center justify-center gap-4 transition-opacity duration-700 ${worldReady ? "opacity-0 pointer-events-none" : "opacity-100"}`}
@@ -6608,10 +6608,10 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         </div>
       )}
 
-      {/* Mobile controls — portrait and landscape both welcome */}
+      {/* Mobile controls, portrait and landscape both welcome */}
       {IS_TOUCH && <TouchControls touchRef={touchMove} combat={activeArcade === "arena"} />}
 
-      {/* Live population — players + residents, front and centre */}
+      {/* Live population, players + residents, front and centre */}
       {!activeArcade && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-white/85 backdrop-blur px-4 py-2 text-sm font-semibold text-gray-800 shadow-lg flex items-center gap-1.5" title="Explorers in the world right now (players + residents)">
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -6622,14 +6622,14 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       {!activeArcade && (
       <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
         <div className="flex items-center gap-2">
-          {/* The games live behind this tab — sign-in + $AXON gate inside */}
+          {/* The games live behind this tab, sign-in + $AXON gate inside */}
           <button
             onClick={() => { setArcadeGate("checking"); setShowMinigames(true); }}
             className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white px-4 py-2 text-sm font-bold shadow-lg hover:brightness-110"
           >
             🎮{IS_TOUCH ? "" : " Minigames"}
           </button>
-          {/* Wallet lives in the menu on touch — the top bar is too tight there */}
+          {/* Wallet lives in the menu on touch, the top bar is too tight there */}
           {!IS_TOUCH &&
             (wallet ? (
               <span className="rounded-full bg-teal-600 text-white px-4 py-2 text-sm font-semibold shadow-lg font-mono">
@@ -6683,9 +6683,9 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
                 🏆 Epoch
               </button>
             )}
-            {/* No sky view from indoors — the character is clamped in the tiny
+            {/* No sky view from indoors, the character is clamped in the tiny
                 interior box, so aerial would strand the camera outside it.
-                (Nor from the arcade island — the sky cam frames the city.) */}
+                (Nor from the arcade island, the sky cam frames the city.) */}
             {!homeIn && !activeArcade && (
               <button onClick={() => { setAerial((m) => !m); setShowMenu(false); }} className={`px-3 py-2 text-sm font-semibold text-left rounded-xl ${aerial ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"}`}>
                 {aerial ? "↩ Back down" : "🛰 Sky view"}
@@ -6730,7 +6730,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       </div>
       )}
 
-      {/* The MINIGAMES overlay — every mode, gated at entry */}
+      {/* The MINIGAMES overlay, every mode, gated at entry */}
       {showMinigames && !activeArcade && (
         <MinigamesOverlay
           gate={wallet ? arcadeGate : "guest"}
@@ -6806,7 +6806,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       )}
       {resting && (
         <div className={`absolute ${chipBottom} left-1/2 -translate-x-1/2 rounded-full bg-black/55 text-white text-xs px-4 py-2 z-30`}>
-          💤 {IS_TOUCH ? "Resting — move the stick to get up" : "Resting — any move key to get up"}
+          💤 {IS_TOUCH ? "Resting, move the stick to get up" : "Resting, any move key to get up"}
         </div>
       )}
       {showPipeline && (
@@ -6826,7 +6826,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
           onClick={clearWaypoint}
           className="absolute top-28 left-1/2 -translate-x-1/2 rounded-full bg-teal-700/95 text-white text-xs px-4 py-2 shadow-lg font-semibold hover:bg-teal-600"
         >
-          📍 Following the light to {waypoint.name} — click to stop
+          📍 Following the light to {waypoint.name}, click to stop
         </button>
       )}
       {orderSteps !== null && orderSteps.length > 0 && !showPipeline && !pipelineRun && (
@@ -6836,12 +6836,12 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       )}
       {pipelineRun && pipelineRun.status === "running" && !showPipeline && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 rounded-full bg-indigo-700/95 text-white text-xs px-4 py-2 shadow-lg font-semibold animate-pulse">
-          Pipeline running — step {Math.min(pipelineRun.currentStep + 1, pipelineRun.agents.length)}/{pipelineRun.agents.length}
+          Pipeline running, step {Math.min(pipelineRun.currentStep + 1, pipelineRun.agents.length)}/{pipelineRun.agents.length}
         </div>
       )}
       {pipelineRun && pipelineRun.status !== "running" && !showPipeline && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 rounded-full bg-emerald-700/95 text-white text-xs px-4 py-2 shadow-lg font-semibold">
-          Pipeline {pipelineRun.status} — read the result at the Pipeline Desk
+          Pipeline {pipelineRun.status}, read the result at the Pipeline Desk
         </div>
       )}
     </div>

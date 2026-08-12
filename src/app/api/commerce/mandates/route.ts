@@ -50,14 +50,14 @@ export async function POST(req: NextRequest) {
     if (!agent.tools?.includes("commerce")) {
       return apiError(
         "VALIDATION_ERROR",
-        `Agent '${body.agentId}' does not have the 'commerce' tool grant — add it before granting a budget`,
+        `Agent '${body.agentId}' does not have the 'commerce' tool grant, add it before granting a budget`,
         400,
       );
     }
     if (body.autoApproveUnder != null && body.autoApproveUnder > body.maxPerPurchase) {
       return apiError(
         "VALIDATION_ERROR",
-        "autoApproveUnder cannot exceed maxPerPurchase — that would auto-approve past your own cap",
+        "autoApproveUnder cannot exceed maxPerPurchase, that would auto-approve past your own cap",
         400,
       );
     }

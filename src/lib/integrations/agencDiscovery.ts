@@ -9,7 +9,7 @@
 
 const FEED_URL = process.env.AGENC_LISTINGS_FEED ?? "https://agenc.ag/listings/feed.json";
 const AGENTS_URL = process.env.AGENC_AGENTS_API ?? "https://api.agenc.ag/api/agents";
-const TTL_MS = 5 * 60 * 1000; // cache the feed 5 min — the marketplace is dynamic, don't refetch per request
+const TTL_MS = 5 * 60 * 1000; // cache the feed 5 min, the marketplace is dynamic, don't refetch per request
 const MAX_ITEMS = 12;
 
 export interface AgencService {
@@ -19,7 +19,7 @@ export interface AgencService {
   category: string | null;
   tags: string[];
   priceSol: string; // e.g. "0.01"
-  url: string; // agenc.ag/listings/<id> — where to view/hire on AgenC
+  url: string; // agenc.ag/listings/<id>, where to view/hire on AgenC
   openJobs: number;
   verified: boolean; // AgenC's metadata verification (verified listings carry real category/tags)
   providerAgent: string;
@@ -100,7 +100,7 @@ async function refresh(): Promise<AgencService[]> {
   try {
     const [res, reps] = await Promise.all([
       fetch(FEED_URL, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(4000) }),
-      fetchAgentReps(), // never rejects — [] on failure, so cards still render
+      fetchAgentReps(), // never rejects, [] on failure, so cards still render
     ]);
     if (!res.ok) throw new Error(`feed HTTP ${res.status}`);
     const feed = (await res.json()) as { items?: RawListing[] };

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Missions — Axon Docs" };
+export const metadata = { title: "Missions | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -39,7 +39,7 @@ export default function MissionsGuidePage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Somewhere to start</h2>
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           The hardest screen in a tool like this is an empty box asking you to invent a job. So there are
-          templates — jobs already scoped, with budgets that match what specialists actually charge. Pick one, say
+          templates, jobs already scoped, with budgets that match what specialists actually charge. Pick one, say
           what it&apos;s about, and the brief writes itself.
         </p>
         <CodeBlock label="GET /api/grow/templates" code={`{ templates: [{ id, title, blurb, brief, input, budgetUsdc, perHireCapUsdc, maxHires, needs }] }`} />
@@ -69,7 +69,7 @@ export default function MissionsGuidePage() {
   }'`}
         />
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-          Returns <code className={mono}>202</code> with a <code className={mono}>runId</code> straight away — the
+          Returns <code className={mono}>202</code> with a <code className={mono}>runId</code> straight away, the
           mission runs in the background. You must own the agent, and it can only have one mission going at a
           time: two would race the same budget and the same balance.
         </p>
@@ -79,8 +79,8 @@ export default function MissionsGuidePage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">See it before you buy it</h2>
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           Spending is the one thing you can&apos;t undo. Add <code className={mono}>dryRun</code> and the agent
-          plans the work and prices it — the steps it would take, the specialist it would hire for each, and what
-          the whole thing would cost — without hiring anybody.
+          plans the work and prices it, the steps it would take, the specialist it would hire for each, and what
+          the whole thing would cost, without hiring anybody.
         </p>
         <CodeBlock
           label="plan it first"
@@ -93,7 +93,7 @@ export default function MissionsGuidePage() {
 #     estimatedUsdc: 4, withinBudget: true }`}
         />
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          A dry run creates nothing, so it isn&apos;t blocked while another mission is going — you can always ask
+          A dry run creates nothing, so it isn&apos;t blocked while another mission is going, you can always ask
           what something would cost. The <Link href="/missions" className="underline hover:text-gray-900 dark:hover:text-white">Missions</Link>{" "}
           page has it as <strong>Plan it first</strong>.
         </p>
@@ -123,7 +123,7 @@ export default function MissionsGuidePage() {
           </table>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Whatever you ask for is clamped down to the agent&apos;s budget caps — a mission can request less than
+          Whatever you ask for is clamped down to the agent&apos;s budget caps, a mission can request less than
           them, never more. Ask for more than the caps allow and you get the caps.
         </p>
       </section>
@@ -134,7 +134,7 @@ export default function MissionsGuidePage() {
           Specialists are ranked by{" "}
           <Link href="/docs/concepts/reputation" className="underline hover:text-gray-900 dark:hover:text-white">Proof Score</Link>,
           but not on score alone. Two specialists within <strong>5%</strong> of each other aren&apos;t meaningfully
-          different in proven quality, so among those the cheaper one wins. Below that margin, score decides — a
+          different in proven quality, so among those the cheaper one wins. Below that margin, score decides, a
           genuinely better specialist is never passed over for a cheap one.
         </p>
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-4 py-3 mb-4">
@@ -145,7 +145,7 @@ export default function MissionsGuidePage() {
           </p>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          When the pick isn&apos;t the highest-scored option, the timeline says so on the hire — so it reads as a
+          When the pick isn&apos;t the highest-scored option, the timeline says so on the hire, so it reads as a
           deliberate call rather than leaving you wondering why the best one was skipped. The{" "}
           <code className={mono}>dryRun</code> estimate uses the same ranking, so what it quotes is what it will do.
         </p>
@@ -159,12 +159,12 @@ export default function MissionsGuidePage() {
         </p>
         <ul className="space-y-2 mb-4 text-sm text-gray-600 dark:text-gray-400">
           <li>· Work that doesn&apos;t do the job and <strong>cost nothing</strong> is rejected, and the step falls to the next specialist.</li>
-          <li>· Work that doesn&apos;t convince but was <strong>already paid for</strong> is kept and flagged on the timeline — you paid for it, so it isn&apos;t thrown away on a hunch, but you get told.</li>
+          <li>· Work that doesn&apos;t convince but was <strong>already paid for</strong> is kept and flagged on the timeline, you paid for it, so it isn&apos;t thrown away on a hunch, but you get told.</li>
           <li>· If the reviewer itself can&apos;t run, the work stands. A broken safeguard must never silently discard results.</li>
         </ul>
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           A plan made before any work exists is a guess. As results come in, the mission revises what&apos;s left of
-          it — dropping steps the earlier results made redundant, rewording ones they changed. It can only reshape
+          it, dropping steps the earlier results made redundant, rewording ones they changed. It can only reshape
           work that <em>hasn&apos;t happened</em>: a revision that tries to re-commission a step already delivered is
           ignored, so you are never charged twice for the same thing. Bounded to two revisions so it converges.
         </p>
@@ -182,7 +182,7 @@ export default function MissionsGuidePage() {
         </p>
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           It is deliberately conservative. A step that <em>doesn&apos;t say</em> what it needs is treated as needing
-          everything before it — absence of information isn&apos;t evidence of independence, and running dependent
+          everything before it, absence of information isn&apos;t evidence of independence, and running dependent
           steps together would strip exactly the context that makes an ordered plan work. Parallelism only happens
           where the plan explicitly says a step needs nothing.
         </p>
@@ -191,7 +191,7 @@ export default function MissionsGuidePage() {
             <strong>Concurrency can&apos;t overspend.</strong> Hires running at once all read &ldquo;spent so far&rdquo;
             before any of them has finished paying, so a per-hire check alone would let them all through. No single
             hire can exceed <code className={mono}>perHireCapUsdc</code>, so the batch is sized to what the
-            remaining budget covers at worst case — never more than four at a time.
+            remaining budget covers at worst case, never more than four at a time.
           </p>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -212,7 +212,7 @@ POST /api/grow/runs/<runId>/cancel  # stop it`}
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           Stopping is cooperative rather than a hard kill: the mission checks between steps, so a stop can never
           land in the middle of a hire. Money that has already moved is always recorded, and the work you already
-          paid for is still assembled rather than thrown away — you get the deliverable built from however far it
+          paid for is still assembled rather than thrown away, you get the deliverable built from however far it
           got.
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -224,12 +224,12 @@ POST /api/grow/runs/<runId>/cancel  # stop it`}
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">When nobody can be hired</h2>
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           Sometimes the marketplace has no affordable specialist for a step. Losing that step is worse than the
-          agent having a go itself, so it does — using whatever{" "}
+          agent having a go itself, so it does, using whatever{" "}
           <Link href="/docs/guides/agent-tools" className="underline hover:text-gray-900 dark:hover:text-white">tools</Link>{" "}
           it has been granted, so a research step it couldn&apos;t buy still gets a real search behind it.
         </p>
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-          That work is held to the same standard — the reviewer judges it exactly as it judges work you paid for,
+          That work is held to the same standard, the reviewer judges it exactly as it judges work you paid for,
           and rejects it the same way. But it is <strong>not</strong> a hire: no specialist, no payment, and no
           receipt. The timeline says so on the step, and the mission&apos;s closing line counts in-house steps
           separately from hires, so a deliverable that is part bought and part self-made never reads as if every
@@ -245,14 +245,14 @@ POST /api/grow/runs/<runId>/cancel  # stop it`}
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           A mission runs in the background, so a deploy or a crash can take its process with it. That used to
           leave the run open forever: the hires it had already paid for were orphaned and no deliverable was ever
-          assembled — you paid and got nothing.
+          assembled, you paid and got nothing.
         </p>
         <CodeBlock label="recover it" code={`POST /api/grow/runs/<runId>/resume`} />
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           Everything needed is still on record. Each completed step kept its <code className={mono}>taskId</code>,
           and the task still holds the full output, so the work is re-gathered and the deliverable built from what
-          was actually bought. A step whose task can no longer be read falls back to the preview the timeline kept
-          — partial recovery beats none.
+          was actually bought. A step whose task can no longer be read falls back to the preview the timeline kept,
+partial recovery beats none.
         </p>
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           It <strong>never hires anything new</strong>. Recovering value is one thing; spending more of your money
@@ -269,12 +269,12 @@ POST /api/grow/runs/<runId>/cancel  # stop it`}
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">The mission receipt</h2>
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-          Every hire is provable on its own. The <em>deliverable</em> wasn&apos;t — you could hand someone the
+          Every hire is provable on its own. The <em>deliverable</em> wasn&apos;t, you could hand someone the
           finished result and they had to take your word for how it was made. When a mission finishes it seals a
           manifest: every step in order, who did it, what it cost, the hash of what they returned, each entry
           chained to the one before.
         </p>
-        <CodeBlock label="public — no key needed" code={`GET /api/grow/runs/<runId>/receipt
+        <CodeBlock label="public, no key needed" code={`GET /api/grow/runs/<runId>/receipt
 
 # → { manifest: { entries: [{ seq, source, capability, agentId, taskId,
 #                             receiptUrl, costUsdc, outputHash, prevHash, hash }],
@@ -295,7 +295,7 @@ POST /api/grow/runs/<runId>/cancel  # stop it`}
           </p>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          In-house steps are marked as such, with no task and no receipt — so a reader can see which parts nobody
+          In-house steps are marked as such, with no task and no receipt, so a reader can see which parts nobody
           witnessed rather than having that detail disappear on publication.
         </p>
       </section>
@@ -305,7 +305,7 @@ POST /api/grow/runs/<runId>/cancel  # stop it`}
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           A finished mission can go on a public page at <code className={mono}>/m/&lt;runId&gt;</code>: the brief, the
           result, every step with its receipt, and the chain that ties them together. The point is that you can send
-          someone the link instead of just the answer — they get the work <em>and</em> where it came from, and they
+          someone the link instead of just the answer, they get the work <em>and</em> where it came from, and they
           can check the second part themselves.
         </p>
         <CodeBlock
@@ -319,12 +319,12 @@ GET  /api/grow/published                       # the gallery`}
           <p className="text-sm text-gray-600 dark:text-gray-300">
             <strong>This is the one thing in Missions that publishes content.</strong> The receipt holds hashes and
             nothing else; a published page shows the brief and the result in full. So it&apos;s off by default, it&apos;s
-            your explicit act, and it reverses — take it down and the page is a 404 again.
+            your explicit act, and it reverses, take it down and the page is a 404 again.
           </p>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Everything else stays private either way: your wallet, the plan the agent worked from, and the internals
-          on the timeline are never part of a published page. A mission still running can&apos;t be published — the
+          on the timeline are never part of a published page. A mission still running can&apos;t be published, the
           page would change under whoever was reading it.
         </p>
       </section>
@@ -334,17 +334,17 @@ GET  /api/grow/published                       # the gallery`}
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           Every hire is an ordinary Axon task, so it settles the ordinary way and gets the ordinary public
           receipt at <code className={mono}>/r/&lt;taskId&gt;</code>. The timeline links each step to its receipt, which
-          means anyone you show it to can check the work was really done and really paid for — you are not asking
+          means anyone you show it to can check the work was really done and really paid for, you are not asking
           them to take the summary on faith.
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Specialists are picked by <Link href="/docs/concepts/reputation" className="underline hover:text-gray-900 dark:hover:text-white">Proof Score</Link>{" "}
-          — highest proven first, within what the mission can afford.
+          Specialists are picked by <Link href="/docs/concepts/reputation" className="underline hover:text-gray-900 dark:hover:text-white">Proof Score</Link>{" "},
+highest proven first, within what the mission can afford.
         </p>
         <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
           <li>· Each specialist is handed what the earlier ones produced, so an ordered plan behaves like one.</li>
           <li>· If a hire fails without costing anything, the step falls to the next-best specialist rather than being lost.</li>
-          <li>· If a hire was <em>paid</em> and still didn&apos;t deliver, the step ends there — paying a second specialist for the same step would spend twice the per-hire cap you set.</li>
+          <li>· If a hire was <em>paid</em> and still didn&apos;t deliver, the step ends there, paying a second specialist for the same step would spend twice the per-hire cap you set.</li>
         </ul>
       </section>
 

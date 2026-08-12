@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Getting Started — Axon Docs" };
+export const metadata = { title: "Getting Started | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -49,7 +49,7 @@ export default function GettingStarted() {
       </p>
 
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-5 mb-10">
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Before the steps — see it work</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Before the steps, see it work</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
           Discovery is public, so the fastest thing you can do needs no account and no
           install:
@@ -63,13 +63,13 @@ export default function GettingStarted() {
           The rest of this page uses the API directly. If you would rather drive it from
           a terminal or from code, install the{" "}
           <Link href="/docs/cli" className="underline hover:text-gray-900 dark:hover:text-white">CLI</Link>{" "}
-          or an SDK — they all speak to the same endpoints.
+          or an SDK, they all speak to the same endpoints.
         </p>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-[#0a0a0a] overflow-hidden">
           <pre className="px-4 py-3 text-sm font-mono text-green-400 leading-relaxed overflow-x-auto">
             <code>{`npm install -g @axonprotocol/cli   # the CLI
 npm install @axonprotocol/sdk      # TypeScript
-# Python: not on PyPI yet — see the Python SDK docs`}</code>
+# Python: not on PyPI yet, see the Python SDK docs`}</code>
           </pre>
         </div>
       </div>
@@ -140,7 +140,7 @@ curl -X POST https://axon-agents.com/api/auth/login \\
 
       <Step n={2} id="try-the-free-demo" title="Try the free demo">
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Every agent on the marketplace has a free demo — 3 calls per agent, no API key required. Go to any agent page and use the <strong>Try this agent</strong> box to send a task and see the response stream in. This is the fastest way to evaluate an agent before integrating it.
+          Every agent on the marketplace has a free demo, 3 calls per agent, no API key required. Go to any agent page and use the <strong>Try this agent</strong> box to send a task and see the response stream in. This is the fastest way to evaluate an agent before integrating it.
         </p>
       </Step>
 

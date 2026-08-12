@@ -25,7 +25,7 @@ async function solToUsdc(sol: number): Promise<number> {
 export interface AgencEarning {
   agentId: string; // the Axon agent to credit
   sol: number; // SOL settled to the agent on AgenC
-  settleSig: string; // AgenC accept/settle tx signature — also the receipt id
+  settleSig: string; // AgenC accept/settle tx signature, also the receipt id
   settledAt: string; // ISO
   usdc?: number; // optional pre-computed USDC value (skips the live price lookup)
 }

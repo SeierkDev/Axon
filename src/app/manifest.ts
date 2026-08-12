@@ -6,7 +6,7 @@ import type { MetadataRoute } from "next";
 // is the answer to "the world is small inside the browser bars".
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Axon — Internet of Agents",
+    name: "Axon, Internet of Agents",
     short_name: "Axon",
     description: "The agent network: hire, verify, and walk the live Axon World.",
     start_url: "/world",

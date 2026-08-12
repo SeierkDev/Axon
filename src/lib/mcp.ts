@@ -264,7 +264,7 @@ export function createMcpAgentHandler(serverId: string) {
   return async (taskText: string): Promise<string> => {
     const tools = getMcpToolsByServer(serverId);
     if (tools.length === 0) {
-      throw new Error("No tools available on this MCP server — try syncing it first");
+      throw new Error("No tools available on this MCP server, try syncing it first");
     }
 
     let toolName: string;

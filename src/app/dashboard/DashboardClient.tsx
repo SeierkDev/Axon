@@ -709,7 +709,7 @@ export default function DashboardClient() {
         // Refresh the keys list
         const keysRes = await apiGet<{ keys: ApiKey[] }>("/api/auth/keys", apiKey);
         setData((prev) => prev ? { ...prev, keys: keysRes.keys } : prev);
-        addToast("success", "New key created — copy it now, it won't be shown again");
+        addToast("success", "New key created, copy it now, it won't be shown again");
       } else {
         addToast("error", "Failed to create key");
       }
@@ -1253,7 +1253,7 @@ npm run demo:agent`}</code>
             </div>
             {newKeyReveal && (
               <div className="mb-4 p-3 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30">
-                <p className="text-xs font-semibold text-amber-800 dark:text-amber-400 mb-2">New key — copy it now, it won&apos;t be shown again</p>
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-400 mb-2">New key, copy it now, it won&apos;t be shown again</p>
                 <div className="flex items-center gap-2">
                   <input
                     readOnly
@@ -1328,7 +1328,7 @@ npm run demo:agent`}</code>
                         )}
                         {isStale && (
                           <span className="text-[11px] px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400">
-                            90+ days — consider rotating
+                            90+ days, consider rotating
                           </span>
                         )}
                       </div>
@@ -1354,7 +1354,7 @@ npm run demo:agent`}</code>
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <h2 className="font-semibold text-gray-900 dark:text-white">Spend Limits</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Per-agent USDC caps — enforced before any payment leaves the agent</p>
+                <p className="text-xs text-gray-400 mt-0.5">Per-agent USDC caps, enforced before any payment leaves the agent</p>
               </div>
             </div>
             {data.agents.length === 0 ? (

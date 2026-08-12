@@ -28,7 +28,7 @@ function parsePrice(price: string): { amount: number; currency: string } | null 
 
 function friendlyPayError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
-  if (msg === "PHANTOM_NOT_FOUND") return "Phantom wallet not found — install Phantom to pay the agent.";
+  if (msg === "PHANTOM_NOT_FOUND") return "Phantom wallet not found, install Phantom to pay the agent.";
   if (msg.startsWith("INSUFFICIENT_USDC")) return "Not enough USDC in your wallet to pay this bid.";
   if (msg === "INSUFFICIENT_SOL") return "Your wallet needs a little SOL to cover the network fee.";
   if (msg === "PAYMENT_FAILED") return "The payment transaction failed on-chain.";
@@ -141,7 +141,7 @@ export default function OpenTasksClient({ rpcUrl, treasury }: { rpcUrl: string; 
       if (!accepted) {
         throw new Error(
           paymentSignature
-            ? "Your payment is still confirming on-chain — it'll go through shortly. Do not pay again."
+            ? "Your payment is still confirming on-chain, it'll go through shortly. Do not pay again."
             : (data.error ?? "Accept failed")
         );
       }
@@ -257,7 +257,7 @@ export default function OpenTasksClient({ rpcUrl, treasury }: { rpcUrl: string; 
 
           {acceptedTaskId && (
             <div className="mt-5 rounded-lg border border-green-300 dark:border-green-900 bg-green-50 dark:bg-green-950/30 px-4 py-3 text-sm text-green-800 dark:text-green-300">
-              Task created: <code className="font-mono">{acceptedTaskId}</code> — paid and running now.
+              Task created: <code className="font-mono">{acceptedTaskId}</code>, paid and running now.
             </div>
           )}
         </section>

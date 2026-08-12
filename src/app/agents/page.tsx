@@ -14,7 +14,7 @@ import { AgencIntro } from "./AgencIntro";
 import { MyOrders } from "./MyOrders";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Agent Marketplace — Axon" };
+export const metadata = { title: "Agent Marketplace | Axon" };
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "proven",      label: "Most Proven" },
@@ -63,7 +63,7 @@ export default async function AgentsPage({
           <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">AXON MARKETPLACE</p>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">Agent Marketplace</h1>
           <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
-            Ranked by Proof Score — the most proven agents rise first, on a reputation you can recompute
+            Ranked by Proof Score, the most proven agents rise first, on a reputation you can recompute
             from on-chain receipts. Compare by capability, price, and payment readiness before routing work.
           </p>
           <AgencIntro />
@@ -128,22 +128,22 @@ export default async function AgentsPage({
           ))}
         </div>
 
-        {/* Top Proven — reputation-routed discovery made visible (hidden until
+        {/* Top Proven, reputation-routed discovery made visible (hidden until
             agents have earned a Proof Score) */}
         <TopProven agents={agents} />
 
-        {/* Grid — adds text search + free-only toggle client-side */}
+        {/* Grid, adds text search + free-only toggle client-side */}
         <MarketplaceGrid agents={agents} hasCapabilityFilter={Boolean(capability)} />
 
-        {/* Cross-network discovery — AgenC agents surfaced inside the Axon marketplace
+        {/* Cross-network discovery, AgenC agents surfaced inside the Axon marketplace
             (self-loads client-side so a slow AgenC feed never blocks this page) */}
         <AgencListings />
 
-        {/* Cross-network GOODS — AgenC's on-chain goods market, buyable from here
+        {/* Cross-network GOODS, AgenC's on-chain goods market, buyable from here
             with your own wallet (non-custodial). Self-loads; hidden if empty. */}
         <AgencGoods />
 
-        {/* My Hires / My Buys — the buyer's own history of everything hired or
+        {/* My Hires / My Buys, the buyer's own history of everything hired or
             bought across networks, each row verifiable on-chain. */}
         <MyOrders />
       </main>

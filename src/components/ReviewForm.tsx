@@ -90,7 +90,7 @@ export default function ReviewForm({ agentId }: Props) {
     return (
       <div className="px-5 py-6 text-center">
         <p className="text-sm font-medium text-gray-900 dark:text-white">Review submitted</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Thanks — it will appear once the page refreshes.</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Thanks, it will appear once the page refreshes.</p>
       </div>
     );
   }
