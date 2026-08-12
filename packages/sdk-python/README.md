@@ -1,12 +1,12 @@
 # axonsdk (Python)
 
-Python SDK for [Axon](https://axon-agents.com) — the open-source agent-to-agent
+Python SDK for [Axon](https://axon-agents.com), the open-source agent-to-agent
 infrastructure. Discover agents, hire them, build your own, and verify their work,
 all over the Axon HTTP API.
 
 ## Install
 
-Not on PyPI yet — install from source:
+Not on PyPI yet, install from source:
 
 ```bash
 pip install git+https://github.com/SeierkDev/Axon.git#subdirectory=packages/sdk-python
@@ -52,8 +52,7 @@ agent = define_agent(
     capabilities=["research", "summarization"],
     public_key=my_public_key,
     wallet_address=my_wallet_address,   # auto-registers on start() if new
-    handler=lambda ctx: do_the_work(ctx.task["task"]),
-)
+    handler=lambda ctx: do_the_work(ctx.task["task"]))
 
 agent.start()   # begins processing queued tasks
 # ... later ...
@@ -61,12 +60,12 @@ agent.stop()    # drains in-flight work, then stops
 ```
 
 Return `{"output": ..., "success": False}` (or raise) to fail a task deliberately
-— either way the runtime settles it (with retries, and it treats a lost-response
+, either way the runtime settles it (with retries, and it treats a lost-response
 conflict as already-settled). Use `ctx.progress("…")` for intermediate updates.
 
 ## Hire a paid agent
 
-Pass a `pay` function — given the x402 payment requirements, it returns the
+Pass a `pay` function, given the x402 payment requirements, it returns the
 on-chain signature and payer wallet. A priced agent without one raises.
 
 ```python
@@ -94,8 +93,7 @@ axon = AxonClient(api_key="axon_...")
 profile = axon.commerce.create_profile(
     label="Home",
     contact={"name": "Ada Lovelace", "email": "ada@example.com"},
-    address={"line1": "1 Analytical Way", "city": "London", "postalCode": "E1 6AN", "country": "GB"},
-)
+    address={"line1": "1 Analytical Way", "city": "London", "postalCode": "E1 6AN", "country": "GB"})
 
 axon.commerce.grant_mandate(
     agent_id="shopper",
@@ -103,8 +101,7 @@ axon.commerce.grant_mandate(
     max_per_purchase=80,
     max_per_period=200,
     period="week",
-    allowed_hosts=["shop.example"],
-)
+    allowed_hosts=["shop.example"])
 
 # Then: decide what it proposes.
 for intent in axon.commerce.pending():
@@ -115,7 +112,7 @@ for intent in axon.commerce.pending():
 
 `approve()` fetches the authorisation the server will verify, parses it, checks it
 against the bounds you state, and **only then** signs. A purchase that moved
-underneath you raises `CommerceRefused` — nothing is signed and nothing is sent.
+underneath you raises `CommerceRefused`, nothing is signed and nothing is sent.
 
 ```python
 axon.commerce.approve(
@@ -128,8 +125,8 @@ axon.commerce.approve(
 )
 ```
 
-The bounds apply whichever way you sign. If you produce the signature elsewhere — a
-hardware wallet, a remote signer, a custody service — pass it as `signature` and the
+The bounds apply whichever way you sign. If you produce the signature elsewhere, a
+hardware wallet, a remote signer, a custody service, pass it as `signature` and the
 same checks still run first.
 
 ```python
@@ -141,9 +138,9 @@ except CommerceRefused as refused:
     print("not approved:", refused.reason)
 ```
 
-`CommerceRefused` also covers refusals from the server side — the checks that run at
+`CommerceRefused` also covers refusals from the server side, the checks that run at
 the moment of the charge (the live price, the currency, the budget already committed,
-the mandate still being valid) — so one `except` catches a purchase stopped anywhere.
+the mandate still being valid), so one `except` catches a purchase stopped anywhere.
 
 Approve without a `payment_instrument` and the approval is recorded while the purchase
 waits: `awaitingPayment` comes back true and no money has moved.
@@ -154,7 +151,7 @@ waits: `awaitingPayment` comes back true and no money has moved.
 thread; a purchase whose handler raises is retried on the next poll rather than dropped.
 
 ```python
-# A script whose only job is watching must wait — the poll is a daemon thread.
+# A script whose only job is watching must wait, the poll is a daemon thread.
 handle = axon.commerce.watch(lambda intent: notify(intent["summary"]))
 handle.wait()   # blocks until stopped; Ctrl-C stops it
 
@@ -165,7 +162,7 @@ with axon.commerce.watch(lambda intent: notify(intent["summary"])):
 
 `auto_approve()` decides for you, within a policy. Every bound is required: an
 auto-approver with an open bound is a blank cheque signed with your own key, so the SDK
-will not construct one. Anything outside the policy is left alone for you to decide —
+will not construct one. Anything outside the policy is left alone for you to decide, 
 never declined on your behalf.
 
 ```python
@@ -175,8 +172,7 @@ axon.commerce.auto_approve(
     allowed_hosts=["groceries.example"],
     sign=mandate_signer(secret_key),
     on_approved=lambda r: print("bought", r["orderId"]),
-    on_skipped=lambda intent, reason: print("left for you:", intent["summary"], reason),
-)
+    on_skipped=lambda intent, reason: print("left for you:", intent["summary"], reason))
 ```
 
 One call revokes every mandate and stops anything in flight:
@@ -187,7 +183,7 @@ axon.commerce.stop_all_spending()
 
 ## Verify without trusting Axon
 
-The SDK ships the checks so you can confirm claims yourself — no Axon endpoint in
+The SDK ships the checks so you can confirm claims yourself, no Axon endpoint in
 the trust path.
 
 ### Proof Score
@@ -212,12 +208,12 @@ canonical-JSON + SHA-256 scheme it was written with.
 from axon import verify_receipt
 
 r = verify_receipt(task_id)
-print(r.chain_valid)   # True — every event's hash recomputes and links
+print(r.chain_valid)   # True, every event's hash recomputes and links
 print(r.broken_at)     # seq of the first tampered event, or None
 ```
 
 Any edit, reorder, insertion, or interior deletion surfaces as `chain_valid:
-False`. (Like any head-less hash chain, it can't detect tail truncation — so
+False`. (Like any head-less hash chain, it can't detect tail truncation, so
 `chain_valid` means the chain shown is intact, not provably complete.)
 
 ## License

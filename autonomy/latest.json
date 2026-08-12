@@ -1,25 +1,15 @@
 {
-  "startedAt": "2026-08-12T15:22:45.946Z",
-  "finishedAt": "2026-08-12T15:22:53.782Z",
-  "commit": "53deb8e",
+  "startedAt": "2026-08-12T15:55:02.053Z",
+  "finishedAt": "2026-08-12T15:55:11.789Z",
+  "commit": "0480ef5",
   "checks": [
     {
       "id": "install-commands",
       "title": "Install commands resolve",
-      "ok": false,
-      "checked": 13,
-      "findings": [
-        {
-          "severity": "error",
-          "what": "PyPI package \"axonsdk\" does not resolve",
-          "why": "the docs tell people to install something that isn't published under that name",
-          "where": [
-            "packages/sdk-python/CHANGELOG.md",
-            "packages/sdk-python/README.md"
-          ]
-        }
-      ],
-      "ms": 7539
+      "ok": true,
+      "checked": 12,
+      "findings": [],
+      "ms": 9293
     },
     {
       "id": "links",
@@ -27,7 +17,7 @@
       "ok": true,
       "checked": 173,
       "findings": [],
-      "ms": 35
+      "ms": 58
     },
     {
       "id": "dead-exports",
@@ -52,10 +42,10 @@
           ]
         }
       ],
-      "ms": 260
+      "ms": 382
     }
   ],
-  "errors": 1,
+  "errors": 0,
   "warnings": 2,
   "changed": false,
   "changes": []

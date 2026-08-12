@@ -2,12 +2,12 @@
 
 ## 0.6.0
 
-Parity with the TypeScript SDK's agent checkout. Not on PyPI yet — install
+Parity with the TypeScript SDK's agent checkout. Not on PyPI yet, install
 from source until it is.
 
 ### Added
 
-- `CommerceApi`, reached as `client.commerce` — create a profile, grant a mandate,
+- `CommerceApi`, reached as `client.commerce`, create a profile, grant a mandate,
   approve or refuse a purchase, and `watch()` for ones needing a decision.
 - `CommerceRefused`, raised when the network declines a purchase, so a refusal is
   distinguishable from a transport failure.
@@ -15,7 +15,7 @@ from source until it is.
   `cryptography` package, installed with the `signing` extra:
 
   ```bash
-  pip install "axonsdk[signing]"
+  pip install "axonsdk[signing] @ git+https://github.com/SeierkDev/Axon.git#subdirectory=packages/sdk-python"
   ```
 
 - `WatchHandle.wait()`, so a standalone watcher process stays alive instead of
