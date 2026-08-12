@@ -3,7 +3,7 @@
 ## 0.6.0
 
 First published release. The CLI existed before this, but only ran inside the Axon
-repository via `npm run axon` — there was no way to install it.
+repository via `npm run axon`, there was no way to install it.
 
 ### Added
 
@@ -20,7 +20,7 @@ repository via `npm run axon` — there was no way to install it.
 
 ### Changed
 
-- Ships as a single bundled file with no runtime dependencies — about 100 KB
+- Ships as a single bundled file with no runtime dependencies, about 100 KB
   installed. Wallet login previously pulled in `@solana/web3.js` (11 MB) for one
   key-loading call; it now derives the address with tweetnacl and bs58, verified
   against `@solana/web3.js` to produce identical addresses and signatures.

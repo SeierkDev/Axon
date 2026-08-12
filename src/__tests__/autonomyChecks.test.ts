@@ -173,13 +173,14 @@ describe("pipPackagesIn: the same reading, for PyPI", () => {
     expect(pipPackagesIn("pip install requests numpy pandas")).toEqual(["requests", "numpy", "pandas"]);
   });
 
-  it("reads the quoted extras form Axon actually documents", () => {
-    // `pip install "axonsdk[signing] @ git+…"` is the real line in the Python
-    // SDK's README. An earlier fix excluded quotes from a token, which made that
-    // line match nothing at all — the check silently stopped covering it.
+  it("reads the quoted extras form, and knows a URL install is not a registry one", () => {
+    // `pip install "axonsdk[signing]"` names a PyPI package. The same line with
+    // `@ git+...` after it does not: that installs from the URL. This assertion
+    // used to expect both to yield "axonsdk", which is why the check spent days
+    // reporting Axon's own from-source instructions as a missing package.
     expect(pipPackagesIn('pip install "axonsdk[signing]"')).toEqual(["axonsdk"]);
     expect(pipPackagesIn('pip install "axonsdk[signing] @ git+https://github.com/x/y.git#subdirectory=z"'))
-      .toEqual(["axonsdk"]);
+      .toEqual([]);
   });
 
   it("does not read across a newline or past a comment", () => {
@@ -224,5 +225,24 @@ describe("the link check covers where links actually live", () => {
     } finally {
       rmSync(abs, { force: true });
     }
+  });
+});
+
+describe("a package installed from a URL is not a PyPI package", () => {
+  it("skips a PEP 508 direct reference", () => {
+    // `name[extra] @ git+https://...` installs from the URL, so the registry has
+    // nothing to say about it. Checking anyway reported Axon's own documented
+    // from-source line as a missing package for days: the check was wrong, not
+    // the docs.
+    expect(pipPackagesIn('pip install "axonsdk[signing] @ git+https://github.com/SeierkDev/Axon.git#subdirectory=packages/sdk-python"'))
+      .toEqual([]);
+    expect(pipPackagesIn("pip install git+https://github.com/x/y.git")).toEqual([]);
+  });
+
+  it("still reads a plain PyPI install, so the check keeps its teeth", () => {
+    // The failure mode of the fix above is going blind. A name with no URL after
+    // it is exactly what the check exists to verify.
+    expect(pipPackagesIn('pip install "axonsdk[signing]"')).toEqual(["axonsdk"]);
+    expect(pipPackagesIn("pip install requests numpy")).toEqual(["requests", "numpy"]);
   });
 });

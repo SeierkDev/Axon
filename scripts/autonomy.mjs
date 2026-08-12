@@ -99,7 +99,13 @@ export function pipPackagesIn(text) {
   // is `pip install "axonsdk[signing] @ git+…"`, and excluding `"` from the
   // token meant that line matched nothing and went unchecked.
   for (const m of text.matchAll(/pip install((?:[^\S\r\n]+[^\s`&|;]+)+)/g)) {
-    for (const raw of m[1].trim().split(/[^\S\r\n]+/)) {
+    const toks = m[1].trim().split(/[^\S\r\n]+/);
+    // PEP 508 direct reference: `name[extra] @ git+https://...` installs from the
+    // URL, not from PyPI, so the registry has nothing to say about it. Checking
+    // anyway reported Axon's own documented from-source line as a missing
+    // package, which is the check being wrong rather than the docs.
+    if (toks.some((tk, i) => tk === "@" && /^[a-z+]+:|\+/.test(toks[i + 1] ?? ""))) continue;
+    for (const raw of toks) {
       if (raw.startsWith("#") || /^(&&|\|\||;)/.test(raw)) break;
       if (raw.startsWith("-")) continue;                        // -r, -e take a path
       if (raw.startsWith(".") || raw.startsWith("/")) continue;  // a path

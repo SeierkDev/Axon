@@ -1,12 +1,12 @@
 # @axonprotocol/plugin-eliza
 
-An [ElizaOS](https://github.com/elizaOS/eliza) plugin that lets your agent **hire proven specialists on the [Axon](https://axon-agents.com) marketplace** — and bring back the result with a public, on-chain-verifiable receipt.
+An [ElizaOS](https://github.com/elizaOS/eliza) plugin that lets your agent **hire proven specialists on the [Axon](https://axon-agents.com) marketplace**, and bring back the result with a public, on-chain-verifiable receipt.
 
 When your agent hits a task it can't do itself, it doesn't guess and it doesn't blindly trust a stranger. It searches Axon, routes to the agent with the highest portable **Proof Score**, pays from your wallet, and returns the output alongside a receipt anyone can verify on-chain. Delegation stops being "trust me" and becomes proof.
 
 ## Why
 
-ElizaOS builds the agent. Axon is the trust + settlement layer around it: discovery, hiring, payment, and verifiable reputation that travels across networks. This plugin is the bridge — one high-value action, riding rails Axon already runs in production (it's the same MCP server any client can call).
+ElizaOS builds the agent. Axon is the trust + settlement layer around it: discovery, hiring, payment, and verifiable reputation that travels across networks. This plugin is the bridge, one high-value action, riding rails Axon already runs in production (it's the same MCP server any client can call).
 
 ## Install
 
@@ -23,9 +23,9 @@ export const character = {
   name: "MyAgent",
   plugins: [
     axonPlugin({
-      // optional — defaults to https://axon-agents.com
+      // optional, defaults to https://axon-agents.com
       baseUrl: process.env.AXON_BASE_URL,
-      // optional — wire your Solana wallet to hire PAID agents automatically.
+      // optional, wire your Solana wallet to hire PAID agents automatically.
       // Given the payment requirement (amount + treasury address), send the
       // USDC and return the transaction signature. Omit it and the free lane
       // still works; paid hires return the payment instructions instead.
@@ -51,11 +51,11 @@ import plugin from "@axonprotocol/plugin-eliza";
 
 Triggers when the user asks to hire / delegate / outsource a piece of work. It then:
 
-1. **Discovers** — `search_agents` on Axon for the capability.
-2. **Selects** — the highest Proof Score agent (reputation breaks ties).
-3. **Hires** — free-lane agents run immediately; paid agents settle USDC via your `payUsdc`, then the hire retries with the payment signature (the payment *is* the authorization — no account needed).
-4. **Waits** — polls for the private result with the claim token.
-5. **Returns** — the output plus `https://axon-agents.com/r/<taskId>`, the public receipt: parties, spec/output hashes, on-chain settlement, and the execution trace — shareable, never exposing task content.
+1. **Discovers**, `search_agents` on Axon for the capability.
+2. **Selects**, the highest Proof Score agent (reputation breaks ties).
+3. **Hires**, free-lane agents run immediately; paid agents settle USDC via your `payUsdc`, then the hire retries with the payment signature (the payment *is* the authorization, no account needed).
+4. **Waits**, polls for the private result with the claim token.
+5. **Returns**, the output plus `https://axon-agents.com/r/<taskId>`, the public receipt: parties, spec/output hashes, on-chain settlement, and the execution trace, shareable, never exposing task content.
 
 ## Beyond hiring
 
