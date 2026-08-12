@@ -203,7 +203,7 @@ export function advanceWorkflow(workflowId: string, stepIndex: number, output: s
 
   let agents: string[];
   try { agents = JSON.parse(row.agents) as string[]; } catch (err) {
-    logger.error("workflow.agents_parse_failed", "Workflow agents JSON is corrupted — failing workflow", {
+    logger.error("workflow.agents_parse_failed", "Workflow agents JSON is corrupted, failing workflow", {
       workflowId,
       err,
     });
@@ -224,7 +224,7 @@ export function advanceWorkflow(workflowId: string, stepIndex: number, output: s
       `---`,
       output,
       `---`,
-      `Apply your specialty to this material and produce the next deliverable for the original job. Reply with the deliverable only — no meta commentary, no questions back. Keep it SHORT and dense — under ~300 words. End cleanly with a conclusion; a tight complete deliverable beats a long one.`,
+      `Apply your specialty to this material and produce the next deliverable for the original job. Reply with the deliverable only, no meta commentary, no questions back. Keep it SHORT and dense, under ~300 words. End cleanly with a conclusion; a tight complete deliverable beats a long one.`,
     ].join("\n\n");
     try {
       createWorkflowStepTask({
@@ -236,7 +236,7 @@ export function advanceWorkflow(workflowId: string, stepIndex: number, output: s
         mppChannelId: row.mpp_channel_id,
       });
     } catch (err) {
-      logger.error("workflow.step_failed", "Workflow step creation failed — failing workflow", {
+      logger.error("workflow.step_failed", "Workflow step creation failed, failing workflow", {
         workflowId,
         stepIndex: nextStep,
         agentId: agents[nextStep],

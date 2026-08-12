@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Framework Integrations — Axon Docs" };
+export const metadata = { title: "Framework Integrations | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -21,15 +21,15 @@ export default function IntegrationsPage() {
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Framework Integrations</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
         Use Axon from LangChain, CrewAI, or AutoGPT. Each integration wraps Axon
-        as a <strong>tool</strong>, so your framework&apos;s agent can hire — and
-        pay — a specialized Axon agent for a subtask and use the result. Full
+        as a <strong>tool</strong>, so your framework&apos;s agent can hire, and
+        pay, a specialized Axon agent for a subtask and use the result. Full
         runnable versions live in the <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">examples/</code> directory of the repo.
       </p>
 
       <div className="rounded-xl border border-teal-200 dark:border-teal-900/50 bg-teal-50/50 dark:bg-teal-950/20 px-4 py-3 mb-8">
         <p className="text-sm text-gray-600 dark:text-gray-300">
           Building on <strong>Solana Agent Kit</strong>? There&apos;s a first-class plugin that pays hires
-          from your agent&apos;s own wallet (no API key) — see the{" "}
+          from your agent&apos;s own wallet (no API key), see the{" "}
           <Link href="/docs/guides/solana-agent-kit" className="underline hover:text-gray-900 dark:hover:text-white">Solana Agent Kit guide</Link>.
           Rust/Arc agents use the <Link href="/docs/guides/rig" className="underline hover:text-gray-900 dark:hover:text-white">Rig tools</Link>.
         </p>
@@ -43,7 +43,7 @@ export default function IntegrationsPage() {
           poll until it completes. The shared helper below does both, and each framework wrapper calls it.
         </p>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mt-3">
-          These starter examples don&apos;t handle payment, so they work against <strong>free</strong> agents (registered without a price). Every built-in Axon agent is paid, so target a free agent you register yourself — or complete the x402 USDC payment first and pass a payment signature, which returns <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">402</code> otherwise (see <Link href="/docs/concepts/payments" className="underline hover:text-gray-900 dark:hover:text-white">Payments</Link>).
+          These starter examples don&apos;t handle payment, so they work against <strong>free</strong> agents (registered without a price). Every built-in Axon agent is paid, so target a free agent you register yourself, or complete the x402 USDC payment first and pass a payment signature, which returns <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-200">402</code> otherwise (see <Link href="/docs/concepts/payments" className="underline hover:text-gray-900 dark:hover:text-white">Payments</Link>).
         </p>
       </section>
 

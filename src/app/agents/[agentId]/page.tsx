@@ -30,8 +30,8 @@ export async function generateMetadata({
 }) {
   const { agentId } = await params;
   const agent = getAgentById(agentId);
-  if (!agent) return { title: "Agent Not Found — Axon" };
-  const title = `${agent.name} — Axon Track Record`;
+  if (!agent) return { title: "Agent Not Found | Axon" };
+  const title = `${agent.name} | Axon Track Record`;
   const description = `${agent.name}'s verified track record on Axon: every stat backed by receipts. Hire on proof, not vibes.`;
   return {
     title,
@@ -134,13 +134,13 @@ export default async function AgentProfilePage({
           </div>
         </div>
 
-        {/* Proof Score — the portable, verifiable credential */}
+        {/* Proof Score, the portable, verifiable credential */}
         {proofScore && <ProofScoreCard proof={proofScore} agentId={agent.agentId} />}
 
-        {/* Hire — close the loop: discover by proof, then hire right here */}
+        {/* Hire, close the loop: discover by proof, then hire right here */}
         <HirePanel agentId={agent.agentId} agentName={agent.name} isPaid={isPaid} price={agent.price} receiver={receiver} rpcUrl={rpcUrl} />
 
-        {/* The shareable version of this hire — so people know the link exists */}
+        {/* The shareable version of this hire, so people know the link exists */}
         <HireLinkShare agentId={agent.agentId} />
 
         {/* Marketplace Signals */}
@@ -155,7 +155,7 @@ export default async function AgentProfilePage({
           </div>
           <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {rating.count > 0 ? rating.avgRating.toFixed(1) : "—"}
+              {rating.count > 0 ? rating.avgRating.toFixed(1) : "No data"}
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Avg Rating</p>
             {rating.count > 0 && (
@@ -172,7 +172,7 @@ export default async function AgentProfilePage({
           </div>
         </div>
 
-        {/* Verified Track Record — every number backed by a receipt */}
+        {/* Verified Track Record, every number backed by a receipt */}
         {track && (
           <div className="rounded-lg border border-teal-200 dark:border-teal-900/50 overflow-hidden mb-10">
             <div className="px-5 py-3 border-b border-teal-200 dark:border-teal-900/50 bg-teal-50/60 dark:bg-teal-950/20 flex items-center justify-between gap-3">
@@ -200,7 +200,7 @@ export default async function AgentProfilePage({
               </div>
               <div className="p-4">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {track.tasksCompleted + track.tasksFailed > 0 ? `${Math.round(track.successRate * 100)}%` : "—"}
+                  {track.tasksCompleted + track.tasksFailed > 0 ? `${Math.round(track.successRate * 100)}%` : "No data"}
                 </p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Success rate</p>
               </div>
@@ -212,7 +212,7 @@ export default async function AgentProfilePage({
               </div>
               <div className="p-4">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {track.avgResponseSec > 0 ? `${track.avgResponseSec.toFixed(1)}s` : "—"}
+                  {track.avgResponseSec > 0 ? `${track.avgResponseSec.toFixed(1)}s` : "No data"}
                 </p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Avg response</p>
               </div>
@@ -237,7 +237,7 @@ export default async function AgentProfilePage({
             )}
             <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800">
               <p className="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
-                Recent verified work — every job links to its proof
+                Recent verified work, every job links to its proof
               </p>
               {track.recentJobs.length === 0 ? (
                 <p className="text-sm text-gray-400 dark:text-gray-500">
@@ -270,11 +270,11 @@ export default async function AgentProfilePage({
           </div>
         )}
 
-        {/* Recent work — the receipts behind the numbers above.
+        {/* Recent work, the receipts behind the numbers above.
             The track record has always been totals you had to take on trust, on a
             network built so you don't have to. Every job here is a public receipt
             anyone can open and check. Nothing shown that the receipt page doesn't
-            already make public — never the task itself. */}
+            already make public, never the task itself. */}
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">
           <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
@@ -344,7 +344,7 @@ export default async function AgentProfilePage({
             <Row label="Endpoint" value={verificationLabel(agent)} />
             <Row label="Last Check" value={
               agent.verificationStatus === "platform"
-                ? "Platform managed — always active"
+                ? "Platform managed, always active"
                 : agent.lastVerifiedAt
                   ? formatDate(agent.lastVerifiedAt)
                   : "Not verified yet"
@@ -379,11 +379,11 @@ export default async function AgentProfilePage({
                 agent.tools?.length
                   ? `${agent.tools.map(describeToolGrant).join(", ")}${
                       // Grants can sit on an agent whose provider or model can't
-                      // run them yet. Say so — listing them flat would claim a
+                      // run them yet. Say so, listing them flat would claim a
                       // capability this agent doesn't currently have.
-                      toolsActiveFor(agent) ? "" : " — granted, not active on this agent's provider"
+                      toolsActiveFor(agent) ? "" : ", granted, not active on this agent's provider"
                     }`
-                  : "None — answers from the model alone"
+                  : "None, answers from the model alone"
               }
             />
             <Row label="30d Tasks" value={`${metrics.completedTasks} completed, ${metrics.failedTasks} failed`} />
@@ -432,7 +432,7 @@ export default async function AgentProfilePage({
               {isPaid ? (
                 <>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{price} per task · paid via x402 · settles on Solana</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Attach a signed Solana USDC transfer to each request. The SDK handles this automatically — or follow the manual flow below.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Attach a signed Solana USDC transfer to each request. The SDK handles this automatically, or follow the manual flow below.</p>
                 </>
               ) : (
                 <>
@@ -487,14 +487,14 @@ console.log(result.output);`,
           {
             label: "cURL",
             code: isPaid
-              ? `# Step 1 — discover payment requirements
+              ? `# Step 1, discover payment requirements
 curl https://axon-agents.com/api/agents/${agent.agentId}/x402
 # ← 402 + X-Payment-Required header (base64 JSON with payToAddress, amount)
 
-# Step 2 — send ${price} USDC to payToAddress on Solana
+# Step 2, send ${price} USDC to payToAddress on Solana
 # → TX_SIG = confirmed transaction signature
 
-# Step 3 — build X-Payment header (base64 of JSON) and submit
+# Step 3, build X-Payment header (base64 of JSON) and submit
 X_PAYMENT=$(echo -n '{"scheme":"exact","network":"solana-mainnet","payload":{"signature":"TX_SIG","from":"YOUR_WALLET"}}' | base64)
 
 curl -X POST https://axon-agents.com/api/agents/${agent.agentId}/x402 \\
@@ -510,17 +510,17 @@ curl -X POST https://axon-agents.com/api/agents/${agent.agentId}/x402 \\
           {
             label: "JavaScript",
             code: isPaid
-              ? `// Step 1 — probe for payment requirements
+              ? `// Step 1, probe for payment requirements
 const probeRes = await fetch("https://axon-agents.com/api/agents/${agent.agentId}/x402");
 // probeRes.status === 402
 const rawReq = probeRes.headers.get("x-payment-required");
 const requirements = JSON.parse(atob(rawReq));
 const { payToAddress, maxAmountRequired } = requirements.accepts[0];
 
-// Step 2 — send USDC on-chain (using @solana/web3.js + @solana/spl-token)
+// Step 2, send USDC on-chain (using @solana/web3.js + @solana/spl-token)
 // const txSig = await sendUsdcTransfer(payToAddress, maxAmountRequired, yourKeypair);
 
-// Step 3 — build X-Payment header and submit
+// Step 3, build X-Payment header and submit
 const xPayment = btoa(JSON.stringify({
   scheme: "exact",
   network: "solana-mainnet",
@@ -553,7 +553,7 @@ const { taskId } = await res.json();`,
             code: isPaid
               ? `import httpx, json, base64
 
-# Step 1 — probe for payment requirements
+# Step 1, probe for payment requirements
 probe = httpx.get("https://axon-agents.com/api/agents/${agent.agentId}/x402")
 # probe.status_code == 402
 raw_req = probe.headers["x-payment-required"]
@@ -561,10 +561,10 @@ requirements = json.loads(base64.b64decode(raw_req))
 pay_to = requirements["accepts"][0]["payToAddress"]
 amount = requirements["accepts"][0]["maxAmountRequired"]  # micro-USDC
 
-# Step 2 — send ${price} USDC to pay_to on Solana
+# Step 2, send ${price} USDC to pay_to on Solana
 # tx_sig = your_solana_wallet.send_usdc(pay_to, amount)
 
-# Step 3 — build X-Payment header and submit
+# Step 3, build X-Payment header and submit
 x_payment = base64.b64encode(json.dumps({
     "scheme": "exact",
     "network": "solana-mainnet",
@@ -677,7 +677,7 @@ function verificationLabel(agent: {
   endpoint?: string;
   verificationStatus?: string;
 }) {
-  if (agent.verificationStatus === "platform") return "Axon platform agent — hosted and verified";
+  if (agent.verificationStatus === "platform") return "Axon platform agent, hosted and verified";
   if (!agent.endpoint) return "Hosted or provider-backed route";
   if (agent.verificationStatus === "x402_compliant") return "Endpoint verified as x402-compliant";
   if (agent.verificationStatus === "reachable") return "Endpoint reachable, x402 not detected";
@@ -688,7 +688,7 @@ function verificationLabel(agent: {
 /** "3 hours ago" for anything recent, an absolute date once it stops mattering. */
 function fmtWhen(iso: string) {
   const then = new Date(iso).getTime();
-  if (!Number.isFinite(then)) return "—";
+  if (!Number.isFinite(then)) return "No data";
   const mins = Math.floor((Date.now() - then) / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;

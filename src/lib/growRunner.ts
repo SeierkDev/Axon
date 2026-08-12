@@ -98,7 +98,7 @@ What you asked for: ${task}
 What came back:
 ${output.slice(0, 6000)}
 
-Return ONLY JSON: {"ok": true|false, "reason": "<one short sentence>"}. Mark it not-ok only if it is off-topic, empty, refuses the task, or is too thin to use — not merely because you would have written it differently.`;
+Return ONLY JSON: {"ok": true|false, "reason": "<one short sentence>"}. Mark it not-ok only if it is off-topic, empty, refuses the task, or is too thin to use, not merely because you would have written it differently.`;
 
 const replanPrompt = (mission: string, done: { task: string; output: string }[], remaining: GrowSubtask[]) =>
   `You are partway through a mission and deciding what is still worth doing.
@@ -106,12 +106,12 @@ const replanPrompt = (mission: string, done: { task: string; output: string }[],
 Mission: ${mission}
 
 Work already completed:
-${done.length ? done.map((d, i) => `--- ${i + 1} (${d.task}) ---\n${d.output.slice(0, 800)}`).join("\n\n") : "(nothing yet — the steps so far produced nothing usable)"}
+${done.length ? done.map((d, i) => `--- ${i + 1} (${d.task}) ---\n${d.output.slice(0, 800)}`).join("\n\n") : "(nothing yet, the steps so far produced nothing usable)"}
 
 Steps still planned:
 ${remaining.map((r, i) => `${i + 1}. [${r.capability}] ${r.task}`).join("\n")}
 
-Revise the remaining steps in light of what actually came back — drop what is now redundant or impossible, reword what the earlier results changed, keep what still holds. Reply with ONLY the revised remaining steps as a JSON array, same shape as before: {"capability": "<lowercase keyword>", "task": "<self-contained instruction>"}. Do NOT include steps that are already done. Return them unchanged if nothing needs to change.`;
+Revise the remaining steps in light of what actually came back, drop what is now redundant or impossible, reword what the earlier results changed, keep what still holds. Reply with ONLY the revised remaining steps as a JSON array, same shape as before: {"capability": "<lowercase keyword>", "task": "<self-contained instruction>"}. Do NOT include steps that are already done. Return them unchanged if nothing needs to change.`;
 
 /** How many times a mission may revise its own plan. Bounded so it converges. */
 const MAX_REPLANS = 2;
@@ -257,7 +257,7 @@ export async function previewGrowMission(deps: GrowDeps, cfg: GrowConfig): Promi
       try {
         ranked = rankAffordable(await deps.search({ capability: step.capability, maxPriceUsdc: ceiling, limit: 10 }), deps.self, ceiling);
       } catch {
-        ranked = []; // discovery hiccup — report the step as unfilled rather than failing the preview
+        ranked = []; // discovery hiccup, report the step as unfilled rather than failing the preview
       }
     }
     const best = ranked[0];
@@ -320,7 +320,7 @@ async function sealManifest(
     updateGrowRun(runId, { manifest });
     recordGrowEvent(runId, {
       kind: "note",
-      summary: `Mission receipt sealed — ${manifest.entries.length} step${manifest.entries.length === 1 ? "" : "s"}, chain hash ${manifest.hash.slice(0, 12)}…`,
+      summary: `Mission receipt sealed, ${manifest.entries.length} step${manifest.entries.length === 1 ? "" : "s"}, chain hash ${manifest.hash.slice(0, 12)}…`,
       data: { manifestHash: manifest.hash },
     });
   } catch (e) {
@@ -349,7 +349,7 @@ export async function resumeGrowMission(deps: GrowDeps, runId: string): Promise<
   const results = events.filter((e) => e.kind === "result" && e.taskId);
   recordGrowEvent(runId, {
     kind: "note",
-    summary: `Picking this mission back up — recovering ${results.length} piece${results.length === 1 ? "" : "s"} of work already paid for.`,
+    summary: `Picking this mission back up, recovering ${results.length} piece${results.length === 1 ? "" : "s"} of work already paid for.`,
   });
 
   // Re-gather the outputs. A step whose task can no longer be read is skipped
@@ -369,7 +369,7 @@ export async function resumeGrowMission(deps: GrowDeps, runId: string): Promise<
       // dropping a step the owner paid for.
       const preview = (ev.data as { preview?: string } | undefined)?.preview;
       if (!preview) {
-        recordGrowEvent(runId, { kind: "error", summary: `Couldn't recover the work from ${ev.taskId} — leaving it out.` });
+        recordGrowEvent(runId, { kind: "error", summary: `Couldn't recover the work from ${ev.taskId}, leaving it out.` });
         continue;
       }
       output = preview;
@@ -379,7 +379,7 @@ export async function resumeGrowMission(deps: GrowDeps, runId: string): Promise<
 
   if (parts.length === 0) {
     updateGrowRun(runId, { status: "failed" });
-    recordGrowEvent(runId, { kind: "note", summary: "Nothing recoverable — no completed work to assemble." });
+    recordGrowEvent(runId, { kind: "note", summary: "Nothing recoverable, no completed work to assemble." });
     return { run: { ...run, status: "failed" }, hires: 0, selfDone: 0, spentUsdc: getGrowSpent(runId) };
   }
 
@@ -402,8 +402,8 @@ export async function resumeGrowMission(deps: GrowDeps, runId: string): Promise<
   recordGrowEvent(runId, {
     kind: "note",
     summary: deliverable
-      ? `Recovered — deliverable built from ${parts.length} paid piece${parts.length === 1 ? "" : "s"}, ${spentUsdc} USDC already spent.`
-      : `Could not recover a deliverable — ${spentUsdc} USDC was already spent.`,
+      ? `Recovered, deliverable built from ${parts.length} paid piece${parts.length === 1 ? "" : "s"}, ${spentUsdc} USDC already spent.`
+      : `Could not recover a deliverable, ${spentUsdc} USDC was already spent.`,
   });
   return { run: { ...run, status, deliverable }, deliverable, hires: parts.length, selfDone: 0, spentUsdc };
 }
@@ -434,7 +434,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
   }
   if (plan.length === 0) {
     updateGrowRun(runId, { status: "failed" });
-    recordGrowEvent(runId, { kind: "error", summary: "Could not produce a plan — nothing to hire for." });
+    recordGrowEvent(runId, { kind: "error", summary: "Could not produce a plan, nothing to hire for." });
     return { run: { ...run, status: "failed" }, hires: 0, selfDone: 0, spentUsdc: 0 };
   }
   updateGrowRun(runId, { status: "hiring", plan });
@@ -474,13 +474,13 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
 
   while (queue.length > 0 && hires + selfDone < cfg.maxHires) {
     if (isGrowRunCanceled(runId)) {
-      recordGrowEvent(runId, { kind: "note", summary: "Stopped by the owner — no further hires." });
+      recordGrowEvent(runId, { kind: "note", summary: "Stopped by the owner, no further hires." });
       stopped = true;
       break;
     }
     const remainingBudget = cfg.budgetUsdc - getGrowSpent(runId);
     if (remainingBudget <= 0) {
-      recordGrowEvent(runId, { kind: "note", summary: "Budget spent — stopping here." });
+      recordGrowEvent(runId, { kind: "note", summary: "Budget spent, stopping here." });
       break;
     }
 
@@ -530,7 +530,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
     }
     recordGrowEvent(runId, {
       kind: "search",
-      summary: `Searched for a "${step.capability}" specialist — ${candidates.length} found.`,
+      summary: `Searched for a "${step.capability}" specialist, ${candidates.length} found.`,
       data: { capability: step.capability, ceilingUsdc: ceiling, found: candidates.length },
     });
 
@@ -544,7 +544,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
       // payment, and no receipt behind it.
       const own = await attemptItself(step, contextOverride);
       if (!own) {
-        recordGrowEvent(runId, { kind: "note", summary: `No affordable "${step.capability}" specialist — skipping this step.` });
+        recordGrowEvent(runId, { kind: "note", summary: `No affordable "${step.capability}" specialist, skipping this step.` });
       }
       return own;
     }
@@ -560,7 +560,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
       recordGrowEvent(runId, {
         kind: "hire",
         summary: `Hiring ${pick.name} (${pick.agentId})${pick.proofScore != null ? `, Proof Score ${pick.proofScore}` : ""} for "${step.capability}"${
-          (pick.proofScore ?? 0) < topScore ? ` — within ${Math.round(SCORE_MARGIN * 100)}% of the best available, and cheaper` : ""
+          (pick.proofScore ?? 0) < topScore ? `, within ${Math.round(SCORE_MARGIN * 100)}% of the best available, and cheaper` : ""
         }.`,
         toAgent: pick.agentId,
         amountUsdc: pick.priceUsdc ?? 0,
@@ -595,7 +595,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
           if (!verdict.ok && outcome.costUsdc === 0) {
             recordGrowEvent(runId, {
               kind: "review",
-              summary: `Rejected ${pick.name}'s work — ${verdict.reason || "it didn't do the job"}. Trying another specialist.`,
+              summary: `Rejected ${pick.name}'s work, ${verdict.reason || "it didn't do the job"}. Trying another specialist.`,
               taskId: outcome.taskId, toAgent: pick.agentId, data: { ok: false, reason: verdict.reason },
             });
             continue;
@@ -603,8 +603,8 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
           recordGrowEvent(runId, {
             kind: "review",
             summary: verdict.ok
-              ? `Checked ${pick.name}'s work — usable.`
-              : `Kept ${pick.name}'s work despite doubts — ${verdict.reason || "it may be thin"} — because it was already paid for.`,
+              ? `Checked ${pick.name}'s work, usable.`
+              : `Kept ${pick.name}'s work despite doubts, ${verdict.reason || "it may be thin"}, because it was already paid for.`,
             taskId: outcome.taskId, toAgent: pick.agentId, data: { ok: verdict.ok, reason: verdict.reason, paid: outcome.costUsdc },
           });
           recordGrowEvent(runId, {
@@ -637,7 +637,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
         if (outcome.costUsdc > 0) {
           recordGrowEvent(runId, {
             kind: "note",
-            summary: `Already paid for "${step.capability}" — not hiring a second specialist for it.`,
+            summary: `Already paid for "${step.capability}", not hiring a second specialist for it.`,
           });
           break;
         }
@@ -648,7 +648,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
         recordGrowEvent(runId, { kind: "error", summary: `Hire failed: ${(e as Error).message}`, toAgent: pick.agentId });
       }
     }
-    recordGrowEvent(runId, { kind: "note", summary: `No specialist delivered "${step.capability}" — moving on.` });
+    recordGrowEvent(runId, { kind: "note", summary: `No specialist delivered "${step.capability}", moving on.` });
     return false;
   }
 
@@ -671,14 +671,14 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
     if (!verdict.ok) {
       recordGrowEvent(runId, {
         kind: "self",
-        summary: `Tried "${step.capability}" itself — not good enough to use (${verdict.reason || "didn't do the job"}).`,
+        summary: `Tried "${step.capability}" itself, not good enough to use (${verdict.reason || "didn't do the job"}).`,
         data: { ok: false, capability: step.capability, reason: verdict.reason },
       });
       return false;
     }
     recordGrowEvent(runId, {
       kind: "self",
-      summary: `No specialist available for "${step.capability}" — did it itself. No hire, no payment, no receipt for this part.`,
+      summary: `No specialist available for "${step.capability}", did it itself. No hire, no payment, no receipt for this part.`,
       data: { ok: true, capability: step.capability, preview: output.slice(0, 280) },
     });
     parts.push({ task: step.task, output });
@@ -711,7 +711,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
     try {
       revised = parsePlan(await deps.think(replanPrompt(cfg.mission, parts, queue), { maxTokens: 1000 }));
     } catch (e) {
-      recordGrowEvent(runId, { kind: "note", summary: `Kept the original plan — re-planning failed: ${(e as Error).message}` });
+      recordGrowEvent(runId, { kind: "note", summary: `Kept the original plan, re-planning failed: ${(e as Error).message}` });
       return;
     }
     // An empty or unreadable revision means "no opinion", not "cancel the rest".
@@ -725,14 +725,14 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
     if (fresh.length === 0) return;
     const before = JSON.stringify(queue);
     const next = fresh.slice(0, Math.max(0, cfg.maxHires - hires));
-    if (JSON.stringify(next) === before) return; // nothing changed — don't spend an event saying so
+    if (JSON.stringify(next) === before) return; // nothing changed, don't spend an event saying so
     replans++;
     queue.length = 0;
     queue.push(...next);
     updateGrowRun(runId, { plan: [...parts.map((p) => ({ capability: "done", task: p.task })), ...queue] });
     recordGrowEvent(runId, {
       kind: "plan",
-      summary: `Revised the plan after seeing the results — ${queue.length} step${queue.length === 1 ? "" : "s"} left: ${queue.map((q) => q.capability).join(", ")}.`,
+      summary: `Revised the plan after seeing the results, ${queue.length} step${queue.length === 1 ? "" : "s"} left: ${queue.map((q) => q.capability).join(", ")}.`,
       data: { revision: replans, steps: queue },
     });
   }
@@ -762,8 +762,8 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
   recordGrowEvent(runId, {
     kind: "note",
     summary: deliverable
-      ? `Mission ${stopped ? "stopped early" : "complete"} — ${hires} hire${hires === 1 ? "" : "s"}${provenance}, ${spentUsdc} USDC spent.`
-      : `Mission ended without a deliverable — ${hires} hire${hires === 1 ? "" : "s"}${provenance}, ${spentUsdc} USDC spent.`,
+      ? `Mission ${stopped ? "stopped early" : "complete"}, ${hires} hire${hires === 1 ? "" : "s"}${provenance}, ${spentUsdc} USDC spent.`
+      : `Mission ended without a deliverable, ${hires} hire${hires === 1 ? "" : "s"}${provenance}, ${spentUsdc} USDC spent.`,
   });
 
   return { run: { ...run, status: finalStatus, deliverable }, deliverable, hires, selfDone, spentUsdc };

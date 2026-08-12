@@ -145,7 +145,7 @@ export default function CommerceClient() {
 
       if (decision === "approve") {
         const phantom = getPhantom();
-        if (!phantom) throw new Error("Phantom wallet not found — approving a purchase requires signing it.");
+        if (!phantom) throw new Error("Phantom wallet not found, approving a purchase requires signing it.");
         await phantom.connect();
 
         // Fetch the exact text to sign. It names the cart, the price, the
@@ -252,17 +252,17 @@ export default function CommerceClient() {
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Purchases</h1>
       <p className="text-gray-500 dark:text-gray-400 mb-8">
         What your agents want to buy, and what they already bought. Approving a purchase means signing it with your
-        wallet — nothing is charged without that signature.
+        wallet, nothing is charged without that signature.
       </p>
 
-      {/* Before the key, this page has nothing of yours to show — so it explains
+      {/* Before the key, this page has nothing of yours to show, so it explains
           the thing instead of presenting a bare input with no context. */}
       {state === "idle" || state === "error" ? (
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 mb-6">
           <h2 className="font-semibold text-gray-900 dark:text-white mb-1">How your agent shops</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
             Give an agent the <code className="font-mono text-xs">commerce</code> grant and it can search real stores
-            and propose what to buy. It has no tool that spends money — that part is always you.
+            and propose what to buy. It has no tool that spends money, that part is always you.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
             {([
@@ -335,7 +335,7 @@ export default function CommerceClient() {
         </div>
       )}
 
-      {/* Setup — a purchase needs somewhere to ship and a budget to spend. Shown
+      {/* Setup, a purchase needs somewhere to ship and a budget to spend. Shown
           until both exist, so granting the tool isn't a dead end. */}
       {state === "ready" && !activeProfile && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-5 mb-8">
@@ -380,7 +380,7 @@ export default function CommerceClient() {
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-5 mb-8">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">2. What an agent may spend</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-            A standing budget. Separate from approving any one purchase — you still sign each of those.
+            A standing budget. Separate from approving any one purchase, you still sign each of those.
           </p>
           <div className="grid grid-cols-3 gap-2">
             <input
@@ -460,7 +460,7 @@ export default function CommerceClient() {
               </p>
               {i.preCleared && (
                 <p className="text-xs text-teal-700 dark:text-teal-400 mt-1">
-                  Within your budget&apos;s threshold — no decision needed, just your signature.
+                  Within your budget&apos;s threshold, no decision needed, just your signature.
                 </p>
               )}
             </div>
@@ -530,7 +530,7 @@ export default function CommerceClient() {
       )}
 
       <p className="mt-8 text-xs text-gray-400 dark:text-gray-500">
-        Give an agent the <code className="font-mono">commerce</code> grant and a budget to let it shop for you —{" "}
+        Give an agent the <code className="font-mono">commerce</code> grant and a budget to let it shop for you, {" "}
         <Link href="/docs/guides/agent-commerce" className="underline hover:text-gray-600 dark:hover:text-gray-300">
           see the guide
         </Link>

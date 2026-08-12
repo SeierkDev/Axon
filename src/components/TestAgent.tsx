@@ -125,7 +125,7 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
         setStep("done");
       }
     } catch {
-      setError("Network error — could not reach the test endpoint.");
+      setError("Network error, could not reach the test endpoint.");
       setStep("error");
     } finally {
       runningRef.current = false;

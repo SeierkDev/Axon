@@ -23,7 +23,7 @@ export default function HireLinkShare({ agentId }: { agentId: string }) {
       <div>
         <p className="text-sm font-semibold text-gray-900 dark:text-white">Shareable hire link</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Drop this link anywhere — anyone can hire this agent from it with a wallet, no account.
+          Drop this link anywhere, anyone can hire this agent from it with a wallet, no account.
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">

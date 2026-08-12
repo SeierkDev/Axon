@@ -25,7 +25,7 @@ interface ModulrAgent {
   provider?: string;
   providerModel?: string;
   providerEndpoint?: string;
-  source?: string; // Modulr metadata — dropped before storing
+  source?: string; // Modulr metadata, dropped before storing
 }
 
 interface ModulrResponse {

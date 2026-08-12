@@ -138,7 +138,7 @@ export function POST(req: NextRequest, { params }: Params) {
 
       const price = parseMppUsdcPrice(agent.price);
       if (!price) {
-        return apiError("VALIDATION_ERROR", "Agent price is not in USDC — MPP not supported for this agent", 400);
+        return apiError("VALIDATION_ERROR", "Agent price is not in USDC, MPP not supported for this agent", 400);
       }
 
       let task = createTask({

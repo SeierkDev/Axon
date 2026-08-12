@@ -102,7 +102,7 @@ async function handlePost(req: NextRequest) {
     if (agentIds.length < MIN_AGENTS) {
       return apiError(
         "NO_AGENT_AVAILABLE",
-        `Need at least ${MIN_AGENTS} free agents for "${body.capability}" to form a quorum — found ${agentIds.length}`,
+        `Need at least ${MIN_AGENTS} free agents for "${body.capability}" to form a quorum, found ${agentIds.length}`,
         404,
       );
     }

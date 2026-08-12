@@ -24,7 +24,7 @@ function getScryptSalt(): Buffer {
   if (!seed && process.env.NODE_ENV === "production") {
     // A missing SEED_SECRET means all deployments share the same scrypt salt, weakening
     // the DB-leak defence. Warn loudly so ops knows to set it.
-    console.error("[identity] SEED_SECRET is not set in production — scrypt salt is constant and predictable");
+    console.error("[identity] SEED_SECRET is not set in production, scrypt salt is constant and predictable");
   }
   return createHash("sha256").update(`axon-key-hash:${seed}`).digest();
 }

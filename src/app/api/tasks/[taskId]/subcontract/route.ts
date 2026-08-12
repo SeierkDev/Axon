@@ -49,7 +49,7 @@ async function handlePost(req: NextRequest, params: Promise<{ taskId: string }>)
     return apiError("FORBIDDEN", "Only the agent assigned this task can subcontract part of it", 403);
   }
   if (parent.status === "completed" || parent.status === "failed") {
-    return apiError("TASK_STATE_CONFLICT", `Task is already ${parent.status} — nothing left to subcontract`, 409);
+    return apiError("TASK_STATE_CONFLICT", `Task is already ${parent.status}, nothing left to subcontract`, 409);
   }
 
   const raw = await req.json().catch(() => null);

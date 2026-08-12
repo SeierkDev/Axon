@@ -6,7 +6,7 @@ import { getLatestNetworkRun } from "@/lib/autonomyNetwork";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Autonomy — Axon",
+  title: "Autonomy | Axon",
   description:
     "Axon checks itself on a schedule. Every pass is recorded here and committed to the repository, so the log can be diffed rather than believed.",
 };
@@ -20,7 +20,7 @@ export const metadata = {
 
 function when(iso: string): string {
   const then = new Date(iso).getTime();
-  if (!Number.isFinite(then)) return "—";
+  if (!Number.isFinite(then)) return "No data";
   const mins = Math.floor((Date.now() - then) / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
@@ -75,7 +75,7 @@ export default function AutonomyPage() {
           The log is committed to the repository rather than kept in a database, so you can read the
           history with <code className="font-mono text-sm text-gray-600 dark:text-gray-300">git log</code> instead
           of taking this page&apos;s word for it. Findings are shown whether or not they are
-          flattering — the first pass caught a documentation page telling people to install a
+          flattering, the first pass caught a documentation page telling people to install a
           package that does not exist.
         </p>
 
@@ -145,7 +145,7 @@ export default function AutonomyPage() {
               ))}
             </ul>
 
-            {/* What it changed — before what it found, because an automated edit
+            {/* What it changed, before what it found, because an automated edit
                 deserves more of a reader's attention than an automated opinion. */}
             {latest.changes && latest.changes.length > 0 && (
               <>
@@ -220,7 +220,7 @@ export default function AutonomyPage() {
               A second pass looks at the marketplace instead of the code. It saw{" "}
               {network.agentsSeen} agent{network.agentsSeen === 1 ? "" : "s"} on{" "}
               {new Date(network.finishedAt).toISOString().slice(0, 10)}. This record lives in the
-              database, not git — live state cannot be committed.
+              database, not git, live state cannot be committed.
             </p>
             <ul className="rounded-lg border border-gray-200 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800 mb-4">
               {network.observations.length === 0 ? (
@@ -259,14 +259,14 @@ export default function AutonomyPage() {
           </>
         )}
 
-        {/* Scope — stated plainly, because the limits are what make the rest credible */}
+        {/* Scope, stated plainly, because the limits are what make the rest credible */}
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
             What this does and does not do
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
             A pass <strong>reports</strong>, and when run with <code className="font-mono text-xs">--fix</code> it
-            also applies the narrow class of repairs a compiler can prove — currently dropping an{" "}
+            also applies the narrow class of repairs a compiler can prove, currently dropping an{" "}
             <code className="font-mono text-xs">export</code> that nothing outside its own file uses.
             Fixes never land on the main branch: they run on a branch, open a pull request, and the
             ordinary test suite decides. The thing making a change is not the thing that certifies it.

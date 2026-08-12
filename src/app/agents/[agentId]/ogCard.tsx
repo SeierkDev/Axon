@@ -54,7 +54,7 @@ export async function agentCard(agentId: string): Promise<ImageResponse> {
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", fontSize: 64, color: "#ffffff", fontWeight: 700 }}>{name}</div>
           <div style={{ display: "flex", fontSize: 26, color: TEAL, marginTop: 8 }}>
-            {t?.verified ? "Verified agent — every stat backed by receipts" : "Every stat backed by receipts"}
+            {t?.verified ? "Verified agent, every stat backed by receipts" : "Every stat backed by receipts"}
           </div>
         </div>
 

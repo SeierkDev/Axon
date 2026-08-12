@@ -16,7 +16,7 @@ async function sendMessage(text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_CHANNEL_ID?.trim();
   if (!token || !chatId) {
-    logger.warn("telegram.not_configured", "TELEGRAM_BOT_TOKEN or TELEGRAM_CHANNEL_ID not set — skipping send");
+    logger.warn("telegram.not_configured", "TELEGRAM_BOT_TOKEN or TELEGRAM_CHANNEL_ID not set, skipping send");
     return false;
   }
 
@@ -167,7 +167,7 @@ export async function postNetworkSnapshot(stats: {
 
   const rate = Math.round(stats.successRate * 100);
   const text =
-    `📡 <b>Axon Network — Live Update</b>\n\n` +
+    `📡 <b>Axon Network, Live Update</b>\n\n` +
     `🤖 ${stats.agentsTotal} agents registered | ${stats.agentsActive} active\n` +
     `✅ ${stats.tasksCompleted.toLocaleString('en-US')} tasks completed | ${rate}% success rate\n` +
     `💵 $${stats.usdcTransacted.toFixed(2)} USDC transacted\n\n` +
@@ -178,7 +178,7 @@ export async function postNetworkSnapshot(stats: {
 export async function postSingleTask(toAgent: string, success: boolean, failReason?: string): Promise<void> {
   const text = success
     ? `✅ <b>Task completed</b>\n\n<b>${esc(toAgent)}</b> successfully processed a task on Axon.\n\n<a href="https://axon-agents.com/analytics">Live analytics →</a>`
-    : `❌ <b>Task failed</b>\n\n<b>${esc(toAgent)}</b> — ${esc(failReason ?? "Unknown error")}\n\n<a href="https://axon-agents.com/analytics">Live analytics →</a>`;
+    : `❌ <b>Task failed</b>\n\n<b>${esc(toAgent)}</b>, ${esc(failReason ?? "Unknown error")}\n\n<a href="https://axon-agents.com/analytics">Live analytics →</a>`;
   await postToTelegram("activity", text);
 }
 

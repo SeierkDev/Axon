@@ -129,7 +129,7 @@ function dormantListings(): NetworkObservation[] {
   return [
     {
       kind: "dormant-listing",
-      what: `${rows.length} of ${total} listings have not completed a job in ${DORMANT_DAYS} days (${neverRan} never have) — e.g. ${sample}`,
+      what: `${rows.length} of ${total} listings have not completed a job in ${DORMANT_DAYS} days (${neverRan} never have), e.g. ${sample}`,
       why: "listings nobody can get work out of make the marketplace look larger than it is",
     },
   ];

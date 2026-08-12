@@ -3,7 +3,7 @@ import Image from "next/image";
 import { getAllCapabilities } from "@/lib/capabilities";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Capabilities — Axon" };
+export const metadata = { title: "Capabilities | Axon" };
 
 export default function CapabilitiesPage() {
   const capabilities = getAllCapabilities();

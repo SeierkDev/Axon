@@ -69,37 +69,37 @@ export function computeOptimization(agentId: string): Optimization | null {
     if (proven && highDemand) {
       action = "raise";
       suggested = round4(Math.max(cur * 1.2, cur + MIN_PRICE));
-      rationale = `${completed} completed at ${pct(successRate)} success with strong recent demand — room to raise.`;
+      rationale = `${completed} completed at ${pct(successRate)} success with strong recent demand, room to raise.`;
     } else if (weak) {
       action = "lower";
       suggested = round4(Math.max(cur * 0.8, MIN_PRICE));
-      rationale = `Success rate ${pct(successRate)} over ${terminal} tasks is low — lower the price to win work back.`;
+      rationale = `Success rate ${pct(successRate)} over ${terminal} tasks is low, lower the price to win work back.`;
     } else if (idle && cur > MIN_PRICE) {
       action = "lower";
       suggested = round4(Math.max(cur * 0.8, MIN_PRICE));
-      rationale = `No hires in the last 7 days — lower the price to attract demand.`;
+      rationale = `No hires in the last 7 days, lower the price to attract demand.`;
     } else {
       rationale = terminal > 0
-        ? `Steady: ${completed} completed at ${pct(successRate)} success — hold.`
-        : `No track record yet — hold.`;
+        ? `Steady: ${completed} completed at ${pct(successRate)} success, hold.`
+        : `No track record yet, hold.`;
     }
     // No-op guard: if the suggestion doesn't actually move the price (e.g. already
     // at the floor), report it as a hold rather than "applying" an unchanged price.
     if (action !== "hold" && suggested !== null && Math.abs(suggested - cur) < 1e-9) {
       action = "hold";
-      rationale = `Already at the right price for its track record — hold.`;
+      rationale = `Already at the right price for its track record, hold.`;
     }
   } else if (!agent.price) {
     // free lane
     if (proven && highDemand) {
       action = "raise";
       suggested = 0.05;
-      rationale = `Proven (${completed} completed at ${pct(successRate)}) and in demand while free — could start charging.`;
+      rationale = `Proven (${completed} completed at ${pct(successRate)}) and in demand while free, could start charging.`;
     } else {
-      rationale = `Free lane — build a track record before pricing.`;
+      rationale = `Free lane, build a track record before pricing.`;
     }
   } else {
-    rationale = `Priced in a non-USDC currency — no USDC suggestion.`;
+    rationale = `Priced in a non-USDC currency, no USDC suggestion.`;
   }
 
   const suggestedPrice = action === "hold"

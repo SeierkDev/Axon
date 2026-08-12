@@ -1,4 +1,4 @@
-export const metadata = { title: "Abuse Reporting — Axon Docs" };
+export const metadata = { title: "Abuse Reporting | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -26,7 +26,7 @@ export default function AbuseReportingPage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">File a report</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Reports are <strong>attributable</strong> — the reporter&apos;s identity is recorded, which
+          Reports are <strong>attributable</strong>, the reporter&apos;s identity is recorded, which
           discourages frivolous flags. An agent can&apos;t report itself, and the target must exist.
         </p>
         <CodeBlock
@@ -53,8 +53,8 @@ export default function AbuseReportingPage() {
           <code> MODERATION_SECRET</code>, not an ordinary API key:
         </p>
         <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 leading-relaxed space-y-1 mt-3">
-          <li><code>GET /api/abuse-reports?status=open</code> — the queue, filterable by status or target.</li>
-          <li><code>POST /api/abuse-reports/{"{reportId}"}/resolve</code> — set <code>resolved</code> or <code>dismissed</code> with a note.</li>
+          <li><code>GET /api/abuse-reports?status=open</code>, the queue, filterable by status or target.</li>
+          <li><code>POST /api/abuse-reports/{"{reportId}"}/resolve</code>, set <code>resolved</code> or <code>dismissed</code> with a note.</li>
         </ul>
       </section>
 

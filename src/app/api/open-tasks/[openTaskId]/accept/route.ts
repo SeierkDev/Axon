@@ -70,7 +70,7 @@ async function handlePost(
     if (!body.paymentSignature) {
       return apiError(
         "PAYMENT_REQUIRED",
-        `paymentSignature is required to accept this bid — pay ${bid.price} to the agent first`,
+        `paymentSignature is required to accept this bid, pay ${bid.price} to the agent first`,
         402
       );
     }
@@ -107,7 +107,7 @@ async function handlePost(
       // the caller retries the SAME signature instead of being told it failed and
       // paying a second time.
       if (isTransientPaymentError(err)) {
-        return apiError("PAYMENT_UNAVAILABLE", "Payment is still being confirmed — retry shortly with the same payment; do not pay again", 503);
+        return apiError("PAYMENT_UNAVAILABLE", "Payment is still being confirmed, retry shortly with the same payment; do not pay again", 503);
       }
       return apiError("PAYMENT_FAILED", msg, 402);
     }

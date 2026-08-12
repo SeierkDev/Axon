@@ -89,8 +89,8 @@ export async function createPayment(opts: {
   toAgent: string;
   amountSol: number;
   paymentSignature: string;
-  priceString?: string; // e.g. "5 USDC" or "0.05 SOL" — used for verification
-  payerWallet?: string; // explicit payer for anonymous hires — verified on-chain as the tx signer
+  priceString?: string; // e.g. "5 USDC" or "0.05 SOL", used for verification
+  payerWallet?: string; // explicit payer for anonymous hires, verified on-chain as the tx signer
 }): Promise<Payment> {
   const db = getDb();
 

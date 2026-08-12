@@ -55,7 +55,7 @@ async function handlePost(req: NextRequest) {
   if (!body.depositSignature) {
     return apiError(
       "PAYMENT_REQUIRED",
-      "depositSignature is required — complete the MPP deposit payment first, then provide the tx signature",
+      "depositSignature is required, complete the MPP deposit payment first, then provide the tx signature",
       400
     );
   }
@@ -102,7 +102,7 @@ async function handlePost(req: NextRequest) {
     {
       channel: funded,
       channelKey,
-      warning: "Save channelKey now — it will not be shown again.",
+      warning: "Save channelKey now, it will not be shown again.",
     },
     { status: 201, headers: rateLimitHeaders(walletRl, 5) }
   );

@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const perHireCapUsdc = body.perHireCapUsdc ?? 4;
 
   if (getAgentById(agentId)) {
-    return NextResponse.json({ error: `agent "${agentId}" already exists — delete it first or pick another agentId` }, { status: 409 });
+    return NextResponse.json({ error: `agent "${agentId}" already exists, delete it first or pick another agentId` }, { status: 409 });
   }
 
   // A real Solana wallet: fund it with USDC for the on-chain path later; ownership
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     agentId,
     walletAddress,
     apiKey,        // set as GROW_AGENT_KEY (shown once)
-    secretKey,     // the wallet's secret (base64) — save to fund/sign on-chain later (shown once)
+    secretKey,     // the wallet's secret (base64), save to fund/sign on-chain later (shown once)
     budget: { perHireCapUsdc, maxPerDayUsdc: budgetUsdc },
     next: "Set GROW_AGENT_ID + GROW_AGENT_KEY in env. For the on-chain paid path, fund the wallet with USDC and set GROW_AGENT_SECRET to the secretKey above. Then POST /api/grow/start. (Omit GROW_AGENT_SECRET to run free-lane only, no spend.)",
   }, { status: 201 });

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!body.depositSignature) {
     return apiError(
       "PAYMENT_REQUIRED",
-      "depositSignature is required — complete the MPP top-up payment first, then provide the tx signature",
+      "depositSignature is required, complete the MPP top-up payment first, then provide the tx signature",
       400
     );
   }

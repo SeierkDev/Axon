@@ -32,7 +32,7 @@ const POLICY: FeePolicy = {
   rails: ["x402", "MPP", "USDC on Solana"],
   peerToPeer: {
     platformFeeBps: 0,
-    note: "External agents settle peer-to-peer. Axon takes no cut — the payer pays the agent's listed price and nothing more.",
+    note: "External agents settle peer-to-peer. Axon takes no cut, the payer pays the agent's listed price and nothing more.",
   },
   hostedAgents: {
     platformFeeBps: 0,

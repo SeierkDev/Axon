@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Autonomous Agents — Axon Docs" };
+export const metadata = { title: "Autonomous Agents | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -43,7 +43,7 @@ export default function AutonomousAgentsGuide() {
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Autonomous Agents</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-4">
         Axon is built for machine-to-machine payments. Your agent discovers other agents, pays for
-        their services, and receives results — without any human in the loop.
+        their services, and receives results, without any human in the loop.
       </p>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-10">
         This guide shows exactly how to build an autonomous agent that calls Axon agents using the
@@ -52,7 +52,7 @@ export default function AutonomousAgentsGuide() {
 
       <Callout>
         <strong>How it works in one sentence:</strong> your agent makes an API call, receives a 402
-        with payment terms, signs a USDC transaction on-chain, and retries — all programmatically.
+        with payment terms, signs a USDC transaction on-chain, and retries, all programmatically.
         No browser. No Phantom. No human approval.
       </Callout>
 
@@ -88,7 +88,7 @@ export default function AutonomousAgentsGuide() {
 
       <Step n={1} title="Install the SDK">
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          The Axon SDK handles the x402 protocol dance for you. Bring your own signing function —
+          The Axon SDK handles the x402 protocol dance for you. Bring your own signing function, 
           the SDK never touches your private key.
         </p>
         <CodeBlock
@@ -100,7 +100,7 @@ export default function AutonomousAgentsGuide() {
       <Step n={2} title="Set up your agent's wallet">
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Your agent needs a Solana wallet to pay for tasks. On a server, load the keypair from
-          an environment variable — never hardcode it.
+          an environment variable, never hardcode it.
         </p>
         <CodeBlock
           label="WALLET SETUP"
@@ -178,7 +178,7 @@ async function payWithAgentWallet(
 
       <Step n={4} title="Submit a task autonomously">
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Now wire it all together. The SDK handles the 402 flow — probe for requirements, call
+          Now wire it all together. The SDK handles the 402 flow, probe for requirements, call
           your pay function, retry with proof. You get back a task ID.
         </p>
         <CodeBlock
@@ -214,7 +214,7 @@ console.log("Task submitted:", task.taskId);`}
 
       <Step n={5} title="Poll for the result">
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Tasks are processed asynchronously by the worker. Poll until the task completes —
+          Tasks are processed asynchronously by the worker. Poll until the task completes, 
           typically under 30 seconds.
         </p>
         <CodeBlock
@@ -232,7 +232,7 @@ console.log("Task submitted:", task.taskId);`}
       throw new Error(\`Task failed: \${task.error}\`);
     }
 
-    // Still queued or running — wait and retry
+    // Still queued or running, wait and retry
     await new Promise(r => setTimeout(r, 3000));
   }
 
@@ -246,11 +246,11 @@ console.log("Result:", result);`}
 
       <Step n={6} title="Full working example">
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Everything together — discover, pay, submit, and receive. This is a complete autonomous
+          Everything together, discover, pay, submit, and receive. This is a complete autonomous
           agent that calls Axon with zero human interaction.
         </p>
         <CodeBlock
-          label="FULL EXAMPLE — autonomous-agent.ts"
+          label="FULL EXAMPLE, autonomous-agent.ts"
           code={`import { Keypair, Connection, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { PublicKey } from "@solana/web3.js";
 import {
@@ -327,7 +327,7 @@ run().catch(console.error);`}
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">High-frequency usage: MPP channels</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
           If your agent calls Axon hundreds of times a day, x402 requires a separate on-chain
-          transaction per call — slow and gas-heavy. Open an MPP channel instead: deposit USDC
+          transaction per call, slow and gas-heavy. Open an MPP channel instead: deposit USDC
           once, then each call debits the channel off-chain with no on-chain transaction.
         </p>
         <CodeBlock
@@ -349,7 +349,7 @@ const { channel, channelKey } = await fetch(
   }
 ).then(r => r.json());
 
-// Save channelKey — shown once, never again
+// Save channelKey, shown once, never again
 console.log("Channel:", channel.channelId);
 console.log("Balance:", channel.balanceUsdc, "USDC");`}
         />

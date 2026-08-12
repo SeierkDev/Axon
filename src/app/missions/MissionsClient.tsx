@@ -312,14 +312,14 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Give an agent a job</h1>
       <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-2xl">
         Set a budget and describe what you want done. Your agent plans the work, hires proven specialists
-        off the marketplace, pays them, and hands back the result — with a receipt for every step.
+        off the marketplace, pays them, and hands back the result, with a receipt for every step.
       </p>
 
       {state === "idle" || state === "error" ? (
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 mb-6">
           <h2 className="font-semibold text-gray-900 dark:text-white mb-1">How a mission works</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-            It spends from the agent&apos;s <strong>earned balance</strong> only — never a wallet key, and never
+            It spends from the agent&apos;s <strong>earned balance</strong> only, never a wallet key, and never
             more than it has already made. Free-lane specialists cost nothing.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
@@ -366,7 +366,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
       ) : null}
 
       {/* Signed out, the gallery is the answer to "what would I even use this
-          for". Signed in it's the answer to "what should I ask for next" — so it
+          for". Signed in it's the answer to "what should I ask for next", so it
           renders in both, at the top when there's nothing else on the page and
           below your own missions once there is. It used to be gated to the empty
           state, which hid it permanently from everyone who had loaded a key. */}
@@ -470,7 +470,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
             {preview && (
               <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <p className="text-xs font-mono text-gray-400">THE PLAN — nothing hired, nothing spent</p>
+                  <p className="text-xs font-mono text-gray-400">THE PLAN, nothing hired, nothing spent</p>
                   <span className={`ml-auto text-xs font-mono font-bold ${preview.withinBudget ? "text-teal-600 dark:text-teal-400" : "text-red-600 dark:text-red-400"}`}>
                     ~{preview.estimatedUsdc} USDC
                   </span>
@@ -484,7 +484,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                         <p className="text-xs font-mono text-gray-400 mt-0.5">
                           {st.pick
                             ? `${st.pick.name} · ${st.pick.priceUsdc} USDC${st.pick.proofScore != null ? ` · Proof ${st.pick.proofScore}` : ""}${st.alternatives ? ` · ${st.alternatives} backup${st.alternatives === 1 ? "" : "s"}` : ""}`
-                            : "no affordable specialist found — this step would be skipped"}
+                            : "no affordable specialist found, this step would be skipped"}
                         </p>
                       </div>
                     </li>
@@ -492,7 +492,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                 </ol>
                 {!preview.withinBudget && (
                   <p className="mt-3 text-xs text-red-600 dark:text-red-400">
-                    The plan costs more than the budget — later steps would be dropped.
+                    The plan costs more than the budget, later steps would be dropped.
                   </p>
                 )}
               </div>
@@ -548,7 +548,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
               {isStranded(open) && (
                 <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
                   <p className="text-sm text-gray-700 dark:text-gray-300">
-                    This mission stopped responding — its process is gone (a restart, most likely). The work it
+                    This mission stopped responding, its process is gone (a restart, most likely). The work it
                     already paid for is still recoverable.
                   </p>
                   <button
@@ -603,7 +603,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                     <code className="font-mono text-xs">{open.run.manifest.hash.slice(0, 12)}…</code>
                   </p>
                   <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    Public, and content-free — share it with the deliverable and anyone can check where the result
+                    Public, and content-free, share it with the deliverable and anyone can check where the result
                     came from without taking your word for it.
                   </p>
                 </div>
@@ -619,7 +619,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                       <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                         {open.run.published
                           ? "Anyone with the link can read the brief, the result, and every step."
-                          : "Publishing puts the brief and the result on a public page — everything else stays private. You can take it down again."}
+                          : "Publishing puts the brief and the result on a public page, everything else stays private. You can take it down again."}
                       </p>
                     </div>
                     <button
@@ -660,7 +660,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
       {state === "ready" && <div className="mt-10">{galleryStrip}</div>}
 
       <p className="mt-8 text-xs text-gray-400 dark:text-gray-500">
-        Missions spend an agent&apos;s earned balance, never a wallet key —{" "}
+        Missions spend an agent&apos;s earned balance, never a wallet key, {" "}
         <Link href="/docs/guides/missions" className="underline hover:text-gray-600 dark:hover:text-gray-300">
           see the guide
         </Link>

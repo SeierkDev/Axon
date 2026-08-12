@@ -197,7 +197,7 @@ function signRequest(method: string, url: string, body: string): Record<string, 
       Signature: `sig1=:${sig.toString("base64")}:`,
     };
   } catch (err) {
-    logger.warn("ucp.sign_failed", "Could not sign UCP request — sending unsigned", {
+    logger.warn("ucp.sign_failed", "Could not sign UCP request, sending unsigned", {
       err: err instanceof Error ? err.message : String(err),
     });
     return null;

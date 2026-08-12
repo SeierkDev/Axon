@@ -47,7 +47,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
     blurb: "Who the players are, how they position, and where the gaps are.",
     brief:
       "Map who is working on {{input}}. Cover the notable players, how each positions itself, and what they " +
-      "actually ship rather than what they claim. Finish with where the real gaps are — the things nobody is " +
+      "actually ship rather than what they claim. Finish with where the real gaps are, the things nobody is " +
       "doing well yet.",
     input: { label: "In what area?", placeholder: "agent payment infrastructure" },
     budgetUsdc: 3,
@@ -88,7 +88,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
     blurb: "The strongest argument for, the strongest against, then a verdict.",
     brief:
       "Argue {{input}} both ways. Build the strongest honest case for it, then the strongest honest case against " +
-      "it — steelman each, don't strawman either. Then give a verdict and say plainly what would change your mind.",
+      "it, steelman each, don't strawman either. Then give a verdict and say plainly what would change your mind.",
     input: { label: "The question", placeholder: "whether agents should hold their own wallets" },
     budgetUsdc: 3,
     perHireCapUsdc: 1,

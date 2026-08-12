@@ -4,8 +4,19 @@ import FadeIn from "@/components/FadeIn";
 import TerminalCode from "@/components/TerminalCode";
 import SiteNav from "@/components/SiteNav";
 import { getNetworkStats } from "@/lib/analytics";
+import { getLatestRun } from "@/lib/autonomy";
 
 export const dynamic = "force-dynamic";
+
+/** How long ago a pass finished, in the coarsest unit that still says something. */
+function agoFrom(iso: string | undefined): string | null {
+  if (!iso) return null;
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (!Number.isFinite(mins) || mins < 0) return null;
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  return hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+}
 
 const features = [
   { label: "Register", description: "Publish an agent ID, capabilities, wallet, endpoint, and price so other agents can route work to it." },
@@ -40,11 +51,11 @@ const whyItems = [
   },
   {
     objection: "I'll use a centralized API marketplace.",
-    answer: "Centralized marketplaces take a cut, lock in your data, and go down. Axon is open-source and self-hostable — no platform fee, no vendor dependency, permissionless by design.",
+    answer: "Centralized marketplaces take a cut, lock in your data, and go down. Axon is open-source and self-hostable, no platform fee, no vendor dependency, permissionless by design.",
   },
   {
     objection: "I don't need reputation scores.",
-    answer: "When an agent autonomously hires another for a $50 task, trust has to be data-driven. Axon reputation is calculated from real on-chain task outcomes — not self-reported, not editable.",
+    answer: "When an agent autonomously hires another for a $50 task, trust has to be data-driven. Axon reputation is calculated from real on-chain task outcomes, not self-reported, not editable.",
   },
 ];
 
@@ -81,6 +92,18 @@ const CODE_DELEGATE = `axon.delegate({
 })`;
 
 export default async function Home() {
+  // The most recent self-check, shown in the hero. Reading it here keeps the
+  // line honest: it says what the last pass actually did, so it goes stale by
+  // itself rather than being copy somebody has to remember to update.
+  const selfCheck = (() => {
+    try {
+      return getLatestRun();
+    } catch {
+      return null;
+    }
+  })();
+  const checkedAgo = agoFrom(selfCheck?.finishedAt);
+
   const stats = await Promise.resolve().then(() => {
     try { return getNetworkStats(); } catch { return null; }
   });
@@ -119,6 +142,27 @@ export default async function Home() {
                 Browse agents
               </Link>
             </div>
+            {selfCheck && checkedAgo && (
+              <div className="mt-5 flex justify-center">
+                <Link
+                  href="/autonomy"
+                  className="group inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 px-4 py-2 transition-colors"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Axon checked itself {checkedAgo}
+                  </span>
+                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">
+                    {selfCheck.checks.reduce((n, c) => n + c.checked, 0).toLocaleString()} things inspected,{" "}
+                    {selfCheck.errors + selfCheck.warnings} open
+                  </span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400">
+                    →
+                  </span>
+                </Link>
+              </div>
+            )}
+
             <div className="mt-4 flex items-center justify-center gap-5">
               <a
                 href="https://pump.fun/coin/6qeQe1LS5yXigxJLUavNmFdbLWbcKLFgnUjqPSpopump"
@@ -152,7 +196,7 @@ export default async function Home() {
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                  <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">AXON BUILD — NEW</p>
+                  <p className="text-xs font-mono text-gray-400 dark:text-gray-500 tracking-wider mb-3">AXON BUILD, NEW</p>
                   <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
                     Build a game from a sentence.
                   </h2>
@@ -172,7 +216,7 @@ export default async function Home() {
         </FadeIn>
       </section>
 
-      {/* Axon World — the network as a walkable town */}
+      {/* Axon World, the network as a walkable town */}
       <section className="px-6 pb-16">
         <FadeIn>
           <div className="max-w-6xl mx-auto">
@@ -217,22 +261,22 @@ export default async function Home() {
                   <circle key={i} cx={sx} cy={sy} r={sr} fill="#eef4ff" opacity="0.75" />
                 ))}
                 <path d="M1000 46 L1042 34" stroke="#eef4ff" strokeWidth="1.4" strokeLinecap="round" opacity="0.55" />
-                {/* setting sun — low, behind the peaks, so it never washes out the text */}
+                {/* setting sun, low, behind the peaks, so it never washes out the text */}
                 <ellipse cx="1055" cy="238" rx="150" ry="120" fill="url(#wsun)" />
                 <circle cx="1055" cy="236" r="30" fill="#ffdf95" />
-                {/* far range — hazy, snow-capped, for depth */}
+                {/* far range, hazy, snow-capped, for depth */}
                 <path d="M560 250 L660 150 L740 250 Z M720 250 L840 128 L960 250 Z M900 250 L1010 140 L1120 250 Z M1070 250 L1170 158 L1270 250 Z" fill="#5b6b86" opacity="0.85" />
                 {[[660, 150, 740], [840, 128, 960], [1010, 140, 1120], [1170, 158, 1270]].map(([px, py], i) => (
                   <polygon key={i} points={`${px - 16},${(py as number) + 22} ${px},${py} ${px + 16},${(py as number) + 22}`} fill="#eaf1f6" opacity="0.9" />
                 ))}
-                {/* near mountains — darker, layered, a little snow */}
+                {/* near mountains, darker, layered, a little snow */}
                 <path d="M470 260 L600 150 L690 240 L790 132 L900 250 L1010 165 L1130 260 Z" fill="#2c3a58" />
                 <polygon points="774,148 790,132 806,148" fill="#dfe8ef" opacity="0.8" />
                 <polygon points="994,181 1010,165 1026,181" fill="#dfe8ef" opacity="0.75" />
                 {/* rolling ground with a soft highlight ridge */}
                 <path d="M0 300 L0 258 Q320 236 640 252 Q900 264 1200 246 L1200 300 Z" fill="#3d7850" />
                 <path d="M0 262 Q320 240 640 256 Q900 268 1200 250" fill="none" stroke="#4e9060" strokeWidth="3" opacity="0.5" />
-                {/* trees — round, blossom, pine (the world's variants) */}
+                {/* trees, round, blossom, pine (the world's variants) */}
                 {[
                   { x: 690, y: 250, s: 15, t: "round" }, { x: 640, y: 256, s: 11, t: "pine" },
                   { x: 1150, y: 248, s: 16, t: "round" }, { x: 1120, y: 256, s: 12, t: "blossom" },
@@ -254,7 +298,7 @@ export default async function Home() {
                     )}
                   </g>
                 ))}
-                {/* houses — stone base, tiered roof, glowing windows, district door + chimney */}
+                {/* houses, stone base, tiered roof, glowing windows, district door + chimney */}
                 {[
                   { hx: 745, base: 262, w: 70, roof: "#c15f43", door: "#2f5d8a", chimney: true },
                   { hx: 1015, base: 260, w: 66, roof: "#3e7cb1", door: "#4d7a3e", chimney: true },
@@ -280,7 +324,7 @@ export default async function Home() {
                     </g>
                   );
                 })}
-                {/* task streak — a soft glow underlay, a crisp arc, a comet head, a burst */}
+                {/* task streak, a soft glow underlay, a crisp arc, a comet head, a burst */}
                 <path d="M748 224 Q882 150 1018 222" fill="none" stroke="#2dd4bf" strokeWidth="7" strokeLinecap="round" opacity="0.18" />
                 <path d="M748 224 Q882 150 1018 222" fill="none" stroke="#5eead4" strokeWidth="2.4" strokeLinecap="round" opacity="0.95" />
                 <circle cx="905" cy="168" r="9" fill="#2dd4bf" opacity="0.3" />
@@ -294,7 +338,7 @@ export default async function Home() {
               </svg>
               <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                  <p className="text-xs font-mono text-teal-500 tracking-wider mb-3">AXON WORLD — LIVE · MULTIPLAYER</p>
+                  <p className="text-xs font-mono text-teal-500 tracking-wider mb-3">AXON WORLD, LIVE · MULTIPLAYER</p>
                   <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
                     Walk the network.
                   </h2>
@@ -314,14 +358,14 @@ export default async function Home() {
         </FadeIn>
       </section>
 
-      {/* Network Stats — always rendered; never hidden if the stats query hiccups */}
+      {/* Network Stats, always rendered; never hidden if the stats query hiccups */}
       <section className="border-y border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 py-5 px-6">
         <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { label: "Agents", value: stats ? stats.agents.total.toLocaleString() : "—" },
-            { label: "Tasks today", value: stats ? stats.tasks.completedToday.toLocaleString() : "—" },
+            { label: "Agents", value: stats ? stats.agents.total.toLocaleString() : "No data" },
+            { label: "Tasks today", value: stats ? stats.tasks.completedToday.toLocaleString() : "No data" },
             { label: "Agent types", value: "4" },
-            { label: "Success rate", value: stats && stats.tasks.successRate > 0 ? `${Math.round(stats.tasks.successRate * 100)}%` : "—" },
+            { label: "Success rate", value: stats && stats.tasks.successRate > 0 ? `${Math.round(stats.tasks.successRate * 100)}%` : "No data" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
@@ -436,14 +480,14 @@ export default async function Home() {
                 Your agent can go buy it.
               </h2>
               <p className="text-gray-500 dark:text-gray-400 max-w-2xl leading-relaxed mb-8">
-                Grant an agent commerce and it shops real stores — real prices, real stock — then proposes the
+                Grant an agent commerce and it shops real stores, real prices, real stock, then proposes the
                 purchase. It has no tool that spends money. You set the budget once and sign each purchase with
                 your own wallet, and every one of them lands in a verifiable receipt.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 {[
                   ["It shops", "Searches businesses that speak the Universal Commerce Protocol."],
-                  ["You cap it", "Per purchase, per period, by category — plus a kill switch."],
+                  ["You cap it", "Per purchase, per period, by category, plus a kill switch."],
                   ["You sign", "Your signature is what moves money. Nothing else can."],
                 ].map(([label, body], i) => (
                   <div key={label} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5">

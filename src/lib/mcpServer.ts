@@ -108,7 +108,7 @@ export const MCP_TOOLS = [
   {
     name: "hire_agent",
     description:
-      "Hire an Axon agent for a task. Free-lane agents run immediately. Paid agents return payment requirements (USDC amount + Solana address): pay with your own wallet, then call again with paymentSignature — the payment IS the authorization, no account needed. Returns a taskId plus a claimToken; keep the claimToken, it is the only way to read the result.",
+      "Hire an Axon agent for a task. Free-lane agents run immediately. Paid agents return payment requirements (USDC amount + Solana address): pay with your own wallet, then call again with paymentSignature, the payment IS the authorization, no account needed. Returns a taskId plus a claimToken; keep the claimToken, it is the only way to read the result.",
     inputSchema: {
       type: "object",
       properties: {
@@ -130,7 +130,7 @@ export const MCP_TOOLS = [
   {
     name: "get_task_result",
     description:
-      "Fetch a hired task's status and, once completed, its output. Requires the claimToken returned by hire_agent — task outputs are private to the hirer.",
+      "Fetch a hired task's status and, once completed, its output. Requires the claimToken returned by hire_agent, task outputs are private to the hirer.",
     inputSchema: {
       type: "object",
       properties: {
@@ -143,7 +143,7 @@ export const MCP_TOOLS = [
   {
     name: "get_receipt",
     description:
-      "The public, verifiable proof for a task: parties, spec/output hashes, on-chain settlement, hash-chained execution trace, and the reproducibility verdict when the task has been re-run. Safe to share — never exposes task content.",
+      "The public, verifiable proof for a task: parties, spec/output hashes, on-chain settlement, hash-chained execution trace, and the reproducibility verdict when the task has been re-run. Safe to share, never exposes task content.",
     inputSchema: {
       type: "object",
       properties: { taskId: { type: "string" } },
@@ -235,7 +235,7 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
       currency: parsed?.currency ?? null,
       payTo,
       network: "solana-mainnet",
-      instructions: `Pay ${agent.price} to ${payTo ?? "the Axon treasury"} on Solana mainnet with your own wallet, then call hire_agent again with the transaction signature as paymentSignature and your wallet address as payerWallet. The payment is the authorization — no account needed.`,
+      instructions: `Pay ${agent.price} to ${payTo ?? "the Axon treasury"} on Solana mainnet with your own wallet, then call hire_agent again with the transaction signature as paymentSignature and your wallet address as payerWallet. The payment is the authorization, no account needed.`,
     };
   }
 
@@ -270,7 +270,7 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
       status: json.status,
       alreadyHired: true,
       receiptUrl: `${BASE_URL}/r/${taskId}`,
-      note: "This payment signature was already used for an existing task. No claim token is issued on a replay — if this was your original hire, use the claimToken returned by that call. The public receipt remains viewable.",
+      note: "This payment signature was already used for an existing task. No claim token is issued on a replay, if this was your original hire, use the claimToken returned by that call. The public receipt remains viewable.",
     };
   }
 
@@ -279,7 +279,7 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
     status: json.status,
     claimToken: claimTokenFor(taskId),
     receiptUrl: `${BASE_URL}/r/${taskId}`,
-    note: "Keep the claimToken — it is the only way to read this task's output via get_task_result.",
+    note: "Keep the claimToken, it is the only way to read this task's output via get_task_result.",
   };
 }
 
@@ -356,7 +356,7 @@ export async function handleMcpMessage(msg: JsonRpcRequest, clientIp: string): P
         capabilities: { tools: {} },
         serverInfo: SERVER_INFO,
         instructions:
-          "Axon is an open agent marketplace: search_agents to discover, hire_agent to create a task (paid agents return USDC payment requirements — pay with your own wallet, then retry with paymentSignature), get_task_result with your claimToken for the output, get_receipt for the public verifiable proof.",
+          "Axon is an open agent marketplace: search_agents to discover, hire_agent to create a task (paid agents return USDC payment requirements, pay with your own wallet, then retry with paymentSignature), get_task_result with your claimToken for the output, get_receipt for the public verifiable proof.",
       });
     }
     case "notifications/initialized":

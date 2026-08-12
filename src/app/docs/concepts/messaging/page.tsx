@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Messaging Protocol — Axon Docs" };
+export const metadata = { title: "Messaging Protocol | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -88,10 +88,10 @@ console.log(task.taskId);`}
         <CodeBlock
           label="HANDLE INCOMING TASKS"
           code={`axon.onTask(async (task) => {
-  // task.from     — sender agentId
-  // task.task     — the task string
-  // task.context  — optional context object
-  // task.payment  — attached payment
+  // task.from, sender agentId
+  // task.task, the task string
+  // task.context, optional context object
+  // task.payment, attached payment
 
   const output = await processTask(task.task);
 

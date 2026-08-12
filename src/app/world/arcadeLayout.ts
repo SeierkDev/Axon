@@ -181,7 +181,7 @@ export function makeClimbForDay(seed: number): ClimbPlat[] {
     const c = makeClimb(seed + k);
     if (climbCourseSafe(c)) return c;
   }
-  return makeClimb(0xa11ce4); // the proven original — unreachable in practice
+  return makeClimb(0xa11ce4); // the proven original, unreachable in practice
 }
 
 export const CLIMB: ClimbPlat[] = makeClimbForDay(dailySeed());
@@ -224,7 +224,7 @@ export const LANE_LEN = 500; // total course path length, roughly
 
 const ZA = G.cz - LANE_OFF; // south lane (leg 1, west → east)
 const ZB = G.cz; // middle lane (leg 2, east → west)
-const ZC = G.cz + LANE_OFF; // north lane (leg 3, west → east — the finish leg)
+const ZC = G.cz + LANE_OFF; // north lane (leg 3, west → east, the finish leg)
 
 // The corridor each leg actually occupies, measured from the leg's centreline
 // out to the solid faces either side. The lanes are 10.4m wide but sit in
@@ -233,9 +233,9 @@ const ZC = G.cz + LANE_OFF; // north lane (leg 3, west → east — the finish l
 // touching a single hurdle. Everything that is meant to stop you is built from
 // these bounds instead, so it spans wall to wall.
 const OUTER_PAD = 1.7, OUTER_HD = 0.5, DIV_Z = 8, DIV_HD = 0.6;
-const OUTER_FACE = LANE_HALF + OUTER_PAD - OUTER_HD; // 6.4 — outer hedge, inner face
-const DIV_INNER = DIV_Z - DIV_HD; // 7.4 — divider face, from the arena centreline
-const DIV_FROM_LANE = LANE_OFF - DIV_Z - DIV_HD; // 7.4 — divider face, from an outer lane
+const OUTER_FACE = LANE_HALF + OUTER_PAD - OUTER_HD; // 6.4, outer hedge, inner face
+const DIV_INNER = DIV_Z - DIV_HD; // 7.4, divider face, from the arena centreline
+const DIV_FROM_LANE = LANE_OFF - DIV_Z - DIV_HD; // 7.4, divider face, from an outer lane
 const CORRIDOR = {
   A: { lo: -OUTER_FACE, hi: DIV_FROM_LANE }, // outer hedge → divider A/B
   B: { lo: -DIV_INNER, hi: DIV_INNER }, // divider → divider
@@ -412,13 +412,13 @@ export const GAUNTLET_CHECKPOINTS: { x: number; z: number }[] = [
   { x: G.cx + 13, z: ZA }, // after rampart one
   { x: G.cx + 38, z: ZA }, // after the long pond
   { x: G.cx + 58, z: ZA }, // leg 1 exit
-  { x: G.cx + 72, z: G.cz - 8 }, // EAST hairpin — inside the arm's sweep
+  { x: G.cx + 72, z: G.cz - 8 }, // EAST hairpin, inside the arm's sweep
   { x: G.cx + 56, z: ZB }, // leg 2 entry
   { x: G.cx + 16, z: ZB }, // after pond three
   { x: G.cx - 11, z: ZB }, // after the tight slalom
   { x: G.cx - 37, z: ZB }, // after rampart two
   { x: G.cx - 56, z: ZB }, // after pond four
-  { x: G.cx - 78, z: G.cz + 8 }, // WEST hairpin — inside the arm's sweep
+  { x: G.cx - 78, z: G.cz + 8 }, // WEST hairpin, inside the arm's sweep
   { x: G.cx - 56, z: ZC }, // leg 3 entry
   { x: G.cx - 33, z: ZC }, // after pond five
   { x: G.cx - 13, z: ZC }, // after the slalom
@@ -511,7 +511,7 @@ export const GAUNTLET_STOMPERS: Stomper[] = (() => {
 /** The piston head's height at time t (seconds) — shared by render + hazard. */
 export function stomperHeadY(s: Stomper, t: number): number {
   const c = ((t + s.phase) / s.period) % 1;
-  if (c < 0.66) return 3.2; // hanging high — safe to pass
+  if (c < 0.66) return 3.2; // hanging high, safe to pass
   if (c < 0.74) return 3.2 - ((c - 0.66) / 0.08) * 2.75; // the SLAM
   if (c < 0.9) return 0.45; // planted on the deck
   return 0.45 + ((c - 0.9) / 0.1) * 2.75; // winching back up
@@ -589,7 +589,7 @@ export const ZOMBIE_PLATS: Plat[] = makeZombiePlats();
 // power-up where it fell — walk over it before it fades.
 export type DropKind = "max_ammo" | "insta_kill" | "health";
 export const DROP_KINDS: DropKind[] = ["max_ammo", "insta_kill", "health"];
-export const DROP_CHANCE = 0.02; // per normal kill — drops are an EVENT, not confetti
+export const DROP_CHANCE = 0.02; // per normal kill, drops are an EVENT, not confetti
 export const DROP_WAVE_CAP = 1; // at most one ground drop per wave (bosses bypass)
 export const BOSS_DROP_CHANCE = 1; // bosses always pay out
 export const DROP_DESPAWN_MS = 12_000;
@@ -860,7 +860,7 @@ export const MINIGAMES: MinigameMeta[] = [
     title: "Sky Climb",
     tagline: "Only up.",
     description:
-      "Race the clock up a hundred platforms of boulders, fallen logs, hay stacks, carts and crates — winding far out into the sky and back on their own paths. One missed jump can send you all the way down. Some gaps only a sprint-jump clears. Long, brutal, worth it.",
+      "Race the clock up a hundred platforms of boulders, fallen logs, hay stacks, carts and crates, winding far out into the sky and back on their own paths. One missed jump can send you all the way down. Some gaps only a sprint-jump clears. Long, brutal, worth it.",
     metric: "time",
   },
   {
@@ -869,7 +869,7 @@ export const MINIGAMES: MinigameMeta[] = [
     title: "The Gauntlet",
     tagline: "Out. Around. Home. If you can.",
     description:
-      "A double-lane obstacle course with a hairpin at the far end: hurdles, four stepping-stone ponds, two wall slaloms, two ramparts to climb over, and seven spinning sweepers — including one guarding the turn itself. Ordered checkpoints, no shortcuts, and the clock never stops.",
+      "A double-lane obstacle course with a hairpin at the far end: hurdles, four stepping-stone ponds, two wall slaloms, two ramparts to climb over, and seven spinning sweepers, including one guarding the turn itself. Ordered checkpoints, no shortcuts, and the clock never stops.",
     metric: "time",
   },
   {
@@ -878,7 +878,7 @@ export const MINIGAMES: MinigameMeta[] = [
     title: "Zombie Waves",
     tagline: "How long can you survive?",
     description:
-      "The graveyard at the edge of the world. Waves grow, bosses arrive every fifth, and the dead RUN at higher rounds. Six weapons with real magazines — pistol to sniper (with a working scope) — kill drops, and the Mystery Box when your points run deep. It ends when you do.",
+      "The graveyard at the edge of the world. Waves grow, bosses arrive every fifth, and the dead RUN at higher rounds. Six weapons with real magazines, pistol to sniper (with a working scope), kill drops, and the Mystery Box when your points run deep. It ends when you do.",
     metric: "score",
   },
 ];

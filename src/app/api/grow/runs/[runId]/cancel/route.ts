@@ -31,10 +31,10 @@ export async function POST(
 
     const run = cancelGrowRun(runId, auth.user.walletAddress);
     if (!run) {
-      return apiError("CONFLICT", `Mission is already '${existing.status}' — nothing to stop`, 409);
+      return apiError("CONFLICT", `Mission is already '${existing.status}', nothing to stop`, 409);
     }
 
-    recordGrowEvent(runId, { kind: "note", summary: "Owner asked to stop — finishing the current step." });
+    recordGrowEvent(runId, { kind: "note", summary: "Owner asked to stop, finishing the current step." });
     recordAuditEvent({
       req, actor: auth.user, action: "grow.mission_canceled",
       resourceType: "grow_run", resourceId: runId,

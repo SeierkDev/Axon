@@ -23,7 +23,7 @@ type Metrics = {
 };
 
 function fmtMs(ms: number | null): string {
-  if (ms === null) return "—";
+  if (ms === null) return "No data";
   if (ms === 0) return "<1ms";
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
@@ -158,10 +158,10 @@ export default function WorkersDashboard() {
               ))}
             </div>
 
-            {/* Throughput chart — last 12 hours */}
+            {/* Throughput chart, last 12 hours */}
             <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 mb-6 animate-fade-up" style={{ animationDelay: "180ms" }}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Throughput — last 12 hours</h2>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Throughput, last 12 hours</h2>
                 <span className="text-xs text-gray-400 dark:text-gray-500">{data.throughput.last24h} tasks / 24h</span>
               </div>
               {(() => {
@@ -274,7 +274,7 @@ export default function WorkersDashboard() {
                         </td>
                         <td className="px-4 py-2.5 text-right text-gray-500 dark:text-gray-400 text-xs">{fmtMs(t.processingMs)}</td>
                         <td className="px-4 py-2.5 text-right text-gray-500 dark:text-gray-400 text-xs">{fmtMs(t.pickupMs)}</td>
-                        <td className="px-6 py-2.5 text-right text-gray-400 dark:text-gray-500 text-xs">{fetchedAt ? fmtSecsAgo(Math.floor((fetchedAt - new Date(t.created_at).getTime()) / 1000) + secondsAgo) : "—"}</td>
+                        <td className="px-6 py-2.5 text-right text-gray-400 dark:text-gray-500 text-xs">{fetchedAt ? fmtSecsAgo(Math.floor((fetchedAt - new Date(t.created_at).getTime()) / 1000) + secondsAgo) : "No data"}</td>
                       </tr>
                     ))}
                   </tbody>

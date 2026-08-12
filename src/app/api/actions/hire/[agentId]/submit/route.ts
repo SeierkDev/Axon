@@ -62,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
     data = (await taskRes.json()) as { taskId?: string; error?: string };
     taskOk = taskRes.ok;
   } catch {
-    return json({ type: "completed", icon, title: "Hire not confirmed", label: "Pending", description: `Your payment went through but the hire couldn't be confirmed just now. It will settle to a receipt — check ${origin}/r shortly.` }, 200);
+    return json({ type: "completed", icon, title: "Hire not confirmed", label: "Pending", description: `Your payment went through but the hire couldn't be confirmed just now. It will settle to a receipt, check ${origin}/r shortly.` }, 200);
   }
 
   if (!taskOk || !data.taskId) {

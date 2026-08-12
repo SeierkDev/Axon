@@ -633,7 +633,7 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
   const winW = w * 0.16;
   return (
     <group rotation={[0, rotation, 0]}>
-      {/* Stone base (shadow comes from the walls above — no separate caster) */}
+      {/* Stone base (shadow comes from the walls above, no separate caster) */}
       <mesh position={[0, base / 2, 0]} receiveShadow>
         <boxGeometry args={[w + 0.3, base, w + 0.3]} />
         <meshStandardMaterial color="#9c968c" roughness={1} />
@@ -643,7 +643,7 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
         <boxGeometry args={[w, h, w]} />
         <meshStandardMaterial color={wall} roughness={0.92} />
       </mesh>
-      {/* Corner timber framing — cottage look */}
+      {/* Corner timber framing, cottage look */}
       {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz], i) => (
         <mesh key={`ct${i}`} position={[sx * (w / 2 - 0.02), base + h / 2, sz * (w / 2 - 0.02)]}>
           <boxGeometry args={[0.16, h, 0.16]} />
@@ -700,7 +700,7 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
               <meshStandardMaterial color={shade(roof, 0.85)} roughness={0.9} />
             </mesh>
           </group>
-          {/* porch lantern beside the door — a warm point of life */}
+          {/* porch lantern beside the door, a warm point of life */}
           <group position={[-(w * 0.1 + 0.35), base + 1.55, df + 0.06]}>
             <mesh>
               <boxGeometry args={[0.14, 0.2, 0.14]} />
@@ -715,7 +715,7 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
       )}
       {/* Door + pale frame. The door hangs on a hinge group (left edge) so a
           knock can swing it open; the dark plane behind reads as the doorway. */}
-      {/* Real door frame — lintel + jambs with an actual OPENING (the old
+      {/* Real door frame, lintel + jambs with an actual OPENING (the old
           solid slab was what kept hiding the doorway interior). */}
       <mesh position={[0, base + 1.87, df]}>
         <boxGeometry args={[w * 0.2 + 0.14, 0.12, 0.08]} />
@@ -796,7 +796,7 @@ function AgentHouse({ w, h, wall, roof, rotation, chimney, active = false, detai
           <mesh position={[0, 0, 0.03]} material={WINDOW_MAT}>
             <boxGeometry args={[winW, winW, 0.08]} />
           </mesh>
-          {/* mullion cross — panes instead of a glowing slab */}
+          {/* mullion cross, panes instead of a glowing slab */}
           <mesh position={[0, 0, 0.075]}>
             <boxGeometry args={[0.05, winW, 0.02]} />
             <meshStandardMaterial color="#efe6d6" roughness={0.9} />
@@ -1371,17 +1371,17 @@ function CentralPlaza({ detail = true, furniture, streetAngles, title = true }: 
   ];
   return (
     <group>
-      {/* Paved concentric rings — flat, non-overlapping (no z-fighting) */}
+      {/* Paved concentric rings, flat, non-overlapping (no z-fighting) */}
       {rings.map(([i0, i1, col], i) => (
         <mesh key={i} position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <ringGeometry args={[i0, i1, 60]} />
           <meshStandardMaterial color={col} roughness={1} />
         </mesh>
       ))}
-      {/* Kerb blocks around the rim — one instanced draw, gaps at the streets */}
+      {/* Kerb blocks around the rim, one instanced draw, gaps at the streets */}
       <PlazaKerb streetAngles={streetAngles} />
       <PlazaBunting lamps={furniture.lamps} />
-      {/* Monument — tiered stone base + tapered obelisk */}
+      {/* Monument, tiered stone base + tapered obelisk */}
       <mesh position={[0, 0.35, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[2.5, 2.8, 0.7, 28]} />
         <meshStandardMaterial color="#b8ad9a" roughness={1} />
@@ -1402,7 +1402,7 @@ function CentralPlaza({ detail = true, furniture, streetAngles, title = true }: 
       {/* Title sign raised clear of the emblem (hidden on the landing page,
           where the overlay already says AXON WORLD). The plaza's lamps and
           benches render via the world-wide InstancedLamps/InstancedBenches
-          pools — not here — so they cost no extra draw calls. */}
+          pools, not here, so they cost no extra draw calls. */}
       {title && <Signboard text="AXON WORLD" position={[0, 9.6, 0]} scale={7} big />}
       {/* A couple of market stalls */}
       {furniture.stalls.map((s, i) => (
@@ -1568,7 +1568,7 @@ function Pond({ position, r, seed, dockA, playerRef }: { position: Vec3; r: numb
         <circleGeometry args={[r + 1.1, 44]} />
         <meshStandardMaterial color="#b39a6d" roughness={1} depthWrite={false} />
       </mesh>
-      {/* Water — main surface, darker deep centre, rotating shimmer */}
+      {/* Water, main surface, darker deep centre, rotating shimmer */}
       <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
         <circleGeometry args={[r, 44]} />
         <meshStandardMaterial color="#4aa3d4" roughness={0.1} metalness={0.45} />
@@ -1577,7 +1577,7 @@ function Pond({ position, r, seed, dockA, playerRef }: { position: Vec3; r: numb
         <circleGeometry args={[r * 0.55, 36]} />
         <meshStandardMaterial color="#3d8ec4" roughness={0.15} metalness={0.4} depthWrite={false} />
       </mesh>
-      {/* Pale shallow band hugging the shore — reads as depth */}
+      {/* Pale shallow band hugging the shore, reads as depth */}
       <mesh position={[0, 0.07, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2.3}>
         <ringGeometry args={[r * 0.84, r * 0.99, 44]} />
         <meshBasicMaterial color="#8cd4ec" transparent opacity={0.32} depthWrite={false} toneMapped={false} />
@@ -1600,11 +1600,11 @@ function Pond({ position, r, seed, dockA, playerRef }: { position: Vec3; r: numb
         <ringGeometry args={[0.7, 0.9, 24]} />
         <meshBasicMaterial color="#dff3fb" transparent opacity={0.3} toneMapped={false} />
       </mesh>
-      {/* Everything decorative on the shore culls at distance — from afar a
+      {/* Everything decorative on the shore culls at distance, from afar a
           pond is just its water. (This was 900+ draw calls across the map.) */}
       <Signboard text="🎣 Fishing spot" position={[0, 2.1, 0]} scale={3.4} />
       <WithinRange x={position[0]} z={position[2]} range={60} playerRef={playerRef}>
-      {/* The fishing dock — planked, railed, with a bait bucket */}
+      {/* The fishing dock, planked, railed, with a bait bucket */}
       <group rotation={[0, Math.atan2(-dz, dx), 0]}>
         {[0, 1, 2, 3, 4].map((i) => (
           <mesh key={`pl${i}`} position={[r - 2.4 + i * 0.86, 0.38, 0]} castShadow receiveShadow>
@@ -1657,7 +1657,7 @@ function Pond({ position, r, seed, dockA, playerRef }: { position: Vec3; r: numb
           <meshStandardMaterial color={props.fishColor} roughness={0.5} metalness={0.2} />
         </mesh>
       </group>
-      {/* Resident ducks — a white one, plus a mallard on the bigger ponds */}
+      {/* Resident ducks, a white one, plus a mallard on the bigger ponds */}
       <group ref={duckA}>
         <DuckBody mallard={false} />
       </group>
@@ -1885,7 +1885,7 @@ export function BoundaryScenery({ extent }: { extent: number }) {
 
   return (
     <group>
-      {/* The pine wall — two-tier canopies (3 draw calls for ~450 trees) */}
+      {/* The pine wall, two-tier canopies (3 draw calls for ~450 trees) */}
       <instancedMesh key={`t${data.pines.length}`} ref={trunkRef} args={[undefined, undefined, data.pines.length]} frustumCulled={false}>
         <cylinderGeometry args={[0.32, 0.48, 2.8, 6]} />
         <meshStandardMaterial color="#6b4a2a" roughness={1} />
@@ -1898,7 +1898,7 @@ export function BoundaryScenery({ extent }: { extent: number }) {
         <coneGeometry args={[1.7, 4.6, 7]} />
         <meshStandardMaterial roughness={0.95} />
       </instancedMesh>
-      {/* Mountain country — INSTANCED: every foothill, far peak, and massif
+      {/* Mountain country, INSTANCED: every foothill, far peak, and massif
           (skirt + ridge + shoulders + snow) in ONE cone draw call; every forest
           hill dome in ONE sphere draw call. ~180 meshes → 2. */}
       <instancedMesh key={`mc${data.cones.length}`} ref={coneRef} args={[undefined, undefined, data.cones.length]} frustumCulled={false}>
@@ -2562,7 +2562,7 @@ function GoldenHen({ playerPosRef, extent, obstacles, onCaught }: { playerPosRef
 // minigame catches, shown off to every visitor as glowing gems. Only rendered
 // at houses whose agent belongs to the connected wallet.
 function TrophyShelf({ rarities, w, rotation }: { rarities: Rarity[]; w: number; rotation: number }) {
-  const df = w / 2; // door face — same frame the house's own door uses
+  const df = w / 2; // door face, same frame the house's own door uses
   const gems = rarities.slice(0, 4);
   return (
     <group rotation={[0, rotation, 0]}>
@@ -2580,7 +2580,7 @@ function TrophyShelf({ rarities, w, rotation }: { rarities: Rarity[]; w: number;
           <boxGeometry args={[0.09, 0.6, 0.38]} />
           <meshStandardMaterial color="#66492e" roughness={0.95} />
         </mesh>
-        {/* the trophies — one glowing gem per item, coloured by rarity */}
+        {/* the trophies, one glowing gem per item, coloured by rarity */}
         {gems.map((r, i) => (
           <group key={i} position={[-0.45 + i * 0.3, 0.72, 0]}>
             <mesh position={[0, 0.035, 0]}>
@@ -2675,7 +2675,7 @@ function DoorCat({ w, rotation, coat, mood = "chill" }: { w: number; rotation: n
               <coneGeometry args={[0.035, 0.07, 4]} />
               <meshStandardMaterial color={dark} roughness={0.9} />
             </mesh>
-            {/* closed eyes — little sleepy lines */}
+            {/* closed eyes, little sleepy lines */}
             {[0.09, 0.17].map((ex) => (
               <mesh key={ex} position={[ex, -0.01, 0.18]}>
                 <boxGeometry args={[0.035, 0.008, 0.01]} />
@@ -2707,7 +2707,7 @@ function DoorCat({ w, rotation, coat, mood = "chill" }: { w: number; rotation: n
               <coneGeometry args={[0.04, 0.08, 4]} />
               <meshStandardMaterial color={dark} roughness={0.9} />
             </mesh>
-            {/* eyes — amber with dark pupils */}
+            {/* eyes, amber with dark pupils */}
             {[[0.2, 0.16, 0.14], [0.13, 0.16, 0.13]].map(([ex, ey, ez], i) => (
               <group key={i} position={[ex, ey, ez]}>
                 <mesh>
@@ -2953,7 +2953,7 @@ function River({ river }: { river: { r: number; a0: number; span: number; bridge
   const ends = [river.a0, river.a0 + river.span];
   return (
     <group>
-      {/* banks, water, shallows — layered like the ponds so nothing z-fights */}
+      {/* banks, water, shallows, layered like the ponds so nothing z-fights */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} renderOrder={1.15}>
         <ringGeometry args={[river.r - 3.3, river.r + 3.3, 96, 1, t0, span]} />
         <meshStandardMaterial color="#c9b489" roughness={1} depthWrite={false} />
@@ -2966,7 +2966,7 @@ function River({ river }: { river: { r: number; a0: number; span: number; bridge
         <ringGeometry args={[river.r - 0.9, river.r + 0.9, 96, 1, t0, span]} />
         <meshStandardMaterial color="#3d8ec4" roughness={0.15} metalness={0.4} depthWrite={false} />
       </mesh>
-      {/* pale shallow bands hugging both shores — the ponds' depth trick */}
+      {/* pale shallow bands hugging both shores, the ponds' depth trick */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} renderOrder={2.3}>
         <ringGeometry args={[river.r + 1.5, river.r + 2.15, 96, 1, t0, span]} />
         <meshBasicMaterial color="#8cd4ec" transparent opacity={0.32} depthWrite={false} toneMapped={false} />
@@ -3735,7 +3735,7 @@ function Deer({ home, playerPosRef }: { home: { x: number; z: number }; playerPo
   });
   return (
     <group ref={g}>
-      {/* body — deep chest, slimmer haunch, white rump */}
+      {/* body, deep chest, slimmer haunch, white rump */}
       <mesh position={[0, 0.8, -0.05]} castShadow>
         <boxGeometry args={[0.52, 0.5, 1.05]} />
         <meshStandardMaterial color="#a97e52" roughness={0.9} />
@@ -3839,7 +3839,7 @@ function BidBoardStand({ x, z, ry }: { x: number; z: number; ry: number }) {
             <planeGeometry args={[0.42, 0.34]} />
             <meshStandardMaterial color={["#f2e8d0", "#e8f0d8", "#f0e0e0", "#f2e8d0", "#e0e8f0"][i]} roughness={0.9} />
           </mesh>
-          {/* scribbled lines — a headline and a couple of body rows */}
+          {/* scribbled lines, a headline and a couple of body rows */}
           <mesh position={[0, 0.08, 0.005]}>
             <planeGeometry args={[0.3, 0.035]} />
             <meshStandardMaterial color="#4a4038" roughness={1} />
@@ -3856,7 +3856,7 @@ function BidBoardStand({ x, z, ry }: { x: number; z: number; ry: number }) {
           </mesh>
         </group>
       ))}
-      {/* little shingle roof — seated on the post tops with struts, not floating */}
+      {/* little shingle roof, seated on the post tops with struts, not floating */}
       <mesh position={[0, 2.16, 0.1]} rotation={[0.5, 0, 0]}>
         <boxGeometry args={[2.5, 0.06, 0.55]} />
         <meshStandardMaterial color="#5b6b4a" roughness={0.9} />
@@ -3921,7 +3921,7 @@ function GiftChest({ w, rotation, opened }: { w: number; rotation: number; opene
           <boxGeometry args={[0.64, 0.09, 0.46]} />
           <meshStandardMaterial color="#d9a94a" metalness={0.5} roughness={0.4} />
         </mesh>
-        {/* lid — hinged at the back edge */}
+        {/* lid, hinged at the back edge */}
         <group position={[0, 0.39, -0.22]} rotation={[opened ? -1.9 : 0, 0, 0]}>
           <mesh position={[0, 0.07, 0.22]}>
             <boxGeometry args={[0.62, 0.15, 0.44]} />
@@ -4034,7 +4034,7 @@ function AgentStatue({ name, rank, dx, dz, s = 1 }: { name: string; rank: number
         <meshStandardMaterial color="#b9b0a0" roughness={0.95} />
       </mesh>
       <StatuePlaque name={name} rank={rank} />
-      {/* the bronze figure — boots, belt, chest emblem, shoulders, laurel */}
+      {/* the bronze figure, boots, belt, chest emblem, shoulders, laurel */}
       <group position={[0, 1.44, 0]} scale={0.78 * s}>
         <mesh position={[0, 0.05, 0]} castShadow>
           <cylinderGeometry args={[0.6, 0.66, 0.1, 12]} />
@@ -4117,7 +4117,7 @@ function AgentStatue({ name, rank, dx, dz, s = 1 }: { name: string; rank: number
           );
         })}
       </group>
-      {/* the name floats WELL above the wreath — readable from any angle */}
+      {/* the name floats WELL above the wreath, readable from any angle */}
       <Signboard text={`#${rank} ${name}`} position={[0, 4.9 + s * 0.7, 0]} scale={3.4} />
     </group>
   );
@@ -4224,7 +4224,7 @@ function HallOfFame({ top }: { top: { name: string; rank: number }[] }) {
       {[-3.6, 3.6].map((bx) => (
         <Bench key={bx} position={[bx, 0, 5.8]} rotation={Math.PI} />
       ))}
-      {/* the garden sign stands aside — never blocking the view of the statues */}
+      {/* the garden sign stands aside, never blocking the view of the statues */}
       <Signpost text="Hall of Fame" position={[6.4, 0, 2.4]} />
     </group>
   );
@@ -5331,19 +5331,19 @@ export const OpenWorld = memo(function OpenWorld({
 
   return (
     <group>
-      {/* Big grassy ground — fog fades it into the sky at the horizon */}
+      {/* Big grassy ground, fog fades it into the sky at the horizon */}
       <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[ground, 64]} />
         <meshStandardMaterial color="#7ec77f" roughness={1} />
       </mesh>
 
-      {/* Soft tone patches breaking up the flat green. Explicit draw order —
-          ground (0) → patches (1, no depth write) → paths/water (2) — so the
+      {/* Soft tone patches breaking up the flat green. Explicit draw order, 
+          ground (0) → patches (1, no depth write) → paths/water (2), so the
           patches can never float above the trails, even from the sky view where
           depth precision collapses. */}
 
 
-      {/* Every path — sandy base, worn centre and worn edge strips — in 3
+      {/* Every path, sandy base, worn centre and worn edge strips, in 3
           instanced draw calls (was 4 meshes × dozens of paths, all always-on) */}
       {!arcadeActive && <InstancedPaths paths={layout.paths} />}
 
@@ -5361,7 +5361,7 @@ export const OpenWorld = memo(function OpenWorld({
       ))}
 
       {/* Buildings + their name signs (above the roof peak so they're readable) */}
-      {/* Every house sign, one merged mesh — visible from anywhere */}
+      {/* Every house sign, one merged mesh, visible from anywhere */}
       {!arcadeActive && <HouseSignAtlas houses={layout.houses.map((h) => ({ key: h.key, pos: h.pos, rot: h.rot, roofPeak: h.roofPeak, name: h.name }))} />}
       {/* Two instanced draw calls carry the whole distant town */}
       {!arcadeActive && <group name="farhouses"><FarHouses houses={layout.houses} playerRef={playerPosRef} /></group>}
@@ -5388,7 +5388,7 @@ export const OpenWorld = memo(function OpenWorld({
         </group>
       ))}
 
-      {/* The plaza job board — real open tasks, readable with E */}
+      {/* The plaza job board, real open tasks, readable with E */}
       {!arcadeActive && (
         <>
           <BidBoardStand x={layout.board.x} z={layout.board.z} ry={layout.board.ry} />
@@ -5407,7 +5407,7 @@ export const OpenWorld = memo(function OpenWorld({
       {/* The river between plaza and districts */}
       {!arcadeActive && <group name="river"><River river={layout.river} /></group>}
 
-      {/* The hedge garden — fountain at the heart, treasure in a corner */}
+      {/* The hedge garden, fountain at the heart, treasure in a corner */}
       {!arcadeActive && <MazeHedges walls={layout.maze.walls} />}
       {!arcadeActive && (
         <WithinRange x={layout.maze.center.x} z={layout.maze.center.z} range={60} playerRef={playerPosRef}>
@@ -5439,7 +5439,7 @@ export const OpenWorld = memo(function OpenWorld({
         </WithinRange>
       ))}
 
-      {/* The pipeline desk — open a work order, walk the streets, run the chain */}
+      {/* The pipeline desk, open a work order, walk the streets, run the chain */}
       {!arcadeActive && <PipelineDesk x={layout.desk.x} z={layout.desk.z} ry={layout.desk.ry} />}
 
       {/* Micro-life: laundry lines between neighbours + fireflies at the ponds */}
@@ -5452,7 +5452,7 @@ export const OpenWorld = memo(function OpenWorld({
       <NightDriver />
       <LampGlowDriver />
 
-      {/* Always-visible instanced pools — every lamp, bench and orchard plant
+      {/* Always-visible instanced pools, every lamp, bench and orchard plant
           in the world in a handful of draw calls, no distance gating. */}
       {!arcadeActive && (
         <>
@@ -5472,7 +5472,7 @@ export const OpenWorld = memo(function OpenWorld({
         </group>
       ))}
 
-      {/* Rest stops along the hub roads — sit, look, breathe. The bench and
+      {/* Rest stops along the hub roads, sit, look, breathe. The bench and
           lamp render via the always-visible instanced pools; only the small
           flower patch still culls at distance. */}
       {!arcadeActive && layout.restStops.map((rs, i) => (
@@ -5481,20 +5481,20 @@ export const OpenWorld = memo(function OpenWorld({
         </WithinRange>
       ))}
 
-      {/* The golden hen — catch it for a Golden Egg */}
+      {/* The golden hen, catch it for a Golden Egg */}
       {!arcadeActive && <GoldenHen playerPosRef={playerPosRef} extent={layout.extent} obstacles={layout.obstacles} onCaught={onHenCaught} />}
 
       {/* The world's edge: pine wall → forested hills → mountains */}
       {!arcadeActive && <group name="boundary"><BoundaryScenery extent={layout.extent} /></group>}
 
-      {/* Hall of Fame — the top agents by reputation, in bronze, facing home */}
+      {/* Hall of Fame, the top agents by reputation, in bronze, facing home */}
       {!arcadeActive && layout.hof && hofTop.length > 0 && (
         <group name="halloffame" position={[layout.hof.x, 0, layout.hof.z]} rotation={[0, layout.hofRot, 0]}>
           <HallOfFame top={hofTop} />
         </group>
       )}
 
-      {/* The week's top agents staff the plaza stalls — names + real prices */}
+      {/* The week's top agents staff the plaza stalls, names + real prices */}
       {!arcadeActive && stallStaff && stallStaff.length > 0 && (
         <group name="plaza">
           {layout.furniture.stalls.map((s, i) => {
@@ -5510,7 +5510,7 @@ export const OpenWorld = memo(function OpenWorld({
         </group>
       )}
 
-      {/* Meadow vignettes — a farmstead, a relic site, orchards, berries, campfires */}
+      {/* Meadow vignettes, a farmstead, a relic site, orchards, berries, campfires */}
       {!arcadeActive && layout.farm && (
         <group name="farm" position={[layout.farm.x, 0, layout.farm.z]} rotation={[0, layout.farmRot, 0]}>
           <Barn position={[0, 0, 0]} />
@@ -5522,7 +5522,7 @@ export const OpenWorld = memo(function OpenWorld({
           <HayBale position={[-5.2, 0, 5.1]} rotation={1.1} scale={0.9} />
           <Cart position={[-5.5, 0, -3]} rotation={-0.5} />
 
-          {/* Fenced paddock with residents — dirt yard, post-and-rail fence,
+          {/* Fenced paddock with residents, dirt yard, post-and-rail fence,
               a sheep + cow grazing, a water trough and a spare hay bale. */}
           <mesh position={[PADDOCK.cx, 0.012, PADDOCK.cz]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={1.6}>
             <circleGeometry args={[4.8, 22]} />
@@ -5629,7 +5629,7 @@ export const OpenWorld = memo(function OpenWorld({
         </WithinRange>
       ))}
 
-      {/* Ground cover — instanced grass, flowers and leaf litter. The arena
+      {/* Ground cover, instanced grass, flowers and leaf litter. The arena
           brings its own scenery, so the whole world's cover (millions of grass
           tris + every tree) is culled during a run. */}
       {!arcadeActive && (
@@ -5652,7 +5652,7 @@ export const OpenWorld = memo(function OpenWorld({
         </WithinRange>
       ))}
 
-      {/* Pet the animals — E next to any sheep, cow or hen */}
+      {/* Pet the animals, E next to any sheep, cow or hen */}
       <Petting playerPosRef={playerPosRef} animalsRef={animalsRef} chickens={layout.chickens} onNear={onNearPet} />
 
       {/* Sky + ambient life (the arena has its own clouds + atmosphere) */}

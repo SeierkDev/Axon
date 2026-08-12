@@ -3,7 +3,7 @@ import SiteNav from "@/components/SiteNav";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Incident Timeline — Axon Admin" };
+export const metadata: Metadata = { title: "Incident Timeline | Axon Admin" };
 
 type Incident =
   | { kind: "task_failed"; ts: string; taskId: string; fromAgent: string; toAgent: string; error: string | null }

@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const rl = checkRateLimit(`agenc-listings:${getClientIp(req)}`, RATE_LIMIT, RATE_WINDOW_MS);
   if (!rl.allowed) return tooManyRequests(rl);
 
-  const raw = await getAgencListings(); // never throws — [] on outage
+  const raw = await getAgencListings(); // never throws, [] on outage
   // Attach portable Axon Proof Scores where a provider maps to a cross-listed
   // Axon agent — reputation a hirer can verify BEFORE hiring across networks.
   // Copied per request: the lib caches its array, never mutate shared objects.

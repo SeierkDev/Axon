@@ -78,7 +78,7 @@ function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
             )}
             {typeof agent.proofScore === "number" && agent.proofScore > 0 && (
               <span
-                title={`Proof Score ${agent.proofScore}/1000 · ${agent.proofScoreTier} — verifiable from on-chain receipts`}
+                title={`Proof Score ${agent.proofScore}/1000 · ${agent.proofScoreTier}, verifiable from on-chain receipts`}
                 className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 leading-none"
               >
                 Proof {agent.proofScore}
@@ -273,7 +273,7 @@ export function MarketplaceGrid({ agents, hasCapabilityFilter }: Props) {
         {activeResults && !semanticLoading && (
           <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
-            Semantic results — ranked by meaning, not keywords
+            Semantic results, ranked by meaning, not keywords
           </div>
         )}
       </div>

@@ -13,9 +13,9 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ taskId: string }> }): Promise<Metadata> {
   const { taskId } = await params;
-  const title = `Axon Receipt — ${taskId.slice(0, 8)}…`;
+  const title = `Axon Receipt, ${taskId.slice(0, 8)}…`;
   const description =
-    "A verifiable work receipt on the Axon agent network: spec pinned at creation, output hashed at completion, settlement on-chain. Independently verifiable — no login required.";
+    "A verifiable work receipt on the Axon agent network: spec pinned at creation, output hashed at completion, settlement on-chain. Independently verifiable, no login required.";
   // The opengraph-image / twitter-image route files supply the card image;
   // these tags set the text and force the large-card layout on unfurl.
   return {
@@ -33,7 +33,7 @@ function isOnChainSig(sig: string): boolean {
 }
 
 function fmt(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "No data";
   return new Date(iso).toUTCString().replace(" GMT", " UTC");
 }
 
@@ -113,18 +113,18 @@ export default async function ReceiptPage({ params }: { params: Promise<{ taskId
                 <HashRow
                   label="Job spec hash"
                   hash={r.specHash}
-                  hint="Pinned when the task was created — the exact agreement, canonically hashed."
+                  hint="Pinned when the task was created, the exact agreement, canonically hashed."
                 />
                 <HashRow
                   label="Output hash"
                   hash={r.outputHash}
-                  hint="Committed when the work completed — the delivered result, hashed."
+                  hint="Committed when the work completed, the delivered result, hashed."
                 />
                 {r.specVerified !== null && (
                   <p className={`text-sm font-semibold ${r.specVerified ? "text-emerald-400" : "text-red-400"}`}>
                     {r.specVerified
-                      ? "✓ Spec verified — recomputed from the record just now, matches the pinned hash"
-                      : "✗ Spec mismatch — the stored task no longer matches the hash pinned at creation"}
+                      ? "✓ Spec verified, recomputed from the record just now, matches the pinned hash"
+                      : "✗ Spec mismatch, the stored task no longer matches the hash pinned at creation"}
                   </p>
                 )}
               </div>
@@ -156,11 +156,11 @@ export default async function ReceiptPage({ params }: { params: Promise<{ taskId
                   </div>
                 ) : !r.payment ? (
                   <p className="text-sm font-semibold text-teal-300/90">
-                    ✓ Free-route task — completed under Axon&apos;s open task lane, no payment required.
+                    ✓ Free-route task, completed under Axon&apos;s open task lane, no payment required.
                   </p>
                 ) : r.status === "failed" ? (
                   <p className="text-sm font-semibold text-gray-300">
-                    ✓ Nothing charged — failed tasks are never billed on Axon.
+                    ✓ Nothing charged, failed tasks are never billed on Axon.
                   </p>
                 ) : r.status === "completed" ? (
                   <p className="text-sm text-gray-400">
@@ -188,10 +188,10 @@ export default async function ReceiptPage({ params }: { params: Promise<{ taskId
         {/* The replayable, hash-chained execution timeline behind this receipt. */}
         {r && <TimelineClient taskId={taskId} />}
 
-        {/* Reproducibility proof — shown only when the task has been re-run. */}
+        {/* Reproducibility proof, shown only when the task has been re-run. */}
         {r && <ReproClient taskId={taskId} />}
 
-        {/* Selective disclosure — prove one fact from the receipt without the rest. */}
+        {/* Selective disclosure, prove one fact from the receipt without the rest. */}
         {r && <DiscloseClient taskId={taskId} />}
       </div>
     </main>

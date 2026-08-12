@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Agent Checkout — Axon Docs" };
+export const metadata = { title: "Agent Checkout | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -22,7 +22,7 @@ export default function AgentCommercePage() {
     <article>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Agent Checkout</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
-        Grant a hosted agent <strong>commerce</strong>{" "}and it can shop for real things — search live business
+        Grant a hosted agent <strong>commerce</strong>{" "}and it can shop for real things, search live business
         catalogues, compare what it finds, and propose a purchase. It cannot buy. The only tools it gets are
         search and propose; the charge itself needs a signature from the account owner&apos;s own wallet.
       </p>
@@ -30,7 +30,7 @@ export default function AgentCommercePage() {
       <div className="rounded-xl border border-teal-200 dark:border-teal-900/50 bg-teal-50/50 dark:bg-teal-950/20 px-4 py-3 mb-8">
         <p className="text-sm text-gray-600 dark:text-gray-300">
           <strong>There is no buy tool.</strong> That is the design, not a setting. An agent with the commerce
-          grant can put a purchase in front of you and nothing more — so a prompt injection, a confused model, or
+          grant can put a purchase in front of you and nothing more, so a prompt injection, a confused model, or
           a bad plan cannot move money on its own.
         </p>
       </div>
@@ -93,7 +93,7 @@ export default function AgentCommercePage() {
             <div>
               <p className="font-medium text-gray-900 dark:text-white">Say where orders go</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                A delivery profile — name, email, address. Encrypted before storage, never shown to an agent and
+                A delivery profile, name, email, address. Encrypted before storage, never shown to an agent and
                 never written to a receipt. You can delete it at any time and keep the purchase history.
               </p>
             </div>
@@ -118,7 +118,7 @@ export default function AgentCommercePage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">What a purchase looks like</h2>
         <CodeBlock
-          label="the agent proposes — it cannot go further than this"
+          label="the agent proposes, it cannot go further than this"
           code={`{
   "intentId": "pi_8c41be07",
   "agentId":  "agt_shopper",
@@ -132,7 +132,7 @@ export default function AgentCommercePage() {
         />
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           You approve it by signing the exact purchase with your wallet. That signature is an AP2 payment
-          mandate — the business validates it, and Axon cannot produce one on your behalf.
+          mandate, the business validates it, and Axon cannot produce one on your behalf.
         </p>
       </section>
 
@@ -143,9 +143,9 @@ export default function AgentCommercePage() {
           charge, all of this is re-read from the source rather than trusted from the proposal:
         </p>
         <ul className="space-y-2 mb-4 text-sm text-gray-600 dark:text-gray-400">
-          <li>· The live total, re-read from the business — not the price it quoted when it proposed.</li>
+          <li>· The live total, re-read from the business, not the price it quoted when it proposed.</li>
           <li>· That the total is still in the currency you approved. A re-price in another currency is refused, never converted.</li>
-          <li>· The budget, counting everything already approved but not yet charged — so two pending purchases cannot both fit a budget that only holds one.</li>
+          <li>· The budget, counting everything already approved but not yet charged, so two pending purchases cannot both fit a budget that only holds one.</li>
           <li>· That the mandate is still active and the approval has not expired, with enough time left to finish the charge.</li>
         </ul>
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-4 py-3">
@@ -160,7 +160,7 @@ export default function AgentCommercePage() {
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           A completed purchase is written into the same trace as the work that led to it, as a{" "}
           <code className={mono}>purchase.completed</code> event carrying the business, the settled amount, and the
-          ceiling it was checked against. Your signature appears as a hash — committed to, so it can be verified
+          ceiling it was checked against. Your signature appears as a hash, committed to, so it can be verified
           later, without publishing it.
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -175,7 +175,7 @@ export default function AgentCommercePage() {
           <code className={mono}>/.well-known/ucp</code> document. Axon identifies itself at{" "}
           <code className={mono}>/.well-known/ucp-agent</code> and signs its requests, so a business that checks
           agent identity can verify the calls are ours. Payment runs through the business&apos;s own payment
-          handler in your browser — Axon never sees a card number.
+          handler in your browser | Axon never sees a card number.
         </p>
       </section>
 

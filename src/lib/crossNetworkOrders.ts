@@ -53,7 +53,7 @@ export function recordOrder(input: RecordOrderInput): CrossNetworkOrder | null {
   const kind = input.kind === "hire" || input.kind === "buy" ? input.kind : null;
   const itemPda = str(input.itemPda, MAX_PDA);
   const name = str(input.name, MAX_NAME) || "(unnamed)";
-  const price = str(input.price, MAX_PRICE) || "—";
+  const price = str(input.price, MAX_PRICE) || "(none)";
   const txSig = str(input.txSig, MAX_SIG);
   if (!isValidWallet(wallet) || !kind || !itemPda || !BASE58_SIG.test(txSig)) return null;
 

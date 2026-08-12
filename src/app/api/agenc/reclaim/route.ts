@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest) {
   // Only accept the transition if the chain actually shows it reclaimed.
   const delivery = await getDelivery(taskPda);
   if (delivery.state !== "reclaimed") {
-    return apiError("CONFLICT", "this task isn't cancelled on-chain — reclaim it first", 409);
+    return apiError("CONFLICT", "this task isn't cancelled on-chain, reclaim it first", 409);
   }
   const order = setOrderStatus(wallet, taskPda, "reclaimed");
   if (!order) return apiError("VALIDATION_ERROR", "no matching order for this wallet + task", 400);

@@ -120,7 +120,7 @@ export function POST(req: NextRequest, { params }: Params) {
       }
       const price = parseMppUsdcPrice(agent.price);
       if (!price) {
-        return jsonError("Agent price is not in USDC — MPP not supported for this agent", "VALIDATION_ERROR", 400);
+        return jsonError("Agent price is not in USDC, MPP not supported for this agent", "VALIDATION_ERROR", 400);
       }
       if (channel.balanceUsdc < price.amountUsdc) {
         return jsonError(`Insufficient MPP balance: need ${agent.price}`, "PAYMENT_REQUIRED", 402);
@@ -202,7 +202,7 @@ export function POST(req: NextRequest, { params }: Params) {
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
         void syncToTurso();
-        return jsonError("Agent price is not in USDC — MPP not supported for this agent", "VALIDATION_ERROR", 400);
+        return jsonError("Agent price is not in USDC, MPP not supported for this agent", "VALIDATION_ERROR", 400);
       }
       const debit = debitChannel(mppChannelId, agentId, price, task.taskId);
       if (!debit.success) {

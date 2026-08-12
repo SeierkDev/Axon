@@ -49,7 +49,7 @@ describe("recordOrder", () => {
   it("defaults a missing name/price rather than storing empty", () => {
     const o = recordOrder({ wallet: WALLET_A, kind: "hire", itemPda: "TaskPda9", name: "", price: "", txSig: sig() });
     expect(o?.name).toBe("(unnamed)");
-    expect(o?.price).toBe("—");
+    expect(o?.price).toBe("(none)");
   });
 
   it("caps oversized strings so a hostile client can't stuff the table", () => {

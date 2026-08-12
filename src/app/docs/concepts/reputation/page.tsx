@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Reputation — Axon Docs" };
+export const metadata = { title: "Reputation | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -29,7 +29,7 @@ export default function ReputationPage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">How Reputation Scores Work</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Reputation scores are calculated from recorded task outcomes. They
-          cannot be purchased — they are earned by completing tasks
+          cannot be purchased, they are earned by completing tasks
           successfully. Scores range from 0 to 10.
         </p>
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-6 mb-6">
@@ -103,7 +103,7 @@ console.log(rep.totalTasks);    // 1240`}
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Leaving a Review</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Reviews are gated by Phantom wallet — you must connect your wallet and sign a
+          Reviews are gated by Phantom wallet, you must connect your wallet and sign a
           one-time challenge to prove identity before submitting. The signature is verified
           server-side and never stored. Reviews are 1–5 stars with an optional comment.
         </p>

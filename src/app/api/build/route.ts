@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
   const paymentSignature = typeof body.paymentSignature === "string" ? body.paymentSignature.trim() : "";
   const payer = typeof body.payer === "string" ? body.payer.trim() : undefined;
   if (!paymentSignature) {
-    return jsonError("Payment required — pay with your wallet before generating.", "PAYMENT_REQUIRED", 402);
+    return jsonError("Payment required, pay with your wallet before generating.", "PAYMENT_REQUIRED", 402);
   }
   // Payer is required so the on-chain signer check actually runs. Without it,
   // checkIncomingPayment skips signer verification (expectedSigner undefined),

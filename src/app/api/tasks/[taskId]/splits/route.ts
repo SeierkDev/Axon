@@ -69,12 +69,12 @@ async function handlePost(req: NextRequest, { params }: { params: Promise<{ task
   // Splits must be set before the escrow settles — once the task is terminal the
   // payment has already been released (or refunded), so a split would be ignored.
   if (task.status === "completed" || task.status === "failed") {
-    return apiError("CONFLICT", "Task has already settled — define the split before it completes", 409);
+    return apiError("CONFLICT", "Task has already settled, define the split before it completes", 409);
   }
 
   // Splits divide an escrowed payment — a free task has nothing to distribute.
   if (parsePriceToSol(task.payment) === null) {
-    return apiError("VALIDATION_ERROR", "Splits require a paid task — this task has no payment to divide", 400);
+    return apiError("VALIDATION_ERROR", "Splits require a paid task, this task has no payment to divide", 400);
   }
 
   const result = defineSplits(taskId, parsed.data.recipients);

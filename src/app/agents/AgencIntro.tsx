@@ -28,7 +28,7 @@ export function AgencIntro() {
           {goods.length} good{goods.length !== 1 ? "s" : ""}
         </span>
       )}{" "}
-      from AgenC — the connected network.{" "}
+      from AgenC, the connected network.{" "}
       {listings.length > 0 && (
         <a href="#agenc" className="text-pink-600 dark:text-pink-400 hover:underline font-medium">See agents<DownArrow /></a>
       )}

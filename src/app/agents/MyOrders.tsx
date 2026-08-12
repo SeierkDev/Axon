@@ -102,7 +102,7 @@ export function MyOrders() {
     let alive = true;
     p.connect({ onlyIfTrusted: true })
       .then(({ publicKey }) => { if (alive) adoptWallet(publicKey.toBase58()); })
-      .catch(() => {}); // not yet trusted — the connect button handles it
+      .catch(() => {}); // not yet trusted, the connect button handles it
     return () => { alive = false; };
   }, [adoptWallet]);
 
@@ -159,7 +159,7 @@ export function MyOrders() {
       </div>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-2xl">
         Everything you&apos;ve hired or bought across networks from inside Axon. You paid with your own wallet, so
-        each order is settled on-chain — verify any of them yourself from the link on the row.
+        each order is settled on-chain, verify any of them yourself from the link on the row.
       </p>
 
       {!wallet ? (
@@ -225,7 +225,7 @@ function OrderRow({ order: o, onChanged }: { order: Order; onChanged: () => void
     setReclaiming(true); setErr("");
     try {
       await reclaimWithWallet({ taskPda: o.itemPda });
-      onChanged(); // refresh the list — the order flips to reclaimed
+      onChanged(); // refresh the list, the order flips to reclaimed
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
       setErr(m === "PHANTOM_NOT_FOUND" ? "No Phantom wallet found." : m);
@@ -261,7 +261,7 @@ function OrderRow({ order: o, onChanged }: { order: Order; onChanged: () => void
         <button
           onClick={reclaim}
           disabled={reclaiming}
-          title="This hire hasn't been delivered — reclaim your escrow on-chain"
+          title="This hire hasn't been delivered, reclaim your escrow on-chain"
           className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/50 disabled:opacity-60 shrink-0"
         >
           {reclaiming ? "Reclaiming…" : "Reclaim"}

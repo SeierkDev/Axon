@@ -10,7 +10,7 @@
 import { getDb } from "@/lib/db";
 
 export interface AgencAxonProof {
-  agentId: string; // the Axon agent — links the badge to /agents/<id>
+  agentId: string; // the Axon agent, links the badge to /agents/<id>
   proofScore: number; // cached 0-1000 score (recomputed on completion + daily cron)
   proofScoreTier: string | null;
 }

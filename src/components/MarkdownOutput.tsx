@@ -67,7 +67,7 @@ export default function MarkdownOutput({ text }: { text: string }) {
       );
       continue;
     }
-    // Numbered list item — rendered individually to preserve original numbers
+    // Numbered list item, rendered individually to preserve original numbers
     else if (line.match(/^\d+\. /)) {
       const num = line.match(/^(\d+)\. /)?.[1] ?? "1";
       const content = line.replace(/^\d+\. /, "");

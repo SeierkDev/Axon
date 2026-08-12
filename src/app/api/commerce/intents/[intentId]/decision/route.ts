@@ -69,7 +69,7 @@ export async function POST(
     // rather than failing on a signature mismatch and sending the buyer looking
     // for a wallet problem they don't have.
     if (decision === "approve" && existing.expiresAt <= new Date().toISOString()) {
-      return apiError("CONFLICT", `Intent is '${existing.status}' and has expired — it can no longer be approved`, 409);
+      return apiError("CONFLICT", `Intent is '${existing.status}' and has expired, it can no longer be approved`, 409);
     }
 
     // Approving means signing. AP2 wants non-repudiable proof the buyer agreed to
@@ -79,7 +79,7 @@ export async function POST(
       if (!body?.signature) {
         return apiError(
           "VALIDATION_ERROR",
-          "signature is required to approve — sign the message from GET on this endpoint with the buyer's wallet",
+          "signature is required to approve, sign the message from GET on this endpoint with the buyer's wallet",
           400,
         );
       }
@@ -101,7 +101,7 @@ export async function POST(
       // about it — say which, because "no" and "too late" are different.
       return apiError(
         "CONFLICT",
-        `Intent is '${existing.status}'${existing.expiresAt <= new Date().toISOString() ? " and has expired" : ""} — it can no longer be ${decision}d`,
+        `Intent is '${existing.status}'${existing.expiresAt <= new Date().toISOString() ? " and has expired" : ""}, it can no longer be ${decision}d`,
         409,
       );
     }
@@ -124,7 +124,7 @@ export async function POST(
         {
           ...updated,
           purchaseError:
-            "Approved and signed, but no payment credential was supplied — complete it with a payment instrument from one of the business's handlers.",
+            "Approved and signed, but no payment credential was supplied, complete it with a payment instrument from one of the business's handlers.",
           reason: "NO_PAYMENT_INSTRUMENT",
         },
         { status: 202 },

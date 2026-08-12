@@ -27,7 +27,7 @@ export class WorldErrorBoundary extends Component<
       return (
         <div className="fixed inset-0 flex items-center justify-center bg-[#1e293b] text-white p-8">
           <div className="max-w-lg text-center">
-            <p className="text-sm tracking-widest text-red-400 font-mono mb-2">AXON WORLD — RENDER ERROR</p>
+            <p className="text-sm tracking-widest text-red-400 font-mono mb-2">AXON WORLD, RENDER ERROR</p>
             <pre className="text-xs text-left bg-black/40 p-4 rounded-lg overflow-auto whitespace-pre-wrap">
               {this.state.error}
             </pre>

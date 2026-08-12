@@ -49,7 +49,7 @@ export async function verifyAgentEndpoint(
         const requirements = decodeRequirements(raw);
         if (requirements) {
           status = "x402_compliant";
-          detail = `402 with valid X-Payment-Required — ${requirements.accepts[0]?.asset ?? "unknown"} on ${requirements.accepts[0]?.network ?? "unknown"}`;
+          detail = `402 with valid X-Payment-Required, ${requirements.accepts[0]?.asset ?? "unknown"} on ${requirements.accepts[0]?.network ?? "unknown"}`;
         } else {
           status = "reachable";
           detail = "402 returned but X-Payment-Required header could not be decoded";
@@ -60,10 +60,10 @@ export async function verifyAgentEndpoint(
       }
     } else if (res.status >= 200 && res.status < 500) {
       status = "reachable";
-      detail = `HTTP ${res.status} — endpoint is up`;
+      detail = `HTTP ${res.status}, endpoint is up`;
     } else {
       status = "unreachable";
-      detail = `HTTP ${res.status} — server error on GET`;
+      detail = `HTTP ${res.status}, server error on GET`;
     }
 
     // ── Step 2: functional POST probe (only if reachable, not x402) ─────────
@@ -96,15 +96,15 @@ export async function verifyAgentEndpoint(
             typeof parsed === "object" &&
             ("output" in (parsed as object) || "result" in (parsed as object) || "response" in (parsed as object))
           ) {
-            detail += ` | POST probe OK (${postLatency}ms) — valid response schema`;
+            detail += ` | POST probe OK (${postLatency}ms), valid response schema`;
           } else if (parsed !== null) {
-            detail += ` | POST probe OK (${postLatency}ms) — JSON returned but missing output/result/response field`;
+            detail += ` | POST probe OK (${postLatency}ms), JSON returned but missing output/result/response field`;
           } else {
             detail += ` | POST probe returned non-JSON body`;
           }
         } else if (postRes.status === 405) {
           // Agent doesn't accept POST — still reachable via GET, just not task-capable
-          detail += ` | POST not accepted (405) — agent may be GET-only`;
+          detail += ` | POST not accepted (405), agent may be GET-only`;
         } else {
           detail += ` | POST probe returned HTTP ${postRes.status}`;
         }

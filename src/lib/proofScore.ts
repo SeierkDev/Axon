@@ -90,7 +90,7 @@ export interface ProofScore {
     formula: string;
     howToVerify: string;
   };
-  contentHash: string; // sha256 of the canonical proof (excludes this field + generatedAt) — tamper-evident, citable
+  contentHash: string; // sha256 of the canonical proof (excludes this field + generatedAt), tamper-evident, citable
   generatedAt: string;
 }
 
@@ -272,9 +272,9 @@ export function computeProofScore(agentId: string): ProofScore | null {
         "All weights are divided by the sum of the weights that applied.",
       howToVerify:
         "Refetch each evidence[].verify receipt to confirm the task completed and settled on-chain. Cross-network items " +
-        "(network != 'axon') have verify=null — confirm those via evidence[].receipt on the originating network. Evidence lists the " +
+        "(network != 'axon') have verify=null, confirm those via evidence[].receipt on the originating network. Evidence lists the " +
         `most-recent ${MAX_EVIDENCE}; evidenceCount is the true total. Recompute inputs, apply the formula, and check it equals score. ` +
-        "Recompute contentHash over the canonical (sorted-key) proof — all fields except contentHash and generatedAt — to confirm it is untampered.",
+        "Recompute contentHash over the canonical (sorted-key) proof, all fields except contentHash and generatedAt, to confirm it is untampered.",
     },
   };
 

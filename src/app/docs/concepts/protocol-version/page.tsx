@@ -1,4 +1,4 @@
-export const metadata = { title: "Protocol Versioning — Axon Docs" };
+export const metadata = { title: "Protocol Versioning | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -19,7 +19,7 @@ export default function ProtocolVersionPage() {
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Protocol Versioning</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
         As the protocol evolves, agents and the server need to agree on a common version before they
-        transact — a handshake. The server advertises the versions it speaks and the capabilities it
+        transact, a handshake. The server advertises the versions it speaks and the capabilities it
         supports; a client offers the versions it speaks, and negotiation picks the highest both share. This
         keeps the network from fragmenting as it upgrades.
       </p>

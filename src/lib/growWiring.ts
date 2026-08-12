@@ -10,7 +10,7 @@ import { payUsdc, PAYMENT_RECEIVER_WALLET_ADDRESS } from "./solana";
 import type { GrowDeps, GrowCandidate } from "./growRunner";
 
 const THINK_SYSTEM =
-  "You are an autonomous agent operating on the Axon marketplace with a real budget. You reason concisely and produce concrete, usable output — no filler.";
+  "You are an autonomous agent operating on the Axon marketplace with a real budget. You reason concisely and produce concrete, usable output, no filler.";
 
 interface ApiAgent {
   agentId: string;
@@ -43,7 +43,7 @@ async function receiptCostUsdc(base: string, taskId: string): Promise<number> {
 
 export interface GrowWiringConfig {
   self: string;          // the entrepreneur's agentId (must own the API key)
-  apiKey: string;        // its API key — authorizes hires and reads private output back
+  apiKey: string;        // its API key, authorizes hires and reads private output back
   baseUrl?: string;      // Axon API base (defaults to $AXON_BASE_URL or localhost)
   hireTimeoutMs?: number;
   walletSecret?: string; // if set, priced hires are paid ON-CHAIN from this wallet
@@ -90,7 +90,7 @@ export function buildGrowDeps(cfg: GrowWiringConfig): GrowDeps {
     // (the agent signs a real USDC transfer from its own wallet — non-custodial) or
     // from its earned balance. Either way it's a real hire with a real receipt.
     const payload: Record<string, unknown> = { from: cfg.self, to, task, context };
-    let committedUsdc = 0; // USDC irrevocably moved on-chain — the accounting floor if a receipt is slow/missing
+    let committedUsdc = 0; // USDC irrevocably moved on-chain, the accounting floor if a receipt is slow/missing
     if (priceUsdc > 0) {
       if (cfg.walletSecret) {
         if (!PAYMENT_RECEIVER_WALLET_ADDRESS) throw new Error("PAYMENT_RECEIVER_WALLET_ADDRESS not configured");
@@ -98,12 +98,12 @@ export function buildGrowDeps(cfg: GrowWiringConfig): GrowDeps {
         // confirm the specialist still exists and pay its CURRENT exact price — never
         // pay for a hire that won't be created, and never under/overpay a stale price.
         const agRes = await fetch(`${base}/api/agents/${encodeURIComponent(to)}`, { headers: auth });
-        if (!agRes.ok) throw new Error(`specialist ${to} unavailable before payment (HTTP ${agRes.status}) — not paying`);
+        if (!agRes.ok) throw new Error(`specialist ${to} unavailable before payment (HTTP ${agRes.status}), not paying`);
         const amount = parseUsdc((await agRes.json() as { price?: string | null }).price);
-        if (amount === null) throw new Error(`specialist ${to} is no longer USDC-priced — not paying`);
+        if (amount === null) throw new Error(`specialist ${to} is no longer USDC-priced, not paying`);
         // Never pay above what discovery authorized: if the price rose, the budget
         // cap would reject the task AFTER payment (funds lost). Bail before paying.
-        if (amount > priceUsdc) throw new Error(`specialist ${to} price rose (${amount} > ${priceUsdc} USDC) since discovery — not paying`);
+        if (amount > priceUsdc) throw new Error(`specialist ${to} price rose (${amount} > ${priceUsdc} USDC) since discovery, not paying`);
         if (amount > 0) {
           const { signature, payerWallet } = await payUsdc(cfg.walletSecret, PAYMENT_RECEIVER_WALLET_ADDRESS, amount);
           payload.paymentSignature = signature;

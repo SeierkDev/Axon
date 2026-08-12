@@ -159,7 +159,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         void syncToTurso();
         const msg = err instanceof Error ? err.message : "Payment verification failed";
         if (isTransientPaymentError(err)) {
-          return apiError("PAYMENT_UNAVAILABLE", "Payment is still being confirmed — retry shortly with the same payment", 503);
+          return apiError("PAYMENT_UNAVAILABLE", "Payment is still being confirmed, retry shortly with the same payment", 503);
         }
         return apiError("PAYMENT_FAILED", msg, 402);
       }

@@ -20,7 +20,7 @@ import { formatContext } from "./formatContext";
 import { logger } from "./logger";
 
 const ORCH_SYSTEM =
-  "You are an orchestrator agent on the Axon marketplace. When a job needs skills beyond your own, you break it into parts, hire a specialist for each, and assemble a clear final deliverable. You reason concisely and produce concrete, usable output — no filler.";
+  "You are an orchestrator agent on the Axon marketplace. When a job needs skills beyond your own, you break it into parts, hire a specialist for each, and assemble a clear final deliverable. You reason concisely and produce concrete, usable output, no filler.";
 
 const planPrompt = (job: string, maxSteps: number) =>
   `You've been hired for the job below. If you can do it well yourself in one shot, return an empty array. If it needs specialists, break it into at most ${maxSteps} sub-tasks, each handled by one specialist.
@@ -85,7 +85,7 @@ export async function runOrchestration(agent: Agent, task: Task, opts: Orchestra
     // refunded the parent while this loop was mid-flight. Hiring more specialists
     // would spend the orchestrator's balance on a job that can no longer pay it.
     if (getTaskById(task.taskId)?.status !== "running") {
-      logger.info("orchestration.parent_gone", "Parent task no longer running — stopping orchestration", {
+      logger.info("orchestration.parent_gone", "Parent task no longer running, stopping orchestration", {
         taskId: task.taskId,
       });
       return;
@@ -99,7 +99,7 @@ export async function runOrchestration(agent: Agent, task: Task, opts: Orchestra
     // a direct self-hire; refusing to hire another orchestrator stops cycles (A→B→A)
     // and unbounded nested fan-out. Nested teams can be enabled later behind a depth cap.
     if (!routed || routed.agent.orchestrator) {
-      logger.info("orchestration.step_unroutable", "No eligible specialist for a step — skipping", {
+      logger.info("orchestration.step_unroutable", "No eligible specialist for a step, skipping", {
         taskId: task.taskId,
         capability: step.capability,
       });
@@ -119,7 +119,7 @@ export async function runOrchestration(agent: Agent, task: Task, opts: Orchestra
       // budget cap, insufficient balance, or no worker — skip this part, keep going.
       // A brand-new orchestrator with no earned USDC yet hits this on every priced
       // hire and quietly answers solo, so surface why rather than failing silently.
-      logger.info("orchestration.hire_skipped", "Could not hire a specialist — skipping step", {
+      logger.info("orchestration.hire_skipped", "Could not hire a specialist, skipping step", {
         taskId: task.taskId,
         toAgent: routed.agent.agentId,
         reason: err instanceof Error ? err.message : String(err),
@@ -151,7 +151,7 @@ export async function runOrchestration(agent: Agent, task: Task, opts: Orchestra
   // If the job died while we were gathering the team's work, don't spend a model
   // call synthesizing a deliverable for a task that can no longer accept one.
   if (getTaskById(task.taskId)?.status !== "running") {
-    logger.info("orchestration.parent_gone", "Parent task no longer running — skipping synthesis", {
+    logger.info("orchestration.parent_gone", "Parent task no longer running, skipping synthesis", {
       taskId: task.taskId,
     });
     return;

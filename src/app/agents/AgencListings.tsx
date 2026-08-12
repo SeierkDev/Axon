@@ -37,7 +37,7 @@ export function AgencListings() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus("error");
-      setError(msg === "PHANTOM_NOT_FOUND" ? "No Phantom wallet found — install Phantom to hire." : msg);
+      setError(msg === "PHANTOM_NOT_FOUND" ? "No Phantom wallet found, install Phantom to hire." : msg);
     }
   }
 
@@ -49,9 +49,9 @@ export function AgencListings() {
         <span className="text-sm text-gray-400 dark:text-gray-500">· {listings.length} service{listings.length !== 1 ? "s" : ""}</span>
       </div>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-2xl">
-        Agents from AgenC, discoverable right here. Hire them on AgenC — both networks settle on the same
+        Agents from AgenC, discoverable right here. Hire them on AgenC, both networks settle on the same
         on-chain rails, so the work is verifiable either way. A <span className="text-teal-600 dark:text-teal-400 font-medium">Proof</span> badge
-        is portable Axon reputation — recomputable by anyone from on-chain receipts, before you hire.
+        is portable Axon reputation, recomputable by anyone from on-chain receipts, before you hire.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -84,14 +84,14 @@ export function AgencListings() {
               {l.axonProof ? (
                 <a
                   href={`/agents/${encodeURIComponent(l.axonProof.agentId)}`}
-                  title={`Axon Proof Score ${l.axonProof.proofScore}/1000${l.axonProof.proofScoreTier ? ` · ${l.axonProof.proofScoreTier}` : ""} — portable reputation, verifiable by anyone from on-chain receipts`}
+                  title={`Axon Proof Score ${l.axonProof.proofScore}/1000${l.axonProof.proofScoreTier ? ` · ${l.axonProof.proofScoreTier}` : ""}, portable reputation, verifiable by anyone from on-chain receipts`}
                   className="relative z-10 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 leading-none hover:underline"
                 >
                   Proof {l.axonProof.proofScore}
                 </a>
               ) : (
                 <span
-                  title="No portable Proof Score yet — agents on Axon carry third-party-verifiable reputation that travels across networks"
+                  title="No portable Proof Score yet, agents on Axon carry third-party-verifiable reputation that travels across networks"
                   className="text-[10px] px-1.5 py-0.5 rounded border border-dashed border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 leading-none"
                 >
                   no portable proof
@@ -170,7 +170,7 @@ export function AgencListings() {
             {status === "done" && result ? (
               <div>
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Paid ✓</span> — your funds are held in escrow and a real task is now live for this agent on AgenC.
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Paid ✓</span>, your funds are held in escrow and a real task is now live for this agent on AgenC.
                 </p>
                 <a
                   href={result.explorerUrl}
@@ -183,7 +183,7 @@ export function AgencListings() {
                 <div className="mt-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 px-3 py-2.5">
                   <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-400 mb-0.5">What happens next</p>
                   <p className="text-[11px] text-amber-800/90 dark:text-amber-400/90 leading-relaxed">
-                    The agent delivers on <span className="font-medium">AgenC</span>, not here — so this isn&apos;t instant, and delivery depends on the provider. The result + receipt show up on AgenC once they complete it. Your escrow stays locked until then, so nothing is lost while you wait.
+                    The agent delivers on <span className="font-medium">AgenC</span>, not here, so this isn&apos;t instant, and delivery depends on the provider. The result + receipt show up on AgenC once they complete it. Your escrow stays locked until then, so nothing is lost while you wait.
                   </p>
                 </div>
                 <button
@@ -196,7 +196,7 @@ export function AgencListings() {
             ) : (
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                  What should it do? You&apos;ll fund a real task on AgenC with your own wallet — the
+                  What should it do? You&apos;ll fund a real task on AgenC with your own wallet, the
                   agent delivers there, so the result appears on AgenC, not instantly here.
                 </p>
                 <textarea

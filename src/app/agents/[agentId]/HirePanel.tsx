@@ -33,10 +33,10 @@ function payErrorMessage(msg: string, usdcAmount: number): string {
   if (msg === "PHANTOM_NOT_FOUND") return "No Solana wallet found. Install Phantom to pay and hire in-browser.";
   if (msg.startsWith("INSUFFICIENT_USDC")) {
     const have = msg.split(":")[1];
-    return `Not enough USDC — this costs ${usdcAmount} USDC, but your wallet only has ${have ?? "0"}. Add USDC and try again.`;
+    return `Not enough USDC, this costs ${usdcAmount} USDC, but your wallet only has ${have ?? "0"}. Add USDC and try again.`;
   }
   if (msg === "INSUFFICIENT_SOL") return "Your wallet needs a little SOL to cover the Solana network fee. Add some and try again.";
-  if (msg === "PAYMENT_FAILED") return "The payment didn't go through — you weren't charged. Try again.";
+  if (msg === "PAYMENT_FAILED") return "The payment didn't go through, you weren't charged. Try again.";
   if (/reject|declin|cancel/i.test(msg)) return "Payment cancelled.";
   return "Couldn't complete the payment. Try again.";
 }
@@ -79,7 +79,7 @@ export default function HirePanel({
   async function poll(id: string, claimToken: string, attempt: number) {
     if (cancelled.current) return;
     if (attempt > MAX_POLLS) {
-      setError("The agent is taking longer than expected — check the receipt shortly.");
+      setError("The agent is taking longer than expected, check the receipt shortly.");
       setPhase("error");
       return;
     }
@@ -93,7 +93,7 @@ export default function HirePanel({
       // a horizontally-scaled deploy the read can hit an instance whose replica
       // hasn't synced the just-created task yet, so keep polling through it.
       if (res.status === 403) {
-        setError("Couldn't read this hire's result — check the receipt shortly.");
+        setError("Couldn't read this hire's result, check the receipt shortly.");
         setPhase("error");
         return;
       }
@@ -109,7 +109,7 @@ export default function HirePanel({
         // just paid assumes they lost the money. Free-lane failures cost nothing.
         setError(
           paid.current
-            ? "The agent couldn't complete this task — your payment was refunded. See the receipt for details."
+            ? "The agent couldn't complete this task, your payment was refunded. See the receipt for details."
             : "The agent couldn't complete this task. See the receipt for details.",
         );
         setPhase("error");
@@ -145,7 +145,7 @@ export default function HirePanel({
       // payment never dead-ends.
       if (res.ok && data.taskId) {
         setTaskId(data.taskId);
-        setError("This payment already started a hire — view its receipt below.");
+        setError("This payment already started a hire, view its receipt below.");
         setPhase("error");
         return;
       }
@@ -187,7 +187,7 @@ export default function HirePanel({
         paid.current = { paymentSignature: signature, payerWallet: payer };
         justPaid = true;
       }
-      setHint(justPaid ? "Payment sent — starting the hire…" : "Starting the hire…");
+      setHint(justPaid ? "Payment sent, starting the hire…" : "Starting the hire…");
       await submit(paid.current);
     } catch (e) {
       if (cancelled.current) return;
@@ -219,7 +219,7 @@ export default function HirePanel({
           <span className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-md">{price} / task</span>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Paid agents settle with a single on-chain payment (x402) — the payment is the authorization, no account
+          Paid agents settle with a single on-chain payment (x402), the payment is the authorization, no account
           needed. Hire via the <Link href="/docs/sdk" className="text-teal-600 dark:text-teal-400 hover:underline">API or MCP</Link>.
         </p>
       </div>
@@ -280,8 +280,8 @@ export default function HirePanel({
       )}
 
       {/* The hire already started (a task exists), then the result failed or
-          couldn't be read. Retrying the hire can't help — the payment is spent on
-          this task — so point to the receipt and let them start a fresh hire. */}
+          couldn't be read. Retrying the hire can't help, the payment is spent on
+          this task, so point to the receipt and let them start a fresh hire. */}
       {phase === "error" && taskId && (
         <div>
           <p className="text-xs text-amber-600 dark:text-amber-400">{error}</p>

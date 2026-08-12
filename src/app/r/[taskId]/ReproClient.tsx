@@ -30,12 +30,12 @@ interface ReproProof {
 
 const VERDICT: Record<ReproProof["verdict"], { label: string; badge: string; blurb: string }> = {
   exact: {
-    label: "✓ Reproduced — exact match",
+    label: "✓ Reproduced, exact match",
     badge: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
-    blurb: "The re-run produced byte-identical output — its hash matches the receipt exactly.",
+    blurb: "The re-run produced byte-identical output, its hash matches the receipt exactly.",
   },
   equivalent: {
-    label: "✓ Reproduced — equivalent",
+    label: "✓ Reproduced, equivalent",
     badge: "bg-teal-500/15 text-teal-300 border-teal-500/40",
     blurb: "The re-run produced the same work. The hashes differ (models aren't bit-deterministic), but the outputs are lexically equivalent above the published threshold.",
   },
@@ -129,7 +129,7 @@ export default function ReproClient({ taskId }: { taskId: string }) {
 
       <div className="px-7 py-4 bg-white/[0.03]">
         <p className="text-[11px] text-gray-500">
-          Method: {proof.method.formula} (threshold {proof.method.threshold}). Deterministic and recomputable — anyone
+          Method: {proof.method.formula} (threshold {proof.method.threshold}). Deterministic and recomputable, anyone
           holding both outputs gets the same number, no model needed.
         </p>
         <p className="text-[11px] text-gray-600 mt-1 font-mono break-all" title={proof.contentHash}>

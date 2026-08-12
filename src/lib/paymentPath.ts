@@ -25,7 +25,7 @@ export function recommendPaymentPath(
   const { agentPrice, hasOpenMppChannel = false, expectedCallsPerDay = 1 } = opts;
 
   if (!agentPrice) {
-    return { protocol: "free", reason: "Agent is free — no payment required" };
+    return { protocol: "free", reason: "Agent is free, no payment required" };
   }
 
   const isUsdc = /USDC/i.test(agentPrice);
@@ -41,7 +41,7 @@ export function recommendPaymentPath(
   if (isUsdc && hasOpenMppChannel) {
     return {
       protocol: "mpp",
-      reason: "Pre-paid MPP channel available — use it to avoid on-chain fees",
+      reason: "Pre-paid MPP channel available, use it to avoid on-chain fees",
       priceString: agentPrice,
     };
   }
@@ -49,7 +49,7 @@ export function recommendPaymentPath(
   return {
     protocol: "x402",
     reason: isUsdc
-      ? "No open MPP channel — defaulting to x402 on-chain payment"
+      ? "No open MPP channel, defaulting to x402 on-chain payment"
       : "SOL-priced agent: use x402 on-chain payment",
     priceString: agentPrice,
   };

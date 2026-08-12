@@ -73,7 +73,7 @@ function sleep(ms: number): Promise<void> {
 export class CircuitOpenError extends Error {
   readonly retryAfterMs: number;
   constructor(retryAfterMs: number) {
-    super(`Helius circuit is open — retry after ${Math.ceil(retryAfterMs / 1000)}s`);
+    super(`Helius circuit is open, retry after ${Math.ceil(retryAfterMs / 1000)}s`);
     this.name = "CircuitOpenError";
     this.retryAfterMs = retryAfterMs;
   }
@@ -127,7 +127,7 @@ export async function withHelius<T>(fn: (conn: Connection) => Promise<T>): Promi
     _helius.state = "open";
     _helius.openedAt = Date.now();
     if (!alreadyOpen) {
-      logger.error("helius.circuit_opened", "Helius circuit breaker opened — Solana RPC is failing", {
+      logger.error("helius.circuit_opened", "Helius circuit breaker opened, Solana RPC is failing", {
         consecutiveFailures: _helius.failures,
         recoveryWindowMs: HELIUS_RECOVERY_WINDOW_MS,
       });
@@ -397,7 +397,7 @@ export async function sendUsdcRefund(
 
   const payer = Keypair.fromSecretKey(secretKey);
   if (payer.publicKey.toBase58() !== PAYMENT_RECEIVER_WALLET_ADDRESS) {
-    throw new Error("REFUND_SIGNER_PRIVATE_KEY does not match PAYMENT_RECEIVER_WALLET_ADDRESS — refund aborted to prevent loss of funds");
+    throw new Error("REFUND_SIGNER_PRIVATE_KEY does not match PAYMENT_RECEIVER_WALLET_ADDRESS, refund aborted to prevent loss of funds");
   }
 
   const mintPubkey = new PublicKey(USDC_MINT);
@@ -450,7 +450,7 @@ function parseSecretKey(s: string): Uint8Array {
 // Solana drops or falsely times out transactions during congestion. Two guards:
 // a dynamic priority fee so the tx is worth including, and rebroadcasting the SAME
 // signed bytes while we poll — failing only when the blockhash truly expires.
-const PRIORITY_FEE_FLOOR = 10_000;    // micro-lamports/CU — enough in calm conditions
+const PRIORITY_FEE_FLOOR = 10_000;    // micro-lamports/CU, enough in calm conditions
 const PRIORITY_FEE_CEIL = 1_000_000;  // hard cap so a fee spike can't overpay wildly
 const COMPUTE_UNIT_LIMIT = 60_000;    // ample for an idempotent ATA-create + token transfer
 
@@ -497,7 +497,7 @@ async function sendWithRebroadcast(conn: Connection, rawTx: Buffer | Uint8Array,
     }
 
     let height = 0;
-    try { height = await conn.getBlockHeight("confirmed"); } catch { /* transient — treat as not-yet-expired */ }
+    try { height = await conn.getBlockHeight("confirmed"); } catch { /* transient, treat as not-yet-expired */ }
     if (height > lastValidBlockHeight) {
       // Blockhash expired: no NEW inclusion is possible. But the tx may have landed in the
       // final valid block just as we observed expiry. Do ONE authoritative history-searching
@@ -506,8 +506,8 @@ async function sendWithRebroadcast(conn: Connection, rawTx: Buffer | Uint8Array,
       // would silently lose it.
       const final = await conn.getSignatureStatus(signature, { searchTransactionHistory: true });
       if (final.value?.err) throw new Error(`transaction failed on-chain: ${JSON.stringify(final.value.err)}`);
-      if (final.value) return signature; // already in a block — funds moved; downstream verify waits for confirmed
-      throw new Error("blockhash expired before confirmation (network congestion) — no funds moved");
+      if (final.value) return signature; // already in a block, funds moved; downstream verify waits for confirmed
+      throw new Error("blockhash expired before confirmation (network congestion), no funds moved");
     }
 
     if (Date.now() - startedAt > CONFIRM_HARD_DEADLINE_MS) {
@@ -516,7 +516,7 @@ async function sendWithRebroadcast(conn: Connection, rawTx: Buffer | Uint8Array,
       const final = await conn.getSignatureStatus(signature, { searchTransactionHistory: true });
       if (final.value?.err) throw new Error(`transaction failed on-chain: ${JSON.stringify(final.value.err)}`);
       if (final.value) return signature;
-      throw new Error("payment confirmation could not be verified (RPC unreachable) — check the wallet before retrying");
+      throw new Error("payment confirmation could not be verified (RPC unreachable), check the wallet before retrying");
     }
 
     if (Date.now() - lastRebroadcast >= 2000) {

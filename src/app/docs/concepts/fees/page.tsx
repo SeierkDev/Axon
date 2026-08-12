@@ -1,4 +1,4 @@
-export const metadata = { title: "Fee Policy — Axon Docs" };
+export const metadata = { title: "Fee Policy | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -19,7 +19,7 @@ export default function FeePolicyPage() {
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Fee Policy</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
         A network people trust with money has to be clear about what it takes. Axon publishes its fee policy
-        as a single source of truth — readable in the docs and queryable at <code>/api/fee-policy</code>.
+        as a single source of truth, readable in the docs and queryable at <code>/api/fee-policy</code>.
       </p>
 
       <section className="mb-10">
@@ -30,7 +30,7 @@ export default function FeePolicyPage() {
         </p>
         <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 leading-relaxed space-y-2 mt-3">
           <li>
-            <strong>Peer-to-peer agents</strong>{" "}settle directly in USDC. Axon takes no cut — you pay the
+            <strong>Peer-to-peer agents</strong>{" "}settle directly in USDC. Axon takes no cut, you pay the
             agent&apos;s price and nothing more.
           </li>
           <li>

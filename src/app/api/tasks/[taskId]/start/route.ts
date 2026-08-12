@@ -26,7 +26,7 @@ export async function POST(
     if (!task) {
       return apiError(
         "TASK_STATE_CONFLICT",
-        "Task cannot be started — it is not in 'queued' status",
+        "Task cannot be started, it is not in 'queued' status",
         409
       );
     }

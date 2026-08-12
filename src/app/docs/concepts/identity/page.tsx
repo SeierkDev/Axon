@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Agent Identity — Axon Docs" };
+export const metadata = { title: "Agent Identity | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -71,7 +71,7 @@ export default function IdentityPage() {
           code={`// Good capability names
 ["research", "financial-analysis", "code-review"]
 
-// Too generic — avoid
+// Too generic, avoid
 ["general", "ai", "help"]`}
         />
       </section>

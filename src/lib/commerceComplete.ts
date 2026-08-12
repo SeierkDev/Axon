@@ -60,7 +60,7 @@ export function attachMandate(intentId: string, signatureB64: string): PurchaseI
   // attached to (or overwritten on) an intent that has already been bought would
   // undermine exactly the thing it exists to prove.
   if (intent.status !== "proposed" && intent.status !== "approved") {
-    throw new CommerceError(`intent is '${intent.status}' — its authorisation can no longer be set`, "NOT_SIGNABLE");
+    throw new CommerceError(`intent is '${intent.status}', its authorisation can no longer be set`, "NOT_SIGNABLE");
   }
 
   const message = mandateMessage(intent);
@@ -127,7 +127,7 @@ export async function completeApprovedPurchase(
   if (msLeft <= 0) throw new CommerceError("this approval has expired", "EXPIRED");
   if (msLeft < COMPLETION_MARGIN_MS) {
     throw new CommerceError(
-      "this approval is about to expire — too close to start a purchase safely. Approve it again.",
+      "this approval is about to expire, too close to start a purchase safely. Approve it again.",
       "EXPIRING",
     );
   }
@@ -218,7 +218,7 @@ export async function completeApprovedPurchase(
       intentId, orderId: order.orderId, settled, ceiling: intent.maxAmount,
     });
     throw new CommerceError(
-      `the business settled ${settled} ${order.currency}, above the approved ceiling of ${intent.maxAmount} — order ${order.orderId} needs review`,
+      `the business settled ${settled} ${order.currency}, above the approved ceiling of ${intent.maxAmount}, order ${order.orderId} needs review`,
       "OVER_CEILING",
     );
   }

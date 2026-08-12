@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   let authentic = false;
   try {
     if (!result.taskId) {
-      result.errors.push("bundle is missing taskId — cannot authenticate against a receipt");
+      result.errors.push("bundle is missing taskId, cannot authenticate against a receipt");
     } else if (!result.root) {
       result.errors.push("bundle is missing root");
     } else {

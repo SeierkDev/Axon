@@ -26,7 +26,7 @@ export async function GET(
   if (!run.manifest) {
     return apiError(
       "CONFLICT",
-      `Mission '${runId}' has no receipt yet — one is sealed when the mission finishes`,
+      `Mission '${runId}' has no receipt yet, one is sealed when the mission finishes`,
       409,
       { status: run.status },
     );

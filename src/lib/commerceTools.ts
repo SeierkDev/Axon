@@ -41,7 +41,7 @@ export function commerceTools(agentId: string, taskId?: string): LocalTool[] {
       description:
         "Search a business's live catalogue for real, purchasable products. `business_host` is the domain of a " +
         "store that supports the Universal Commerce Protocol (e.g. shop.example.com). Returns current titles, " +
-        "prices and availability — use this rather than recalling products from memory.",
+        "prices and availability, use this rather than recalling products from memory.",
       inputSchema: {
         type: "object",
         properties: {
@@ -63,7 +63,7 @@ export function commerceTools(agentId: string, taskId?: string): LocalTool[] {
             `${products.length} result(s) at ${profile.host}:`,
             ...products.map(
               (p) =>
-                `- ${p.title} — ${p.price} ${p.currency}${p.availability ? ` (${p.availability})` : ""}\n` +
+                `- ${p.title}, ${p.price} ${p.currency}${p.availability ? ` (${p.availability})` : ""}\n` +
                 `  product_id: ${p.id}${p.url ? `\n  ${p.url}` : ""}`,
             ),
           ].join("\n");
@@ -78,7 +78,7 @@ export function commerceTools(agentId: string, taskId?: string): LocalTool[] {
       label: "commerce/propose",
       description:
         "Propose buying specific products for the buyer. This prices the order for real (tax and shipping " +
-        "included) and puts it in front of the buyer for approval — it does NOT complete a purchase. Call it " +
+        "included) and puts it in front of the buyer for approval, it does NOT complete a purchase. Call it " +
         "once you have concrete product_ids from a catalogue search. Tell the buyer what you proposed and that " +
         "it is awaiting their approval.",
       inputSchema: {
@@ -137,8 +137,8 @@ export function commerceTools(agentId: string, taskId?: string): LocalTool[] {
           const remaining = mandate.maxPerPeriod - spentInPeriod(mandate);
           return [
             preCleared
-              ? `Proposed — under the buyer's ${mandate.autoApproveUnder} ${mandate.currency} threshold, so they need only sign it. It has not been purchased.`
-              : "Proposed — waiting on the buyer's approval. It has not been purchased.",
+              ? `Proposed, under the buyer's ${mandate.autoApproveUnder} ${mandate.currency} threshold, so they need only sign it. It has not been purchased.`
+              : "Proposed, waiting on the buyer's approval. It has not been purchased.",
             `Total: ${session.total} ${session.currency} at ${profile.host}`,
             `Intent: ${intent.intentId}`,
             `Remaining this ${mandate.period}: ${remaining.toFixed(2)} ${mandate.currency}`,

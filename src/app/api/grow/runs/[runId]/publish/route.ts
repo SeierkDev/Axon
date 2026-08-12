@@ -40,7 +40,7 @@ export async function POST(
     if (existing.status !== "completed" && existing.status !== "failed") {
       return apiError(
         "CONFLICT",
-        "A mission can only be published once it has finished — otherwise the page would change under its readers",
+        "A mission can only be published once it has finished, otherwise the page would change under its readers",
         409,
         { status: existing.status },
       );

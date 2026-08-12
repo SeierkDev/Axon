@@ -164,7 +164,7 @@ export async function semanticSearchAgents(
   opts: SearchOptions & { q: string }
 ): Promise<Agent[] | null> {
   const queryEmbedding = await generateEmbedding(query.slice(0, MAX_TEXT_CHARS));
-  if (!queryEmbedding) return null; // no API key or error — caller falls back
+  if (!queryEmbedding) return null; // no API key or error, caller falls back
 
   const db = getDb();
   const rows = db

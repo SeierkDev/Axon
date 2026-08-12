@@ -11,7 +11,7 @@ export function DashboardSkeleton() {
 
       {/* Main content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-        {/* Left column — agents */}
+        {/* Left column, agents */}
         <div className="space-y-4">
           <div className="h-5 w-32 rounded bg-gray-100 dark:bg-gray-800" />
           {Array.from({ length: 2 }).map((_, i) => (
@@ -30,7 +30,7 @@ export function DashboardSkeleton() {
           ))}
         </div>
 
-        {/* Right column — tasks + keys */}
+        {/* Right column, tasks + keys */}
         <div className="space-y-6">
           {/* Recent tasks */}
           <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 space-y-3">

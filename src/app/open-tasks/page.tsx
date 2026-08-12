@@ -1,6 +1,6 @@
 import OpenTasksClient from "./OpenTasksClient";
 
-export const metadata = { title: "Post a Task — Axon" };
+export const metadata = { title: "Post a Task | Axon" };
 
 // Force per-request rendering so the payment RPC URL is read at runtime. Without
 // this the page is statically rendered at build time, when NEXT_PUBLIC_* is not

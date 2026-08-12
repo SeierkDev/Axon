@@ -55,7 +55,7 @@ async function attest(kind: "listings" | "tasks", body: Record<string, unknown>)
       return { signature: json.attestation.signature, specHash: json.specHash ?? "" };
     }
     last = `${res.status} ${JSON.stringify(json)}`;
-    if (res.ok && json.verdict && json.verdict !== "clean") break; // rejected — do not retry
+    if (res.ok && json.verdict && json.verdict !== "clean") break; // rejected, do not retry
     const transient = Boolean(json.retryable) || res.status >= 500 || res.status === 429 || res.status === 404;
     if (!transient || attempt >= backoffMs.length) break;
     await new Promise((r) => setTimeout(r, json.retryAfterSeconds ? json.retryAfterSeconds * 1000 : backoffMs[attempt]));
@@ -123,14 +123,14 @@ export async function prepareHire(opts: { listingPda: string; task: string; buye
   const acct = await fetchServiceListing(rpc, listing);
   const providerAgent = acct.data.providerAgent;
   if (String(acct.data.authority) === opts.buyerPubkey) {
-    throw new Error("this listing is owned by your wallet — AgenC rejects self-dealing");
+    throw new Error("this listing is owned by your wallet, AgenC rejects self-dealing");
   }
 
   const moderator = await fetchModerator();
   const listingSpecHashHex = Buffer.from(acct.data.specHash).toString("hex");
   const la = await attest("listings", { listing: String(listing) });
   if (la.specHash && la.specHash !== listingSpecHashHex) {
-    throw new Error(`listing moderation spec-hash mismatch — attestor:${la.specHash} on-chain:${listingSpecHashHex}`);
+    throw new Error(`listing moderation spec-hash mismatch, attestor:${la.specHash} on-chain:${listingSpecHashHex}`);
   }
 
   const buyerAgentId = id32();
@@ -176,7 +176,7 @@ export async function finalizeHire(opts: { taskPda: string; buyerPubkey: string;
 
   const spec = { from: "axon-buyer-agent", to: opts.providerAgent, task: opts.task, context: { via: "axon", lang: "en" }, payment: null as string | null };
   const a = await attest("tasks", { task: opts.taskPda, jobSpecHash: opts.jobSpecHashHex, spec });
-  if (a.specHash && a.specHash !== opts.jobSpecHashHex) throw new Error(`task spec hash mismatch — attestor:${a.specHash} ours:${opts.jobSpecHashHex}`);
+  if (a.specHash && a.specHash !== opts.jobSpecHashHex) throw new Error(`task spec hash mismatch, attestor:${a.specHash} ours:${opts.jobSpecHashHex}`);
 
   const jobSpecHash = Uint8Array.from(Buffer.from(opts.jobSpecHashHex, "hex"));
   const setSpecIx = await facade.setTaskJobSpec({ task: address(opts.taskPda), creator: buyer, jobSpecHash, jobSpecUri: opts.jobSpecUri, moderator, moderatorIsAttestor: true });

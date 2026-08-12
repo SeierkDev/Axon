@@ -137,7 +137,7 @@ async function handlePost(req: NextRequest) {
   if (amountSol !== null && !body.paymentSignature && !useBalance) {
     return apiError(
       "PAYMENT_REQUIRED",
-      "paymentSignature is required for paid tasks — complete the x402 payment first, or set paymentMethod:\"balance\" to spend your earned balance",
+      "paymentSignature is required for paid tasks, complete the x402 payment first, or set paymentMethod:\"balance\" to spend your earned balance",
       402
     );
   }

@@ -43,7 +43,7 @@ function toAscii(html: string): string {
   return html
     .replace(/[‘’‚‛]/g, "'")
     .replace(/[“”„‟]/g, '"')
-    .replace(/[–—―]/g, "-")
+    .replace(/[–, ―]/g, "-")
     .replace(/…/g, "...")
     .replace(/[·•]/g, "-")
     .replace(/[▲↑⬆▴]/g, "^")
@@ -107,13 +107,13 @@ export async function runBuildPipeline(
     let worldDesign = await callAgent("build-world", `${gameBrief}\n\n${gameDesign}`);
     for (let attempt = 1; attempt <= MAX_WORLD_REROLLS; attempt++) {
       const parsed = parseWorldDesign(worldDesign);
-      if (!parsed) break; // unparseable layout — skip validation, don't block the build
+      if (!parsed) break; // unparseable layout, skip validation, don't block the build
       const check = validateLayout(parsed, playerSize);
       if (check.ok || attempt === MAX_WORLD_REROLLS) break;
       setBuildStep(buildId, "build-world", "running", attempt + 1);
       worldDesign = await callAgent(
         "build-world",
-        `${gameBrief}\n\n${gameDesign}\n\nYour previous WORLD_DESIGN is UNBEATABLE — a player walking from Player Start cannot reach:\n- ${check.errors.join("\n- ")}\nRedraw the WORLD_DESIGN in the same exact format so the player can walk from Player Start to EVERY item spawn and to the Exit. Widen any passage to at least 60px and remove walls that seal off a key or the exit.`,
+        `${gameBrief}\n\n${gameDesign}\n\nYour previous WORLD_DESIGN is UNBEATABLE, a player walking from Player Start cannot reach:\n- ${check.errors.join("\n- ")}\nRedraw the WORLD_DESIGN in the same exact format so the player can walk from Player Start to EVERY item spawn and to the Exit. Widen any passage to at least 60px and remove walls that seal off a key or the exit.`,
       );
     }
     setBuildStep(buildId, "build-world", "done", 1);
@@ -125,7 +125,7 @@ export async function runBuildPipeline(
     let html = extractHtml(await callAgent("build-coder", `${gameBrief}\n\n${gameDesign}\n\n${worldDesign}`));
     for (let attempt = 1; attempt <= MAX_CODER_REROLLS; attempt++) {
       const levels = parseLayoutBlocks(html);
-      if (levels.length === 0) break; // no embedded layout — rely on the validated design above
+      if (levels.length === 0) break; // no embedded layout, rely on the validated design above
       const levelErrors: string[] = [];
       levels.forEach((lvl, i) => {
         const check = validateLayout(lvl, playerSize);
@@ -136,7 +136,7 @@ export async function runBuildPipeline(
       html = extractHtml(
         await callAgent(
           "build-coder",
-          `${gameBrief}\n\n${gameDesign}\n\n${worldDesign}\n\nThe game you built has UNBEATABLE level(s): ${levelErrors.join(" | ")}. Rebuild the COMPLETE game so EVERY level is beatable — in each level the player can reach every key and the exit from the spawn. Keep each level's embedded LAYOUT entry accurate.`,
+          `${gameBrief}\n\n${gameDesign}\n\n${worldDesign}\n\nThe game you built has UNBEATABLE level(s): ${levelErrors.join(" | ")}. Rebuild the COMPLETE game so EVERY level is beatable, in each level the player can reach every key and the exit from the spawn. Keep each level's embedded LAYOUT entry accurate.`,
         ),
       );
     }

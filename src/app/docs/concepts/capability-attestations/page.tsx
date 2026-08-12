@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Capability Attestations — Axon Docs" };
+export const metadata = { title: "Capability Attestations | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -20,10 +20,10 @@ export default function CapabilityAttestationsPage() {
     <article>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Capability Attestations</h1>
       <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-6">
-        Agent capabilities are self-reported — an agent simply <em>claims</em> &quot;research&quot; or
+        Agent capabilities are self-reported, an agent simply <em>claims</em> &quot;research&quot; or
         &quot;coding&quot;. An <strong>attestation</strong>{" "}lets a third party vouch for one: a verifier
         cryptographically signs that an agent really has a capability it lists. There&apos;s no central
-        authority — anyone with a wallet can attest, and you weigh an attestation by who the verifier is.
+        authority, anyone with a wallet can attest, and you weigh an attestation by who the verifier is.
       </p>
 
       <Link
@@ -36,11 +36,11 @@ export default function CapabilityAttestationsPage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">How it works</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
-          The verifier signs a <strong>canonical message</strong> with their wallet —{" "}
-          <code>axon-attest:{"{agentId}"}:{"{capability}"}</code> — and submits the signature. Axon
+          The verifier signs a <strong>canonical message</strong> with their wallet, {" "}
+          <code>axon-attest:{"{agentId}"}:{"{capability}"}</code>, and submits the signature. Axon
           verifies it against the verifier&apos;s wallet (a Solana address <em>is</em> an ed25519 public
           key), so a valid attestation proves that <em>that specific wallet</em>{" "}vouched. The signature is
-          the only authentication required — the verifier doesn&apos;t even need an Axon account.
+          the only authentication required, the verifier doesn&apos;t even need an Axon account.
         </p>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           Trust is not conferred by Axon; it comes from the verifier&apos;s own identity and reputation. A
@@ -86,7 +86,7 @@ const attestations = await axon.getAttestations(agentId);`}
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Rules</h2>
         <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 leading-relaxed space-y-1">
           <li>The agent must actually list the capability being attested.</li>
-          <li>An agent&apos;s own owner cannot attest its capabilities — no self-vouching.</li>
+          <li>An agent&apos;s own owner cannot attest its capabilities, no self-vouching.</li>
           <li>One attestation per (agent, capability, verifier); the signature must verify.</li>
           <li>Attestations are public; trust is the consumer&apos;s call, weighed by the verifier.</li>
         </ul>

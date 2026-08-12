@@ -29,7 +29,7 @@ import { guardTx, AGENC_PROGRAM, ATA_PROGRAM } from "./txGuard";
 
 const RPC_URL = process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com";
 const GOODS_FEED = process.env.AGENC_GOODS_FEED ?? "https://agenc.ag/api/goods";
-const TTL_MS = 5 * 60 * 1000; // cache 5 min — the feed is dynamic, don't refetch per request
+const TTL_MS = 5 * 60 * 1000; // cache 5 min, the feed is dynamic, don't refetch per request
 const MAX_ITEMS = 12;
 // `Pubkey::default()` (32 zero bytes) — the "no operator leg" sentinel on the
 // goods listing. Base58-encodes to 32 ones, same string as the System Program.
@@ -150,7 +150,7 @@ export async function getAgencGoods(): Promise<AgencGood[]> {
 // ── Buy-through (the user pays with their OWN wallet) ────────────────────────
 
 export interface PrepareBuyResult {
-  buyTx: string; // base64 unsigned purchase_good tx — the user's Phantom signs + pays
+  buyTx: string; // base64 unsigned purchase_good tx, the user's Phantom signs + pays
   goodPda: string;
   serial: string; // the unit serial this purchase mints (= soldCount at prepare time)
   price: string; // human price
@@ -174,7 +174,7 @@ export async function prepareBuy(opts: { goodPda: string; buyerPubkey: string })
   if (!d.isActive) throw new Error("this good is no longer for sale");
   if (d.soldCount >= d.totalSupply) throw new Error("this good is sold out");
   if (String(d.sellerAuthority) === opts.buyerPubkey) {
-    throw new Error("this good is listed by your wallet — AgenC rejects self-purchase");
+    throw new Error("this good is listed by your wallet, AgenC rejects self-purchase");
   }
 
   // SOL or USDC are composed (see getAgencGoods). Any other mint is refused here
@@ -182,7 +182,7 @@ export async function prepareBuy(opts: { goodPda: string; buyerPubkey: string })
   // cost the buyer a wasted fee.
   const mint = d.priceMint.__option === "Some" ? address(String(d.priceMint.value)) : null;
   if (mint && String(mint) !== USDC_MINT) {
-    throw new Error("this token isn't supported from Axon yet — buy this one on AgenC directly");
+    throw new Error("this token isn't supported from Axon yet, buy this one on AgenC directly");
   }
   const hasOperator = String(d.operator) !== NO_OPERATOR;
   const operator = hasOperator ? address(String(d.operator)) : null;

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Agent Discovery — Axon Docs" };
+export const metadata = { title: "Agent Discovery | Axon Docs" };
 
 function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
@@ -114,12 +114,12 @@ export default function DiscoveryPage() {
             <thead><tr className="border-b border-gray-200 dark:border-gray-700"><th className="text-left px-4 py-2 text-xs font-mono text-gray-400">status</th><th className="text-left px-4 py-2 text-xs font-mono text-gray-400">meaning</th></tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {[
-                ["platform", "Axon-hosted agent — always reachable"],
+                ["platform", "Axon-hosted agent, always reachable"],
                 ["modulr", "Verified Modulr partner tool"],
                 ["x402_compliant", "Endpoint live and implements x402 payments"],
                 ["reachable", "Endpoint live but no x402 support"],
                 ["unverified", "Not yet checked"],
-                ["unreachable", "Endpoint did not respond — hidden from marketplace"],
+                ["unreachable", "Endpoint did not respond, hidden from marketplace"],
               ].map(([s, m]) => (
                 <tr key={s}><td className="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-300">{s}</td><td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">{m}</td></tr>
               ))}

@@ -34,7 +34,7 @@ export async function POST(
     if (!task) {
       return apiError(
         "TASK_STATE_CONFLICT",
-        "Task cannot be completed — it is not in 'running' status",
+        "Task cannot be completed, it is not in 'running' status",
         409
       );
     }

@@ -65,7 +65,7 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
           <span className="text-sm text-gray-400 dark:text-gray-500 mb-1">/ 1000</span>
         </div>
         <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
-          A portable, recomputable reputation credential — built only from work that settled on-chain.
+          A portable, recomputable reputation credential, built only from work that settled on-chain.
         </p>
 
         {/* Component breakdown */}
@@ -74,11 +74,11 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
           <Bar label="Proven work" pct={provenWork} sub={`${proof.evidenceCount} settled task${proof.evidenceCount !== 1 ? "s" : ""} on-chain`} />
         </div>
 
-        {/* Cross-network work — reputation that travels across agent networks */}
+        {/* Cross-network work, reputation that travels across agent networks */}
         {crossNetwork.length > 0 && (
           <div className="mb-5 rounded-md border border-pink-200 dark:border-pink-900/50 bg-pink-50/60 dark:bg-pink-950/20 px-4 py-3">
             <p className="text-xs font-semibold text-pink-700 dark:text-pink-400 mb-1.5">
-              Reputation that travels — {crossNetwork.length} settlement{crossNetwork.length !== 1 ? "s" : ""} earned on other networks
+              Reputation that travels, {crossNetwork.length} settlement{crossNetwork.length !== 1 ? "s" : ""} earned on other networks
             </p>
             <ul className="space-y-1">
               {crossNetwork.map((e) => (
@@ -96,13 +96,13 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
           </div>
         )}
 
-        {/* The math — expandable, so the score is recomputable by hand, not just by the Verify button */}
+        {/* The math, expandable, so the score is recomputable by hand, not just by the Verify button */}
         <div className="mb-5">
           <button
             onClick={() => setShowMath((s) => !s)}
             className="text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline"
           >
-            {showMath ? "Hide the math" : "Show the math — exactly how this score is computed"}
+            {showMath ? "Hide the math" : "Show the math, exactly how this score is computed"}
           </button>
 
           {showMath && <ScoreMath proof={proof} />}
@@ -119,7 +119,7 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
               {state === "checking" ? "Verifying…" : "Verify independently"}
             </button>
           ) : (
-            <span className="text-xs text-gray-400 dark:text-gray-500">No settled work yet — nothing to verify.</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">No settled work yet, nothing to verify.</span>
           )}
           <a
             href={`/api/agents/${encodeURIComponent(agentId)}/proof-score`}
@@ -143,12 +143,12 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
         )}
         {state === "fail" && (
           <div className="mt-4 rounded-md border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3">
-            <p className="text-sm text-amber-700 dark:text-amber-400">{v?.note ?? "Could not complete verification — try again."}</p>
+            <p className="text-sm text-amber-700 dark:text-amber-400">{v?.note ?? "Could not complete verification, try again."}</p>
           </div>
         )}
 
         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-4">
-          Anyone can recompute this from the cited public receipts — no need to trust Axon. Content hash:{" "}
+          Anyone can recompute this from the cited public receipts, no need to trust Axon. Content hash:{" "}
           <code className="font-mono">{proof.contentHash.slice(0, 16)}…</code>
         </p>
       </div>
@@ -200,7 +200,7 @@ export function ScoreMath({ proof }: { proof: ProofScore }) {
         </div>
       </div>
 
-      {/* the inputs — all derivable from public receipts */}
+      {/* the inputs, all derivable from public receipts */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">The inputs</p>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
@@ -219,7 +219,7 @@ export function ScoreMath({ proof }: { proof: ProofScore }) {
       {native.length > 0 && (
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
-            The settled tasks behind it{proof.evidenceCount > native.length ? ` — ${native.length} of ${proof.evidenceCount}` : ""}
+            The settled tasks behind it{proof.evidenceCount > native.length ? `, ${native.length} of ${proof.evidenceCount}` : ""}
           </p>
           <ul className="space-y-1">
             {native.map((e) => (
