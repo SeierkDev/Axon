@@ -107,7 +107,7 @@ export function createAttestation(input: CreateAttestationInput): CreateAttestat
   return { success: true, attestation: getAttestationById(attestationId)! };
 }
 
-export function getAttestationById(attestationId: string): CapabilityAttestation | null {
+function getAttestationById(attestationId: string): CapabilityAttestation | null {
   const row = getDb()
     .prepare("SELECT * FROM capability_attestations WHERE attestation_id = ?")
     .get(attestationId) as AttestationRow | undefined;

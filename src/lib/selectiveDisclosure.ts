@@ -93,7 +93,7 @@ export function leafHash(index: number, field: string, value: LeafValue, salt: s
   return createHash("sha256").update(`L:${index}:${field}:${canonicalValue(value)}:${salt}`, "utf8").digest("hex");
 }
 
-export function nodeHash(left: string, right: string): string {
+function nodeHash(left: string, right: string): string {
   return createHash("sha256").update(`N:${left}:${right}`, "utf8").digest("hex");
 }
 

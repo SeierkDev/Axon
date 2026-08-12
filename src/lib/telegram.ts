@@ -43,7 +43,7 @@ function storePost(type: TelegramPostType, content: string): void {
     .run(randomUUID(), type, content, new Date().toISOString());
 }
 
-export async function postToTelegram(type: TelegramPostType, text: string): Promise<boolean> {
+async function postToTelegram(type: TelegramPostType, text: string): Promise<boolean> {
   let sent = false;
   try {
     sent = await sendMessage(text);

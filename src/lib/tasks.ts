@@ -116,7 +116,7 @@ export interface CreateTaskOptions {
   traceId?: string;
 }
 
-export function queueTaskQueuedWebhook(task: Task): void {
+function queueTaskQueuedWebhook(task: Task): void {
   queueWebhookEvent(task.toAgent, "task.queued", {
     taskId: task.taskId,
     fromAgent: task.fromAgent,

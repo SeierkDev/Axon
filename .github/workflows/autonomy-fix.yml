@@ -1,0 +1,99 @@
+name: Autonomy — propose fixes
+
+# Tier 2: the pass applies the repairs a compiler can prove, on a branch, and
+# opens a pull request.
+#
+# It never pushes to main. The pull request is verified by the ordinary CI
+# workflow — the same 1400-odd tests as any human change — so the thing making
+# the change is not the thing certifying it. Nothing merges without a person.
+
+on:
+  schedule:
+    - cron: "41 6 * * *" # every day, after the checking pass
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  propose:
+    name: Open a fix PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Running daily, an unreviewed pull request would otherwise be joined by a
+      # new one every morning: the branch name carries the date, so nothing
+      # collides and nothing supersedes. One open proposal at a time — the next
+      # run picks up whatever is still true once this one is dealt with.
+      - name: Stop if a proposal is already waiting
+        id: open
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXISTING=$(gh pr list --search "head:autonomy/fixes-" --state open --json number --jq '.[0].number // empty' || true)
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING is still open — nothing proposed today"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.open.outputs.skip == 'false'
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+        if: steps.open.outputs.skip == 'false'
+
+      - name: Apply the safe fixes
+        if: steps.open.outputs.skip == 'false'
+        run: node scripts/autonomy.mjs --fix | tee /tmp/autonomy-fix.txt
+
+      - name: Stop if nothing changed
+        id: diff
+        if: steps.open.outputs.skip == 'false'
+        run: |
+          # The log itself always moves; a run that only rewrote the log has
+          # proposed nothing worth a person's attention.
+          if git diff --quiet -- . ':(exclude)autonomy'; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Prove it before asking anyone to look. A PR that does not compile wastes
+      # the reviewer's time and teaches them to distrust the next one.
+      - name: Verify
+        if: steps.open.outputs.skip == 'false' && steps.diff.outputs.changed == 'true'
+        run: |
+          npx tsc --noEmit
+          npm run lint
+          npm run test
+        env:
+          DATABASE_PATH: ":memory:"
+          NODE_ENV: test
+          LOG_LEVEL: error
+          SEED_SECRET: ci_seed_secret_that_is_at_least_32_chars_long
+
+      - name: Open the pull request
+        if: steps.open.outputs.skip == 'false' && steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="autonomy/fixes-$(date -u +%Y-%m-%d)"
+          git config user.name  "axon-autonomy"
+          git config user.email "autonomy@axon-agents.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "chore(autonomy): apply safe fixes"
+          git push -u origin "$BRANCH" --force-with-lease
+
+          BODY=$(printf 'Applied by \140scripts/autonomy.mjs --fix\140. Every change here is one the compiler can check — currently only dropping an \140export\140 that nothing outside its own file uses.\n\nTypecheck, lint and the full test suite passed on this branch before the pull request was opened. Review and merge, or close it: nothing here is urgent.\n\n```\n%s\n```\n' "$(cat /tmp/autonomy-fix.txt)")
+          gh label create autonomy \
+            --description "Findings from the self-check pass" \
+            --color ededed 2>/dev/null || true
+          gh pr create --title "Autonomy: safe fixes" --body "$BODY" --label autonomy

@@ -52,7 +52,7 @@ function hasCompletedTaskWith(reviewerId: string, agentId: string): boolean {
 // gamed before a review is written — self-reviews (an agent, or its operator's
 // wallet, rating itself) and review stuffing (one reviewer padding an agent with
 // repeat ratings). Returns a rejection reason, or null when the review is clean.
-export function detectReviewFraud(agentId: string, reviewerId: string): string | null {
+function detectReviewFraud(agentId: string, reviewerId: string): string | null {
   // An agent cannot review itself.
   if (reviewerId === agentId) {
     return "SELF_REVIEW: an agent cannot review itself";

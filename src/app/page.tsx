@@ -610,6 +610,7 @@ export default async function Home() {
             <Link href="/world"     className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">World</Link>
             <Link href="/experiment" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Experiment</Link>
             <Link href="/litepaper" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Litepaper</Link>
+            <Link href="/autonomy" className="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Autonomy</Link>
           </div>
         </div>
       </footer>

@@ -73,7 +73,7 @@ function fromRow(row: Row): BuildJob {
 // Self-heal like ensureBuildTables: keeps Build working even if the migrations
 // dir wasn't bundled on the host. Idempotent, ran once per process.
 let ensured = false;
-export function ensureBuildJobsTable(): void {
+function ensureBuildJobsTable(): void {
   if (ensured) return;
   try {
     getDb().exec(`

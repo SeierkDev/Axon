@@ -93,7 +93,7 @@ export default function AutonomousAgentsGuide() {
         </p>
         <CodeBlock
           label="INSTALL"
-          code={`npm install axonsdk @solana/web3.js @solana/spl-token`}
+          code={`npm install @axonprotocol/sdk @solana/web3.js @solana/spl-token`}
         />
       </Step>
 
