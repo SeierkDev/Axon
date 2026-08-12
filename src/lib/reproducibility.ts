@@ -86,7 +86,7 @@ export interface ReproProof {
 // party with both outputs gets the identical number, keeping the proof
 // trust-minimized.
 
-export function tokenFrequency(text: string): Map<string, number> {
+function tokenFrequency(text: string): Map<string, number> {
   const counts = new Map<string, number>();
   const tokens = text.toLowerCase().match(/[a-z0-9]+/g);
   if (tokens) for (const t of tokens) counts.set(t, (counts.get(t) ?? 0) + 1);
@@ -111,7 +111,7 @@ export function lexicalSimilarity(a: string, b: string): number {
   return Math.min(1, dot / (Math.sqrt(na) * Math.sqrt(nb)));
 }
 
-export function reproVerdict(originalHash: string, reproHash: string, similarity: number): ReproVerdict {
+function reproVerdict(originalHash: string, reproHash: string, similarity: number): ReproVerdict {
   if (reproHash === originalHash) return "exact";
   return similarity >= EQUIVALENCE_THRESHOLD ? "equivalent" : "divergent";
 }
@@ -392,7 +392,7 @@ export interface ReproSample {
 
 // Recent completed tasks (newest first) that are worth reproducing and have no
 // proof yet. `sinceIso` bounds how far back sampling reaches.
-export function eligibleTasksForSampling(limit: number, sinceIso: string): string[] {
+function eligibleTasksForSampling(limit: number, sinceIso: string): string[] {
   const rows = getDb()
     .prepare(
       `SELECT t.task_id

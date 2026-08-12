@@ -1,0 +1,92 @@
+name: Autonomy
+
+# Axon's maintenance pass over itself.
+#
+# Findings do not fail the build. A red X every time a doc drifts is a check
+# people learn to ignore, and an ignored check is worse than no check — it looks
+# like coverage while providing none. The pass records what it found, commits the
+# log, and opens an issue when something is actually wrong.
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # every day, early
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    # Only when something a check reads could have changed.
+    paths:
+      - "src/**"
+      - "packages/**"
+      - "examples/**"
+      - "scripts/autonomy.mjs"
+      - "**/*.md"
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  pass:
+    name: Self-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Run the pass
+        id: run
+        run: node scripts/autonomy.mjs | tee /tmp/autonomy.txt
+
+      - name: Record the log
+        run: |
+          if git diff --quiet -- autonomy/; then
+            echo "log unchanged"
+            exit 0
+          fi
+          git config user.name  "axon-autonomy"
+          git config user.email "autonomy@axon-agents.com"
+          git add autonomy/
+          git commit -m "chore(autonomy): self-check pass $(date -u +%Y-%m-%d)"
+          # A push race with a concurrent merge should not fail the pass; the next
+          # run records the same state anyway.
+          git push || echo "push skipped — branch moved under us"
+
+      # Only when the pass actually completed. latest.json is committed to the
+      # repo, so a crashed pass leaves a *stale* file sitting there — reading it
+      # under `always()` would file an issue about errors from a previous week,
+      # or stay quiet about this week's. A pass that could not run is a broken
+      # build, not a finding.
+      - name: Open an issue if anything is wrong
+        if: steps.run.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ERRORS=$(node -e "const r=require('./autonomy/latest.json');process.stdout.write(String(r.errors))")
+          if [ "$ERRORS" = "0" ]; then
+            echo "no errors — nothing to file"
+            exit 0
+          fi
+          TITLE="Self-check found $ERRORS error(s)"
+
+          # The label has to exist before anything can be filed under it.
+          # Without this the chain fails quietly in a way that inverts the
+          # intent below: `issue create --label autonomy` errors on an unknown
+          # label, the fallback files the issue *without* one, and the lookup
+          # then never matches — so instead of one issue kept up to date, a
+          # fresh one appears every Monday forever.
+          gh label create autonomy \
+            --description "Findings from the self-check pass" \
+            --color ededed 2>/dev/null || true
+
+          # One open issue at a time, updated — not a new one every Monday.
+          EXISTING=$(gh issue list --label autonomy --state open --json number --jq '.[0].number // empty')
+          BODY=$(printf 'Recorded in `autonomy/latest.json`.\n\n```\n%s\n```\n' "$(cat /tmp/autonomy.txt)")
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --label autonomy --body "$BODY"
+          fi

@@ -13,7 +13,7 @@ const SOL_PRICE_URL =
 
 // Live SOL→USDC. Throws (rather than guessing) if the price is unavailable — the
 // caller decides whether to skip recording, so we never fabricate a value.
-export async function solToUsdc(sol: number): Promise<number> {
+async function solToUsdc(sol: number): Promise<number> {
   const r = await fetch(SOL_PRICE_URL, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error(`SOL price lookup failed: HTTP ${r.status}`);
   const d = (await r.json()) as { solana?: { usd?: number } };

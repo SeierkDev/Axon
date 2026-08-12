@@ -134,7 +134,7 @@ export function minArenaDurationMs(wave: number): number {
 }
 
 /** Validate + consume a run token. Returns the server-side elapsed ms. */
-export function consumeRunToken(runId: unknown, mode: string): number {
+function consumeRunToken(runId: unknown, mode: string): number {
   if (typeof runId !== "string" || runId.length < 8 || runId.length > 64) throw new Error("missing run token");
   ensureTokenTable();
   const db = getDb();

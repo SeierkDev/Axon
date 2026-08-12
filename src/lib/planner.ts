@@ -72,7 +72,7 @@ function costUsdcOf(price: string | null | undefined): number {
 }
 
 /** Decompose a goal into ordered specialist steps using the caller's model. */
-export async function decomposeGoal(goal: string, maxSteps: number, think: ThinkFn): Promise<PlanStep[]> {
+async function decomposeGoal(goal: string, maxSteps: number, think: ThinkFn): Promise<PlanStep[]> {
   const raw = await think(planPrompt(goal, maxSteps), { maxTokens: 1200 });
   return parsePlan(raw).slice(0, maxSteps);
 }

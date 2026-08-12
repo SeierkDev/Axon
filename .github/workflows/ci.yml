@@ -3,6 +3,11 @@ name: CI
 on:
   push:
     branches: ["**"]
+    # The autonomy pass commits its log on every run. Those commits touch
+    # nothing but JSON under autonomy/ and cannot affect the build, so running
+    # the full suite on them doubles CI for no information.
+    paths-ignore:
+      - "autonomy/**"
   pull_request:
 
 concurrency:

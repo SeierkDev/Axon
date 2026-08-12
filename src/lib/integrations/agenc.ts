@@ -23,7 +23,7 @@ export interface AgencJobSpec {
 
 // AgenC's canonical JSON for a job spec (their SDK). Deterministic: object keys
 // recursively sorted, undefined dropped, no whitespace.
-export function agencCanonicalJobSpec(spec: AgencJobSpec): string {
+function agencCanonicalJobSpec(spec: AgencJobSpec): string {
   return agenc.canonicalJobSpecJson(spec);
 }
 

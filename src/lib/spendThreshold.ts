@@ -92,7 +92,7 @@ function getWindowSpend(agentId: string, windowHours: number): number {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export function getThreshold(agentId: string): SpendThreshold | null {
+function getThreshold(agentId: string): SpendThreshold | null {
   const row = getDb()
     .prepare("SELECT * FROM spend_thresholds WHERE agent_id = ?")
     .get(agentId) as ThresholdRow | undefined;
@@ -158,7 +158,7 @@ export function getRecentAlerts(limit = 100): SpendAlert[] {
 
 // Checks a single agent's threshold and fires an alert if exceeded.
 // Deduplicates: only one alert per window period.
-export function checkThreshold(agentId: string): void {
+function checkThreshold(agentId: string): void {
   const threshold = getThreshold(agentId);
   if (!threshold || !threshold.enabled) return;
 
