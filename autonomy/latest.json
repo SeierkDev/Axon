@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-19T17:31:52.443Z",
-  "finishedAt": "2026-09-19T17:31:57.266Z",
-  "commit": "4b9f355",
+  "startedAt": "2026-09-19T20:53:07.811Z",
+  "finishedAt": "2026-09-19T20:53:11.768Z",
+  "commit": "84aaa03",
   "checks": [
     {
       "id": "install-commands",
@@ -9,7 +9,7 @@
       "ok": true,
       "checked": 9,
       "findings": [],
-      "ms": 4580
+      "ms": 3750
     },
     {
       "id": "links",
@@ -17,13 +17,13 @@
       "ok": true,
       "checked": 166,
       "findings": [],
-      "ms": 21
+      "ms": 19
     },
     {
       "id": "dead-exports",
       "title": "Exports are used",
       "ok": true,
-      "checked": 477,
+      "checked": 478,
       "findings": [
         {
           "severity": "warn",
@@ -88,21 +88,13 @@
           "where": [
             "src/lib/identity.ts"
           ]
-        },
-        {
-          "severity": "warn",
-          "what": "publicOrigin() is exported and never used",
-          "why": "dead code reads exactly like live code",
-          "where": [
-            "src/lib/publicOrigin.ts"
-          ]
         }
       ],
-      "ms": 219
+      "ms": 185
     }
   ],
   "errors": 0,
-  "warnings": 9,
+  "warnings": 8,
   "changed": false,
   "changes": []
 }
