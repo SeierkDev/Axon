@@ -15,7 +15,7 @@ import {
 import { createAgent } from "@/lib/agents";
 import type { Agent } from "@/sdk/types";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let seq = 0;
 function uid() { return `wk-${++seq}`; }
 

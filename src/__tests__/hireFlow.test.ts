@@ -10,7 +10,7 @@ import { createAgent } from "@/lib/agents";
 import { startTask, completeTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
 
-const TEST_WALLET = "11111111111111111111111111111111";
+const TEST_WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 
 function freeAgent(): Agent {
   const a: Agent = {

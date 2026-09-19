@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useWallet } from "@/components/WalletProvider";
 
 interface Attestation {
   attestationId: string;
@@ -10,29 +11,13 @@ interface Attestation {
   createdAt: string;
 }
 
-interface PhantomProvider {
-  isPhantom?: boolean;
-  connect(): Promise<{ publicKey: { toString(): string } }>;
-  signMessage(message: Uint8Array, encoding: string): Promise<{ signature: Uint8Array }>;
-}
-
-function getPhantom(): PhantomProvider | null {
-  const w = window as unknown as { phantom?: { solana?: PhantomProvider }; solana?: PhantomProvider };
-  const provider = w.phantom?.solana ?? w.solana;
-  return provider && provider.isPhantom ? provider : null;
-}
-
-function toBase64(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s);
-}
 
 const field =
   "w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-600";
 const labelCls = "block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5";
 
 export default function AttestationsClient() {
+  const { sign } = useWallet();
   const [agentId, setAgentId] = useState("");
   const [capability, setCapability] = useState("");
   const [attestations, setAttestations] = useState<Attestation[]>([]);
@@ -59,21 +44,17 @@ export default function AttestationsClient() {
       setError("Enter an agent ID and a capability.");
       return;
     }
-    const phantom = getPhantom();
-    if (!phantom) {
-      setError("Phantom wallet not found, install it to sign attestations.");
-      return;
-    }
     setBusy(true);
     try {
-      const { publicKey } = await phantom.connect();
-      const verifier = publicKey.toString();
-      const message = `axon-attest:${id}:${cap}`;
-      const { signature } = await phantom.signMessage(new TextEncoder().encode(message), "utf8");
+      // The server recovers the signer from this signature, so it has to be the wallet's own
+      // EIP-191 output. Nothing else will recover to the verifier being claimed.
+      const signed = await sign(`axon-attest:${id}:${cap}`);
+      if (!signed) return; // the provider has already put the reason on screen
+      const { address: verifier, signature } = signed;
       const res = await fetch(`/api/agents/${encodeURIComponent(id)}/attestations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ capability: cap, verifier, signature: toBase64(signature) }),
+        body: JSON.stringify({ capability: cap, verifier, signature }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -96,7 +77,7 @@ export default function AttestationsClient() {
       </Link>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Attest a capability</h1>
       <p className="text-gray-500 dark:text-gray-400 mb-8">
-        Vouch that an agent really has a capability it lists. You sign a message with your Phantom wallet, 
+        Vouch that an agent really has a capability it lists. You sign a message with your wallet, 
         no Axon account needed. The agent must list the capability, and you can&apos;t attest your own agent.
       </p>
 
@@ -116,7 +97,7 @@ export default function AttestationsClient() {
             disabled={busy || !agentId || !capability}
             className="rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-sm font-medium px-5 py-2.5 hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {busy ? "Signing…" : "Attest with Phantom"}
+            {busy ? "Signing…" : "Attest with your wallet"}
           </button>
           <button
             onClick={() => loadAttestations(agentId.trim())}

@@ -34,9 +34,9 @@ describe("verifyWebhookSignature", () => {
 describe("verifyProofScore", () => {
   // 3 native tasks × 10 USDC, quality factor 0.5 → the published formula yields 500.
   const evidence = [
-    { taskId: "a", network: "axon", verify: "/api/receipts/a/public", settledUsdc: 10 },
-    { taskId: "b", network: "axon", verify: "/api/receipts/b/public", settledUsdc: 10 },
-    { taskId: "c", network: "axon", verify: "/api/receipts/c/public", settledUsdc: 10 },
+    { taskId: "a", network: "axon", verify: "/api/receipts/a/public", settledEth: 10 },
+    { taskId: "b", network: "axon", verify: "/api/receipts/b/public", settledEth: 10 },
+    { taskId: "c", network: "axon", verify: "/api/receipts/c/public", settledEth: 10 },
   ];
   const proof = { score: 500, components: { quality: { factor: 0.5 } } };
 

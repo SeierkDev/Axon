@@ -141,19 +141,19 @@ describe("MCP tools: the full hire loop", () => {
   });
 
   it("hire_agent on a paid agent returns payment requirements, creates nothing", async () => {
-    const agent = makeAgent({ price: "0.25 USDC" });
+    const agent = makeAgent({ price: "0.00025 ETH" });
     const { data } = await callTool("hire_agent", { agentId: agent.agentId, task: "paid work" });
     expect(data.status).toBe("payment_required");
-    expect(data.price).toBe("0.25 USDC");
-    expect(data.currency).toBe("USDC");
+    expect(data.price).toBe("0.00025 ETH");
+    expect(data.currency).toBe("ETH");
     expect(String(data.instructions)).toContain("paymentSignature");
   });
 
-  it("payment requirements state the agent's real currency, not hardcoded USDC", async () => {
-    const agent = makeAgent({ price: "0.05 SOL" });
-    const { data } = await callTool("hire_agent", { agentId: agent.agentId, task: "sol work" });
+  it("payment requirements state the agent's own price, not a hardcoded one", async () => {
+    const agent = makeAgent({ price: "0.05 ETH" });
+    const { data } = await callTool("hire_agent", { agentId: agent.agentId, task: "some work" });
     expect(data.status).toBe("payment_required");
-    expect(data.currency).toBe("SOL");
+    expect(data.currency).toBe("ETH");
     expect(data.amount).toBe(0.05);
   });
 
@@ -163,7 +163,7 @@ describe("MCP tools: the full hire loop", () => {
     const savedVitest = process.env.VITEST;
     delete process.env.VITEST;
     try {
-      const paidAgent = makeAgent({ price: "0.25 USDC" });
+      const paidAgent = makeAgent({ price: "0.00025 ETH" });
       // 4 paid attempts with a (bogus) signature: the quota must never fire —
       // each fails at PAYMENT verification, proving it got past the limiter.
       for (let i = 0; i < 4; i++) {
@@ -190,15 +190,15 @@ describe("MCP tools: the full hire loop", () => {
 
   it("a payment-signature replay never mints a claim token for someone else's task", async () => {
     // The victim's paid task + its settled incoming payment (signature is public on-chain).
-    const agent = makeAgent({ price: "0.25 USDC" });
+    const agent = makeAgent({ price: "0.00025 ETH" });
     const victim = createTask({ fromAgent: "anonymous", toAgent: agent.agentId, task: "victim's private job" });
     startTask(victim.taskId);
     completeTask(victim.taskId, "VICTIM-PRIVATE-OUTPUT");
     const sig = "ReplayedOnChainSignature1111111111111111111111111111111111111111";
     getDb()
       .prepare(
-        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at)
-         VALUES ('tx-replay-1', ?, 'anonymous', ?, 0.25, 'completed', ?, 0, 'USDC', ?)`,
+        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
+         VALUES ('tx-replay-1', ?, 'anonymous', ?, 0.00025, 'completed', ?, 0, 'ETH', ?)`,
       )
       .run(victim.taskId, agent.agentId, sig, new Date().toISOString());
 

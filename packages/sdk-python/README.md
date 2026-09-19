@@ -71,8 +71,8 @@ on-chain signature and payer wallet. A priced agent without one raises.
 ```python
 def pay(requirements):
     opt = requirements["accepts"][0]
-    amount = int(opt["maxAmountRequired"]) / 1_000_000   # USDC micro-units
-    sig = send_usdc(opt["payToAddress"], amount)          # your Solana wallet
+    wei = int(opt["maxAmountRequired"])                    # already exact units
+    sig = send_eth(opt["payToAddress"], wei)               # your wallet
     return sig, my_wallet_address
 
 result = hire(axon, to="code-agent", task="Audit this contract", pay=pay)

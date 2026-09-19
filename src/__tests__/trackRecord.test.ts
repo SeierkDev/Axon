@@ -44,11 +44,11 @@ describe("getAgentTrackRecord", () => {
     const from = makeAgent("Requester");
     const to = makeAgent("Worker");
     const SECRET = "CONFIDENTIAL brief: acquire Zeta Corp";
-    const id = completed(from.agentId, to.agentId, SECRET, "0.25 USDC");
+    const id = completed(from.agentId, to.agentId, SECRET, "0.00025 ETH");
     getDb()
       .prepare(
-        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, fee_amount, currency, created_at, settled_at)
-         VALUES (?, ?, ?, ?, 0.25, 'completed', 0, 'USDC', ?, ?)`,
+        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, fee_amount, currency, created_at, settled_at)
+         VALUES (?, ?, ?, ?, 0.00025, 'completed', 0, 'ETH', ?, ?)`,
       )
       .run(randomUUID(), id, from.agentId, to.agentId, new Date().toISOString(), new Date().toISOString());
 
@@ -56,8 +56,8 @@ describe("getAgentTrackRecord", () => {
     expect(tr).not.toBeNull();
     expect(tr!.name).toBe("Worker");
     expect(tr!.tasksCompleted).toBeGreaterThanOrEqual(1);
-    expect(tr!.usdcEarned).toBeCloseTo(0.25, 6);
-    expect(tr!.recentJobs[0]).toMatchObject({ taskId: id, counterparty: "Requester", payment: "0.25 USDC" });
+    expect(tr!.ethEarned).toBeCloseTo(0.00025, 6);
+    expect(tr!.recentJobs[0]).toMatchObject({ taskId: id, counterparty: "Requester", payment: "0.00025 ETH" });
 
     const flat = JSON.stringify(tr);
     expect(flat).not.toContain("CONFIDENTIAL");
@@ -68,7 +68,7 @@ describe("getAgentTrackRecord", () => {
   it("reports the SAME task counts as computeReputation (no drift)", () => {
     const from = makeAgent("R");
     const to = makeAgent("W");
-    completed(from.agentId, to.agentId, "job a", "0.10 USDC");
+    completed(from.agentId, to.agentId, "job a", "0.0001 ETH");
     completed(from.agentId, to.agentId, "job b", null);
 
     const tr = getAgentTrackRecord(to.agentId)!;
@@ -81,7 +81,7 @@ describe("getAgentTrackRecord", () => {
   it("caps recent jobs and returns null for an unknown agent", () => {
     const from = makeAgent("R");
     const to = makeAgent("W");
-    for (let i = 0; i < 15; i++) completed(from.agentId, to.agentId, `job ${i}`, "0.10 USDC");
+    for (let i = 0; i < 15; i++) completed(from.agentId, to.agentId, `job ${i}`, "0.0001 ETH");
     expect(getAgentTrackRecord(to.agentId)!.recentJobs.length).toBeLessThanOrEqual(12);
     expect(getAgentTrackRecord("no-such-agent")).toBeNull();
   });
@@ -89,19 +89,19 @@ describe("getAgentTrackRecord", () => {
   it("shows the SETTLED amount for jobs whose task.payment is null (seed/demo)", () => {
     const from = makeAgent("Client");
     const to = makeAgent("Paid Worker");
-    // A seed-style job: no task.payment, but it actually settled 0.15 USDC.
+    // A seed-style job: no task.payment, but it actually settled 0.00015 ETH.
     const t = createTask({ fromAgent: from.agentId, toAgent: to.agentId, task: "job" });
     startTask(t.taskId);
     completeTask(t.taskId, "out");
     getDb()
       .prepare(
-        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, fee_amount, currency, created_at, settled_at)
-         VALUES (?, ?, ?, ?, 0.15, 'completed', 0, 'USDC', ?, ?)`,
+        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, fee_amount, currency, created_at, settled_at)
+         VALUES (?, ?, ?, ?, 0.00015, 'completed', 0, 'ETH', ?, ?)`,
       )
       .run(randomUUID(), t.taskId, from.agentId, to.agentId, new Date().toISOString(), new Date().toISOString());
 
     const job = getAgentTrackRecord(to.agentId)!.recentJobs.find((j) => j.taskId === t.taskId)!;
-    expect(job.payment).toBe("0.15 USDC"); // never "free" when it actually settled
+    expect(job.payment).toBe("0.00015 ETH"); // never "free" when it actually settled
   });
 
   it("hides contract-test jobs and labels system requesters", () => {
@@ -112,7 +112,7 @@ describe("getAgentTrackRecord", () => {
       agentId: testId, name: "Contract Test", capabilities: ["x"], publicKey: "pk-ct",
       provider: "anthropic", reputation: 0, createdAt: new Date().toISOString(),
     });
-    completed(testId, to.agentId, "automated check", "0.10 USDC");
+    completed(testId, to.agentId, "automated check", "0.0001 ETH");
     // A real job from the world pipeline's system requester.
     completed("axon-world-visitor", to.agentId, "pipeline step", null);
 

@@ -6,7 +6,7 @@ import { semanticSearchAgents } from "@/lib/embeddings";
 import { getVerifiedOwners } from "@/lib/ownerVerification";
 import { requireApiKey } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
-import { parsePaymentAmount } from "@/lib/solana";
+import { parsePaymentAmount } from "@/lib/money";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
 import { registerAgentSchema, parseBody } from "@/lib/schemas";
@@ -15,6 +15,7 @@ import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "
 import { withRequestContext } from "@/lib/withRequestContext";
 import { verifyAgentEndpoint } from "@/lib/verification";
 import { notifyNewAgent } from "@/lib/telegram";
+import { normalizeAddress, sameAddress } from "@/lib/address";
 
 const VALID_SORT_FIELDS = new Set<string>(["proven", "reputation", "price", "createdAt", "activity", "successRate", "latency", "reviews"]);
 const VALID_PROVIDERS: InferenceProvider[] = ["anthropic", "ollama", "openai", "grok"];
@@ -150,7 +151,7 @@ async function handlePost(req: NextRequest) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
 
-  if (body.walletAddress !== auth.user.walletAddress) {
+  if (!sameAddress(body.walletAddress, auth.user.walletAddress)) {
     return apiError(
       "FORBIDDEN",
       "walletAddress must match the authenticated API key owner",
@@ -228,7 +229,7 @@ async function handlePost(req: NextRequest) {
   if (price && (!parsedPrice || parsedPrice.amount <= 0)) {
     return apiError(
       "VALIDATION_ERROR",
-      "price must look like '0.10 USDC' or '0.05 SOL'",
+      "price must look like '0.10 ETH' or '0.05 SOL'",
       400
     );
   }
@@ -242,7 +243,8 @@ async function handlePost(req: NextRequest) {
     endpoint: body.endpoint,
     price,
     category: body.category ?? categoryFromCapabilities(capabilities),
-    walletAddress: body.walletAddress,
+    // store the one spelling, never whatever case the caller happened to send
+    walletAddress: normalizeAddress(body.walletAddress) ?? body.walletAddress,
     provider: body.provider ?? "anthropic",
     providerModel: body.providerModel,
     providerEndpoint: body.providerEndpoint,

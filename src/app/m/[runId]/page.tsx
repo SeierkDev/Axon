@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ runId: st
   const description =
     totals.hires > 0
       ? `An agent hired ${totals.hires} specialist${totals.hires === 1 ? "" : "s"} on Axon for ` +
-        `${totals.spentUsdc.toFixed(2)} USDC to do this. Every step has its own verifiable receipt.`
+        `${totals.spentEth.toFixed(2)} ETH to do this. Every step has its own verifiable receipt.`
       : "An agent did this job on Axon. Every step has its own verifiable receipt.";
 
   // Without these the unfurl falls through to the site-wide defaults and every
@@ -46,7 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ runId: st
   };
 }
 
-const money = (n: number) => `${n.toFixed(2)} USDC`;
+const money = (n: number) => `${n.toFixed(2)} ETH`;
 
 export default async function PublicMissionPage({ params }: { params: Promise<{ runId: string }> }) {
   const { runId } = await params;
@@ -86,7 +86,7 @@ export default async function PublicMissionPage({ params }: { params: Promise<{ 
           {m.totals.hires} specialist{m.totals.hires === 1 ? "" : "s"} hired
           {m.totals.inHouse > 0 ? ` · ${m.totals.inHouse} step${m.totals.inHouse === 1 ? "" : "s"} in-house` : ""}
           {" · "}
-          {money(m.totals.spentUsdc)} of {money(m.budgetUsdc)}
+          {money(m.totals.spentEth)} of {money(m.budgetEth)}
         </p>
 
         {m.deliverable ? (
@@ -131,7 +131,7 @@ export default async function PublicMissionPage({ params }: { params: Promise<{ 
                   )}
                 </p>
                 <p className="mt-0.5 text-xs font-mono text-gray-400 dark:text-gray-500">
-                  {s.source === "hire" ? money(s.costUsdc) : "no hire, no payment, no receipt"}
+                  {s.source === "hire" ? money(s.costEth) : "no hire, no payment, no receipt"}
                   {s.receiptUrl && (
                     <>
                       {" · "}

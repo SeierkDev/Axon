@@ -1,52 +1,45 @@
-// Phase 10 (10.4): minimal Phantom connect for Axon World. We only need the
-// wallet's public key to resolve which agents belong to the visitor — no
-// signing or transactions here. Mirrors the provider detection used by Axon
-// Build's payment client.
-
-interface PhantomProvider {
-  isPhantom?: boolean;
-  publicKey?: { toString(): string } | null;
-  connect(opts?: { onlyIfTrusted?: boolean }): Promise<{ publicKey: { toString(): string } }>;
-  disconnect?(): Promise<void>;
-}
-
-export function getPhantom(): PhantomProvider | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as {
-    phantom?: { solana?: PhantomProvider };
-    solana?: PhantomProvider;
-  };
-  const provider = w.phantom?.solana ?? w.solana;
-  return provider && provider.isPhantom ? provider : null;
-}
-
-// Connect and return the wallet address (base58). Throws "PHANTOM_NOT_FOUND"
-// when the extension isn't present so the caller can prompt to install it.
+// The world only needs to know which address is visiting, so it can work out which agents are
+// yours. No signing, no transactions.
 //
-// On MOBILE with no injected provider, deep-link into the Phantom app's
-// in-app browser instead — it reopens this exact page with the provider
-// injected, and connect works from there.
-export async function connectPhantom(): Promise<string> {
-  const provider = getPhantom();
-  if (!provider) {
-    const isTouch = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
-    if (isTouch && typeof window !== "undefined") {
-      const url = encodeURIComponent(window.location.href);
-      const ref = encodeURIComponent(window.location.origin);
-      window.location.href = `https://phantom.app/ul/browse/${url}?ref=${ref}`;
-      // The page is navigating away — park the promise so no error UI flashes.
+// It speaks EIP-1193 directly, the same as the rest of the site. It deliberately does not reach for
+// the shared WalletProvider: the world mounts its own canvas and the entry screen needs an address
+// before the page chrome around it exists.
+
+import { isPhone, metaMaskDeepLink, provider, type Eip1193 } from "@/lib/chain";
+
+export function getInjectedWallet(): Eip1193 | null {
+  return provider();
+}
+
+/**
+ * Connect and return the address.
+ *
+ * Throws "WALLET_NOT_FOUND" on a desktop browser with no wallet, so the caller can offer to install
+ * one. On a phone there is nothing to install into this browser: the wallet is almost certainly
+ * already on the device, just not here, so the way in is its own browser.
+ */
+export async function connectWallet(): Promise<string> {
+  const p = getInjectedWallet();
+  if (!p) {
+    const coarse =
+      typeof window !== "undefined" && (window.matchMedia?.("(pointer: coarse)").matches ?? false);
+    if (typeof navigator !== "undefined" && isPhone(navigator.userAgent, coarse)) {
+      window.location.href = metaMaskDeepLink(window.location.href);
+      // The page is navigating away, so park the promise rather than flashing an error first.
       return new Promise<string>(() => {});
     }
-    throw new Error("PHANTOM_NOT_FOUND");
+    throw new Error("WALLET_NOT_FOUND");
   }
-  const { publicKey } = await provider.connect();
-  return publicKey.toString();
+  const accounts = (await p.request({ method: "eth_requestAccounts" })) as string[];
+  const address = accounts?.[0];
+  if (!address) throw new Error("WALLET_NOT_FOUND");
+  return address.toLowerCase();
 }
 
-export async function disconnectPhantom(): Promise<void> {
-  try {
-    await getPhantom()?.disconnect?.();
-  } catch {
-    /* ignore */
-  }
+/**
+ * A wallet cannot be told to forget a site, so there is nothing to revoke from here. The caller
+ * drops the address it is holding, which is the part it can actually do.
+ */
+export async function disconnectWallet(): Promise<void> {
+  /* nothing to revoke */
 }

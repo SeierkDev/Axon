@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { WorldEnvironment, type Collider, type WorldBuilding } from "./Landing";
 import { OpenWorld, type OpenDistrict, type FishSpot, type BenchSpot, type GatherSpot, type WorldLandmarks } from "./OpenWorld";
-import { connectPhantom, disconnectPhantom, getPhantom } from "./wallet";
+import { connectWallet, disconnectWallet, getInjectedWallet } from "./wallet";
 import { usePresence, EMOTE_GLYPH, type PeerMeta, type PeerPose, type Bubble } from "./presence";
 import { WorldMusic, worldSfx, zombieMusic } from "./audio";
 import { ITEMS, RARITY_COLOR, RARITY_LABEL, RARITY_ORDER, rollCatch, rollGift, type ItemDef, type Rarity } from "./items";
@@ -30,6 +30,7 @@ import {
 } from "./arcade";
 import { ArcadeFxLayer, applyCameraShake } from "./arcadeFx";
 import { overridePhase, clearPhaseOverride } from "./dayCycle";
+import { sameAddress } from "@/lib/address";
 import {
   ARENAS,
   MODE_PLATS,
@@ -92,7 +93,7 @@ const DEFAULT_LOOK: AvatarLook = {
 // you into the village island you see on the landing page, steered in third
 // person (WASD/arrows, drag to look). Every house maps to a real registered
 // agent: walk up to one and it beacons + highlights; press E (or tap the prompt)
-// to open a card with that agent's live data (reputation, tasks, USDC earned,
+// to open a card with that agent's live data (reputation, tasks, ETH earned,
 // verification, activity).
 
 const PLAYER_RADIUS = 0.7;
@@ -2013,7 +2014,7 @@ function TerminalPanel({ agentId, name, plot, onClose }: { agentId: string; name
           {plot && (
             <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
               <div className="rounded-lg bg-white/5 py-2"><p className="text-white font-bold text-base">{plot.tasksCompleted}</p><p className="text-gray-500">tasks</p></div>
-              <div className="rounded-lg bg-white/5 py-2"><p className="text-white font-bold text-base">${plot.usdcEarned.toFixed(2)}</p><p className="text-gray-500">earned</p></div>
+              <div className="rounded-lg bg-white/5 py-2"><p className="text-white font-bold text-base">${plot.ethEarned.toFixed(2)}</p><p className="text-gray-500">earned</p></div>
               <div className="rounded-lg bg-white/5 py-2"><p className="text-white font-bold text-base">{plot.reputation.toFixed(1)}</p><p className="text-gray-500">rep</p></div>
             </div>
           )}
@@ -3024,7 +3025,7 @@ interface WorldPlot {
   reputation: number;
   active: boolean;
   tasksCompleted: number;
-  usdcEarned: number;
+  ethEarned: number;
   verified: boolean;
   walletAddress: string | null;
   proofScore?: number | null;
@@ -3924,30 +3925,10 @@ function AgentCard({
   // Storefront data — the house is a shop window for the agent. Cross-listing
   // badge, services/price and live activity load per open (the card is keyed by
   // agentId at the call site, so state resets per agent).
-  const [agencListed, setAgencListed] = useState(false);
   const [services, setServices] = useState<{ price: string | null; capabilities: string[] } | null>(null);
   const [activity, setActivity] = useState<AgentActivity | null>(null);
   useEffect(() => {
     let alive = true;
-    fetch(`/api/agenc/cross-list?agentId=${encodeURIComponent(agent.agentId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { listing: unknown } | null) => {
-        if (alive && d?.listing) setAgencListed(true);
-      })
-      .catch(() => { /* badge simply stays hidden */ });
-    fetch(`/api/agents/${encodeURIComponent(agent.agentId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { price?: string | null; capabilities?: string[] } | null) => {
-        if (alive && d) setServices({ price: d.price ?? null, capabilities: d.capabilities ?? [] });
-      })
-      .catch(() => { /* hire button falls back to no price */ });
-    fetch(`/api/world/agent/${encodeURIComponent(agent.agentId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: AgentActivity | null) => {
-        if (alive && d) setActivity(d);
-      })
-      .catch(() => { /* live line simply stays hidden */ });
-    return () => { alive = false; };
   }, [agent.agentId]);
   const price = services?.price?.trim();
   const live = activity ? activityLine(activity) : null;
@@ -3963,7 +3944,6 @@ function AgentCard({
           <h2 className="text-xl font-bold leading-tight flex items-center gap-2 flex-wrap">
             {agent.name}
             {agent.verified && <span className="text-xs bg-white/25 rounded-full px-2 py-0.5">✓ verified</span>}
-            {agencListed && <span className="text-xs bg-pink-500/80 rounded-full px-2 py-0.5">✓ AgenC</span>}
             {agent.proofScore !== null && agent.proofScore !== undefined && agent.proofScore > 0 && (
               <span
                 title="Proof Score, portable reputation, recomputable by anyone from public receipts"
@@ -3978,7 +3958,7 @@ function AgentCard({
         <div className="grid grid-cols-2 gap-px bg-gray-100">
           <Stat label="Reputation" value={Math.round(agent.reputation).toString()} />
           <Stat label="Tasks done" value={agent.tasksCompleted.toLocaleString()} />
-          <Stat label="USDC earned" value={`$${agent.usdcEarned.toFixed(2)}`} />
+          <Stat label="ETH earned" value={`${agent.ethEarned.toFixed(4)} ETH`} />
           <Stat label="Last 24h" value={activity ? `${activity.completed24h} job${activity.completed24h === 1 ? "" : "s"}` : "…"} />
         </div>
         {live && (
@@ -4048,7 +4028,7 @@ function AgentCard({
             </a>
           )}
           <p className="text-center text-[11px] text-gray-400 mt-1.5">
-            {mine ? "pricing, pause and earnings in the dashboard" : price ? "per task · paid via x402 · settles on Solana" : "opens the agent's page"}
+            {mine ? "pricing, pause and earnings in the dashboard" : price ? "per task · paid via x402 · settles on Robinhood Chain" : "opens the agent's page"}
           </p>
         </div>
         <div className="px-6 py-4 flex items-center justify-between">
@@ -4799,7 +4779,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
   const [nearestKey, setNearestKey] = useState<string | null>(null);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [wallet, setWallet] = useState<string | null>(initialWallet);
-  const [walletState, setWalletState] = useState<"idle" | "connecting" | "no-phantom" | "failed">("idle");
+  const [walletState, setWalletState] = useState<"idle" | "connecting" | "no-wallet" | "failed">("idle");
   const [look, setLook] = useState<AvatarLook>(DEFAULT_LOOK);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [firstPerson, setFirstPerson] = useState(false);
@@ -5518,30 +5498,30 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
 
   // Mobile: shared joystick state for the Player.
   const touchMove = useRef({ mx: 0, my: 0, run: false });
-  // Phantom's in-app browser draws its own bar over the bottom edge, hiding
+  // A wallet's in-app browser draws its own bar over the bottom edge, hiding
   // the hint chips. Detection: on touch, an injected provider = we're inside
-  // the Phantom app (mobile Safari/Chrome never inject one).
-  const [inPhantom, setInPhantom] = useState(false);
+  // the wallet app (mobile Safari/Chrome never inject one).
+  const [inWalletBrowser, setInWalletBrowser] = useState(false);
   useEffect(() => {
     if (!IS_TOUCH) return;
-    const check = () => { if (getPhantom()) setInPhantom(true); };
+    const check = () => { if (getInjectedWallet()) setInWalletBrowser(true); };
     check();
     const t = setTimeout(check, 900); // providers can inject late
     return () => clearTimeout(t);
   }, []);
-  const chipBottom = inPhantom ? "bottom-14" : CHIP_BOTTOM;
+  const chipBottom = inWalletBrowser ? "bottom-14" : CHIP_BOTTOM;
 
   const connect = async () => {
     setWalletState("connecting");
     try {
-      setWallet(await connectPhantom());
+      setWallet(await connectWallet());
       setWalletState("idle");
     } catch (e) {
-      setWalletState((e as Error).message === "PHANTOM_NOT_FOUND" ? "no-phantom" : "failed");
+      setWalletState((e as Error).message === "WALLET_NOT_FOUND" ? "no-wallet" : "failed");
     }
   };
   const disconnect = () => {
-    void disconnectPhantom();
+    void disconnectWallet();
     setWallet(null);
     setWalletState("idle");
   };
@@ -5599,13 +5579,13 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
     const s = new Set<string>();
     if (!wallet) return s;
     for (const b of agentBuildings) {
-      if (agentByKey.get(b.key)?.walletAddress === wallet) s.add(b.key);
+      if (sameAddress(agentByKey.get(b.key)?.walletAddress, wallet)) s.add(b.key);
     }
     return s;
   }, [wallet, agentBuildings, agentByKey]);
 
   const myAgents = useMemo(
-    () => (snap && wallet ? snap.plots.filter((p) => p.walletAddress === wallet) : []),
+    () => (snap && wallet ? snap.plots.filter((p) => sameAddress(p.walletAddress, wallet)) : []),
     [snap, wallet]
   );
 
@@ -6125,7 +6105,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
               {myAgents.map((a) => (
                 <li key={a.agentId} className="flex items-center justify-between gap-2">
                   <span className="text-sm text-gray-800 truncate">{a.name}</span>
-                  <span className="text-xs text-gray-500 whitespace-nowrap">${a.usdcEarned.toFixed(0)} · {a.tasksCompleted}✓</span>
+                  <span className="text-xs text-gray-500 whitespace-nowrap">${a.ethEarned.toFixed(0)} · {a.tasksCompleted}✓</span>
                 </li>
               ))}
             </ul>
@@ -6743,9 +6723,9 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       )}
 
       {/* Wallet errors */}
-      {walletState === "no-phantom" && (
+      {walletState === "no-wallet" && (
         <div className="absolute top-16 right-4 w-64 rounded-lg bg-white/95 px-4 py-3 shadow-lg text-sm text-gray-700">
-          Phantom wallet not found.{" "}
+          MetaMask wallet not found.{" "}
           <a href="https://phantom.app/" target="_blank" rel="noreferrer" className="text-teal-600 underline">Install it</a>{" "}
           to see your agents.
         </div>
@@ -6777,7 +6757,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
         <AgentCard
           key={openAgent.agentId}
           agent={openAgent}
-          mine={wallet != null && openAgent.walletAddress === wallet}
+          mine={sameAddress(openAgent.walletAddress, wallet)}
           orderSteps={pipelineRun ? null : orderSteps}
           onAddStep={addOrderStep}
           onEnterHome={enterHome}

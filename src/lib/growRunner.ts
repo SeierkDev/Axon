@@ -13,7 +13,7 @@ import { buildMissionManifest } from "./growReceipt";
 export interface GrowCandidate {
   agentId: string;
   name: string;
-  priceUsdc: number | null;   // null = free lane
+  priceEth: number | null;   // null = free lane
   proofScore?: number;
   capabilities: string[];
 }
@@ -23,7 +23,7 @@ export interface GrowHireOutcome {
   status: "completed" | "failed" | "timeout";
   output?: string;
   error?: string;
-  costUsdc: number;
+  costEth: number;
   receiptUrl?: string;
 }
 
@@ -61,13 +61,13 @@ export interface GrowDeps {
    */
   attempt?: (task: string, context?: string) => Promise<string>;
   search: (q: { capability?: string; query?: string; maxPriceUsdc?: number; limit?: number }) => Promise<GrowCandidate[]>;
-  hire: (o: { to: string; task: string; context?: string; priceUsdc: number }) => Promise<GrowHireOutcome>;
+  hire: (o: { to: string; task: string; context?: string; priceEth: number }) => Promise<GrowHireOutcome>;
 }
 
 export interface GrowConfig {
   mission: string;
-  budgetUsdc: number;
-  perHireCapUsdc: number;
+  budgetEth: number;
+  perHireCapEth: number;
   maxHires: number;
 }
 
@@ -163,7 +163,7 @@ function parsePlan(text: string): GrowSubtask[] {
  * How close on Proof Score counts as "just as good".
  *
  * Ranking on score alone spends the whole budget on the top of the list: a
- * 910-rated specialist at 4 USDC beats an 890-rated one at 0.40, so the mission
+ * 910-rated specialist at 4 ETH beats an 890-rated one at 0.40, so the mission
  * buys one step instead of five. Within this margin the two are not meaningfully
  * different in proven quality, so price decides — which is what makes the same
  * budget stretch across a plan.
@@ -181,7 +181,7 @@ const SCORE_MARGIN = 0.05;
 function rankAffordable(candidates: GrowCandidate[], self: string, ceilingUsdc: number): GrowCandidate[] {
   const affordable = candidates
     .filter((c) => c.agentId !== self)
-    .filter((c) => (c.priceUsdc ?? 0) <= ceilingUsdc);
+    .filter((c) => (c.priceEth ?? 0) <= ceilingUsdc);
   if (affordable.length === 0) return [];
 
   const best = Math.max(...affordable.map((c) => c.proofScore ?? 0));
@@ -191,7 +191,7 @@ function rankAffordable(candidates: GrowCandidate[], self: string, ceilingUsdc: 
 
   return [
     // Cheapest of the ones that are as good as it gets; score breaks a price tie.
-    ...equals.sort((a, b) => (a.priceUsdc ?? 0) - (b.priceUsdc ?? 0) || (b.proofScore ?? 0) - (a.proofScore ?? 0)),
+    ...equals.sort((a, b) => (a.priceEth ?? 0) - (b.priceEth ?? 0) || (b.proofScore ?? 0) - (a.proofScore ?? 0)),
     ...rest.sort((a, b) => (b.proofScore ?? 0) - (a.proofScore ?? 0)),
   ];
 }
@@ -223,7 +223,7 @@ export interface GrowPreviewStep {
   capability: string;
   task: string;
   /** The specialist it would hire, or null if nothing affordable was found. */
-  pick: { agentId: string; name: string; priceUsdc: number; proofScore?: number } | null;
+  pick: { agentId: string; name: string; priceEth: number; proofScore?: number } | null;
   alternatives: number;
 }
 
@@ -251,7 +251,7 @@ export async function previewGrowMission(deps: GrowDeps, cfg: GrowConfig): Promi
   for (const step of plan) {
     // Price each step against what is still notionally left, exactly as the real
     // run would — so a preview can't promise a hire the budget wouldn't reach.
-    const ceiling = Math.min(cfg.perHireCapUsdc, Math.max(0, cfg.budgetUsdc - estimatedUsdc));
+    const ceiling = Math.min(cfg.perHireCapEth, Math.max(0, cfg.budgetEth - estimatedUsdc));
     let ranked: GrowCandidate[] = [];
     if (ceiling > 0) {
       try {
@@ -261,17 +261,17 @@ export async function previewGrowMission(deps: GrowDeps, cfg: GrowConfig): Promi
       }
     }
     const best = ranked[0];
-    if (best) estimatedUsdc += best.priceUsdc ?? 0;
+    if (best) estimatedUsdc += best.priceEth ?? 0;
     steps.push({
       capability: step.capability,
       task: step.task,
-      pick: best ? { agentId: best.agentId, name: best.name, priceUsdc: best.priceUsdc ?? 0, proofScore: best.proofScore } : null,
+      pick: best ? { agentId: best.agentId, name: best.name, priceEth: best.priceEth ?? 0, proofScore: best.proofScore } : null,
       alternatives: Math.max(0, ranked.length - 1),
     });
   }
 
   estimatedUsdc = Math.round(estimatedUsdc * 10000) / 10000;
-  return { plan, steps, estimatedUsdc, withinBudget: estimatedUsdc <= cfg.budgetUsdc };
+  return { plan, steps, estimatedUsdc, withinBudget: estimatedUsdc <= cfg.budgetEth };
 }
 
 export interface GrowResult {
@@ -280,7 +280,7 @@ export interface GrowResult {
   hires: number;
   /** Steps the agent did itself because nobody could be hired — unpaid, unwitnessed. */
   selfDone: number;
-  spentUsdc: number;
+  spentEth: number;
 }
 
 
@@ -380,7 +380,7 @@ export async function resumeGrowMission(deps: GrowDeps, runId: string): Promise<
   if (parts.length === 0) {
     updateGrowRun(runId, { status: "failed" });
     recordGrowEvent(runId, { kind: "note", summary: "Nothing recoverable, no completed work to assemble." });
-    return { run: { ...run, status: "failed" }, hires: 0, selfDone: 0, spentUsdc: getGrowSpent(runId) };
+    return { run: { ...run, status: "failed" }, hires: 0, selfDone: 0, spentEth: getGrowSpent(runId) };
   }
 
   updateGrowRun(runId, { status: "synthesizing" });
@@ -395,17 +395,17 @@ export async function resumeGrowMission(deps: GrowDeps, runId: string): Promise<
     recordGrowEvent(runId, { kind: "error", summary: `Synthesis failed on resume: ${(e as Error).message}` });
   }
 
-  const spentUsdc = getGrowSpent(runId);
+  const spentEth = getGrowSpent(runId);
   const status = deliverable ? "completed" : "failed";
   updateGrowRun(runId, { status, deliverable });
   await sealManifest(deps, runId, deliverable);
   recordGrowEvent(runId, {
     kind: "note",
     summary: deliverable
-      ? `Recovered, deliverable built from ${parts.length} paid piece${parts.length === 1 ? "" : "s"}, ${spentUsdc} USDC already spent.`
-      : `Could not recover a deliverable, ${spentUsdc} USDC was already spent.`,
+      ? `Recovered, deliverable built from ${parts.length} paid piece${parts.length === 1 ? "" : "s"}, ${spentEth} ETH already spent.`
+      : `Could not recover a deliverable, ${spentEth} ETH was already spent.`,
   });
-  return { run: { ...run, status, deliverable }, deliverable, hires: parts.length, selfDone: 0, spentUsdc };
+  return { run: { ...run, status, deliverable }, deliverable, hires: parts.length, selfDone: 0, spentEth };
 }
 
 /**
@@ -416,12 +416,12 @@ export async function resumeGrowMission(deps: GrowDeps, runId: string): Promise<
 export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRunId?: string): Promise<GrowResult> {
   const run =
     (existingRunId ? getGrowRun(existingRunId) : null) ??
-    createGrowRun({ agentId: deps.self, mission: cfg.mission, budgetUsdc: cfg.budgetUsdc });
+    createGrowRun({ agentId: deps.self, mission: cfg.mission, budgetEth: cfg.budgetEth });
   const { runId } = run;
   recordGrowEvent(runId, {
     kind: "note",
     summary: `Mission started.`,
-    data: { budgetUsdc: cfg.budgetUsdc, perHireCapUsdc: cfg.perHireCapUsdc, maxHires: cfg.maxHires },
+    data: { budgetEth: cfg.budgetEth, perHireCapEth: cfg.perHireCapEth, maxHires: cfg.maxHires },
   });
 
   // 1. Plan
@@ -435,7 +435,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
   if (plan.length === 0) {
     updateGrowRun(runId, { status: "failed" });
     recordGrowEvent(runId, { kind: "error", summary: "Could not produce a plan, nothing to hire for." });
-    return { run: { ...run, status: "failed" }, hires: 0, selfDone: 0, spentUsdc: 0 };
+    return { run: { ...run, status: "failed" }, hires: 0, selfDone: 0, spentEth: 0 };
   }
   updateGrowRun(runId, { status: "hiring", plan });
   recordGrowEvent(runId, {
@@ -458,13 +458,13 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
    * The most hires that may run at once.
    *
    * Budget safety without needing prices up front: no single hire can exceed
-   * perHireCapUsdc, so N concurrent hires can spend at most N × cap. Cap N at
+   * perHireCapEth, so N concurrent hires can spend at most N × cap. Cap N at
    * what the remaining budget covers and even the worst case stays inside it —
    * which matters because concurrent hires all read "spent so far" before any of
    * them has finished paying, so a naive check would let them all through.
    */
   const concurrencyFor = (remaining: number) =>
-    Math.max(1, Math.min(MAX_CONCURRENT_HIRES, Math.floor(remaining / cfg.perHireCapUsdc)));
+    Math.max(1, Math.min(MAX_CONCURRENT_HIRES, Math.floor(remaining / cfg.perHireCapEth)));
 
   // Work through the plan in waves: everything whose dependencies are already
   // satisfied goes at once.
@@ -478,7 +478,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
       stopped = true;
       break;
     }
-    const remainingBudget = cfg.budgetUsdc - getGrowSpent(runId);
+    const remainingBudget = cfg.budgetEth - getGrowSpent(runId);
     if (remainingBudget <= 0) {
       recordGrowEvent(runId, { kind: "note", summary: "Budget spent, stopping here." });
       break;
@@ -517,8 +517,8 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
    * somebody delivers, judge the result. Returns whether it produced anything.
    */
   async function runStep(step: GrowSubtask, contextOverride?: string): Promise<boolean> {
-    const remaining = cfg.budgetUsdc - getGrowSpent(runId);
-    const ceiling = Math.min(cfg.perHireCapUsdc, remaining);
+    const remaining = cfg.budgetEth - getGrowSpent(runId);
+    const ceiling = Math.min(cfg.perHireCapEth, remaining);
     if (ceiling <= 0) return false;
 
     let candidates;
@@ -554,8 +554,8 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
     // each attempt because a failed hire can still have moved money.
     for (const pick of ranked.slice(0, ATTEMPTS_PER_STEP)) {
       if (isGrowRunCanceled(runId)) { stopped = true; return false; }
-      const left = cfg.budgetUsdc - getGrowSpent(runId);
-      if ((pick.priceUsdc ?? 0) > Math.min(cfg.perHireCapUsdc, left)) break; // can no longer afford it
+      const left = cfg.budgetEth - getGrowSpent(runId);
+      if ((pick.priceEth ?? 0) > Math.min(cfg.perHireCapEth, left)) break; // can no longer afford it
 
       recordGrowEvent(runId, {
         kind: "hire",
@@ -563,8 +563,8 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
           (pick.proofScore ?? 0) < topScore ? `, within ${Math.round(SCORE_MARGIN * 100)}% of the best available, and cheaper` : ""
         }.`,
         toAgent: pick.agentId,
-        amountUsdc: pick.priceUsdc ?? 0,
-        data: { capability: step.capability, priceUsdc: pick.priceUsdc, proofScore: pick.proofScore },
+        amountEth: pick.priceEth ?? 0,
+        data: { capability: step.capability, priceEth: pick.priceEth, proofScore: pick.proofScore },
       });
 
       try {
@@ -574,16 +574,16 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
           // Everything the earlier specialists produced — this is what makes an
           // ordered plan behave like one instead of a set of blind tasks.
           context: contextOverride ?? priorContext(parts),
-          priceUsdc: pick.priceUsdc ?? 0,
+          priceEth: pick.priceEth ?? 0,
         });
         // Always log money that actually moved — whether the specialist then returned
         // nothing or the hire timed out with funds committed — so the timeline and
         // getGrowSpent never miss a real payment.
-        if (outcome.costUsdc > 0) {
+        if (outcome.costEth > 0) {
           recordGrowEvent(runId, {
             kind: "payment",
             summary: `Paid ${pick.name}${outcome.status === "completed" ? "" : ` (task ${outcome.status})`}.`,
-            taskId: outcome.taskId, toAgent: pick.agentId, amountUsdc: outcome.costUsdc,
+            taskId: outcome.taskId, toAgent: pick.agentId, amountEth: outcome.costEth,
           });
         }
 
@@ -592,7 +592,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
           // Buying work and using it unread is how a mission returns something
           // confidently wrong.
           const verdict = await reviewOutput(step.task, outcome.output);
-          if (!verdict.ok && outcome.costUsdc === 0) {
+          if (!verdict.ok && outcome.costEth === 0) {
             recordGrowEvent(runId, {
               kind: "review",
               summary: `Rejected ${pick.name}'s work, ${verdict.reason || "it didn't do the job"}. Trying another specialist.`,
@@ -605,7 +605,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
             summary: verdict.ok
               ? `Checked ${pick.name}'s work, usable.`
               : `Kept ${pick.name}'s work despite doubts, ${verdict.reason || "it may be thin"}, because it was already paid for.`,
-            taskId: outcome.taskId, toAgent: pick.agentId, data: { ok: verdict.ok, reason: verdict.reason, paid: outcome.costUsdc },
+            taskId: outcome.taskId, toAgent: pick.agentId, data: { ok: verdict.ok, reason: verdict.reason, paid: outcome.costEth },
           });
           recordGrowEvent(runId, {
             kind: "result",
@@ -634,7 +634,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
         // cap on one step — the cap is per hire precisely so that can't happen,
         // and doubling down on the owner's money without asking is not ours to
         // decide. A failure that took payment ends the step.
-        if (outcome.costUsdc > 0) {
+        if (outcome.costEth > 0) {
           recordGrowEvent(runId, {
             kind: "note",
             summary: `Already paid for "${step.capability}", not hiring a second specialist for it.`,
@@ -749,7 +749,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
     }
   }
 
-  const spentUsdc = getGrowSpent(runId);
+  const spentEth = getGrowSpent(runId);
   // A stopped run still finishes what it already paid for: the specialists were
   // hired and settled, so throwing their work away would waste the owner's money.
   const finalStatus = deliverable ? "completed" : "failed";
@@ -762,9 +762,9 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
   recordGrowEvent(runId, {
     kind: "note",
     summary: deliverable
-      ? `Mission ${stopped ? "stopped early" : "complete"}, ${hires} hire${hires === 1 ? "" : "s"}${provenance}, ${spentUsdc} USDC spent.`
-      : `Mission ended without a deliverable, ${hires} hire${hires === 1 ? "" : "s"}${provenance}, ${spentUsdc} USDC spent.`,
+      ? `Mission ${stopped ? "stopped early" : "complete"}, ${hires} hire${hires === 1 ? "" : "s"}${provenance}, ${spentEth} ETH spent.`
+      : `Mission ended without a deliverable, ${hires} hire${hires === 1 ? "" : "s"}${provenance}, ${spentEth} ETH spent.`,
   });
 
-  return { run: { ...run, status: finalStatus, deliverable }, deliverable, hires, selfDone, spentUsdc };
+  return { run: { ...run, status: finalStatus, deliverable }, deliverable, hires, selfDone, spentEth };
 }

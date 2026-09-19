@@ -6,8 +6,9 @@ import { getReceipt } from "@/lib/receipts";
 import { createAgent } from "@/lib/agents";
 import { getDb } from "@/lib/db";
 import type { Agent } from "@/sdk/types";
+import { toWei } from "@/lib/money";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let counter = 0;
 
 function makeAgent(): Agent {
@@ -30,7 +31,7 @@ function makeAgent(): Agent {
 function escrow(taskId: string, fromAgent: string, toAgent: string, amount: number): void {
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at)
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
        VALUES (?, ?, ?, ?, ?, 'escrow', NULL, 0, 'USDC', ?)`
     )
     .run(randomUUID(), taskId, fromAgent, toAgent, amount, new Date().toISOString());
@@ -39,7 +40,7 @@ function escrow(taskId: string, fromAgent: string, toAgent: string, amount: numb
 function earned(agentId: string): number {
   return (
     getDb()
-      .prepare("SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE to_agent=? AND status='completed'")
+      .prepare("SELECT COALESCE(SUM(amount_eth),0) AS v FROM transactions WHERE to_agent=? AND status='completed'")
       .get(agentId) as { v: number }
   ).v;
 }
@@ -113,14 +114,49 @@ describe("escrow splits", () => {
     expect(splits.some((s) => s.agentId === c.agentId)).toBe(true);
   });
 
+  // The invariant that matters: what goes in comes out. Asserted in wei, because that is the unit
+  // the division actually happens in and the only one where "exactly" means exactly.
   it("computeSplitAmounts divides exactly, remainder to the first recipient", () => {
-    const parts = computeSplitAmounts(0.1, [
+    const total = toWei(0.1)!;
+    const parts = computeSplitAmounts(total, [
       { agentId: "a", shareBps: 3333 },
       { agentId: "b", shareBps: 3333 },
       { agentId: "c", shareBps: 3334 },
     ]);
-    const total = parts.reduce((s, p) => s + p.amount, 0);
-    expect(Math.round(total * 1e6)).toBe(100_000); // 0.10 USDC, no dust lost
+    expect(parts.reduce((s, p) => s + p.wei, 0n)).toBe(total);
+  });
+
+  // 7 wei across three shares cannot divide evenly, so there is always something left over.
+  it("puts the leftover wei on the first recipient rather than losing it", () => {
+    const total = 7n;
+    const parts = computeSplitAmounts(total, [
+      { agentId: "a", shareBps: 3333 },
+      { agentId: "b", shareBps: 3333 },
+      { agentId: "c", shareBps: 3334 },
+    ]);
+    expect(parts.reduce((s, p) => s + p.wei, 0n)).toBe(total);
+    expect(parts[0].wei).toBeGreaterThan(parts[1].wei);
+  });
+
+  it("never distributes more than was escrowed, for any split", () => {
+    const total = toWei("0.000000000000000007")!; // 7 wei, so every share has a remainder
+    const shapes = [
+      [5000, 5000],
+      [3333, 3333, 3334],
+      [1, 9999],
+      [2500, 2500, 2500, 2500],
+    ];
+    for (const shape of shapes) {
+      const parts = computeSplitAmounts(total, shape.map((shareBps, i) => ({ agentId: `a${i}`, shareBps })));
+      expect(parts.reduce((s, p) => s + p.wei, 0n)).toBe(total);
+      expect(parts.every((p) => p.wei >= 0n)).toBe(true);
+    }
+  });
+
+  it("gives a single recipient the whole escrow", () => {
+    const total = toWei(0.1)!;
+    const parts = computeSplitAmounts(total, [{ agentId: "a", shareBps: 10_000 }]);
+    expect(parts[0].wei).toBe(total);
   });
 
   it("releasePayment distributes the escrow across recipients by share", () => {
@@ -145,7 +181,7 @@ describe("escrow splits", () => {
       .get(taskId) as { v: number };
     expect(stillEscrow.v).toBe(0);
     const totalCompleted = getDb()
-      .prepare("SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE task_id=? AND status='completed'")
+      .prepare("SELECT COALESCE(SUM(amount_eth),0) AS v FROM transactions WHERE task_id=? AND status='completed'")
       .get(taskId) as { v: number };
     expect(Math.round(totalCompleted.v * 1e6)).toBe(100_000);
   });
@@ -158,7 +194,7 @@ describe("escrow splits", () => {
     const sig = `sig-${taskId}`;
     getDb()
       .prepare(
-        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at)
+        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
          VALUES (?, ?, ?, ?, ?, 'escrow', ?, 0, 'USDC', ?)`
       )
       .run(randomUUID(), taskId, payer.agentId, a.agentId, 0.1, sig, new Date().toISOString());
@@ -170,7 +206,7 @@ describe("escrow splits", () => {
 
     // getPaymentByTaskId returns the parent: full amount + the on-chain signature.
     const payment = getPaymentByTaskId(taskId);
-    expect(payment?.amountSol).toBeCloseTo(0.1, 6);
+    expect(payment?.amountEth).toBeCloseTo(0.1, 6);
     expect(payment?.incomingSignature).toBe(sig);
     expect(payment?.status).toBe("split");
     // Recipients are still credited their shares.
@@ -186,7 +222,7 @@ describe("escrow splits", () => {
     const sig = `sig-${taskId}`;
     getDb()
       .prepare(
-        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at)
+        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
          VALUES (?, ?, ?, ?, ?, 'escrow', ?, 0, 'USDC', ?)`
       )
       .run(randomUUID(), taskId, payer.agentId, a.agentId, 0.1, sig, new Date().toISOString());
@@ -197,7 +233,7 @@ describe("escrow splits", () => {
     releasePayment(taskId);
 
     const receipt = getReceipt(taskId);
-    expect(receipt.payment?.amountSol).toBeCloseTo(0.1, 6); // total, not a recipient share
+    expect(receipt.payment?.amountEth).toBeCloseTo(0.1, 6); // total, not a recipient share
     expect(receipt.payment?.status).toBe("split");
     expect(receipt.splits.length).toBe(2);
   });

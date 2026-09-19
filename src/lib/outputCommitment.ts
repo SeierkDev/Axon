@@ -1,11 +1,12 @@
 import { createHash } from "crypto";
 import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
-import { postMemoTransaction } from "./solana";
+import { postMemoTransaction } from "./evm";
+import { EXPLORER } from "./chain";
 import { logger } from "./logger";
 
 // Memo format: axon:commitment:v1:{taskId}:{sha256hex}
-// This is posted to Solana so anyone can independently verify the task output
+// This is posted on-chain so anyone can independently verify the task output
 // by hashing the result and checking it matches the on-chain record.
 const MEMO_PREFIX = "axon:commitment:v1";
 
@@ -19,7 +20,7 @@ export function hashOutput(output: string): string {
   return createHash("sha256").update(output, "utf8").digest("hex");
 }
 
-// Posts a Solana memo anchoring the SHA-256 hash of a completed task's output.
+// Writes the SHA-256 hash of a completed task's output on-chain.
 // Fire-and-forget safe — never throws. Always stores the hash; stores the
 // signature only when the on-chain post succeeds.
 export async function commitOutput(taskId: string, output: string): Promise<string | null> {
@@ -33,7 +34,7 @@ export async function commitOutput(taskId: string, output: string): Promise<stri
       .prepare("UPDATE tasks SET output_hash = ?, output_commitment = ? WHERE task_id = ?")
       .run(hash, signature, taskId);
     void syncToTurso();
-    logger.info("output.committed", "Output commitment posted to Solana", {
+    logger.info("output.committed", "Output commitment written on-chain", {
       taskId,
       hash,
       signature,
@@ -44,7 +45,7 @@ export async function commitOutput(taskId: string, output: string): Promise<stri
       .prepare("UPDATE tasks SET output_hash = ? WHERE task_id = ?")
       .run(hash, taskId);
     void syncToTurso();
-    logger.warn("output.commitment_skipped", "Output hash stored locally; Solana post failed", {
+    logger.warn("output.commitment_skipped", "Output hash stored locally; the on-chain write failed", {
       taskId,
       hash,
       reason: err instanceof Error ? err.message : String(err),
@@ -61,10 +62,9 @@ export function getOutputCommitment(taskId: string): OutputCommitment | null {
 
   if (!row?.output_hash || !row?.output_commitment) return null;
 
-  const cluster = process.env.SOLANA_NETWORK === "devnet" ? "?cluster=devnet" : "";
   return {
     hash: row.output_hash,
     signature: row.output_commitment,
-    explorerUrl: `https://explorer.solana.com/tx/${row.output_commitment}${cluster}`,
+    explorerUrl: `${EXPLORER}/tx/${row.output_commitment}`,
   };
 }

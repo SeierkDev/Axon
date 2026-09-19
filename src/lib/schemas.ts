@@ -8,9 +8,10 @@ export const agentIdField = z
   .string()
   .regex(/^[A-Za-z0-9_-]{1,80}$/, "must be 1–80 chars (letters, numbers, hyphens, underscores)");
 
-export const solanaAddressField = z
+// Accepts either case; everything downstream stores and compares the lowercase spelling.
+export const walletAddressField = z
   .string()
-  .regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "must be a valid Solana base58 address");
+  .regex(/^0x[0-9a-fA-F]{40}$/, "must be a valid EVM address");
 
 export const positiveUsdcField = z
   .number()
@@ -26,7 +27,7 @@ export const registerAgentSchema = z.object({
     .min(1, "at least one capability is required")
     .max(20, "capabilities must contain 20 or fewer items"),
   publicKey: z.string().min(1, "publicKey is required"),
-  walletAddress: solanaAddressField,
+  walletAddress: walletAddressField,
   endpoint: z.string().url("endpoint must be a valid URL").optional(),
   price: z.string().optional(),
   category: z.string().max(60).optional(),
@@ -69,7 +70,7 @@ export const createTaskSchema = z.object({
     .optional(),
   payment: z.string().optional(),
   paymentSignature: z.string().optional(),
-  // How a paid hire is funded: "onchain" (default — a fresh USDC transfer proven
+  // How a paid hire is funded: "onchain" (default — a fresh ETH transfer proven
   // by paymentSignature) or "balance" (spend the paying agent's earned ledger
   // balance, no new transfer). Balance requires an authenticated registered agent.
   paymentMethod: z.enum(["onchain", "balance"]).optional(),
@@ -80,7 +81,7 @@ export const createTaskSchema = z.object({
   // highest-Proof-Score agent for these capabilities, within maxPrice.
   capability: z.string().min(1).optional(),
   capabilities: z.array(z.string().min(1)).max(20).optional(),
-  maxPrice: z.string().regex(/^\d+(\.\d+)?\s+(USDC|SOL)$/i, 'maxPrice must be an amount like "0.10 USDC"').optional(),
+  maxPrice: z.string().regex(/^\d+(\.\d+)?\s+ETH$/i, 'maxPrice must be an amount like "0.10 ETH"').optional(),
 }).refine(
   (o) => !!o.to || !!o.capability || (o.capabilities?.length ?? 0) > 0,
   "provide `to`, or a `capability`/`capabilities` for the network to route the job",
@@ -123,9 +124,9 @@ export const spendMandateSchema = z.object({
 export const growMissionSchema = z.object({
   agentId: agentIdField,
   mission: z.string().min(8, "mission must say what you want done").max(2_000),
-  /** The most this mission may spend, in USDC. Clamped to the agent's own caps. */
-  budgetUsdc: z.number().positive().max(10_000),
-  perHireCapUsdc: z.number().positive().max(10_000).optional(),
+  /** The most this mission may spend, in ETH. Clamped to the agent's own caps. */
+  budgetEth: z.number().positive().max(10_000),
+  perHireCapEth: z.number().positive().max(10_000).optional(),
   maxHires: z.number().int().min(1).max(12).optional(),
   /** Plan and price it without hiring anyone. */
   dryRun: z.boolean().optional(),
@@ -138,7 +139,7 @@ export const growMissionSchema = z.object({
 export const planTaskSchema = z.object({
   from: z.string().min(1, "from is required"),
   goal: z.string().min(1, "goal is required").max(8_000, "goal must be 8 000 characters or fewer"),
-  budgetUsdc: z.number().positive("budgetUsdc must be positive").max(1_000_000),
+  budgetEth: z.number().positive("budgetEth must be positive").max(1_000_000),
   maxSteps: z.number().int().positive().max(10).optional(),
   perStepCapUsdc: z.number().positive().max(1_000_000).optional(),
   // false (default) returns the assembled team + projected cost without hiring —
@@ -159,7 +160,7 @@ export const subcontractSchema = z.object({
   to: z.string().min(1).optional(),
   capability: z.string().min(1).optional(),
   task: z.string().min(1, "task is required").max(32_000, "task must be 32 000 characters or fewer"),
-  maxPrice: z.string().regex(/^\d+(\.\d+)?\s+(USDC|SOL)$/i, 'maxPrice must be an amount like "0.10 USDC"').optional(),
+  maxPrice: z.string().regex(/^\d+(\.\d+)?\s+ETH$/i, 'maxPrice must be an amount like "0.10 ETH"').optional(),
   context: z.record(z.string(), z.unknown())
     .refine((obj) => JSON.stringify(obj).length <= 50_000, "context must serialize to 50 KB or fewer")
     .optional(),
@@ -173,7 +174,7 @@ export const createOpenTaskSchema = z.object({
   capabilities: z.array(z.string().min(1)).min(1, "at least one capability is required").max(20),
   // Must be a real amount — a malformed budget (e.g. "0.10" with no currency)
   // would otherwise silently disable budget enforcement on bids.
-  maxBudget: z.string().regex(/^\d+(\.\d+)?\s+(USDC|SOL)$/i, 'maxBudget must be an amount like "0.10 USDC"').optional(),
+  maxBudget: z.string().regex(/^\d+(\.\d+)?\s+ETH$/i, 'maxBudget must be an amount like "0.10 ETH"').optional(),
   deadline: z.string().refine((s) => !Number.isNaN(Date.parse(s)), "deadline must be a valid date/time (ISO 8601)").optional(),
 });
 
@@ -226,7 +227,7 @@ export const instantiateTemplateSchema = z.object({
 
 export const createAttestationSchema = z.object({
   capability: z.string().min(1, "capability is required").max(120, "capability must be 120 characters or fewer"),
-  verifier: solanaAddressField,
+  verifier: walletAddressField,
   signature: z.string().min(1, "signature is required"),
 });
 
@@ -272,8 +273,8 @@ export const createWebhookSchema = z.object({
 
 export const createBudgetSchema = z.object({
   name: z.string().max(120).optional(),
-  maxPerCallUsdc: positiveUsdcField.optional(),
-  maxPerDayUsdc: positiveUsdcField.optional(),
+  maxPerCallEth: positiveUsdcField.optional(),
+  maxPerDayEth: positiveUsdcField.optional(),
   allowedToAgents: z.array(agentIdField).optional(),
 });
 

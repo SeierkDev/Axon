@@ -41,7 +41,7 @@ async function handlePost(req: NextRequest, { params }: { params: Promise<{ agen
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
 
-  const result = createAttestation({
+  const result = await createAttestation({
     agentId,
     capability: body.capability,
     verifier: body.verifier,

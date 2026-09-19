@@ -6,7 +6,7 @@ describe("fee policy", () => {
     const p = getFeePolicy();
     expect(p.version).toBeTruthy();
     expect(p.effectiveDate).toBeTruthy();
-    expect(p.currency).toBe("USDC");
+    expect(p.currency).toBe("ETH");
     // The published policy charges payers no platform fee on top of the agent price.
     expect(p.peerToPeer.platformFeeBps).toBe(0);
     expect(p.hostedAgents.platformFeeBps).toBe(0);

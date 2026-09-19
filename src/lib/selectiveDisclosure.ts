@@ -17,7 +17,7 @@
 //   - A DISCLOSURE opens chosen leaves: {field, value, salt, index, path}. Anyone
 //     recomputes the leaf and folds the path to the root — no server, no key.
 //   - PREDICATE leaves let you prove a fact without the underlying value: the
-//     "earned_at_least_500_usdc = true" leaf can be opened while the exact
+//     "earned_at_least_0_5_eth = true" leaf can be opened while the exact
 //     settlement_amount leaf stays hidden.
 //
 // Privacy face matches the receipt: predicates are computed by the issuer from
@@ -27,6 +27,7 @@
 
 import { createHash, createHmac } from "crypto";
 import { getPublicReceipt } from "./receipts";
+import { toWei } from "./money";
 
 export type LeafValue = string | number | boolean | null;
 
@@ -151,7 +152,7 @@ const METHOD_NOTE =
 // predicate flag. Order fixes each leaf's index; label + predicate are the
 // authoritative meaning of a field and are NEVER trusted from a bundle (an
 // attacker-crafted bundle could otherwise relabel a genuine leaf, e.g. open
-// "earned_at_least_100_usdc = true" while labelling it "$1,000,000"). verifyBundle
+// "earned_at_least_0_1_eth = true" while labelling it something else). verifyBundle
 // resolves the human meaning from HERE, not from the bundle.
 const FIELD_META: { field: string; label: string; predicate: boolean }[] = [
   // ── raw fields ──────────────────────────────────────────────────────────────
@@ -174,9 +175,12 @@ const FIELD_META: { field: string; label: string; predicate: boolean }[] = [
   { field: "settled_on_chain", label: "Settled on-chain", predicate: true },
   { field: "output_committed", label: "Output committed (hash on record)", predicate: true },
   { field: "spec_verified_true", label: "Job spec verified against its pinned hash", predicate: true },
-  { field: "earned_at_least_100_usdc", label: "Settled for at least $100 (USDC)", predicate: true },
-  { field: "earned_at_least_500_usdc", label: "Settled for at least $500 (USDC)", predicate: true },
-  { field: "earned_at_least_1000_usdc", label: "Settled for at least $1,000 (USDC)", predicate: true },
+  // Thresholds in the currency actually settled in. The old ones were dollar figures, which on this
+  // chain would mean "settled at least 500 ETH" — a bar nothing would ever clear, so every one of
+  // these predicates would quietly read false for an agent that had earned plenty.
+  { field: "earned_at_least_0_1_eth", label: "Settled for at least 0.1 ETH", predicate: true },
+  { field: "earned_at_least_0_5_eth", label: "Settled for at least 0.5 ETH", predicate: true },
+  { field: "earned_at_least_1_eth", label: "Settled for at least 1 ETH", predicate: true },
 ];
 const META_BY_FIELD = new Map(FIELD_META.map((m) => [m.field, m]));
 
@@ -188,8 +192,10 @@ function receiptLeafSpecs(taskId: string): LeafSpec[] | null {
 
   const amount = r.settlement?.amount ?? null;
   const currency = r.settlement?.currency ?? null;
-  const usdc = currency === "USDC" && typeof amount === "number" ? amount : null;
-  const atLeast = (t: number): boolean => usdc !== null && usdc >= t;
+  const settled = currency === "ETH" && typeof amount === "number" ? toWei(amount) : null;
+  // Compared in wei: a threshold is a bar, and a float comparison is how something lands on the
+  // wrong side of one.
+  const atLeast = (thresholdWei: bigint): boolean => settled !== null && settled >= thresholdWei;
 
   const values: Record<string, LeafValue> = {
     task_id: r.taskId,
@@ -210,9 +216,9 @@ function receiptLeafSpecs(taskId: string): LeafSpec[] | null {
     settled_on_chain: !!r.settlement?.signature,
     output_committed: !!r.outputHash,
     spec_verified_true: r.specVerified === true,
-    earned_at_least_100_usdc: atLeast(100),
-    earned_at_least_500_usdc: atLeast(500),
-    earned_at_least_1000_usdc: atLeast(1000),
+    earned_at_least_0_1_eth: atLeast(100_000_000_000_000_000n),
+    earned_at_least_0_5_eth: atLeast(500_000_000_000_000_000n),
+    earned_at_least_1_eth: atLeast(1_000_000_000_000_000_000n),
   };
   // `?? null` never clobbers a legitimate false/0 (nullish only) — it only maps a
   // genuinely-absent field to null.

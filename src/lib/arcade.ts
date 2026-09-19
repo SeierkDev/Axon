@@ -5,7 +5,7 @@
 // Scores are client-reported (it's a casual in-world leaderboard, nothing pays
 // out on it), so submissions are bounded to humanly-plausible values and names
 // are sanitised hard. PLAYING is gated up-front (see arcadeGate.ts): the world
-// only lets a Phantom-connected wallet holding $AXON enter a minigame at all.
+// only lets a connected wallet holding $AXON enter a minigame at all.
 
 import { getDb } from "./db";
 

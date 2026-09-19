@@ -15,8 +15,8 @@ function BackLink() {
 interface GrowFeed {
   run: GrowRun | null;
   events: GrowEvent[];
-  spentUsdc: number;
-  remainingUsdc: number;
+  spentEth: number;
+  remainingEth: number;
 }
 
 const KIND_LABEL: Record<string, string> = {

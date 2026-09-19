@@ -11,9 +11,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getGatewayProvider, proxyToProvider } from "@/lib/gateway";
 import { createTask, startTask, completeTask, failTask, markTaskPaymentConfirmed } from "@/lib/tasks";
 import { syncToTurso } from "@/lib/db-turso";
-import { createPayment, parsePriceToSol, refundPayment, isTransientPaymentError } from "@/lib/payments";
+import { createPayment, parsePriceToEth, refundPayment, isTransientPaymentError } from "@/lib/payments";
 import { settleCompletedTask } from "@/lib/sla";
-import { isValidSolanaAddress } from "@/lib/solana";
+import { isWalletAddress } from "@/lib/address";
 import { agentExists } from "@/lib/agents";
 import {
   buildX402Requirements,
@@ -76,8 +76,8 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   let from = (typeof parsedBody.from === "string" ? parsedBody.from : null) ?? "anonymous";
   // Validate from — must be a wallet address, registered agent, or "anonymous"
-  if (from !== "anonymous" && !isValidSolanaAddress(from) && !agentExists(from)) {
-    return apiError("VALIDATION_ERROR", "from must be a valid Solana address or agent ID", 400);
+  if (from !== "anonymous" && !isWalletAddress(from) && !agentExists(from)) {
+    return apiError("VALIDATION_ERROR", "from must be a valid wallet address or agent ID", 400);
   }
 
   // Strip Axon-specific fields before forwarding.
@@ -142,14 +142,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   });
 
   if (isPaid && paymentSignature) {
-    const amountSol = parsePriceToSol(provider.pricePerCall);
-    if (amountSol !== null) {
+    const amountEth = parsePriceToEth(provider.pricePerCall);
+    if (amountEth !== null) {
       try {
         await createPayment({
           taskId: task.taskId,
           fromAgent: from,
           toAgent: providerId,
-          amountSol,
+          amountEth,
           paymentSignature,
           priceString: provider.pricePerCall,
         });

@@ -5,16 +5,18 @@
 // signed when the purchase isn't what the caller said it was.
 
 import { describe, it, expect, vi } from "vitest";
-import nacl from "tweetnacl";
-import { Keypair } from "@solana/web3.js";
 import {
   CommerceApi,
   CommerceRefusedError,
   parseAuthorisation,
   assertAuthorisationMatches,
 } from "../src/commerce";
-import { mandateSigner } from "../src/node";
-import { walletMandateSigner } from "../src/solana";
+import { keyMandateSigner, walletMandateSigner } from "../src/evm";
+import { recoverMessageAddress } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+
+const KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+const ADDRESS = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
 const EXPIRES = new Date(Date.now() + 3_600_000).toISOString();
 
@@ -207,45 +209,32 @@ describe("watch()", () => {
   });
 });
 
-describe("mandateSigner", () => {
-  it("produces a signature Axon's own verifier accepts", () => {
-    // This is the interop that matters: Axon verifies with
-    // nacl.sign.detached.verify against the buyer's wallet bytes. If this
-    // round-trip fails, every approval made from Node fails.
-    const keypair = Keypair.generate();
+describe("keyMandateSigner", () => {
+  it("produces a signature Axon's own verifier accepts", async () => {
+    // The interop that matters: Axon recovers the signer from this signature and matches it
+    // against the buyer's address. If this round-trip fails, every approval made from a key fails.
     const msg = message();
-    const sig = mandateSigner(keypair)(msg) as string;
-
-    const ok = nacl.sign.detached.verify(
-      new TextEncoder().encode(msg),
-      Buffer.from(sig, "base64"),
-      keypair.publicKey.toBytes(),
-    );
-    expect(ok).toBe(true);
+    const sig = await keyMandateSigner(KEY)(msg);
+    const recovered = await recoverMessageAddress({ message: msg, signature: sig as `0x${string}` });
+    expect(recovered.toLowerCase()).toBe(privateKeyToAccount(KEY).address.toLowerCase());
   });
 
-  it("does not vouch for a message it didn't sign", () => {
-    const keypair = Keypair.generate();
-    const sig = mandateSigner(keypair)(message()) as string;
+  it("does not vouch for a message it didn't sign", async () => {
+    const sig = await keyMandateSigner(KEY)(message());
     const tampered = message({ amount: "900.00 USD" });
-    const ok = nacl.sign.detached.verify(
-      new TextEncoder().encode(tampered),
-      Buffer.from(sig, "base64"),
-      keypair.publicKey.toBytes(),
-    );
-    expect(ok).toBe(false);
+    const recovered = await recoverMessageAddress({ message: tampered, signature: sig as `0x${string}` });
+    expect(recovered.toLowerCase()).not.toBe(privateKeyToAccount(KEY).address.toLowerCase());
   });
 
-  it("accepts a raw secret key as well as a Keypair", () => {
-    const keypair = Keypair.generate();
-    const sig = mandateSigner(keypair.secretKey)(message()) as string;
-    expect(
-      nacl.sign.detached.verify(
-        new TextEncoder().encode(message()),
-        Buffer.from(sig, "base64"),
-        keypair.publicKey.toBytes(),
-      ),
-    ).toBe(true);
+  it("accepts a key with or without the 0x prefix", async () => {
+    const bare = KEY.slice(2);
+    const sig = await keyMandateSigner(bare)(message());
+    const recovered = await recoverMessageAddress({ message: message(), signature: sig as `0x${string}` });
+    expect(recovered.toLowerCase()).toBe(privateKeyToAccount(KEY).address.toLowerCase());
+  });
+
+  it("refuses a key that is not 32 bytes rather than signing with the wrong bytes", () => {
+    expect(() => keyMandateSigner("0xdead")).toThrow(/32 bytes of hex/);
   });
 });
 
@@ -389,24 +378,25 @@ describe("nothing waiting should ever be invisible", () => {
 });
 
 describe("walletMandateSigner", () => {
-  it("base64s whatever shape the wallet returns", async () => {
-    const bytes = new Uint8Array([1, 2, 3, 4]);
-    const expected = Buffer.from(bytes).toString("base64");
-    // Phantom returns { signature }; some wallets return the bytes directly.
-    expect(await walletMandateSigner({ signMessage: async () => ({ signature: bytes }) })("m")).toBe(expected);
-    expect(await walletMandateSigner({ signMessage: async () => bytes })("m")).toBe(expected);
+  it("asks the wallet to personal_sign, message first", async () => {
+    const calls: { method: string; params?: unknown[] }[] = [];
+    const wallet = {
+      request: async (args: { method: string; params?: unknown[] }) => {
+        calls.push(args);
+        if (args.method === "eth_requestAccounts") return [ADDRESS];
+        return "0xsigned";
+      },
+    };
+    expect(await walletMandateSigner(wallet)("m")).toBe("0xsigned");
+    const sign = calls.find((c) => c.method === "personal_sign")!;
+    // personal_sign takes the message first and the address second. The other way round is
+    // eth_sign, and it recovers to nobody.
+    expect(sign.params).toEqual(["m", ADDRESS]);
   });
 
-  it("connects first when the wallet needs it", async () => {
-    const connect = vi.fn(async () => {});
-    await walletMandateSigner({ connect, signMessage: async () => new Uint8Array([1]) })("m");
-    expect(connect).toHaveBeenCalled();
-  });
-});
-
-describe("mandateSigner rejects a key it can't use", () => {
-  it("refuses a 32-byte seed rather than signing with the wrong bytes", () => {
-    expect(() => mandateSigner(new Uint8Array(32))).toThrow(/64-byte/);
+  it("refuses when the wallet shares no account", async () => {
+    const wallet = { request: async () => [] as string[] };
+    await expect(walletMandateSigner(wallet)("m")).rejects.toThrow(/no account/);
   });
 });
 

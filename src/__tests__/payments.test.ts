@@ -11,17 +11,18 @@ import {
   getPaymentByIncomingSignature,
   getPaymentsByAgent,
   getAgentBalance,
-  parsePriceToSol,
+  parsePriceToEth,
 } from "@/lib/payments";
 import * as webhooksModule from "@/lib/webhooks";
 import { createAgent } from "@/lib/agents";
 import { createTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
+import { toWei } from "@/lib/money";
 
 afterEach(() => { vi.restoreAllMocks(); });
 
 // system program address — valid Solana pubkey, used as test wallet
-const TEST_WALLET = "11111111111111111111111111111111";
+const TEST_WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let counter = 0;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -39,29 +40,30 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
   };
 }
 
-// Mock signature: mockpay:CURRENCY:UNITS:SIGNER:RECEIVER:NONCE
+// mockpay:CURRENCY:WEI:SIGNER:RECEIVER:NONCE — the amount is given in ETH and converted, so a test
+// never hand-writes a wei literal that could drift from what the code computes.
 // PAYMENT_RECEIVER_WALLET_ADDRESS is set to TEST_WALLET in setup.ts
-function mockSig(units: number, nonce: string | number, currency = "USDC"): string {
-  return `mockpay:${currency}:${units}:${TEST_WALLET}:${TEST_WALLET}:${nonce}`;
+function mockSig(eth: number | string, nonce: string | number, currency = "ETH"): string {
+  return `mockpay:${currency}:${toWei(eth)}:${TEST_WALLET}:${TEST_WALLET}:${nonce}`;
 }
 
-// ── parsePriceToSol ───────────────────────────────────────────────────────────
+// ── parsePriceToEth ───────────────────────────────────────────────────────────
 
-describe("parsePriceToSol", () => {
+describe("parsePriceToEth", () => {
   it("parses SOL price string", () => {
-    expect(parsePriceToSol("0.05 SOL")).toBe(0.05);
+    expect(parsePriceToEth("0.05 ETH")).toBe(0.05);
   });
-  it("parses USDC price string", () => {
-    expect(parsePriceToSol("5 USDC")).toBe(5);
+  it("parses an ETH price string", () => {
+    expect(parsePriceToEth("0.005 ETH")).toBe(0.005);
   });
   it("returns null for undefined", () => {
-    expect(parsePriceToSol(undefined)).toBeNull();
+    expect(parsePriceToEth(undefined)).toBeNull();
   });
   it("returns null for empty string", () => {
-    expect(parsePriceToSol("")).toBeNull();
+    expect(parsePriceToEth("")).toBeNull();
   });
   it("returns null for invalid string", () => {
-    expect(parsePriceToSol("not-a-price")).toBeNull();
+    expect(parsePriceToEth("not-a-price")).toBeNull();
   });
 });
 
@@ -74,14 +76,14 @@ describe("createPayment: mock verifier rejects wrong-amount", () => {
     createAgent(sender);
     createAgent(worker);
     // Expected: 1 USDC = 1_000_000 micro-USDC, signature only covers 500_000
-    const sig = `mockpay:USDC:500000:${TEST_WALLET}:${TEST_WALLET}:wrong-amt`;
+    const sig = `mockpay:ETH:${toWei(0.0005)}:${TEST_WALLET}:${TEST_WALLET}:wrong-amt`;
     await expect(
       createPayment({
         fromAgent: sender.agentId,
         toAgent: worker.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: sig,
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       })
     ).rejects.toThrow(/not verified on-chain/);
   });
@@ -92,14 +94,14 @@ describe("createPayment: mock verifier rejects wrong-amount", () => {
     createAgent(sender);
     createAgent(worker);
     // SOL units encoded but expected currency is USDC
-    const sig = `mockpay:SOL:1000000:${TEST_WALLET}:${TEST_WALLET}:wrong-currency`;
+    const sig = `mockpay:ETH:1000000:${TEST_WALLET}:${TEST_WALLET}:wrong-currency`;
     await expect(
       createPayment({
         fromAgent: sender.agentId,
         toAgent: worker.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: sig,
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       })
     ).rejects.toThrow(/not verified on-chain/);
   });
@@ -111,15 +113,15 @@ describe("createPayment: mock verifier rejects wrong-recipient", () => {
     const worker = makeAgent();
     createAgent(sender);
     createAgent(worker);
-    const WRONG_WALLET = "22222222222222222222222222222222";
-    const sig = `mockpay:USDC:1000000:${TEST_WALLET}:${WRONG_WALLET}:wrong-recv`;
+    const WRONG_WALLET = "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc";
+    const sig = `mockpay:ETH:${toWei(0.001)}:${TEST_WALLET}:${WRONG_WALLET}:wrong-recv`;
     await expect(
       createPayment({
         fromAgent: sender.agentId,
         toAgent: worker.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: sig,
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       })
     ).rejects.toThrow(/not verified on-chain/);
   });
@@ -129,15 +131,15 @@ describe("createPayment: mock verifier rejects wrong-recipient", () => {
     const worker = makeAgent();
     createAgent(sender);
     createAgent(worker);
-    const WRONG_SIGNER = "33333333333333333333333333333333";
-    const sig = `mockpay:USDC:1000000:${WRONG_SIGNER}:${TEST_WALLET}:wrong-signer`;
+    const WRONG_SIGNER = "0x90f79bf6eb2c4f870365e785982e1f101e93b906";
+    const sig = `mockpay:ETH:${toWei(0.001)}:${WRONG_SIGNER}:${TEST_WALLET}:wrong-signer`;
     await expect(
       createPayment({
         fromAgent: sender.agentId,
         toAgent: worker.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: sig,
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       })
     ).rejects.toThrow(/not verified on-chain/);
   });
@@ -157,9 +159,9 @@ describe("createPayment (mock verifier)", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, 1),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, 1),
+      priceString: "0.001 ETH",
     });
 
     expect(payment.txId).toBeDefined();
@@ -167,8 +169,8 @@ describe("createPayment (mock verifier)", () => {
     expect(payment.fromAgent).toBe(sender.agentId);
     expect(payment.toAgent).toBe(worker.agentId);
     expect(payment.taskId).toBe(task.taskId);
-    expect(payment.currency).toBe("USDC");
-    expect(payment.incomingSignature).toBe(mockSig(1_000_000, 1));
+    expect(payment.currency).toBe("ETH");
+    expect(payment.incomingSignature).toBe(mockSig(0.001, 1));
   });
 
   it("rejects duplicate payment signature", async () => {
@@ -176,23 +178,23 @@ describe("createPayment (mock verifier)", () => {
     const worker = makeAgent();
     createAgent(sender);
     createAgent(worker);
-    const sig = mockSig(1_000_000, 2);
+    const sig = mockSig(0.001, 2);
 
     await createPayment({
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
+      amountEth: 1,
       paymentSignature: sig,
-      priceString: "1 USDC",
+      priceString: "0.001 ETH",
     });
 
     await expect(
       createPayment({
         fromAgent: sender.agentId,
         toAgent: worker.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: sig,
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       })
     ).rejects.toThrow("Payment signature already used");
   });
@@ -202,9 +204,9 @@ describe("createPayment (mock verifier)", () => {
       createPayment({
         fromAgent: "unknown-agent-id",
         toAgent: "another-agent",
-        amountSol: 1,
-        paymentSignature: mockSig(1_000_000, 99),
-        priceString: "1 USDC",
+        amountEth: 1,
+        paymentSignature: mockSig(0.001, 99),
+        priceString: "0.001 ETH",
       })
     ).rejects.toThrow("Payment payer must be a wallet address");
   });
@@ -216,7 +218,7 @@ describe("createPayment (mock verifier)", () => {
       createPayment({
         fromAgent: sender.agentId,
         toAgent: "to",
-        amountSol: 0,
+        amountEth: 0,
         paymentSignature: mockSig(0, 3),
         priceString: "not-a-price",
       })
@@ -238,9 +240,9 @@ describe("releasePayment", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, 10),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, 10),
+      priceString: "0.001 ETH",
     });
 
     const released = releasePayment(task.taskId);
@@ -264,9 +266,9 @@ describe("releasePayment", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: platform.agentId,
-      amountSol: 2,
-      paymentSignature: mockSig(2_000_000, "burn-1"),
-      priceString: "2 USDC",
+      amountEth: 2,
+      paymentSignature: mockSig(0.002, "burn-1"),
+      priceString: "0.002 ETH",
     });
 
     releasePayment(task.taskId);
@@ -291,9 +293,9 @@ describe("refundPayment", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, 20),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, 20),
+      priceString: "0.001 ETH",
     });
 
     const refunded = refundPayment(task.taskId);
@@ -315,13 +317,13 @@ describe("getPaymentById / getPaymentByTaskId / getPaymentByIncomingSignature", 
     const worker = makeAgent();
     createAgent(sender);
     createAgent(worker);
-    const sig = mockSig(1_000_000, 30);
+    const sig = mockSig(0.001, 30);
     const p = await createPayment({
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
+      amountEth: 1,
       paymentSignature: sig,
-      priceString: "1 USDC",
+      priceString: "0.001 ETH",
     });
 
     const found = getPaymentById(p.txId);
@@ -344,9 +346,9 @@ describe("getPaymentById / getPaymentByTaskId / getPaymentByIncomingSignature", 
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, 31),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, 31),
+      priceString: "0.001 ETH",
     });
 
     const found = getPaymentByTaskId(task.taskId);
@@ -359,14 +361,14 @@ describe("getPaymentById / getPaymentByTaskId / getPaymentByIncomingSignature", 
     const worker = makeAgent();
     createAgent(sender);
     createAgent(worker);
-    const sig = mockSig(1_000_000, 32);
+    const sig = mockSig(0.001, 32);
 
     await createPayment({
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
+      amountEth: 1,
       paymentSignature: sig,
-      priceString: "1 USDC",
+      priceString: "0.001 ETH",
     });
 
     const found = getPaymentByIncomingSignature(sig);
@@ -385,9 +387,9 @@ describe("getPaymentsByAgent", () => {
     await createPayment({
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, 40),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, 40),
+      priceString: "0.001 ETH",
     });
 
     expect(getPaymentsByAgent(sender.agentId)).toHaveLength(1);
@@ -421,18 +423,20 @@ describe("getAgentBalance", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 2,
-      paymentSignature: mockSig(2_000_000, 50),
-      priceString: "2 USDC",
+      amountEth: 2,
+      paymentSignature: mockSig(0.002, 50),
+      priceString: "0.002 ETH",
     });
     releasePayment(task.taskId);
 
+    // The VERIFIED amount is what lands in the ledger, which is the price string, not the
+    // `amountEth` passed alongside it. When those two disagree the chain's answer wins.
     const workerBalance = getAgentBalance(worker.agentId);
-    expect(workerBalance.totalEarned).toBe(2);
+    expect(workerBalance.totalEarned).toBe(0.002);
     expect(workerBalance.tasksPaid).toBe(1);
 
     const senderBalance = getAgentBalance(sender.agentId);
-    expect(senderBalance.totalSpent).toBe(2);
+    expect(senderBalance.totalSpent).toBe(0.002);
   });
 
   it("counts escrow payments correctly", async () => {
@@ -444,13 +448,13 @@ describe("getAgentBalance", () => {
     await createPayment({
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, 51),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, 51),
+      priceString: "0.001 ETH",
     });
 
     const balance = getAgentBalance(sender.agentId);
-    expect(balance.totalEscrow).toBe(1);
+    expect(balance.totalEscrow).toBe(0.001);
   });
 });
 
@@ -468,9 +472,9 @@ describe("releasePayment: webhook queue failure is non-fatal", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, 70),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, 70),
+      priceString: "0.001 ETH",
     });
 
     vi.spyOn(webhooksModule, "queueWebhookEvent").mockImplementationOnce(() => {
@@ -495,9 +499,9 @@ describe("refundPayment: webhook queue failure is non-fatal", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, 71),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, 71),
+      priceString: "0.001 ETH",
     });
 
     vi.spyOn(webhooksModule, "queueWebhookEvent").mockImplementationOnce(() => {

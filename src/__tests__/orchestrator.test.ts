@@ -10,14 +10,14 @@ import { getDb } from "@/lib/db";
 import type { ThinkFn } from "@/lib/planner";
 import type { Agent } from "@/sdk/types";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let n = 0;
 
 /** Seed earned USDC balance, the shape releasePayment produces on a hire payout. */
 function credit(agentId: string, amount: number): void {
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at)
        VALUES (?, NULL, ?, ?, ?, 'completed', NULL, 0, 'USDC', ?, ?)`,
     )
     .run(randomUUID(), "external-seed", agentId, amount, new Date().toISOString(), new Date().toISOString());
@@ -229,7 +229,7 @@ describe("orchestrator — hosted agents that hire", () => {
 
   it("cancels and refunds a sub-hire that never delivers", async () => {
     const cap = `orc-slow-${n}`;
-    const specialist = mk(cap, 9, "0.20 USDC"); // priced, but no worker will run it
+    const specialist = mk(cap, 9, "0.0002 ETH"); // priced, but no worker will run it
     const orch = mk(`orc-lead6-${n}`, 5, undefined, true);
     const buyer = mk(`orc-buyer6-${n}`, 0);
     credit(orch.agentId, 5);

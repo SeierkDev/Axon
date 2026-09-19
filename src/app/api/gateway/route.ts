@@ -8,7 +8,7 @@ import {
 import { createAgent, agentExists, getAgentById } from "@/lib/agents";
 import { requireAgentOwner } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
-import { parsePaymentAmount } from "@/lib/solana";
+import { parsePaymentAmount } from "@/lib/money";
 import { getEndpointUptimeMap } from "@/lib/endpointUptime";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
@@ -75,7 +75,7 @@ async function handlePost(req: NextRequest) {
   if (pricePerCall && (!parsedPrice || parsedPrice.amount <= 0)) {
     return apiError(
       "VALIDATION_ERROR",
-      "pricePerCall must look like '0.10 USDC' or '0.05 SOL'",
+      "pricePerCall must look like '0.10 ETH' or '0.05 SOL'",
       400
     );
   }

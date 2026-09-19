@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
+import { useWallet } from "@/components/WalletProvider";
 
 type Agent = {
   agentId: string;
@@ -63,7 +64,7 @@ type Balance = {
 type Channel = {
   channelId: string;
   ownerAddress: string;
-  balanceUsdc: number;
+  balanceEth: number;
   status: string;
   createdAt: string;
 };
@@ -78,17 +79,17 @@ type ApiKey = {
 type BudgetStatus = {
   budgetId: string;
   agentId: string;
-  maxPerCallUsdc?: number;
-  maxPerDayUsdc?: number;
-  spentTodayUsdc: number;
-  remainingTodayUsdc: number | null;
+  maxPerCallEth?: number;
+  maxPerDayEth?: number;
+  spentTodayEth: number;
+  remainingTodayEth: number | null;
   status: string;
 };
 
 type SpendThreshold = {
   thresholdId: string;
   agentId: string;
-  thresholdUsdc: number;
+  thresholdEth: number;
   windowHours: number;
   enabled: boolean;
   createdAt: string;
@@ -98,8 +99,8 @@ type SpendThreshold = {
 type SpendAlert = {
   alertId: string;
   agentId: string;
-  amountUsdc: number;
-  thresholdUsdc: number;
+  amountEth: number;
+  thresholdEth: number;
   windowHours: number;
   firedAt: string;
 };
@@ -167,6 +168,7 @@ async function apiGet<T>(path: string, apiKey: string): Promise<T> {
 }
 
 export default function DashboardClient() {
+  const { signIn, busy: walletBusy } = useWallet();
   const [apiKey, setApiKey] = useState("");
   const [draftKey, setDraftKey] = useState("");
   const [data, setData] = useState<DashboardData | null>(null);
@@ -275,8 +277,8 @@ export default function DashboardClient() {
           me.agents.map((agent) => {
             const b = budgets[agent.agentId];
             return [agent.agentId, {
-              maxPerCall: b?.maxPerCallUsdc != null ? String(b.maxPerCallUsdc) : "",
-              maxPerDay: b?.maxPerDayUsdc != null ? String(b.maxPerDayUsdc) : "",
+              maxPerCall: b?.maxPerCallEth != null ? String(b.maxPerCallEth) : "",
+              maxPerDay: b?.maxPerDayEth != null ? String(b.maxPerDayEth) : "",
             }];
           })
         )
@@ -286,7 +288,7 @@ export default function DashboardClient() {
           me.agents.map((agent) => {
             const t = thresholds[agent.agentId];
             return [agent.agentId, {
-              amount: t?.threshold ? String(t.threshold.thresholdUsdc) : "",
+              amount: t?.threshold ? String(t.threshold.thresholdEth) : "",
               hours: t?.threshold ? String(t.threshold.windowHours) : "24",
             }];
           })
@@ -441,6 +443,18 @@ export default function DashboardClient() {
     return () => window.clearTimeout(id);
   }, [loadKey]);
 
+  // Sign in with the wallet instead of pasting a key. The server hands back a real API key, so
+  // everything below this point works exactly as it does for a pasted one.
+  async function signInWithWallet() {
+    const signedIn = await signIn();
+    if (!signedIn) return;
+    const key = signedIn.apiKey;
+    window.localStorage.setItem(STORAGE_KEY, key);
+    setApiKey(key);
+    setDraftKey(key);
+    void loadKey(key);
+  }
+
   function saveKey() {
     const next = draftKey.trim();
     window.localStorage.setItem(STORAGE_KEY, next);
@@ -519,8 +533,8 @@ export default function DashboardClient() {
       const body: Record<string, number> = {};
       const perCall = parseFloat(draft.maxPerCall);
       const perDay = parseFloat(draft.maxPerDay);
-      if (!isNaN(perCall) && perCall > 0) body.maxPerCallUsdc = perCall;
-      if (!isNaN(perDay) && perDay > 0) body.maxPerDayUsdc = perDay;
+      if (!isNaN(perCall) && perCall > 0) body.maxPerCallEth = perCall;
+      if (!isNaN(perDay) && perDay > 0) body.maxPerDayEth = perDay;
       if (Object.keys(body).length === 0) return;
       const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/budget`, {
         method: "POST",
@@ -641,14 +655,14 @@ export default function DashboardClient() {
     if (!draft) return;
     const amount = parseFloat(draft.amount);
     const hours = parseInt(draft.hours, 10);
-    if (isNaN(amount) || amount <= 0) { addToast("error", "Enter a valid USDC amount"); return; }
+    if (isNaN(amount) || amount <= 0) { addToast("error", "Enter a valid ETH amount"); return; }
     if (isNaN(hours) || hours < 1) { addToast("error", "Enter a valid window in hours"); return; }
     setSavingThreshold((prev) => new Set(prev).add(agentId));
     try {
       const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/threshold`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ thresholdUsdc: amount, windowHours: hours, enabled: true }),
+        body: JSON.stringify({ thresholdEth: amount, windowHours: hours, enabled: true }),
       });
       if (res.ok) {
         const { threshold } = await res.json() as { threshold: SpendThreshold };
@@ -824,10 +838,18 @@ export default function DashboardClient() {
               className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white outline-none focus:border-gray-500 dark:focus:border-gray-500"
             />
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-              Stored in this browser for this dashboard.
+              Stored in this browser for this dashboard. Or sign in with your wallet and one is issued for you.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void signInWithWallet()}
+              disabled={walletBusy}
+              className="px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-sm font-medium hover:bg-gray-700 dark:hover:bg-gray-200 disabled:opacity-40 transition-colors"
+            >
+              {walletBusy ? "Check your wallet" : "Sign in with wallet"}
+            </button>
             <button
               type="button"
               onClick={saveKey}
@@ -1003,7 +1025,7 @@ npm run demo:agent`}</code>
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-[11px] text-gray-500 mb-1">Price (e.g. &quot;0.10 USDC&quot; or empty for free)</label>
+                                    <label className="block text-[11px] text-gray-500 mb-1">Price (e.g. &quot;0.10 ETH&quot; or empty for free)</label>
                                     <input
                                       value={editDrafts[agent.agentId].price}
                                       onChange={(e) => setEditDrafts((d) => ({ ...d, [agent.agentId]: { ...d[agent.agentId], price: e.target.value } }))}
@@ -1111,7 +1133,7 @@ npm run demo:agent`}</code>
                             {channel.status}
                           </span>
                         </div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white mt-2">{fmt(channel.balanceUsdc)} USDC</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white mt-2">{fmt(channel.balanceEth)} ETH</p>
                       </div>
                     ))}
                   </div>
@@ -1354,7 +1376,7 @@ npm run demo:agent`}</code>
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <h2 className="font-semibold text-gray-900 dark:text-white">Spend Limits</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Per-agent USDC caps, enforced before any payment leaves the agent</p>
+                <p className="text-xs text-gray-400 mt-0.5">Per-agent ETH caps, enforced before any payment leaves the agent</p>
               </div>
             </div>
             {data.agents.length === 0 ? (
@@ -1374,22 +1396,22 @@ npm run demo:agent`}</code>
                           <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{agent.agentId}</p>
                           {budget && (
                             <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
-                              {budget.maxPerCallUsdc != null && (
-                                <span>Cap/call: <span className="font-medium text-gray-700 dark:text-gray-300">{budget.maxPerCallUsdc} USDC</span></span>
+                              {budget.maxPerCallEth != null && (
+                                <span>Cap/call: <span className="font-medium text-gray-700 dark:text-gray-300">{budget.maxPerCallEth} ETH</span></span>
                               )}
-                              {budget.maxPerDayUsdc != null && (
-                                <span>Cap/day: <span className="font-medium text-gray-700 dark:text-gray-300">{budget.maxPerDayUsdc} USDC</span></span>
+                              {budget.maxPerDayEth != null && (
+                                <span>Cap/day: <span className="font-medium text-gray-700 dark:text-gray-300">{budget.maxPerDayEth} ETH</span></span>
                               )}
-                              <span>Spent today: <span className="font-medium text-gray-700 dark:text-gray-300">{fmt(budget.spentTodayUsdc)} USDC</span></span>
-                              {budget.remainingTodayUsdc != null && (
-                                <span>Remaining: <span className="font-medium text-green-700 dark:text-green-400">{fmt(budget.remainingTodayUsdc)} USDC</span></span>
+                              <span>Spent today: <span className="font-medium text-gray-700 dark:text-gray-300">{fmt(budget.spentTodayEth)} ETH</span></span>
+                              {budget.remainingTodayEth != null && (
+                                <span>Remaining: <span className="font-medium text-green-700 dark:text-green-400">{fmt(budget.remainingTodayEth)} ETH</span></span>
                               )}
                             </div>
                           )}
                         </div>
                         <div className="flex flex-wrap items-end gap-2">
                           <div className="flex flex-col gap-1">
-                            <label className="text-[11px] text-gray-400">Per-call cap (USDC)</label>
+                            <label className="text-[11px] text-gray-400">Per-call cap (ETH)</label>
                             <input
                               type="number"
                               min="0"
@@ -1401,7 +1423,7 @@ npm run demo:agent`}</code>
                             />
                           </div>
                           <div className="flex flex-col gap-1">
-                            <label className="text-[11px] text-gray-400">Per-day cap (USDC)</label>
+                            <label className="text-[11px] text-gray-400">Per-day cap (ETH)</label>
                             <input
                               type="number"
                               min="0"
@@ -1441,7 +1463,7 @@ npm run demo:agent`}</code>
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <h2 className="font-semibold text-gray-900 dark:text-white">Spend Alerts</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Get a webhook when an agent exceeds a USDC spend threshold within a rolling window</p>
+                <p className="text-xs text-gray-400 mt-0.5">Get a webhook when an agent exceeds an ETH spend threshold within a rolling window</p>
               </div>
             </div>
             {data.agents.length === 0 ? (
@@ -1461,8 +1483,8 @@ npm run demo:agent`}</code>
                           <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{agent.agentId}</p>
                           {status?.threshold && (
                             <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
-                              <span>Alert at: <span className="font-medium text-gray-700 dark:text-gray-300">{status.threshold.thresholdUsdc} USDC / {status.threshold.windowHours}h</span></span>
-                              <span>Window spend: <span className={`font-medium ${status.windowSpendUsdc >= status.threshold.thresholdUsdc ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300"}`}>{status.windowSpendUsdc.toFixed(4)} USDC</span></span>
+                              <span>Alert at: <span className="font-medium text-gray-700 dark:text-gray-300">{status.threshold.thresholdEth} ETH / {status.threshold.windowHours}h</span></span>
+                              <span>Window spend: <span className={`font-medium ${status.windowSpendUsdc >= status.threshold.thresholdEth ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300"}`}>{status.windowSpendUsdc.toFixed(4)} ETH</span></span>
                               {status.lastAlert && (
                                 <span>Last alert: <span className="font-medium text-amber-600 dark:text-amber-400">{dateTime(status.lastAlert.firedAt)}</span></span>
                               )}
@@ -1472,7 +1494,7 @@ npm run demo:agent`}</code>
                         </div>
                         <div className="flex flex-wrap items-end gap-2">
                           <div className="flex flex-col gap-1">
-                            <label className="text-[11px] text-gray-400">Alert threshold (USDC)</label>
+                            <label className="text-[11px] text-gray-400">Alert threshold (ETH)</label>
                             <input
                               type="number"
                               min="0.01"

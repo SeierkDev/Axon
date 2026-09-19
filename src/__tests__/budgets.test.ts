@@ -4,12 +4,13 @@ import { createAgent } from "@/lib/agents";
 import { getDb } from "@/lib/db";
 import { randomUUID } from "crypto";
 import type { Agent } from "@/sdk/types";
+import { toWei } from "@/lib/money";
 
 // Global counter — never reset, keeps IDs unique across all tests in this file
 let counter = 0;
 
 // Minimal valid Solana address (base58, 32 chars)
-const TEST_WALLET = "11111111111111111111111111111111";
+const TEST_WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
   counter++;
@@ -31,14 +32,14 @@ describe("createBudget / getBudget", () => {
     const agent = makeAgent();
     createAgent(agent);
 
-    createBudget({ agentId: agent.agentId, maxPerCallUsdc: 1.0, maxPerDayUsdc: 10.0 });
+    createBudget({ agentId: agent.agentId, maxPerCallEth: 1.0, maxPerDayEth: 10.0 });
     const status = getBudget(agent.agentId);
 
     expect(status).not.toBeNull();
-    expect(status!.maxPerCallUsdc).toBe(1.0);
-    expect(status!.maxPerDayUsdc).toBe(10.0);
-    expect(status!.spentTodayUsdc).toBe(0);
-    expect(status!.remainingTodayUsdc).toBe(10.0);
+    expect(status!.maxPerCallEth).toBe(1.0);
+    expect(status!.maxPerDayEth).toBe(10.0);
+    expect(status!.spentTodayEth).toBe(0);
+    expect(status!.remainingTodayEth).toBe(10.0);
   });
 
   it("returns null when no budget exists", () => {
@@ -51,12 +52,12 @@ describe("createBudget / getBudget", () => {
     const agent = makeAgent();
     createAgent(agent);
 
-    createBudget({ agentId: agent.agentId, maxPerCallUsdc: 1.0 });
-    createBudget({ agentId: agent.agentId, maxPerCallUsdc: 2.0, maxPerDayUsdc: 20.0 });
+    createBudget({ agentId: agent.agentId, maxPerCallEth: 1.0 });
+    createBudget({ agentId: agent.agentId, maxPerCallEth: 2.0, maxPerDayEth: 20.0 });
 
     const status = getBudget(agent.agentId);
-    expect(status!.maxPerCallUsdc).toBe(2.0);
-    expect(status!.maxPerDayUsdc).toBe(20.0);
+    expect(status!.maxPerCallEth).toBe(2.0);
+    expect(status!.maxPerDayEth).toBe(20.0);
   });
 });
 
@@ -66,7 +67,7 @@ describe("checkBudget", () => {
     const b = makeAgent();
     createAgent(a);
     createAgent(b);
-    expect(() => checkBudget(a.agentId, b.agentId, 100)).not.toThrow();
+    expect(() => checkBudget(a.agentId, b.agentId, toWei(100)!)).not.toThrow();
   });
 
   it("throws when per-call limit is exceeded", () => {
@@ -74,10 +75,10 @@ describe("checkBudget", () => {
     const b = makeAgent();
     createAgent(a);
     createAgent(b);
-    createBudget({ agentId: a.agentId, maxPerCallUsdc: 0.5 });
+    createBudget({ agentId: a.agentId, maxPerCallEth: 0.5 });
 
-    expect(() => checkBudget(a.agentId, b.agentId, 0.6)).toThrow(/per-call cap/);
-    expect(() => checkBudget(a.agentId, b.agentId, 0.5)).not.toThrow();
+    expect(() => checkBudget(a.agentId, b.agentId, toWei(0.6)!)).toThrow(/per-call cap/);
+    expect(() => checkBudget(a.agentId, b.agentId, toWei(0.5)!)).not.toThrow();
   });
 
   it("throws when calling a disallowed agent", () => {
@@ -89,8 +90,8 @@ describe("checkBudget", () => {
     createAgent(c);
     createBudget({ agentId: a.agentId, allowedToAgents: [b.agentId] });
 
-    expect(() => checkBudget(a.agentId, c.agentId, 0.1)).toThrow(/not allowed/);
-    expect(() => checkBudget(a.agentId, b.agentId, 0.1)).not.toThrow();
+    expect(() => checkBudget(a.agentId, c.agentId, toWei(0.1)!)).toThrow(/not allowed/);
+    expect(() => checkBudget(a.agentId, b.agentId, toWei(0.1)!)).not.toThrow();
   });
 });
 
@@ -100,17 +101,17 @@ describe("checkBudget: daily cap", () => {
     const receiver = makeAgent();
     createAgent(sender);
     createAgent(receiver);
-    createBudget({ agentId: sender.agentId, maxPerCallUsdc: 100, maxPerDayUsdc: 5 });
+    createBudget({ agentId: sender.agentId, maxPerCallEth: 100, maxPerDayEth: 5 });
 
     // Insert a fake transaction representing 4 USDC spent today
     const today = new Date().toISOString();
     getDb().prepare(`
-      INSERT INTO transactions (tx_id, from_agent, to_agent, amount_sol, fee_amount, currency, status, created_at)
+      INSERT INTO transactions (tx_id, from_agent, to_agent, amount_eth, fee_amount, currency, status, created_at)
       VALUES (?, ?, ?, 4, 0, 'USDC', 'escrow', ?)
     `).run(randomUUID(), sender.agentId, receiver.agentId, today);
 
     // 2 more would exceed the 5 USDC daily limit (4 + 2 > 5)
-    expect(() => checkBudget(sender.agentId, receiver.agentId, 2)).toThrow(/daily cap/);
+    expect(() => checkBudget(sender.agentId, receiver.agentId, toWei(2)!)).toThrow(/daily cap/);
   });
 
   it("allows spend within the daily cap", () => {
@@ -118,17 +119,17 @@ describe("checkBudget: daily cap", () => {
     const receiver = makeAgent();
     createAgent(sender);
     createAgent(receiver);
-    createBudget({ agentId: sender.agentId, maxPerCallUsdc: 100, maxPerDayUsdc: 10 });
+    createBudget({ agentId: sender.agentId, maxPerCallEth: 100, maxPerDayEth: 10 });
 
     // Insert a fake transaction for 3 USDC today
     const today = new Date().toISOString();
     getDb().prepare(`
-      INSERT INTO transactions (tx_id, from_agent, to_agent, amount_sol, fee_amount, currency, status, created_at)
+      INSERT INTO transactions (tx_id, from_agent, to_agent, amount_eth, fee_amount, currency, status, created_at)
       VALUES (?, ?, ?, 3, 0, 'USDC', 'completed', ?)
     `).run(randomUUID(), sender.agentId, receiver.agentId, today);
 
     // 2 more (3 + 2 = 5 <= 10) should be allowed
-    expect(() => checkBudget(sender.agentId, receiver.agentId, 2)).not.toThrow();
+    expect(() => checkBudget(sender.agentId, receiver.agentId, toWei(2)!)).not.toThrow();
   });
 });
 
@@ -136,7 +137,7 @@ describe("deleteBudget", () => {
   it("removes an existing budget", () => {
     const agent = makeAgent();
     createAgent(agent);
-    createBudget({ agentId: agent.agentId, maxPerCallUsdc: 1.0 });
+    createBudget({ agentId: agent.agentId, maxPerCallEth: 1.0 });
     expect(getBudget(agent.agentId)).not.toBeNull();
 
     deleteBudget(agent.agentId);
@@ -163,7 +164,7 @@ describe("checkBudget: malformed allowed_to_agents falls through to daily cap", 
     createBudget({
       agentId: sender.agentId,
       allowedToAgents: [receiver.agentId],
-      maxPerDayUsdc: 0.5,
+      maxPerDayEth: 0.5,
     });
 
     // Corrupt the column to simulate DB-level data corruption
@@ -173,12 +174,12 @@ describe("checkBudget: malformed allowed_to_agents falls through to daily cap", 
 
     // Pre-spend 0.4 USDC; adding 0.2 more would exceed the 0.5 daily cap
     getDb().prepare(`
-      INSERT INTO transactions (tx_id, from_agent, to_agent, amount_sol, fee_amount, currency, status, created_at)
+      INSERT INTO transactions (tx_id, from_agent, to_agent, amount_eth, fee_amount, currency, status, created_at)
       VALUES (?, ?, ?, 0.4, 0, 'USDC', 'completed', ?)
     `).run(randomUUID(), sender.agentId, receiver.agentId, new Date().toISOString());
 
     // Must throw daily cap error — the malformed JSON must NOT cause a silent pass
-    expect(() => checkBudget(sender.agentId, receiver.agentId, 0.2)).toThrow(/daily cap/);
+    expect(() => checkBudget(sender.agentId, receiver.agentId, toWei(0.2)!)).toThrow(/daily cap/);
   });
 
   it("does not throw when allowed_to_agents JSON is corrupt but daily cap has headroom", () => {
@@ -189,7 +190,7 @@ describe("checkBudget: malformed allowed_to_agents falls through to daily cap", 
     createBudget({
       agentId: sender.agentId,
       allowedToAgents: [receiver.agentId],
-      maxPerDayUsdc: 5.0,
+      maxPerDayEth: 5.0,
     });
 
     // Corrupt the column
@@ -198,18 +199,18 @@ describe("checkBudget: malformed allowed_to_agents falls through to daily cap", 
       .run(sender.agentId);
 
     // No prior spend + cap of 5.0 → should pass (restriction check skipped, daily cap passes)
-    expect(() => checkBudget(sender.agentId, receiver.agentId, 1.0)).not.toThrow();
+    expect(() => checkBudget(sender.agentId, receiver.agentId, toWei(1.0)!)).not.toThrow();
   });
 });
 
-// ── checkBudget: getBudget with no daily cap returns null remainingTodayUsdc ──
+// ── checkBudget: getBudget with no daily cap returns null remainingTodayEth ──
 
-describe("getBudget: null remainingTodayUsdc when no daily cap is configured", () => {
-  it("returns null for remainingTodayUsdc when maxPerDayUsdc is not set", () => {
+describe("getBudget: null remainingTodayEth when no daily cap is configured", () => {
+  it("returns null for remainingTodayEth when maxPerDayEth is not set", () => {
     const agent = makeAgent();
     createAgent(agent);
-    createBudget({ agentId: agent.agentId, maxPerCallUsdc: 1.0 }); // no maxPerDayUsdc
+    createBudget({ agentId: agent.agentId, maxPerCallEth: 1.0 }); // no maxPerDayEth
     const status = getBudget(agent.agentId)!;
-    expect(status.remainingTodayUsdc).toBeNull();
+    expect(status.remainingTodayEth).toBeNull();
   });
 });

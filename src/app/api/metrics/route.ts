@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { getHeliusCircuitState } from "@/lib/solana";
+import { getRpcCircuitState } from "@/lib/evm";
 import { getGatewayCircuitState, listGatewayProviders } from "@/lib/gateway";
 
 export const runtime = "nodejs";
@@ -90,12 +90,12 @@ function webhookMetrics(): Metric[] {
   ];
 }
 
-function heliusCircuitMetric(): Metric {
-  const { state, consecutiveFailures } = getHeliusCircuitState();
+function rpcCircuitMetric(): Metric {
+  const { state, consecutiveFailures } = getRpcCircuitState();
   const stateValue = state === "open" ? 2 : state === "half-open" ? 1 : 0;
   return {
-    name: "axon_helius_circuit_state",
-    help: "Helius RPC circuit breaker state: 0=closed, 1=half-open, 2=open",
+    name: "axon_rpc_circuit_state",
+    help: "Chain RPC circuit breaker state: 0=closed, 1=half-open, 2=open",
     type: "gauge",
     samples: [
       { labels: { state }, value: stateValue },
@@ -120,11 +120,11 @@ function gatewayCircuitMetrics(): Metric {
 
 function mppMetrics(): Metric {
   const row = getDb()
-    .prepare("SELECT COUNT(*) AS total, COALESCE(SUM(balance_usdc), 0) AS locked_usdc FROM mpp_channels WHERE status = 'open'")
+    .prepare("SELECT COUNT(*) AS total, COALESCE(SUM(balance_eth), 0) AS locked_usdc FROM mpp_channels WHERE status = 'open'")
     .get() as { total: number; locked_usdc: number };
   return {
     name: "axon_mpp_channels_open",
-    help: "Number of open MPP channels and total locked USDC",
+    help: "Number of open MPP channels and total locked ETH",
     type: "gauge",
     samples: [
       { labels: { metric: "count" }, value: row.total },
@@ -159,7 +159,7 @@ export async function GET() {
     taskMetrics(),
     agentMetrics(),
     ...webhookMetrics(),
-    heliusCircuitMetric(),
+    rpcCircuitMetric(),
     gatewayCircuitMetrics(),
     mppMetrics(),
     uptimeMetric(),

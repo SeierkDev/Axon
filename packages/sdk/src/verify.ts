@@ -19,11 +19,11 @@ const SCALE = 1000;
 const QUALITY_WEIGHT = 0.6;
 const VOLUME_WEIGHT = 0.4;
 const TASKS_ANCHOR = 30;
-const USDC_ANCHOR = 200;
+const ETH_ANCHOR = 200;
 const round = (n: number, dp = 3): number => { const f = 10 ** dp; return Math.round(n * f) / f; };
 const curve = (v: number, anchor: number): number => Math.min(1, Math.log10(1 + Math.max(0, v)) / Math.log10(1 + anchor));
-const provenWorkFactor = (count: number, usdc: number): number =>
-  Math.min(1, 0.6 * curve(count, TASKS_ANCHOR) + 0.4 * curve(usdc, USDC_ANCHOR));
+const provenWorkFactor = (count: number, eth: number): number =>
+  Math.min(1, 0.6 * curve(count, TASKS_ANCHOR) + 0.4 * curve(eth, ETH_ANCHOR));
 
 export interface VerifyProofScoreOptions {
   /** Where to fetch the proof + receipts from. Default: `https://axon-agents.com`. */
@@ -79,7 +79,7 @@ export async function verifyProofScore(
   const evRes = await f(`${base}/api/agents/${id}/proof-score?evidence=full`);
   if (!evRes.ok) throw new Error(`evidence fetch failed: HTTP ${evRes.status}`);
   const { evidence } = (await evRes.json()) as {
-    evidence: { taskId: string; network: string; verify: string | null; settledUsdc: number }[];
+    evidence: { taskId: string; network: string; verify: string | null; settledEth: number }[];
   };
 
   const native = evidence.filter((e) => e.network === "axon");
@@ -87,29 +87,29 @@ export async function verifyProofScore(
 
   let confirmedReceipts: number | null = null;
   let count = evidence.length;
-  let usdc = round(evidence.reduce((s, e) => s + e.settledUsdc, 0), 6);
+  let eth = round(evidence.reduce((s, e) => s + e.settledEth, 0), 6);
 
   if (opts.confirmReceipts) {
     let ok = 0;
-    let confirmedUsdc = 0;
+    let confirmedEth = 0;
     for (const e of native) {
       if (!e.verify) continue;
       try {
         const r = await f(`${base}${e.verify}`);
         if (!r.ok) continue;
         const receipt = (await r.json()) as { status?: string; settlement?: unknown };
-        if (receipt.status === "completed" && receipt.settlement) { ok++; confirmedUsdc += e.settledUsdc; }
+        if (receipt.status === "completed" && receipt.settlement) { ok++; confirmedEth += e.settledEth; }
       } catch { /* an unreachable receipt is simply unconfirmed */ }
     }
     confirmedReceipts = ok;
     count = ok + cross.length; // cross-network items are verified on their own network
-    usdc = round(confirmedUsdc + cross.reduce((s, e) => s + e.settledUsdc, 0), 6);
+    eth = round(confirmedEth + cross.reduce((s, e) => s + e.settledEth, 0), 6);
   }
 
   // Recompute, byte-identical to the published formula. Quality is taken as
   // published (reputation-derived); the proven-work half is recomputed from the
   // receipts, which is what a third party can independently confirm.
-  const volumeFactor = round(provenWorkFactor(count, usdc));
+  const volumeFactor = round(provenWorkFactor(count, eth));
   const recomputedScore = Math.round(
     round(SCALE * QUALITY_WEIGHT * proof.components.quality.factor, 2) + round(SCALE * VOLUME_WEIGHT * volumeFactor, 2),
   );

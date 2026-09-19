@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 // token and the dangling "spent", then collapses the double-space that leaves.
 const stripAmounts = (s: string) =>
   s
-    .replace(/\s*\$?[\d,]+(?:\.\d+)?\s*USDC(\s+spent)?/gi, "")
+    .replace(/\s*\$?[\d,]+(?:\.\d+)?\s*ETH(\s+spent)?/gi, "")
     .replace(/\s{2,}/g, " ")
     .replace(/\s+,/g, ",")
     .trim();
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   const run = runId ? getGrowRun(runId) : getLatestGrowRun();
   if (!run) return NextResponse.json({ run: null, events: [] });
 
-  // Explicit safe projection — never includes budgetUsdc.
+  // Explicit safe projection — never includes budgetEth.
   const runSafe = {
     runId: run.runId,
     agentId: run.agentId,

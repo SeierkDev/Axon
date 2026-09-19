@@ -13,7 +13,7 @@ import { createTask } from "@/lib/tasks";
 import { getAgentById } from "@/lib/agents";
 import { rankAgents } from "@/lib/routing";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
-import { isValidSolanaAddress } from "@/lib/solana";
+import { isWalletAddress } from "@/lib/address";
 import { syncToTurso } from "@/lib/db-turso";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
 import { apiError } from "@/lib/apiError";
@@ -79,8 +79,8 @@ async function handlePost(req: NextRequest) {
   const body = parsed.data;
 
   // Validate `from` and ownership
-  if (body.from !== "anonymous" && !isValidSolanaAddress(body.from) && !getAgentById(body.from)) {
-    return apiError("VALIDATION_ERROR", "from must be a valid Solana address or registered agent ID", 400);
+  if (body.from !== "anonymous" && !isWalletAddress(body.from) && !getAgentById(body.from)) {
+    return apiError("VALIDATION_ERROR", "from must be a valid wallet address or registered agent ID", 400);
   }
   if (!canAccessIdentity(auth.user, body.from)) {
     return apiError("FORBIDDEN", "from must be your wallet address or an agent owned by your wallet", 403);

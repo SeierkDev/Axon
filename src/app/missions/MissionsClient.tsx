@@ -17,13 +17,13 @@ interface Run {
   runId: string;
   agentId: string;
   mission: string;
-  budgetUsdc: number;
-  perHireCapUsdc?: number;
+  budgetEth: number;
+  perHireCapEth?: number;
   maxHires?: number;
   status: "planning" | "hiring" | "synthesizing" | "completed" | "failed";
   canceled?: boolean;
   deliverable?: string;
-  manifest?: { hash: string; entries: unknown[]; totals: { hires: number; inHouse: number; spentUsdc: number } };
+  manifest?: { hash: string; entries: unknown[]; totals: { hires: number; inHouse: number; spentEth: number } };
   published?: boolean;
   startedAt: string;
 }
@@ -34,14 +34,14 @@ interface Ev {
   summary: string;
   taskId?: string;
   toAgent?: string;
-  amountUsdc?: number;
+  amountEth?: number;
   createdAt: string;
 }
 
 interface PreviewStep {
   capability: string;
   task: string;
-  pick: { agentId: string; name: string; priceUsdc: number; proofScore?: number } | null;
+  pick: { agentId: string; name: string; priceEth: number; proofScore?: number } | null;
   alternatives: number;
 }
 interface Preview {
@@ -56,14 +56,14 @@ interface GalleryCard {
   mission: string;
   template: { id: string; title: string } | null;
   hires: number;
-  spentUsdc: number;
+  spentEth: number;
 }
 
 interface Detail {
   run: Run;
   events: Ev[];
-  spentUsdc: number;
-  remainingUsdc: number;
+  spentEth: number;
+  remainingEth: number;
   hires: number;
   selfDone: number;
 }
@@ -97,8 +97,8 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
   const [form, setForm] = useState({
     agentId: "",
     mission: "",
-    budgetUsdc: String(initialTemplate?.budgetUsdc ?? 5),
-    perHireCapUsdc: String(initialTemplate?.perHireCapUsdc ?? 2),
+    budgetEth: String(initialTemplate?.budgetEth ?? 5),
+    perHireCapEth: String(initialTemplate?.perHireCapEth ?? 2),
     maxHires: String(initialTemplate?.maxHires ?? 4),
   });
   const [state, setState] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -144,8 +144,8 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
             <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2 break-words">{g.mission}</p>
             <p className="mt-1 text-xs font-mono text-gray-400 dark:text-gray-500">
               {/* Totals carry four decimals, so the raw number renders as
-                  "0.3333 USDC" here beside "0.33 USDC" on the page it links to. */}
-              {g.hires} hire{g.hires === 1 ? "" : "s"} · {g.spentUsdc.toFixed(2)} USDC
+                  "0.3333 ETH" here beside "0.33 ETH" on the page it links to. */}
+              {g.hires} hire{g.hires === 1 ? "" : "s"} · {g.spentEth.toFixed(2)} ETH
               {g.template ? ` · ${g.template.title}` : ""}
             </p>
           </Link>
@@ -195,8 +195,8 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
     setForm((f) => ({
       ...f,
       mission: "",
-      budgetUsdc: String(t.budgetUsdc),
-      perHireCapUsdc: String(t.perHireCapUsdc),
+      budgetEth: String(t.budgetEth),
+      perHireCapEth: String(t.perHireCapEth),
       maxHires: String(t.maxHires),
     }));
   }
@@ -212,8 +212,8 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
       agentId: form.agentId.trim(),
       mission: briefText(),
       ...(template ? { templateId: template.id } : {}),
-      budgetUsdc: Number(form.budgetUsdc),
-      perHireCapUsdc: Number(form.perHireCapUsdc),
+      budgetEth: Number(form.budgetEth),
+      perHireCapEth: Number(form.perHireCapEth),
       maxHires: Number(form.maxHires),
       ...(dryRun ? { dryRun: true } : {}),
     };
@@ -344,7 +344,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.title}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.blurb}</p>
                 <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-1.5">
-                  ~{t.budgetUsdc} USDC · {t.needs.join(", ")}
+                  ~{t.budgetEth} ETH · {t.needs.join(", ")}
                 </p>
               </div>
             ))}
@@ -389,7 +389,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                 className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm font-mono"
               />
               <div className="grid grid-cols-3 gap-2">
-                {([["budgetUsdc", "Budget"], ["perHireCapUsdc", "Per hire"], ["maxHires", "Max hires"]] as const).map(([k, ph]) => (
+                {([["budgetEth", "Budget"], ["perHireCapEth", "Per hire"], ["maxHires", "Max hires"]] as const).map(([k, ph]) => (
                   <input
                     key={k} value={form[k]} onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))}
                     placeholder={ph} inputMode="decimal"
@@ -463,7 +463,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                 {busy ? "Starting…" : "Start mission"}
               </button>
               <span className="text-xs text-gray-400 dark:text-gray-500">
-                Budget in USDC. Capped by your agent&apos;s own spend limits.
+                Budget in ETH. Capped by your agent&apos;s own spend limits.
               </span>
             </div>
 
@@ -472,7 +472,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-xs font-mono text-gray-400">THE PLAN, nothing hired, nothing spent</p>
                   <span className={`ml-auto text-xs font-mono font-bold ${preview.withinBudget ? "text-teal-600 dark:text-teal-400" : "text-red-600 dark:text-red-400"}`}>
-                    ~{preview.estimatedUsdc} USDC
+                    ~{preview.estimatedUsdc} ETH
                   </span>
                 </div>
                 <ol className="space-y-2">
@@ -483,7 +483,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                         <p className="text-gray-700 dark:text-gray-300">{st.task}</p>
                         <p className="text-xs font-mono text-gray-400 mt-0.5">
                           {st.pick
-                            ? `${st.pick.name} · ${st.pick.priceUsdc} USDC${st.pick.proofScore != null ? ` · Proof ${st.pick.proofScore}` : ""}${st.alternatives ? ` · ${st.alternatives} backup${st.alternatives === 1 ? "" : "s"}` : ""}`
+                            ? `${st.pick.name} · ${st.pick.priceEth} ETH${st.pick.proofScore != null ? ` · Proof ${st.pick.proofScore}` : ""}${st.alternatives ? ` · ${st.alternatives} backup${st.alternatives === 1 ? "" : "s"}` : ""}`
                             : "no affordable specialist found, this step would be skipped"}
                         </p>
                       </div>
@@ -517,7 +517,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                       {r.canceled && isLive(r.status) ? "stopping" : r.status}
                     </span>
                     <span className="font-mono text-xs text-gray-400">{r.agentId}</span>
-                    <span className="ml-auto font-mono text-xs text-gray-400">{r.budgetUsdc} USDC</span>
+                    <span className="ml-auto font-mono text-xs text-gray-400">{r.budgetEth} ETH</span>
                   </div>
                   <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{r.mission}</p>
                 </button>
@@ -532,7 +532,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                   <h2 className="font-semibold text-gray-900 dark:text-white">{open.run.mission}</h2>
                   <p className="mt-1 text-xs font-mono text-gray-400">
                     {open.hires} hire{open.hires === 1 ? "" : "s"}
-                    {open.selfDone > 0 ? ` · ${open.selfDone} in-house` : ""} · {open.spentUsdc} spent · {open.remainingUsdc} left of {open.run.budgetUsdc} USDC
+                    {open.selfDone > 0 ? ` · ${open.selfDone} in-house` : ""} · {open.spentEth} spent · {open.remainingEth} left of {open.run.budgetEth} ETH
                   </p>
                 </div>
                 {isLive(open.run.status) && !open.run.canceled && (
@@ -571,7 +571,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                       <p className="text-sm text-gray-700 dark:text-gray-300">{e.summary}</p>
                       <p className="mt-0.5 text-xs font-mono text-gray-400">
                         {e.kind}
-                        {e.amountUsdc ? ` · ${e.amountUsdc} USDC` : ""}
+                        {e.amountEth ? ` · ${e.amountEth} ETH` : ""}
                         {e.taskId ? " · " : ""}
                         {e.taskId && (
                           <Link href={`/r/${e.taskId}`} className="underline hover:text-gray-600 dark:hover:text-gray-300">
@@ -599,7 +599,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {open.run.manifest.totals.hires} hired step{open.run.manifest.totals.hires === 1 ? "" : "s"}
                     {open.run.manifest.totals.inHouse > 0 ? `, ${open.run.manifest.totals.inHouse} in-house` : ""} ·{" "}
-                    {open.run.manifest.totals.spentUsdc} USDC · chain{" "}
+                    {open.run.manifest.totals.spentEth} ETH · chain{" "}
                     <code className="font-mono text-xs">{open.run.manifest.hash.slice(0, 12)}…</code>
                   </p>
                   <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">

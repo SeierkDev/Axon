@@ -28,7 +28,7 @@ function makeValidX402Header(): string {
         scheme: X402_SCHEME,
         resource: ENDPOINT,
         description: "test",
-        payToAddress: "11111111111111111111111111111111",
+        payToAddress: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
         asset: "USDC",
         network: "solana-devnet",
         maxAmountRequired: "100000",

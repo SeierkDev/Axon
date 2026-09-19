@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { collectPaymentInstrument, UnsupportedHandlerError, type HandlerDescriptor, type PaymentInstrument } from "./paymentHandlers";
+import { useWallet } from "@/components/WalletProvider";
 
 // What a buyer sees when their agent wants to spend their money.
 //
@@ -52,26 +53,6 @@ interface Summary {
   currency: string;
 }
 
-interface PhantomProvider {
-  isPhantom?: boolean;
-  publicKey?: { toString(): string };
-  connect(): Promise<{ publicKey: { toString(): string } }>;
-  signMessage(message: Uint8Array, encoding?: string): Promise<{ signature: Uint8Array }>;
-}
-
-function getPhantom(): PhantomProvider | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { phantom?: { solana?: PhantomProvider }; solana?: PhantomProvider };
-  const p = w.phantom?.solana ?? w.solana;
-  return p?.isPhantom ? p : null;
-}
-
-function b64(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s);
-}
-
 const money = (n: number, c: string) => `${n.toFixed(2)} ${c}`;
 
 function timeLeft(iso: string): string {
@@ -91,6 +72,7 @@ const STATUS_STYLE: Record<Intent["status"], string> = {
 };
 
 export default function CommerceClient() {
+  const { sign } = useWallet();
   const [apiKey, setApiKey] = useState("");
   const [intents, setIntents] = useState<Intent[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -144,18 +126,17 @@ export default function CommerceClient() {
       let paymentInstrument: PaymentInstrument | undefined;
 
       if (decision === "approve") {
-        const phantom = getPhantom();
-        if (!phantom) throw new Error("Phantom wallet not found, approving a purchase requires signing it.");
-        await phantom.connect();
-
         // Fetch the exact text to sign. It names the cart, the price, the
         // ceiling and the deadline, so what's signed is what's shown.
         const msgRes = await fetch(`/api/commerce/intents/${intent.intentId}/decision`, { headers: auth() });
         if (!msgRes.ok) throw new Error("Could not load the authorisation to sign");
         const { message } = (await msgRes.json()) as { message: string };
 
-        const signed = await phantom.signMessage(new TextEncoder().encode(message), "utf8");
-        signature = b64(signed.signature);
+        // The server checks this by recovering the signer and matching it against the buyer on the
+        // intent, so it has to be the wallet's own EIP-191 signature.
+        const signed = await sign(message);
+        if (!signed) throw new Error("Approving a purchase requires signing it with your wallet.");
+        signature = signed.signature;
 
         // Signing authorises the purchase; it doesn't pay for it. The card is
         // collected by the business's own payment handler, in this browser —

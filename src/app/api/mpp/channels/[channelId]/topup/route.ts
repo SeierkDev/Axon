@@ -1,11 +1,11 @@
-// POST /api/mpp/channels/:channelId/topup — add USDC to an existing channel
+// POST /api/mpp/channels/:channelId/topup — add ETH to an existing channel
 //
-// 1. Send USDC to the payment receiver wallet on-chain
+// 1. Send ETH to the payment receiver wallet on-chain
 // 2. POST body: { depositUsdc, depositSignature }
 // Requires: Authorization: Bearer <channelKey>
 
 import { NextRequest, NextResponse } from "next/server";
-import { getChannelById, verifyChannelKey, verifyMppDeposit, recordDeposit, parseMppUsdcAmount } from "@/lib/mpp";
+import { getChannelById, verifyChannelKey, verifyMppDeposit, recordDeposit, parseMppAmount } from "@/lib/mpp";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
@@ -38,9 +38,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     return apiError("INVALID_JSON", "Request body must be valid JSON", 400);
   }
 
-  const deposit = parseMppUsdcAmount(body.depositUsdc);
+  const deposit = parseMppAmount(body.depositUsdc);
   if (!deposit) {
-    return apiError("VALIDATION_ERROR", "depositUsdc must be a positive USDC amount with at most 6 decimals", 400);
+    return apiError("VALIDATION_ERROR", "depositUsdc must be a positive ETH amount with at most 6 decimals", 400);
   }
   if (!body.depositSignature) {
     return apiError(
@@ -80,8 +80,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     resourceId: channelId,
     ownerWallet: updated.ownerAddress,
     metadata: {
-      depositUsdc: deposit.amountUsdc,
-      balanceUsdc: updated.balanceUsdc,
+      depositUsdc: deposit.amountEth,
+      balanceEth: updated.balanceEth,
       status: updated.status,
     },
   });

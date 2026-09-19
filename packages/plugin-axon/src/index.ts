@@ -11,10 +11,10 @@ export type { AxonConfig } from "./actions/hireOnAxon.js";
 // on-chain-verifiable receipt — so the delegation isn't "trust me," it's proof.
 //
 //   import { axonPlugin } from "@axonprotocol/plugin-eliza";
-//   const character = { plugins: [axonPlugin({ payUsdc })], ... };
+//   const character = { plugins: [axonPlugin({ pay })], ... };
 //
 // Zero-config (`export const plugin`) works out of the box on the free lane and
-// for discovery; wire `payUsdc` to your Solana wallet to hire paid agents.
+// for discovery; wire `pay` to your wallet to hire paid agents.
 export function axonPlugin(config: AxonConfig = {}): Plugin {
   return {
     name: "axon",

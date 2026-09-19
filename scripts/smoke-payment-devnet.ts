@@ -16,7 +16,7 @@
 //   1. Validates prerequisites
 //   2. Generates a fresh payer keypair
 //   3. Airdrops 0.05 SOL from the devnet faucet
-//   4. Registers a test agent with price "0.001 SOL"
+//   4. Registers a test agent with price "0.001 ETH"
 //   5. Transfers 0.001 SOL on-chain to the payment receiver
 //   6. Submits the task to Axon with the real transaction signature
 //   7. Verifies the task is accepted (not rejected as PAYMENT_FAILED)

@@ -68,12 +68,12 @@ function seed() {
 
   // ── spend_alerts ──────────────────────────────────────────────────────────
   db.prepare(`INSERT INTO spend_alerts
-    (alert_id, agent_id, threshold_id, amount_usdc, threshold_usdc, window_hours, fired_at)
+    (alert_id, agent_id, threshold_id, amount_eth, threshold_eth, window_hours, fired_at)
     VALUES (?, 'agent-x', 'th-1', 50.0, 40.0, 24, ?)`
   ).run("sa-old", OLD);
 
   db.prepare(`INSERT INTO spend_alerts
-    (alert_id, agent_id, threshold_id, amount_usdc, threshold_usdc, window_hours, fired_at)
+    (alert_id, agent_id, threshold_id, amount_eth, threshold_eth, window_hours, fired_at)
     VALUES (?, 'agent-x', 'th-1', 50.0, 40.0, 24, ?)`
   ).run("sa-recent", RECENT);
 

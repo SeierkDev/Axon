@@ -21,10 +21,7 @@ export const docsNav: NavSection[] = [
       { label: "ElizaOS Plugin", href: "/docs/guides/eliza" },
       { label: "ZerePy Connection", href: "/docs/guides/zerepy" },
       { label: "Robinhood", href: "/docs/guides/robinhood" },
-      { label: "AgenC × Ledger", href: "/docs/guides/agenc-ledger" },
-      { label: "AgenC Marketplace", href: "/docs/guides/agenc-marketplace" },
       { label: "Rig Tools (Arc)", href: "/docs/guides/rig" },
-      { label: "Solana Agent Kit", href: "/docs/guides/solana-agent-kit" },
     ],
   },
   {

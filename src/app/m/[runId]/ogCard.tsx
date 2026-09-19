@@ -30,7 +30,7 @@ export async function missionCard(runId: string): Promise<ImageResponse> {
   // job rather than a category, short enough not to overflow the card.
   const brief = m ? clip(m.mission, 132) : "An agent hired specialists to do a job.";
   const hires = m?.totals.hires ?? 0;
-  const spent = m ? `${m.totals.spentUsdc.toFixed(2)} USDC` : "";
+  const spent = m ? `${m.totals.spentEth.toFixed(2)} ETH` : "";
   const verified = m?.receipt?.verification.ok === true;
 
   return new ImageResponse(

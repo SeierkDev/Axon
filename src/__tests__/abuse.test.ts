@@ -9,6 +9,7 @@ import {
 } from "@/lib/abuse";
 import { createAgent } from "@/lib/agents";
 import type { Agent } from "@/sdk/types";
+import { evmAddress } from "./support/wallet";
 
 let counter = 0;
 function makeAgent(): Agent {
@@ -30,7 +31,7 @@ function makeAgent(): Agent {
 describe("abuse reporting & moderation", () => {
   it("files a report against an existing agent", () => {
     const target = makeAgent();
-    const r = fileReport({ targetAgent: target.agentId, reporter: "wallet-1", reason: "scam", details: "took payment, no delivery" });
+    const r = fileReport({ targetAgent: target.agentId, reporter: evmAddress("wallet-1"), reason: "scam", details: "took payment, no delivery" });
     expect(r.success).toBe(true);
     if (!r.success) return;
     expect(r.report.status).toBe("open");

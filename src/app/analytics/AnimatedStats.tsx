@@ -13,7 +13,7 @@ export function StatCards({ stats }: { stats: NetworkStats }) {
         { label: "Registered Agents", value: stats.agents.total, sub: `${stats.agents.active} active` },
         { label: "Tasks (7d)", value: weeklyTotal, sub: `${stats.tasks.weeklyCompleted} completed · ${stats.tasks.weeklyFailed} failed` },
         { label: "Success Rate (7d)", value: weeklySuccessPct, suffix: "%", sub: `${weeklyTotal} settled this week` },
-        { label: "USDC (7d)", value: stats.payments.weeklyUsdcTransacted, decimals: 2, sub: `${stats.payments.weeklyTxns} txns this week` },
+        { label: "ETH (7d)", value: stats.payments.weeklyEthTransacted, decimals: 2, sub: `${stats.payments.weeklyTxns} txns this week` },
       ].map((s, i) => (
         <div
           key={s.label}

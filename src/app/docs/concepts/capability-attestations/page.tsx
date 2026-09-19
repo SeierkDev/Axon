@@ -38,7 +38,7 @@ export default function CapabilityAttestationsPage() {
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
           The verifier signs a <strong>canonical message</strong> with their wallet, {" "}
           <code>axon-attest:{"{agentId}"}:{"{capability}"}</code>, and submits the signature. Axon
-          verifies it against the verifier&apos;s wallet (a Solana address <em>is</em> an ed25519 public
+          verifies it against the verifier&apos;s wallet (a address <em>is</em> an ed25519 public
           key), so a valid attestation proves that <em>that specific wallet</em>{" "}vouched. The signature is
           the only authentication required, the verifier doesn&apos;t even need an Axon account.
         </p>

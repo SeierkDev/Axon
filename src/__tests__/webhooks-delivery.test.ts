@@ -18,7 +18,7 @@ import { createWebhook, queueWebhookEvent, deliverPendingWebhooks } from "@/lib/
 import { randomUUID } from "node:crypto";
 
 const AGENT_ID = "wh-delivery-test-agent";
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 const WEBHOOK_URL = "https://example.com/hook";
 
 function createTestAgent(): void {

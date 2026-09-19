@@ -15,8 +15,8 @@ function fakeThink(): GrowDeps["think"] {
 }
 
 const candidates = (cap: string) => [
-  { agentId: `${cap}-pro`, name: `${cap} pro`, priceUsdc: 2, proofScore: 900, capabilities: [cap] },
-  { agentId: `${cap}-cheap`, name: `${cap} cheap`, priceUsdc: 1, proofScore: 400, capabilities: [cap] },
+  { agentId: `${cap}-pro`, name: `${cap} pro`, priceEth: 2, proofScore: 900, capabilities: [cap] },
+  { agentId: `${cap}-cheap`, name: `${cap} cheap`, priceEth: 1, proofScore: 400, capabilities: [cap] },
 ];
 
 describe("grow-yourself engine", () => {
@@ -28,11 +28,11 @@ describe("grow-yourself engine", () => {
       search: async ({ capability }) => candidates(capability ?? "x"),
       hire: async ({ to, task }) => {
         hired.push(to);
-        return { taskId: `task-${to}`, status: "completed", output: `did: ${task}`, costUsdc: 2, receiptUrl: `/r/task-${to}` };
+        return { taskId: `task-${to}`, status: "completed", output: `did: ${task}`, costEth: 2, receiptUrl: `/r/task-${to}` };
       },
     };
 
-    const res = await runGrowMission(deps, { mission: "Write a brief", budgetUsdc: 20, perHireCapUsdc: 4, maxHires: 3 });
+    const res = await runGrowMission(deps, { mission: "Write a brief", budgetEth: 20, perHireCapEth: 4, maxHires: 3 });
 
     expect(res.run.status).toBe("completed");
     expect(res.deliverable).toContain("assembled report");
@@ -54,12 +54,12 @@ describe("grow-yourself engine", () => {
       self: "entrepreneur",
       think: fakeThink(),
       search: async ({ capability }) => candidates(capability ?? "x"),
-      hire: async ({ to }) => ({ taskId: `t-${to}`, status: "completed", output: "ok", costUsdc: 2, receiptUrl: `/r/t-${to}` }),
+      hire: async ({ to }) => ({ taskId: `t-${to}`, status: "completed", output: "ok", costEth: 2, receiptUrl: `/r/t-${to}` }),
     };
     // budget only covers one 2-USDC hire
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 2, perHireCapUsdc: 4, maxHires: 3 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 2, perHireCapEth: 4, maxHires: 3 });
     expect(res.hires).toBe(1);
-    expect(res.spentUsdc).toBeCloseTo(2);
+    expect(res.spentEth).toBeCloseTo(2);
   });
 
   it("records the payment even when a PAID hire completes but returns nothing", async () => {
@@ -68,9 +68,9 @@ describe("grow-yourself engine", () => {
       self: "entrepreneur",
       think: fakeThink(),
       search: async ({ capability }) => candidates(capability ?? "x"),
-      hire: async ({ to }) => ({ taskId: `t-${to}`, status: "completed", output: "", costUsdc: 2, receiptUrl: `/r/t-${to}` }),
+      hire: async ({ to }) => ({ taskId: `t-${to}`, status: "completed", output: "", costEth: 2, receiptUrl: `/r/t-${to}` }),
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 20, perHireCapUsdc: 4, maxHires: 3 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 20, perHireCapEth: 4, maxHires: 3 });
     expect(res.hires).toBe(0);                       // nothing usable delivered
     expect(getGrowSpent(res.run.runId)).toBeCloseTo(4); // but both payments are logged
     const kinds = getGrowEvents(res.run.runId).map((e) => e.kind);
@@ -83,9 +83,9 @@ describe("grow-yourself engine", () => {
       self: "entrepreneur",
       think: fakeThink(),
       search: async ({ capability }) => candidates(capability ?? "x"),
-      hire: async ({ to }) => ({ taskId: `t-${to}`, status: "timeout", costUsdc: 2 }),
+      hire: async ({ to }) => ({ taskId: `t-${to}`, status: "timeout", costEth: 2 }),
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 20, perHireCapUsdc: 4, maxHires: 3 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 20, perHireCapEth: 4, maxHires: 3 });
     expect(res.hires).toBe(0);
     expect(getGrowSpent(res.run.runId)).toBeCloseTo(4); // both timed-out hires' committed funds counted
     expect(getGrowEvents(res.run.runId).filter((e) => e.kind === "payment")).toHaveLength(2);
@@ -99,11 +99,11 @@ describe("grow-yourself engine", () => {
       search: async ({ capability }) => candidates(capability ?? "x"),
       hire: async ({ to }) => {
         n++;
-        if (n === 1) return { taskId: `t-${to}`, status: "failed", error: "specialist error", costUsdc: 0 };
-        return { taskId: `t-${to}`, status: "completed", output: "ok", costUsdc: 2, receiptUrl: `/r/t-${to}` };
+        if (n === 1) return { taskId: `t-${to}`, status: "failed", error: "specialist error", costEth: 0 };
+        return { taskId: `t-${to}`, status: "completed", output: "ok", costEth: 2, receiptUrl: `/r/t-${to}` };
       },
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 20, perHireCapUsdc: 4, maxHires: 3 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 20, perHireCapEth: 4, maxHires: 3 });
     // A free failure costs the step nothing, so it falls to the next specialist
     // and still delivers — both planned steps end up done.
     expect(res.hires).toBe(2);
@@ -118,8 +118,8 @@ describe("grow-yourself engine", () => {
 describe("a mission belongs to its owner", () => {
   it("keeps runs separate and hides another owner's mission", async () => {
     const { createGrowRun, listGrowRunsForOwner, cancelGrowRun } = await import("@/lib/grow");
-    const mine = createGrowRun({ agentId: "a1", ownerWallet: "WALLET_A", mission: "mine", budgetUsdc: 5 });
-    createGrowRun({ agentId: "a2", ownerWallet: "WALLET_B", mission: "theirs", budgetUsdc: 5 });
+    const mine = createGrowRun({ agentId: "a1", ownerWallet: "WALLET_A", mission: "mine", budgetEth: 5 });
+    createGrowRun({ agentId: "a2", ownerWallet: "WALLET_B", mission: "theirs", budgetEth: 5 });
 
     expect(listGrowRunsForOwner("WALLET_A").map((r) => r.runId)).toContain(mine.runId);
     expect(listGrowRunsForOwner("WALLET_B").map((r) => r.runId)).not.toContain(mine.runId);
@@ -131,11 +131,11 @@ describe("a mission belongs to its owner", () => {
   it("records the caps the run was started with", async () => {
     const { createGrowRun, getGrowRun } = await import("@/lib/grow");
     const r = createGrowRun({
-      agentId: "a3", ownerWallet: "WALLET_C", mission: "capped", budgetUsdc: 9,
-      perHireCapUsdc: 3, maxHires: 4,
+      agentId: "a3", ownerWallet: "WALLET_C", mission: "capped", budgetEth: 9,
+      perHireCapEth: 3, maxHires: 4,
     });
     const back = getGrowRun(r.runId)!;
-    expect(back.perHireCapUsdc).toBe(3);
+    expect(back.perHireCapEth).toBe(3);
     expect(back.maxHires).toBe(4);
     expect(back.canceled).toBe(false);
   });
@@ -144,7 +144,7 @@ describe("a mission belongs to its owner", () => {
 describe("stopping a mission", () => {
   it("stops between steps, never mid-hire, and keeps what was already paid for", async () => {
     const { createGrowRun, cancelGrowRun, getGrowEvents } = await import("@/lib/grow");
-    const run = createGrowRun({ agentId: "stopper", ownerWallet: "W", mission: "three steps", budgetUsdc: 20 });
+    const run = createGrowRun({ agentId: "stopper", ownerWallet: "W", mission: "three steps", budgetEth: 20 });
 
     const hired: string[] = [];
     const deps: GrowDeps = {
@@ -154,24 +154,24 @@ describe("stopping a mission", () => {
           ? '[{"capability":"a","task":"one"},{"capability":"b","task":"two"},{"capability":"c","task":"three"}]'
           : "ASSEMBLED FROM WHAT WAS BOUGHT",
       search: async ({ capability }) => [
-        { agentId: `${capability}-pro`, name: `${capability} pro`, priceUsdc: 1, proofScore: 800, capabilities: [capability ?? ""] },
+        { agentId: `${capability}-pro`, name: `${capability} pro`, priceEth: 1, proofScore: 800, capabilities: [capability ?? ""] },
       ],
       hire: async ({ to }) => {
         hired.push(to);
         // The owner stops it while the FIRST hire is in flight.
         if (hired.length === 1) cancelGrowRun(run.runId, "W");
-        return { taskId: `t-${hired.length}`, status: "completed" as const, output: "work", costUsdc: 1 };
+        return { taskId: `t-${hired.length}`, status: "completed" as const, output: "work", costEth: 1 };
       },
     };
 
     const res = await runGrowMission(
-      deps, { mission: "three steps", budgetUsdc: 20, perHireCapUsdc: 5, maxHires: 3 }, run.runId,
+      deps, { mission: "three steps", budgetEth: 20, perHireCapEth: 5, maxHires: 3 }, run.runId,
     );
 
     // The in-flight hire finished and was paid — cancelling never abandons money
     // that already moved.
     expect(hired).toHaveLength(1);
-    expect(res.spentUsdc).toBe(1);
+    expect(res.spentEth).toBe(1);
     // …and the work bought is still assembled rather than thrown away.
     expect(res.deliverable).toBe("ASSEMBLED FROM WHAT WAS BOUGHT");
     const summaries = getGrowEvents(run.runId).map((e) => e.summary);
@@ -180,26 +180,26 @@ describe("stopping a mission", () => {
 
   it("a stop before any hire ends the run without spending", async () => {
     const { createGrowRun, cancelGrowRun } = await import("@/lib/grow");
-    const run = createGrowRun({ agentId: "early", ownerWallet: "W", mission: "m", budgetUsdc: 10 });
+    const run = createGrowRun({ agentId: "early", ownerWallet: "W", mission: "m", budgetEth: 10 });
     cancelGrowRun(run.runId, "W");
 
     let hires = 0;
     const deps: GrowDeps = {
       self: "early",
       think: async (p: string) => (p.includes("Return ONLY a JSON array") ? '[{"capability":"a","task":"one"}]' : "x"),
-      search: async () => [{ agentId: "a-pro", name: "a", priceUsdc: 1, proofScore: 1, capabilities: [] }],
-      hire: async () => { hires++; return { taskId: "t", status: "completed" as const, output: "o", costUsdc: 1 }; },
+      search: async () => [{ agentId: "a-pro", name: "a", priceEth: 1, proofScore: 1, capabilities: [] }],
+      hire: async () => { hires++; return { taskId: "t", status: "completed" as const, output: "o", costEth: 1 }; },
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 10, perHireCapUsdc: 5, maxHires: 1 }, run.runId);
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 10, perHireCapEth: 5, maxHires: 1 }, run.runId);
     expect(hires).toBe(0);
-    expect(res.spentUsdc).toBe(0);
+    expect(res.spentEth).toBe(0);
   });
 });
 
 describe("one mission at a time per agent", () => {
   it("reports a live run as active, so a second can be refused", async () => {
     const { createGrowRun, getActiveGrowRun, recordGrowEvent, updateGrowRun } = await import("@/lib/grow");
-    const run = createGrowRun({ agentId: "solo", ownerWallet: "W", mission: "first", budgetUsdc: 5 });
+    const run = createGrowRun({ agentId: "solo", ownerWallet: "W", mission: "first", budgetEth: 5 });
     // Fresh activity — two runs would race the same budget and the same balance.
     recordGrowEvent(run.runId, { kind: "note", summary: "working" });
     expect(getActiveGrowRun("solo")?.runId).toBe(run.runId);
@@ -212,7 +212,7 @@ describe("one mission at a time per agent", () => {
   it("does not let an abandoned run block the agent forever", async () => {
     const { createGrowRun, getActiveGrowRun, recordGrowEvent } = await import("@/lib/grow");
     const { getDb } = await import("@/lib/db");
-    const run = createGrowRun({ agentId: "stale", ownerWallet: "W", mission: "orphan", budgetUsdc: 5 });
+    const run = createGrowRun({ agentId: "stale", ownerWallet: "W", mission: "orphan", budgetEth: 5 });
     const ev = recordGrowEvent(run.runId, { kind: "note", summary: "last thing it ever did" });
 
     // A process restart can strand a run non-terminal. Backdate its last activity
@@ -238,14 +238,14 @@ describe("steps build on each other", () => {
           ? '[{"capability":"research","task":"find the facts"},{"capability":"writing","task":"write it up"}]'
           : "FINAL",
       search: async ({ capability }) => [
-        { agentId: `${capability}-pro`, name: capability ?? "", priceUsdc: 0, proofScore: 900, capabilities: [] },
+        { agentId: `${capability}-pro`, name: capability ?? "", priceEth: 0, proofScore: 900, capabilities: [] },
       ],
       hire: async ({ to, context }) => {
         seen.push(context);
-        return { taskId: `t-${to}`, status: "completed" as const, output: `OUTPUT FROM ${to}`, costUsdc: 0 };
+        return { taskId: `t-${to}`, status: "completed" as const, output: `OUTPUT FROM ${to}`, costEth: 0 };
       },
     };
-    await runGrowMission(deps, { mission: "m", budgetUsdc: 5, perHireCapUsdc: 1, maxHires: 2 });
+    await runGrowMission(deps, { mission: "m", budgetEth: 5, perHireCapEth: 1, maxHires: 2 });
 
     // The planner is told to order steps so earlier results feed later ones —
     // which only means anything if the later specialist can see them.
@@ -262,17 +262,17 @@ describe("a step doesn't die with one specialist", () => {
       think: async (p: string) =>
         p.includes("Return ONLY a JSON array") ? '[{"capability":"x","task":"do it"}]' : "FINAL",
       search: async () => [
-        { agentId: "best", name: "best", priceUsdc: 0, proofScore: 900, capabilities: [] },
-        { agentId: "second", name: "second", priceUsdc: 0, proofScore: 500, capabilities: [] },
+        { agentId: "best", name: "best", priceEth: 0, proofScore: 900, capabilities: [] },
+        { agentId: "second", name: "second", priceEth: 0, proofScore: 500, capabilities: [] },
       ],
       hire: async ({ to }) => {
         tried.push(to);
         return to === "best"
-          ? { taskId: "t1", status: "failed" as const, error: "nope", costUsdc: 0 }
-          : { taskId: "t2", status: "completed" as const, output: "done", costUsdc: 0 };
+          ? { taskId: "t1", status: "failed" as const, error: "nope", costEth: 0 }
+          : { taskId: "t2", status: "completed" as const, output: "done", costEth: 0 };
       },
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 5, perHireCapUsdc: 1, maxHires: 1 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 5, perHireCapEth: 1, maxHires: 1 });
     expect(tried).toEqual(["best", "second"]); // most proven first
     expect(res.hires).toBe(1);
   });
@@ -284,19 +284,19 @@ describe("a step doesn't die with one specialist", () => {
       think: async (p: string) =>
         p.includes("Return ONLY a JSON array") ? '[{"capability":"x","task":"do it"}]' : "FINAL",
       search: async () => [
-        { agentId: "took-the-money", name: "a", priceUsdc: 2, proofScore: 900, capabilities: [] },
-        { agentId: "would-be-next", name: "b", priceUsdc: 2, proofScore: 500, capabilities: [] },
+        { agentId: "took-the-money", name: "a", priceEth: 2, proofScore: 900, capabilities: [] },
+        { agentId: "would-be-next", name: "b", priceEth: 2, proofScore: 500, capabilities: [] },
       ],
       hire: async ({ to }) => {
         tried.push(to);
         // Paid, then delivered nothing. Hiring a replacement would spend twice
         // the per-hire cap on a single step.
-        return { taskId: "t1", status: "completed" as const, output: "", costUsdc: 2 };
+        return { taskId: "t1", status: "completed" as const, output: "", costEth: 2 };
       },
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 20, perHireCapUsdc: 2, maxHires: 1 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 20, perHireCapEth: 2, maxHires: 1 });
     expect(tried).toEqual(["took-the-money"]);
-    expect(res.spentUsdc).toBe(2);
+    expect(res.spentEth).toBe(2);
   });
 });
 
@@ -311,13 +311,13 @@ describe("seeing the cost before committing to it", () => {
           ? '[{"capability":"research","task":"find"},{"capability":"writing","task":"write"}]'
           : "FINAL",
       search: async ({ capability }) => [
-        { agentId: `${capability}-pro`, name: `${capability} pro`, priceUsdc: 2, proofScore: 900, capabilities: [] },
-        { agentId: `${capability}-alt`, name: `${capability} alt`, priceUsdc: 1, proofScore: 300, capabilities: [] },
+        { agentId: `${capability}-pro`, name: `${capability} pro`, priceEth: 2, proofScore: 900, capabilities: [] },
+        { agentId: `${capability}-alt`, name: `${capability} alt`, priceEth: 1, proofScore: 300, capabilities: [] },
       ],
       hire: async () => { hires++; throw new Error("a preview must never hire"); },
     };
 
-    const p = await previewGrowMission(deps, { mission: "m", budgetUsdc: 10, perHireCapUsdc: 4, maxHires: 2 });
+    const p = await previewGrowMission(deps, { mission: "m", budgetEth: 10, perHireCapEth: 4, maxHires: 2 });
     expect(hires).toBe(0);
     expect(p.steps.map((s) => s.pick?.agentId)).toEqual(["research-pro", "writing-pro"]); // most proven
     expect(p.steps[0].alternatives).toBe(1);
@@ -335,12 +335,12 @@ describe("seeing the cost before committing to it", () => {
           : "FINAL",
       search: async ({ capability, maxPriceUsdc }) =>
         (maxPriceUsdc ?? 0) >= 2
-          ? [{ agentId: `${capability}-pro`, name: "p", priceUsdc: 2, proofScore: 500, capabilities: [] }]
+          ? [{ agentId: `${capability}-pro`, name: "p", priceEth: 2, proofScore: 500, capabilities: [] }]
           : [],
       hire: async () => { throw new Error("a preview must never hire"); },
     };
     // Budget 5 covers two hires at 2; the third has 1 left and finds nothing.
-    const p = await previewGrowMission(deps, { mission: "m", budgetUsdc: 5, perHireCapUsdc: 2, maxHires: 3 });
+    const p = await previewGrowMission(deps, { mission: "m", budgetEth: 5, perHireCapEth: 2, maxHires: 3 });
     expect(p.steps.map((s) => s.pick !== null)).toEqual([true, true, false]);
     expect(p.estimatedUsdc).toBe(4);
   });
@@ -371,15 +371,15 @@ describe("it judges the work it bought", () => {
         review: (out) => (out.includes("junk") ? '{"ok":false,"reason":"off topic"}' : '{"ok":true,"reason":"good"}'),
       }),
       search: async () => [
-        { agentId: "sloppy", name: "sloppy", priceUsdc: 0, proofScore: 900, capabilities: [] },
-        { agentId: "solid", name: "solid", priceUsdc: 0, proofScore: 500, capabilities: [] },
+        { agentId: "sloppy", name: "sloppy", priceEth: 0, proofScore: 900, capabilities: [] },
+        { agentId: "solid", name: "solid", priceEth: 0, proofScore: 500, capabilities: [] },
       ],
       hire: async ({ to }) => {
         tried.push(to);
-        return { taskId: `t-${to}`, status: "completed" as const, output: to === "sloppy" ? "junk" : "real work", costUsdc: 0 };
+        return { taskId: `t-${to}`, status: "completed" as const, output: to === "sloppy" ? "junk" : "real work", costEth: 0 };
       },
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 5, perHireCapUsdc: 1, maxHires: 1 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 5, perHireCapEth: 1, maxHires: 1 });
     expect(tried).toEqual(["sloppy", "solid"]);
     expect(res.hires).toBe(1);
     const evs = getGrowEvents(res.run.runId);
@@ -391,15 +391,15 @@ describe("it judges the work it bought", () => {
       self: "e",
       think: brain({ plan: '[{"capability":"x","task":"do it"}]', review: () => '{"ok":false,"reason":"a bit thin"}' }),
       search: async () => [
-        { agentId: "paid", name: "paid", priceUsdc: 2, proofScore: 900, capabilities: [] },
-        { agentId: "other", name: "other", priceUsdc: 2, proofScore: 100, capabilities: [] },
+        { agentId: "paid", name: "paid", priceEth: 2, proofScore: 900, capabilities: [] },
+        { agentId: "other", name: "other", priceEth: 2, proofScore: 100, capabilities: [] },
       ],
-      hire: async ({ to }) => ({ taskId: `t-${to}`, status: "completed" as const, output: "something", costUsdc: 2 }),
+      hire: async ({ to }) => ({ taskId: `t-${to}`, status: "completed" as const, output: "something", costEth: 2 }),
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 20, perHireCapUsdc: 2, maxHires: 1 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 20, perHireCapEth: 2, maxHires: 1 });
     // Paid for once, kept, and the doubt is on the record — not silently dropped
     // (you paid) and not silently accepted (you should know).
-    expect(res.spentUsdc).toBe(2);
+    expect(res.spentEth).toBe(2);
     expect(res.hires).toBe(1);
     const review = getGrowEvents(res.run.runId).find((e) => e.kind === "review")!;
     expect(review.summary).toContain("already paid for");
@@ -414,11 +414,11 @@ describe("it judges the work it bought", () => {
         if (p.includes("deciding what is still worth doing")) return "[]";
         return "FINAL";
       },
-      search: async () => [{ agentId: "s", name: "s", priceUsdc: 0, proofScore: 1, capabilities: [] }],
-      hire: async () => ({ taskId: "t", status: "completed" as const, output: "work", costUsdc: 0 }),
+      search: async () => [{ agentId: "s", name: "s", priceEth: 0, proofScore: 1, capabilities: [] }],
+      hire: async () => ({ taskId: "t", status: "completed" as const, output: "work", costEth: 0 }),
     };
     // A broken safeguard must not discard results — it should get out of the way.
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 5, perHireCapUsdc: 1, maxHires: 1 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 5, perHireCapEth: 1, maxHires: 1 });
     expect(res.hires).toBe(1);
   });
 });
@@ -433,14 +433,14 @@ describe("it revises the plan once it sees the results", () => {
         replan: '[{"capability":"c","task":"a better second step"}]',
       }),
       search: async ({ capability }) => [
-        { agentId: `${capability}-pro`, name: capability ?? "", priceUsdc: 0, proofScore: 500, capabilities: [] },
+        { agentId: `${capability}-pro`, name: capability ?? "", priceEth: 0, proofScore: 500, capabilities: [] },
       ],
       hire: async ({ to, task }) => {
         asked.push(task);
-        return { taskId: `t-${to}`, status: "completed" as const, output: `out-${to}`, costUsdc: 0 };
+        return { taskId: `t-${to}`, status: "completed" as const, output: `out-${to}`, costEth: 0 };
       },
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 5, perHireCapUsdc: 1, maxHires: 3 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 5, perHireCapEth: 1, maxHires: 3 });
     expect(asked).toEqual(["first", "a better second step"]);
     const plans = getGrowEvents(res.run.runId).filter((e) => e.kind === "plan");
     expect(plans.some((p) => p.summary.includes("Revised the plan"))).toBe(true);
@@ -456,17 +456,17 @@ describe("it revises the plan once it sees the results", () => {
         replan: '[{"capability":"a","task":"first"},{"capability":"b","task":"second"}]',
       }),
       search: async ({ capability }) => [
-        { agentId: `${capability}-pro`, name: capability ?? "", priceUsdc: 1, proofScore: 500, capabilities: [] },
+        { agentId: `${capability}-pro`, name: capability ?? "", priceEth: 1, proofScore: 500, capabilities: [] },
       ],
       hire: async ({ to, task }) => {
         asked.push(task);
-        return { taskId: `t-${to}`, status: "completed" as const, output: `out-${to}`, costUsdc: 1 };
+        return { taskId: `t-${to}`, status: "completed" as const, output: `out-${to}`, costEth: 1 };
       },
     };
-    const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 20, perHireCapUsdc: 2, maxHires: 4 });
+    const res = await runGrowMission(deps, { mission: "m", budgetEth: 20, perHireCapEth: 2, maxHires: 4 });
     // "first" is bought and paid for; a revision must not buy it again.
     expect(asked).toEqual(["first", "second"]);
-    expect(res.spentUsdc).toBe(2);
+    expect(res.spentEth).toBe(2);
   });
 });
 
@@ -483,9 +483,9 @@ describe("a step with no specialist isn't just lost", () => {
         hire: async () => { throw new Error("nothing to hire"); },
         attempt: async (task) => `did ${task} myself`,
       },
-      { mission: "m", budgetUsdc: 5, perHireCapUsdc: 1, maxHires: 1 },
+      { mission: "m", budgetEth: 5, perHireCapEth: 1, maxHires: 1 },
     );
-    expect(res.spentUsdc).toBe(0);
+    expect(res.spentEth).toBe(0);
     expect(res.deliverable).toBe("FINAL");
     const ev = getGrowEvents(res.run.runId).find((e) => e.kind === "self")!;
     // The distinction has to survive into the record: this part had no hire,
@@ -505,7 +505,7 @@ describe("a step with no specialist isn't just lost", () => {
         hire: async () => { throw new Error("nothing to hire"); },
         attempt: async () => "some waffle",
       },
-      { mission: "m", budgetUsdc: 5, perHireCapUsdc: 1, maxHires: 1 },
+      { mission: "m", budgetEth: 5, perHireCapEth: 1, maxHires: 1 },
     );
     // Rejected by its own reviewer, so it never reaches the deliverable.
     const self = getGrowEvents(res.run.runId).find((e) => e.kind === "self")!;
@@ -521,7 +521,7 @@ describe("a step with no specialist isn't just lost", () => {
         hire: async () => { throw new Error("nothing to hire"); },
         // no `attempt` — an agent without tools behaves exactly as before
       },
-      { mission: "m", budgetUsdc: 5, perHireCapUsdc: 1, maxHires: 1 },
+      { mission: "m", budgetEth: 5, perHireCapEth: 1, maxHires: 1 },
     );
     expect(getGrowEvents(res.run.runId).some((e) => e.summary.includes("skipping this step"))).toBe(true);
   });
@@ -536,12 +536,12 @@ describe("the deliverable says what it's made of", () => {
         // A specialist exists for the first capability, nobody for the second.
         search: async ({ capability }) =>
           capability === "buyable"
-            ? [{ agentId: "pro", name: "pro", priceUsdc: 1, proofScore: 700, capabilities: [] }]
+            ? [{ agentId: "pro", name: "pro", priceEth: 1, proofScore: 700, capabilities: [] }]
             : [],
-        hire: async ({ to }) => ({ taskId: `t-${to}`, status: "completed" as const, output: "bought work", costUsdc: 1 }),
+        hire: async ({ to }) => ({ taskId: `t-${to}`, status: "completed" as const, output: "bought work", costEth: 1 }),
         attempt: async () => "in-house work",
       },
-      { mission: "m", budgetUsdc: 5, perHireCapUsdc: 2, maxHires: 2 },
+      { mission: "m", budgetEth: 5, perHireCapEth: 2, maxHires: 2 },
     );
     expect(res.hires).toBe(1);
     expect(res.selfDone).toBe(1);
@@ -563,12 +563,12 @@ describe("parallel steps", () => {
         live++; t.peak = Math.max(t.peak, live); t.order.push(to);
         await new Promise((r) => setTimeout(r, 25));
         live--;
-        return { taskId: `t-${to}`, status: "completed" as const, output: `out-${to}`, costUsdc: 1 };
+        return { taskId: `t-${to}`, status: "completed" as const, output: `out-${to}`, costEth: 1 };
       },
     };
   }
   const oneEach: GrowDeps["search"] = async ({ capability }) => [
-    { agentId: `${capability}-pro`, name: capability ?? "", priceUsdc: 1, proofScore: 500, capabilities: [] },
+    { agentId: `${capability}-pro`, name: capability ?? "", priceEth: 1, proofScore: 500, capabilities: [] },
   ];
 
   it("runs steps that declare no dependencies at the same time", async () => {
@@ -581,7 +581,7 @@ describe("parallel steps", () => {
         }),
         search: oneEach, hire,
       },
-      { mission: "m", budgetUsdc: 20, perHireCapUsdc: 2, maxHires: 3 },
+      { mission: "m", budgetEth: 20, perHireCapEth: 2, maxHires: 3 },
     );
     expect(t.peak).toBeGreaterThan(1);
     expect(res.hires).toBe(3);
@@ -600,7 +600,7 @@ describe("parallel steps", () => {
         }),
         search: oneEach, hire,
       },
-      { mission: "m", budgetUsdc: 20, perHireCapUsdc: 2, maxHires: 3 },
+      { mission: "m", budgetEth: 20, perHireCapEth: 2, maxHires: 3 },
     );
     // c can't be in the first wave — a and b are, so c comes after.
     expect(t.order.slice(0, 2).sort()).toEqual(["a-pro", "b-pro"]);
@@ -617,17 +617,17 @@ describe("parallel steps", () => {
           plan: '[{"capability":"a","task":"1","needs":[]},{"capability":"b","task":"2","needs":[]},{"capability":"c","task":"3","needs":[]},{"capability":"d","task":"4","needs":[]}]',
         }),
         search: async ({ capability }) => [
-          { agentId: `${capability}-pro`, name: capability ?? "", priceUsdc: 2, proofScore: 500, capabilities: [] },
+          { agentId: `${capability}-pro`, name: capability ?? "", priceEth: 2, proofScore: 500, capabilities: [] },
         ],
-        hire: async (o) => { const r = await hire(o); return { ...r, costUsdc: 2 }; },
+        hire: async (o) => { const r = await hire(o); return { ...r, costEth: 2 }; },
       },
-      { mission: "m", budgetUsdc: 4, perHireCapUsdc: 2, maxHires: 4 },
+      { mission: "m", budgetEth: 4, perHireCapEth: 2, maxHires: 4 },
     );
     // Concurrent hires all read "spent so far" before any has paid, so the wave
     // is sized to what the budget covers at worst case rather than trusting the
     // per-hire check to serialise.
     expect(t.peak).toBeLessThanOrEqual(2);
-    expect(res.spentUsdc).toBeLessThanOrEqual(4);
+    expect(res.spentEth).toBeLessThanOrEqual(4);
   });
 
   it("ignores a dependency on itself or on a later step", async () => {
@@ -639,7 +639,7 @@ describe("parallel steps", () => {
         think: brain({ plan: '[{"capability":"a","task":"1","needs":[1,2,99]},{"capability":"b","task":"2","needs":[]}]' }),
         search: oneEach, hire,
       },
-      { mission: "m", budgetUsdc: 20, perHireCapUsdc: 2, maxHires: 2 },
+      { mission: "m", budgetEth: 20, perHireCapEth: 2, maxHires: 2 },
     );
     // Nonsense dependencies would deadlock the scheduler; they're dropped, so
     // both steps still run.
@@ -655,9 +655,9 @@ describe("a mission stranded by a restart isn't money thrown away", () => {
     const { resumeGrowMission } = await import("@/lib/growRunner");
 
     // A run that paid for two hires and then lost its process.
-    const run = createGrowRun({ agentId: "a", ownerWallet: "W", mission: "the job", budgetUsdc: 10 });
+    const run = createGrowRun({ agentId: "a", ownerWallet: "W", mission: "the job", budgetEth: 10 });
     for (const [i, task] of [["t1", "step one"], ["t2", "step two"]] as const) {
-      recordGrowEvent(run.runId, { kind: "payment", summary: `paid`, taskId: i, amountUsdc: 2 });
+      recordGrowEvent(run.runId, { kind: "payment", summary: `paid`, taskId: i, amountEth: 2 });
       recordGrowEvent(run.runId, { kind: "result", summary: task, taskId: i, data: { preview: "short preview" } });
     }
 
@@ -675,14 +675,14 @@ describe("a mission stranded by a restart isn't money thrown away", () => {
 
     expect(res?.deliverable).toBe("DELIVERABLE FROM RECOVERED WORK");
     expect(res?.hires).toBe(2);
-    expect(res?.spentUsdc).toBe(4);      // what was already spent, not re-spent
+    expect(res?.spentEth).toBe(4);      // what was already spent, not re-spent
     expect(getGrowRun(run.runId)?.status).toBe("completed");
   });
 
   it("falls back to the stored preview when a task can't be read", async () => {
     const { createGrowRun, recordGrowEvent } = await import("@/lib/grow");
     const { resumeGrowMission } = await import("@/lib/growRunner");
-    const run = createGrowRun({ agentId: "a", ownerWallet: "W", mission: "m", budgetUsdc: 10 });
+    const run = createGrowRun({ agentId: "a", ownerWallet: "W", mission: "m", budgetEth: 10 });
     recordGrowEvent(run.runId, { kind: "result", summary: "step", taskId: "gone", data: { preview: "the preview" } });
 
     let sawPreview = false;
@@ -705,7 +705,7 @@ describe("a mission stranded by a restart isn't money thrown away", () => {
   it("refuses to resume a run that already finished", async () => {
     const { createGrowRun, updateGrowRun } = await import("@/lib/grow");
     const { resumeGrowMission } = await import("@/lib/growRunner");
-    const run = createGrowRun({ agentId: "a", ownerWallet: "W", mission: "m", budgetUsdc: 5 });
+    const run = createGrowRun({ agentId: "a", ownerWallet: "W", mission: "m", budgetEth: 5 });
     updateGrowRun(run.runId, { status: "completed" });
     const deps = {
       self: "a", think: async () => "x", search: async () => [], hire: async () => { throw new Error("no"); },
@@ -716,7 +716,7 @@ describe("a mission stranded by a restart isn't money thrown away", () => {
   it("marks a run failed when nothing is recoverable", async () => {
     const { createGrowRun, getGrowRun } = await import("@/lib/grow");
     const { resumeGrowMission } = await import("@/lib/growRunner");
-    const run = createGrowRun({ agentId: "a", ownerWallet: "W", mission: "m", budgetUsdc: 5 });
+    const run = createGrowRun({ agentId: "a", ownerWallet: "W", mission: "m", budgetEth: 5 });
     const res = await resumeGrowMission(
       { self: "a", think: async () => "x", search: async () => [], hire: async () => { throw new Error("no"); } },
       run.runId,
@@ -730,7 +730,7 @@ describe("a mission stranded by a restart isn't money thrown away", () => {
 
 describe("value for money among equals", () => {
   const plan = '[{"capability":"x","task":"do it"}]';
-  const run = (cands: { agentId: string; priceUsdc: number; proofScore: number }[], budget = 10, cap = 5) => {
+  const run = (cands: { agentId: string; priceEth: number; proofScore: number }[], budget = 10, cap = 5) => {
     const tried: string[] = [];
     return runGrowMission(
       {
@@ -739,10 +739,10 @@ describe("value for money among equals", () => {
         search: async () => cands.map((c) => ({ ...c, name: c.agentId, capabilities: [] })),
         hire: async ({ to }) => {
           tried.push(to);
-          return { taskId: `t-${to}`, status: "completed" as const, output: "work", costUsdc: cands.find((c) => c.agentId === to)!.priceUsdc };
+          return { taskId: `t-${to}`, status: "completed" as const, output: "work", costEth: cands.find((c) => c.agentId === to)!.priceEth };
         },
       },
-      { mission: "m", budgetUsdc: budget, perHireCapUsdc: cap, maxHires: 1 },
+      { mission: "m", budgetEth: budget, perHireCapEth: cap, maxHires: 1 },
     ).then((r) => ({ r, tried }));
   };
 
@@ -750,26 +750,26 @@ describe("value for money among equals", () => {
     // The case this exists for: 4 USDC for 910, or 0.40 for 890. Ranking on
     // score alone burns the whole budget on one step.
     const { r, tried } = await run([
-      { agentId: "expensive", priceUsdc: 4, proofScore: 910 },
-      { agentId: "nearly-as-good", priceUsdc: 0.4, proofScore: 890 },
+      { agentId: "expensive", priceEth: 4, proofScore: 910 },
+      { agentId: "nearly-as-good", priceEth: 0.4, proofScore: 890 },
     ]);
     expect(tried).toEqual(["nearly-as-good"]);
-    expect(r.spentUsdc).toBe(0.4);
+    expect(r.spentEth).toBe(0.4);
   });
 
   it("still pays up for a specialist that is genuinely better", async () => {
     // 400 is nowhere near 900 — cheapness must not buy a worse result.
     const { tried } = await run([
-      { agentId: "proven", priceUsdc: 4, proofScore: 900 },
-      { agentId: "cheap-and-weak", priceUsdc: 0.2, proofScore: 400 },
+      { agentId: "proven", priceEth: 4, proofScore: 900 },
+      { agentId: "cheap-and-weak", priceEth: 0.2, proofScore: 400 },
     ]);
     expect(tried).toEqual(["proven"]);
   });
 
   it("prefers the better score when two cost the same", async () => {
     const { tried } = await run([
-      { agentId: "same-price-worse", priceUsdc: 1, proofScore: 880 },
-      { agentId: "same-price-better", priceUsdc: 1, proofScore: 900 },
+      { agentId: "same-price-worse", priceEth: 1, proofScore: 880 },
+      { agentId: "same-price-better", priceEth: 1, proofScore: 900 },
     ]);
     expect(tried).toEqual(["same-price-better"]);
   });
@@ -784,25 +784,25 @@ describe("value for money among equals", () => {
           plan: '[{"capability":"a","task":"1"},{"capability":"b","task":"2"},{"capability":"c","task":"3"},{"capability":"d","task":"4"}]',
         }),
         search: async ({ capability }) => [
-          { agentId: `${capability}-premium`, name: "premium", priceUsdc: 4, proofScore: 910, capabilities: [] },
-          { agentId: `${capability}-value`, name: "value", priceUsdc: 0.5, proofScore: 880, capabilities: [] },
+          { agentId: `${capability}-premium`, name: "premium", priceEth: 4, proofScore: 910, capabilities: [] },
+          { agentId: `${capability}-value`, name: "value", priceEth: 0.5, proofScore: 880, capabilities: [] },
         ],
         hire: async ({ to }) => {
           tried.push(to);
-          return { taskId: `t-${to}`, status: "completed" as const, output: "work", costUsdc: to.endsWith("-value") ? 0.5 : 4 };
+          return { taskId: `t-${to}`, status: "completed" as const, output: "work", costEth: to.endsWith("-value") ? 0.5 : 4 };
         },
       },
-      { mission: "m", budgetUsdc: 4, perHireCapUsdc: 4, maxHires: 4 },
+      { mission: "m", budgetEth: 4, perHireCapEth: 4, maxHires: 4 },
     );
     expect(res.hires).toBe(4);
     expect(tried.every((t) => t.endsWith("-value"))).toBe(true);
-    expect(res.spentUsdc).toBe(2);
+    expect(res.spentEth).toBe(2);
   });
 
   it("records that a cheaper near-equal was a deliberate choice", async () => {
     const { r } = await run([
-      { agentId: "expensive", priceUsdc: 4, proofScore: 910 },
-      { agentId: "nearly-as-good", priceUsdc: 0.4, proofScore: 890 },
+      { agentId: "expensive", priceEth: 4, proofScore: 910 },
+      { agentId: "nearly-as-good", priceEth: 0.4, proofScore: 890 },
     ]);
     const hire = getGrowEvents(r.run.runId).find((e) => e.kind === "hire")!;
     expect(hire.summary).toContain("within 5% of the best available, and cheaper");
@@ -810,8 +810,8 @@ describe("value for money among equals", () => {
 
   it("falls back to price when nothing has a score yet", async () => {
     const { tried } = await run([
-      { agentId: "unproven-pricey", priceUsdc: 3, proofScore: 0 },
-      { agentId: "unproven-cheap", priceUsdc: 1, proofScore: 0 },
+      { agentId: "unproven-pricey", priceEth: 3, proofScore: 0 },
+      { agentId: "unproven-cheap", priceEth: 1, proofScore: 0 },
     ]);
     expect(tried).toEqual(["unproven-cheap"]);
   });
@@ -827,15 +827,15 @@ describe("the deliverable itself is provable", () => {
         self: "e",
         think: brain({ plan: '[{"capability":"research","task":"one"},{"capability":"writing","task":"two"}]' }),
         search: async ({ capability }) => [
-          { agentId: `${capability}-pro`, name: `${capability} pro`, priceUsdc: 1, proofScore: 800, capabilities: [] },
+          { agentId: `${capability}-pro`, name: `${capability} pro`, priceEth: 1, proofScore: 800, capabilities: [] },
         ],
         hire: async ({ to }) => {
           tried.push(to);
-          return { taskId: `task-${to}`, status: "completed" as const, output: `output of ${to}`, costUsdc: 1 };
+          return { taskId: `task-${to}`, status: "completed" as const, output: `output of ${to}`, costEth: 1 };
         },
         fetchOutput: async (taskId) => `output of ${taskId.replace("task-", "")}`,
       },
-      { mission: "the brief", budgetUsdc: 10, perHireCapUsdc: 2, maxHires: 2 },
+      { mission: "the brief", budgetEth: 10, perHireCapEth: 2, maxHires: 2 },
     );
     const { getGrowRun } = await import("@/lib/grow");
     return { res, run: getGrowRun(res.run.runId)! };
@@ -849,7 +849,7 @@ describe("the deliverable itself is provable", () => {
     expect(m.entries).toHaveLength(2);
     expect(m.entries[0].prevHash).toBeNull();
     expect(m.entries[1].prevHash).toBe(m.entries[0].hash);
-    expect(m.totals).toEqual({ hires: 2, inHouse: 0, spentUsdc: 2 });
+    expect(m.totals).toEqual({ hires: 2, inHouse: 0, spentEth: 2 });
     expect(verifyMissionManifest(m).ok).toBe(true);
   });
 
@@ -880,7 +880,7 @@ describe("the deliverable itself is provable", () => {
     const m = run.manifest as import("@/lib/growReceipt").MissionManifest;
 
     const cheapened = structuredClone(m);
-    cheapened.entries[0].costUsdc = 0;
+    cheapened.entries[0].costEth = 0;
     expect(verifyMissionManifest(cheapened).chainIntact).toBe(false);
 
     const impersonated = structuredClone(m);
@@ -900,13 +900,13 @@ describe("the deliverable itself is provable", () => {
         think: brain({ plan: '[{"capability":"buyable","task":"one"},{"capability":"rare","task":"two"}]' }),
         search: async ({ capability }) =>
           capability === "buyable"
-            ? [{ agentId: "pro", name: "pro", priceUsdc: 1, proofScore: 700, capabilities: [] }]
+            ? [{ agentId: "pro", name: "pro", priceEth: 1, proofScore: 700, capabilities: [] }]
             : [],
-        hire: async () => ({ taskId: "task-pro", status: "completed" as const, output: "bought", costUsdc: 1 }),
+        hire: async () => ({ taskId: "task-pro", status: "completed" as const, output: "bought", costEth: 1 }),
         attempt: async () => "made in-house",
         fetchOutput: async () => "bought",
       },
-      { mission: "m", budgetUsdc: 5, perHireCapUsdc: 2, maxHires: 2 },
+      { mission: "m", budgetEth: 5, perHireCapEth: 2, maxHires: 2 },
     );
     const { getGrowRun } = await import("@/lib/grow");
     const m = getGrowRun(res.run.runId)!.manifest as import("@/lib/growReceipt").MissionManifest;
@@ -917,7 +917,7 @@ describe("the deliverable itself is provable", () => {
     // parts nobody witnessed.
     expect(inHouse.taskId).toBeUndefined();
     expect(inHouse.receiptUrl).toBeUndefined();
-    expect(inHouse.costUsdc).toBe(0);
+    expect(inHouse.costEth).toBe(0);
     expect(verifyMissionManifest(m).inHouseSteps).toBe(1);
   });
 
@@ -926,11 +926,11 @@ describe("the deliverable itself is provable", () => {
       {
         self: "e",
         think: brain({ plan: '[{"capability":"x","task":"one"}]' }),
-        search: async () => [{ agentId: "pro", name: "pro", priceUsdc: 0, proofScore: 500, capabilities: [] }],
-        hire: async () => ({ taskId: "t1", status: "completed" as const, output: "a long real output", costUsdc: 0 }),
+        search: async () => [{ agentId: "pro", name: "pro", priceEth: 0, proofScore: 500, capabilities: [] }],
+        hire: async () => ({ taskId: "t1", status: "completed" as const, output: "a long real output", costEth: 0 }),
         fetchOutput: async () => null,   // can't be re-read
       },
-      { mission: "m", budgetUsdc: 5, perHireCapUsdc: 1, maxHires: 1 },
+      { mission: "m", budgetEth: 5, perHireCapEth: 1, maxHires: 1 },
     );
     const { getGrowRun } = await import("@/lib/grow");
     const m = getGrowRun(res.run.runId)!.manifest as import("@/lib/growReceipt").MissionManifest;

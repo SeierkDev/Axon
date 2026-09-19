@@ -4,6 +4,7 @@ import { apiError } from "@/lib/apiError";
 import { withRequestContext } from "@/lib/withRequestContext";
 import { recordAuditEvent } from "@/lib/audit";
 import { cancelGrowRun, getGrowRun, recordGrowEvent } from "@/lib/grow";
+import { sameAddress } from "@/lib/address";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export async function POST(
     const { runId } = await params;
     const existing = getGrowRun(runId);
     // Same shape as a miss for someone else's mission — don't confirm it exists.
-    if (!existing || existing.ownerWallet !== auth.user.walletAddress) {
+    if (!existing || !sameAddress(existing.ownerWallet, auth.user.walletAddress)) {
       return apiError("NOT_FOUND", `Mission '${runId}' not found`, 404);
     }
 

@@ -19,7 +19,7 @@ function suggestPrompt(capabilities: string[]): string {
   if (cap.includes("crypto") || cap.includes("defi")) return "Explain how automated market makers work in DeFi.";
   if (cap.includes("coding") || cap.includes("development")) return "Review this function: function add(a, b) { return a + b; }";
   if (cap.includes("writing") || cap.includes("content")) return "Write a one-paragraph intro for a developer tool landing page.";
-  if (cap.includes("onchain") || cap.includes("blockchain")) return "What does a Solana transaction signature look like and what does it prove?";
+  if (cap.includes("onchain") || cap.includes("blockchain")) return "What does a transaction hash look like and what does it prove?";
   if (cap.includes("strategy")) return "What are three ways an AI agent could reduce its API costs?";
   if (cap.includes("seo")) return "List five on-page SEO factors that most affect ranking.";
   if (cap.includes("social")) return "Write a tweet announcing an open-source AI agent marketplace.";
@@ -68,7 +68,7 @@ export default function TestAgent({ agentId, agentName, capabilities, hasExterna
       if (!res.ok) {
         const data = await res.json() as { message?: string; error?: string };
         const msg = data.message ?? data.error ?? "Test failed";
-        setError(res.status === 429 ? "You've used your 3 free demo calls. Connect your Phantom wallet to continue." : msg);
+        setError(res.status === 429 ? "You've used your 3 free demo calls. Connect your wallet to continue." : msg);
         setStep("error");
         return;
       }

@@ -35,8 +35,8 @@ function completedTask(to: string, ageMs = 0): void {
 function settlementUsdc(to: string, amount: number): void {
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, fee_amount, currency, created_at, settled_at)
-       VALUES (?, NULL, 'requester', ?, ?, 'completed', 0, 'USDC', ?, ?)`
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, fee_amount, currency, created_at, settled_at)
+       VALUES (?, NULL, 'requester', ?, ?, 'completed', 0, 'ETH', ?, ?)`
     )
     .run(randomUUID(), to, amount, new Date().toISOString(), new Date().toISOString());
 }
@@ -79,7 +79,7 @@ describe("Axon Open World — city model", () => {
     const pe = snap.plots.find((p) => p.agentId === earner.agentId)!;
     const pi = snap.plots.find((p) => p.agentId === idle.agentId)!;
 
-    expect(pe.usdcEarned).toBe(500);
+    expect(pe.ethEarned).toBe(500);
     expect(pe.tasksCompleted).toBe(2);
     expect(pe.size).toBeGreaterThan(pi.size); // earnings → bigger footprint
     expect(pe.height).toBeGreaterThan(pi.height); // throughput → taller
@@ -182,26 +182,26 @@ describe("Axon Open World — live features (streaks, receipts wall, weekly top)
     getDb()
       .prepare(
         `INSERT INTO tasks (task_id, from_agent, to_agent, task, payment, status, created_at, started_at, completed_at)
-         VALUES (?, ?, ?, 'CONFIDENTIAL work item', '0.25 USDC', 'completed', ?, ?, ?)`
+         VALUES (?, ?, ?, 'CONFIDENTIAL work item', '0.00025 ETH', 'completed', ?, ?, ?)`
       )
       .run("wall-task-1", from.agentId, to.agentId, new Date().toISOString(), new Date().toISOString(), new Date().toISOString());
 
     const wall = getAgentWallReceipts(to.agentId);
     expect(wall.length).toBe(1);
-    expect(wall[0]).toMatchObject({ taskId: "wall-task-1", counterparty: from.name, payment: "0.25 USDC" });
+    expect(wall[0]).toMatchObject({ taskId: "wall-task-1", counterparty: from.name, payment: "0.00025 ETH" });
     expect(JSON.stringify(wall)).not.toContain("CONFIDENTIAL");
   });
 
   it("snapshot weeklyTop ranks by 7-day completions and carries the listed price", () => {
     const busy = makeAgent("Research");
-    getDb().prepare("UPDATE agents SET price = '0.30 USDC' WHERE agent_id = ?").run(busy.agentId);
+    getDb().prepare("UPDATE agents SET price = '0.0003 ETH' WHERE agent_id = ?").run(busy.agentId);
     // Clearly the week's busiest — the shared test DB holds other completions.
     for (let i = 0; i < 25; i++) completedTask(busy.agentId, i * 60_000);
 
     _clearWorldCache();
     const snap = getWorldSnapshot();
     expect(snap.weeklyTop.length).toBeLessThanOrEqual(3);
-    expect(snap.weeklyTop[0]).toMatchObject({ agentId: busy.agentId, name: busy.name, price: "0.30 USDC" });
+    expect(snap.weeklyTop[0]).toMatchObject({ agentId: busy.agentId, name: busy.name, price: "0.0003 ETH" });
     expect(snap.weeklyTop[0].tasks7d).toBeGreaterThanOrEqual(25);
     for (let i = 1; i < snap.weeklyTop.length; i++) {
       expect(snap.weeklyTop[i - 1].tasks7d).toBeGreaterThanOrEqual(snap.weeklyTop[i].tasks7d);

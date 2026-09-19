@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { defineSplits, getSplitsForTask, computeSplitAmounts } from "@/lib/escrowSplits";
 import { getTaskById } from "@/lib/tasks";
-import { getPaymentByTaskId, parsePriceToSol } from "@/lib/payments";
+import { getPaymentByTaskId, parsePriceToEth } from "@/lib/payments";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { apiError, type ApiErrorCode } from "@/lib/apiError";
 import { defineSplitsSchema, parseBody } from "@/lib/schemas";
 import { withRequestContext } from "@/lib/withRequestContext";
+import { toWei, weiToEth } from "@/lib/money";
 
 const RATE_LIMIT = 30;
 const RATE_WINDOW_MS = 60_000;
@@ -22,7 +23,11 @@ function splitsView(taskId: string) {
   const splits = getSplitsForTask(taskId);
   const payment = getPaymentByTaskId(taskId);
   const payouts = payment
-    ? computeSplitAmounts(payment.amountSol, splits).map((p) => ({ ...p, currency: payment.currency }))
+    ? computeSplitAmounts(toWei(payment.amountEth) ?? 0n, splits).map((p) => ({
+        agentId: p.agentId,
+        amount: weiToEth(p.wei),
+        currency: payment.currency,
+      }))
     : [];
   return { taskId, splits, payouts };
 }
@@ -73,7 +78,7 @@ async function handlePost(req: NextRequest, { params }: { params: Promise<{ task
   }
 
   // Splits divide an escrowed payment — a free task has nothing to distribute.
-  if (parsePriceToSol(task.payment) === null) {
+  if (parsePriceToEth(task.payment) === null) {
     return apiError("VALIDATION_ERROR", "Splits require a paid task, this task has no payment to divide", 400);
   }
 

@@ -11,7 +11,7 @@ import { createAgent } from "@/lib/agents";
 import type { Agent } from "@/sdk/types";
 import { NextRequest } from "next/server";
 
-const TEST_WALLET = "11111111111111111111111111111111";
+const TEST_WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let counter = 0;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -243,7 +243,7 @@ describe("recommendPaymentPath", () => {
 
   it("returns mpp for USDC agent with open channel and high call volume", () => {
     const rec = recommendPaymentPath({
-      agentPrice: "1 USDC",
+      agentPrice: "0.001 ETH",
       hasOpenMppChannel: true,
       expectedCallsPerDay: 10,
     });
@@ -253,31 +253,28 @@ describe("recommendPaymentPath", () => {
 
   it("returns mpp for USDC agent with open channel and low call volume", () => {
     const rec = recommendPaymentPath({
-      agentPrice: "1 USDC",
+      agentPrice: "0.001 ETH",
       hasOpenMppChannel: true,
       expectedCallsPerDay: 2,
     });
     expect(rec.protocol).toBe("mpp");
     expect(rec.reason).not.toMatch(/calls\/day/);
-    expect(rec.priceString).toBe("1 USDC");
+    expect(rec.priceString).toBe("0.001 ETH");
   });
 
   it("returns x402 for USDC agent without an open channel", () => {
     const rec = recommendPaymentPath({
-      agentPrice: "1 USDC",
+      agentPrice: "0.001 ETH",
       hasOpenMppChannel: false,
     });
     expect(rec.protocol).toBe("x402");
     expect(rec.reason).toMatch(/No open MPP channel/);
   });
 
-  it("returns x402 for SOL-priced agent", () => {
-    const rec = recommendPaymentPath({
-      agentPrice: "0.05 SOL",
-      hasOpenMppChannel: true,
-    });
+  it("returns x402 when there is no channel to use", () => {
+    const rec = recommendPaymentPath({ agentPrice: "0.05 ETH", hasOpenMppChannel: false });
     expect(rec.protocol).toBe("x402");
-    expect(rec.reason).toMatch(/SOL/);
+    expect(rec.reason).toMatch(/No open MPP channel/);
   });
 });
 
@@ -329,12 +326,12 @@ describe("getNetworkStats", () => {
     expect(typeof stats.tasks.successRate).toBe("number");
 
     expect(stats.payments).toBeDefined();
-    expect(typeof stats.payments.totalUsdcTransacted).toBe("number");
+    expect(typeof stats.payments.totalEthTransacted).toBe("number");
     expect(typeof stats.payments.totalTxns).toBe("number");
 
     expect(typeof stats.tasks.weeklyCompleted).toBe("number");
     expect(typeof stats.tasks.weeklySuccessRate).toBe("number");
-    expect(typeof stats.payments.weeklyUsdcTransacted).toBe("number");
+    expect(typeof stats.payments.weeklyEthTransacted).toBe("number");
 
     expect(Array.isArray(stats.topAgents)).toBe(true);
     expect(Array.isArray(stats.topCapabilities)).toBe(true);
@@ -412,7 +409,7 @@ describe("getDailyStats", () => {
       date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       tasksCompleted: expect.any(Number),
       tasksFailed: expect.any(Number),
-      usdcTransacted: expect.any(Number),
+      ethTransacted: expect.any(Number),
       newAgents: expect.any(Number),
     });
   });

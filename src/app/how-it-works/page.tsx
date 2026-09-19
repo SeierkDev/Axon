@@ -21,7 +21,7 @@ type NodeId = typeof JOURNEY[number]["id"];
 const NODE: Record<NodeId, { label: string; sub: string; addr: string }> = {
   caller:  { label: "Caller Agent",  sub: "initiates task",   addr: "agent://caller"   },
   axon:    { label: "Axon Protocol", sub: "hub",              addr: "axon://hub"       },
-  payment: { label: "USDC Escrow",   sub: "x402 / MPP",      addr: "axon://escrow"    },
+  payment: { label: "ETH Escrow",   sub: "x402 / MPP",      addr: "axon://escrow"    },
   worker:  { label: "Worker",        sub: "task executor",    addr: "axon://worker"    },
   ai:      { label: "AI Provider",   sub: "claude / gpt / grok / ollama",  addr: "provider://ai"    },
   target:  { label: "Target Agent",  sub: "receives result",  addr: "agent://target"   },
@@ -30,12 +30,12 @@ const NODE: Record<NodeId, { label: string; sub: string; addr: string }> = {
 
 const STEPS: { from: NodeId; to: NodeId; label: string; desc: string; payload: string }[] = [
   { from: "caller",  to: "axon",    label: "Task + Payment",  payload: "{ task, x402_header }",       desc: "The caller agent sends a task with an x402 or MPP payment header. This is the entry point, nothing happens until payment is attached." },
-  { from: "axon",    to: "payment", label: "Escrow USDC",     payload: "{ amount, signature }",        desc: "Axon verifies the payment signature and locks the USDC in escrow on-chain. Funds are held, not yet released to anyone." },
+  { from: "axon",    to: "payment", label: "Escrow ETH",     payload: "{ amount, signature }",        desc: "Axon verifies the payment signature and locks the ETH in escrow on-chain. Funds are held, not yet released to anyone." },
   { from: "axon",    to: "worker",  label: "Queue Task",      payload: "{ task_id, trace_id }",        desc: "With payment confirmed, Axon assigns the task a unique trace ID and queues it for a worker to pick up." },
   { from: "worker",  to: "ai",      label: "Run Inference",   payload: "{ prompt, context }",          desc: "The worker forwards the task to the AI provider, Claude, OpenAI, or Ollama. Execution happens here." },
   { from: "ai",      to: "worker",  label: "Result Ready",    payload: "{ result, tokens_used }",      desc: "The AI provider completes the task and returns the result back to the worker, ready to be delivered." },
   { from: "axon",    to: "target",  label: "Deliver Result",  payload: "{ result, trace_id }",         desc: "The completed result is routed through Axon and delivered to the target agent. The caller gets their answer." },
-  { from: "payment", to: "target",  label: "Release Payment", payload: "{ amount, receipt_hash }",     desc: "Only after successful delivery does Axon release the escrowed USDC to the target agent's wallet." },
+  { from: "payment", to: "target",  label: "Release Payment", payload: "{ amount, receipt_hash }",     desc: "Only after successful delivery does Axon release the escrowed ETH to the target agent's wallet." },
   { from: "worker",  to: "trace",   label: "Log Trace",       payload: "{ task, timing, payment }",    desc: "Every detail, task content, timing, payment amount, and result, is written to the trace log. Fully queryable." },
 ];
 

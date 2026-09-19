@@ -6,13 +6,13 @@ import { payForBuild } from "@/lib/buildPaymentClient";
 import MarkdownOutput from "@/components/MarkdownOutput";
 
 // Close the loop: hire an agent right here. Free-lane agents run immediately;
-// paid agents settle a single on-chain USDC payment (x402) first — pay with
-// Phantom, then the same anonymous hire runs. Either way we poll the result with
+// paid agents settle a single on-chain ETH payment (x402) first — pay with
+// MetaMask, then the same anonymous hire runs. Either way we poll the result with
 // the returned claimToken and the hire settles into a real receipt that feeds
 // the agent's Proof Score, so discovery → reputation → work → reputation comes
 // full circle.
 //
-// In-browser payment covers USDC-priced agents. A SOL price (or missing wallet
+// In-browser payment covers ETH-priced agents. A SOL price (or missing wallet
 // config) falls back to the API/MCP, which pay per task.
 
 type Phase = "idle" | "hiring" | "running" | "done" | "error";
@@ -20,22 +20,22 @@ type Phase = "idle" | "hiring" | "running" | "done" | "error";
 const MAX_POLLS = 45; // ~90s at 2s intervals
 const POLL_MS = 2000;
 
-// Parse a USDC price like "0.25 USDC" → 0.25. null for SOL/unparseable prices.
-function parseUsdc(price?: string | null): number | null {
-  const m = (price ?? "").trim().match(/^(\d+(?:\.\d{1,6})?)\s*USDC$/i);
+// Parse an ETH price like "0.25 ETH" → 0.25. null for SOL/unparseable prices.
+function parsePrice(price?: string | null): number | null {
+  const m = (price ?? "").trim().match(/^(\d+(?:\.\d{1,6})?)\s*ETH$/i);
   if (!m) return null;
   const n = Number(m[1]);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 // Turn a payForBuild error code into something a hirer can act on.
-function payErrorMessage(msg: string, usdcAmount: number): string {
-  if (msg === "PHANTOM_NOT_FOUND") return "No Solana wallet found. Install Phantom to pay and hire in-browser.";
-  if (msg.startsWith("INSUFFICIENT_USDC")) {
+function payErrorMessage(msg: string, ethAmount: number): string {
+  if (msg === "WALLET_NOT_FOUND") return "No wallet found in this browser. Install one to pay and hire here.";
+  if (msg.startsWith("INSUFFICIENT_FUNDS")) {
     const have = msg.split(":")[1];
-    return `Not enough USDC, this costs ${usdcAmount} USDC, but your wallet only has ${have ?? "0"}. Add USDC and try again.`;
+    return `Not enough ETH, this costs ${ethAmount} ETH, but your wallet only has ${have ?? "0"}. Add ETH and try again.`;
   }
-  if (msg === "INSUFFICIENT_SOL") return "Your wallet needs a little SOL to cover the Solana network fee. Add some and try again.";
+  
   if (msg === "PAYMENT_FAILED") return "The payment didn't go through, you weren't charged. Try again.";
   if (/reject|declin|cancel/i.test(msg)) return "Payment cancelled.";
   return "Couldn't complete the payment. Try again.";
@@ -71,10 +71,12 @@ export default function HirePanel({
   // unmounted component, no orphaned timers.
   useEffect(() => () => { cancelled.current = true; }, []);
 
-  const usdcAmount = parseUsdc(price);
-  // In-browser payment needs a USDC price AND the receiver + RPC config. Anything
+  const ethAmount = parsePrice(price);
+  // In-browser payment needs an ETH price AND the receiver + RPC config. Anything
   // else (SOL price, unset env) keeps the API/MCP fallback.
-  const canPayInBrowser = isPaid && usdcAmount !== null && Boolean(receiver) && Boolean(rpcUrl);
+  // No RPC needed: the wallet sends the transaction itself. Gating on one would hide the pay
+  // button whenever that variable happened to be unset, which is not a reason to hide it.
+  const canPayInBrowser = isPaid && ethAmount !== null && Boolean(receiver);
 
   async function poll(id: string, claimToken: string, attempt: number) {
     if (cancelled.current) return;
@@ -169,7 +171,7 @@ export default function HirePanel({
 
   async function hirePaid() {
     if (!task.trim() || phase === "hiring" || phase === "running") return;
-    if (usdcAmount === null || !receiver || !rpcUrl) return;
+    if (ethAmount === null || !receiver) return;
     cancelled.current = false;
     setPhase("hiring");
     setError(null);
@@ -182,7 +184,7 @@ export default function HirePanel({
         setHint("Confirm the payment in your wallet…");
         // The receiver is the Axon treasury — the server re-verifies this payment
         // on-chain (amount, currency, and that `payer` signed it) before running.
-        const { signature, payer } = await payForBuild({ rpcUrl, treasury: receiver, usdcAmount });
+        const { signature, payer } = await payForBuild({ rpcUrl, treasury: receiver, ethAmount });
         if (cancelled.current) return;
         paid.current = { paymentSignature: signature, payerWallet: payer };
         justPaid = true;
@@ -191,7 +193,7 @@ export default function HirePanel({
       await submit(paid.current);
     } catch (e) {
       if (cancelled.current) return;
-      setError(payErrorMessage(e instanceof Error ? e.message : "", usdcAmount));
+      setError(payErrorMessage(e instanceof Error ? e.message : "", ethAmount));
       setPhase("error");
     } finally {
       setHint(null);
@@ -263,7 +265,7 @@ export default function HirePanel({
             </button>
             <span className="text-[11px] text-gray-400 dark:text-gray-500">
               {payAndHire
-                ? "Pay with Phantom · leaves a verifiable receipt · payment is the authorization"
+                ? "Pay with MetaMask · leaves a verifiable receipt · payment is the authorization"
                 : "Runs immediately · leaves a verifiable receipt · 3 free hires"}
             </span>
           </div>

@@ -37,7 +37,7 @@ export interface PublicReceipt {
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
-  /** The agreed payment terms (e.g. "0.25 USDC") — null for free-route tasks. */
+  /** The agreed payment terms (e.g. "0.25 ETH") — null for free-route tasks. */
   payment: string | null;
   specHash: string | null;
   outputHash: string | null;
@@ -77,11 +77,11 @@ export function getPublicReceipt(taskId: string): PublicReceipt | null {
 
   const pay = db
     .prepare(
-      `SELECT amount_sol, currency, status, signature, settled_at
+      `SELECT amount_eth, currency, status, signature, settled_at
        FROM transactions WHERE task_id = ? ORDER BY (incoming_signature IS NULL) ASC, created_at ASC LIMIT 1`,
     )
     .get(taskId) as
-    | { amount_sol: number; currency: string; status: string; signature: string | null; settled_at: string | null }
+    | { amount_eth: number; currency: string; status: string; signature: string | null; settled_at: string | null }
     | undefined;
 
   const names = (id: string): string | null => {
@@ -107,7 +107,7 @@ export function getPublicReceipt(taskId: string): PublicReceipt | null {
     specVerified: spec && spec.committed ? spec.matches : null,
     settlement: pay
       ? {
-          amount: pay.amount_sol,
+          amount: pay.amount_eth,
           currency: pay.currency,
           status: pay.status,
           signature: pay.signature,
@@ -169,7 +169,7 @@ export function getReceipt(taskId: string): Receipt {
         taskId: paymentRow.task_id as string ?? undefined,
         fromAgent: paymentRow.from_agent as string,
         toAgent: paymentRow.to_agent as string,
-        amountSol: paymentRow.amount_sol as number,
+        amountEth: paymentRow.amount_eth as number,
         currency: paymentRow.currency as string,
         status: paymentRow.status as Payment["status"],
         signature: paymentRow.signature as string ?? undefined,
@@ -220,7 +220,7 @@ export function getReceipt(taskId: string): Receipt {
  * The work an agent has actually done, as public receipts, newest first.
  *
  * The profile has always shown an agent's track record as totals — jobs
- * completed, success rate, USDC earned — and asked you to believe them. Every one
+ * completed, success rate, ETH earned — and asked you to believe them. Every one
  * of those jobs already has a public receipt; this is what lets the page show the
  * jobs instead of just counting them.
  *

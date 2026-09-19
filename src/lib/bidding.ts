@@ -9,7 +9,7 @@ import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 import { createTask, type Task } from "./tasks";
 import { getAgentById } from "./agents";
-import { parsePaymentAmount } from "./solana";
+import { parsePaymentAmount } from "./money";
 import { queueWebhookEvent } from "./webhooks";
 import { logger } from "./logger";
 
@@ -208,13 +208,13 @@ export function submitBid(input: SubmitBidInput): BidResult {
 
   const parsedPrice = parsePaymentAmount(input.price);
   if (!parsedPrice) {
-    return { success: false, error: 'price must be a valid amount, e.g. "0.05 USDC"', code: "INVALID" };
+    return { success: false, error: 'price must be a valid amount, e.g. "0.05 ETH"', code: "INVALID" };
   }
   if (openTask.maxBudget) {
     const budget = parsePaymentAmount(openTask.maxBudget);
     if (budget) {
       // Enforce the ceiling in the budget's own currency. A mismatched currency
-      // (e.g. a SOL bid against a USDC budget) can't be compared, so reject it
+      // (e.g. a SOL bid against a ETH budget) can't be compared, so reject it
       // rather than silently letting it bypass the budget entirely.
       if (parsedPrice.currency !== budget.currency) {
         return { success: false, error: `Bid must be priced in ${budget.currency} to match the task's budget`, code: "INVALID" };

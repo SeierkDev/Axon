@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiKey } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { getGrowRun, getGrowEvents, getGrowSpent } from "@/lib/grow";
+import { sameAddress } from "@/lib/address";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,17 +22,17 @@ export async function GET(
 
   const { runId } = await params;
   const run = getGrowRun(runId);
-  if (!run || run.ownerWallet !== auth.user.walletAddress) {
+  if (!run || !sameAddress(run.ownerWallet, auth.user.walletAddress)) {
     return apiError("NOT_FOUND", `Mission '${runId}' not found`, 404);
   }
 
   const events = getGrowEvents(runId);
-  const spentUsdc = getGrowSpent(runId);
+  const spentEth = getGrowSpent(runId);
   return NextResponse.json({
     run,
     events,
-    spentUsdc,
-    remainingUsdc: Math.round((run.budgetUsdc - spentUsdc) * 10000) / 10000,
+    spentEth,
+    remainingEth: Math.round((run.budgetEth - spentEth) * 10000) / 10000,
     hires: events.filter((e) => e.kind === "result").length,
     // Bought vs made in-house — the deliverable's provenance, not just its size.
     selfDone: events.filter((e) => e.kind === "self" && (e.data as { ok?: boolean } | undefined)?.ok === true).length,

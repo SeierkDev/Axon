@@ -117,7 +117,7 @@ export async function runOrchestration(agent: Agent, task: Task, opts: Orchestra
       hire = createHiredTask(agent.agentId, routed.agent.agentId, step.task, hireContext);
     } catch (err) {
       // budget cap, insufficient balance, or no worker — skip this part, keep going.
-      // A brand-new orchestrator with no earned USDC yet hits this on every priced
+      // A brand-new orchestrator with no earned ETH yet hits this on every priced
       // hire and quietly answers solo, so surface why rather than failing silently.
       logger.info("orchestration.hire_skipped", "Could not hire a specialist, skipping step", {
         taskId: task.taskId,

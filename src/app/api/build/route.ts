@@ -1,5 +1,5 @@
 // POST /api/build
-// Verifies the USDC payment, then runs the 6-agent Axon Build pipeline IN THE
+// Verifies the ETH payment, then runs the 6-agent Axon Build pipeline IN THE
 // BACKGROUND (decoupled from this request) and returns a buildId immediately.
 // The client polls GET /api/build/status/<buildId> for progress + the result.
 // Decoupling avoids Railway's HTTP/2 proxy resetting a ~5-minute SSE stream.
@@ -19,15 +19,15 @@ import {
 } from "@/lib/buildStore";
 import { createBuildJob, getBuildJobBySignature } from "@/lib/buildJobs";
 import { runBuildPipeline, isBuildRunning } from "@/lib/buildPipeline";
-import { checkIncomingPayment, parsePaymentAmount } from "@/lib/solana";
+import { checkIncomingPayment, parsePaymentAmount } from "@/lib/money";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
 import { randomUUID } from "node:crypto";
 
 export const runtime = "nodejs";
 
-// Payment gate: each generation requires a verified USDC payment to the treasury.
-// Keep BUILD_PRICE in sync with BUILD_PRICE_USDC on the client (BuildClient.tsx).
-const BUILD_PRICE = "5 USDC";
+// Payment gate: each generation requires a verified ETH payment to the treasury.
+// Keep BUILD_PRICE in sync with BUILD_PRICE_ETH on the client (BuildClient.tsx).
+const BUILD_PRICE = "5 ETH";
 const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 60 * 60 * 1000; // anti-abuse cap (payment is the real gate)
 const MAX_PROMPT_CHARS = 300;

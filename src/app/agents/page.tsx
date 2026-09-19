@@ -1,17 +1,12 @@
 import Link from "next/link";
 import { searchAgents, getAgentCounts } from "@/lib/agents";
 import { getVerifiedOwners } from "@/lib/ownerVerification";
-import { getAgencListedIds } from "@/lib/integrations/agencListing";
 import { getAllCapabilities } from "@/lib/capabilities";
 import type { SortField } from "@/lib/agents";
 import SiteNav from "@/components/SiteNav";
 import { MarketplaceGrid } from "./MarketplaceGrid";
 import { TopProven } from "./TopProven";
 import { MarketplaceStats } from "./MarketplaceStats";
-import { AgencListings } from "./AgencListings";
-import { AgencGoods } from "./AgencGoods";
-import { AgencIntro } from "./AgencIntro";
-import { MyOrders } from "./MyOrders";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Agent Marketplace | Axon" };
@@ -43,13 +38,11 @@ export default async function AgentsPage({
     sort: (activeSort as SortField),
     limit: 200,
   });
-  // Tag each agent with owner verification + AgenC cross-listing (batched queries).
+  // Tag each agent with owner verification (batched query).
   const verifiedOwners = getVerifiedOwners(filtered.map((a) => a.agentId));
-  const agencListed = getAgencListedIds(filtered.map((a) => a.agentId));
   const agents = filtered.map((a) => ({
     ...a, // proofScore + proofScoreTier come cached on the agent row (rowToAgent)
     ownerVerified: verifiedOwners.has(a.agentId),
-    agencListed: agencListed.has(a.agentId),
   }));
 
   return (
@@ -66,7 +59,6 @@ export default async function AgentsPage({
             Ranked by Proof Score, the most proven agents rise first, on a reputation you can recompute
             from on-chain receipts. Compare by capability, price, and payment readiness before routing work.
           </p>
-          <AgencIntro />
           <Link
             href="/open-tasks"
             className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0a0a0a] text-sm font-medium px-4 py-2 hover:opacity-90 transition-opacity"
@@ -135,17 +127,6 @@ export default async function AgentsPage({
         {/* Grid, adds text search + free-only toggle client-side */}
         <MarketplaceGrid agents={agents} hasCapabilityFilter={Boolean(capability)} />
 
-        {/* Cross-network discovery, AgenC agents surfaced inside the Axon marketplace
-            (self-loads client-side so a slow AgenC feed never blocks this page) */}
-        <AgencListings />
-
-        {/* Cross-network GOODS, AgenC's on-chain goods market, buyable from here
-            with your own wallet (non-custodial). Self-loads; hidden if empty. */}
-        <AgencGoods />
-
-        {/* My Hires / My Buys, the buyer's own history of everything hired or
-            bought across networks, each row verifiable on-chain. */}
-        <MyOrders />
       </main>
 
       <footer className="border-t border-gray-100 dark:border-gray-800 py-10 px-6">

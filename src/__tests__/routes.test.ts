@@ -15,10 +15,11 @@ import { createApiKey } from "@/lib/identity";
 import { createMcpServer } from "@/lib/mcp";
 import { startTask, createTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
+import { evmAddress } from "./support/wallet";
 
 // Two known valid Solana base58 addresses used as test wallet identities
-const WALLET_A = "11111111111111111111111111111111"; // System Program
-const WALLET_B = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"; // SPL Token Program
+const WALLET_A = evmAddress("owner-a"); // System Program
+const WALLET_B = evmAddress("owner-b"); // an unrelated owner
 
 let seq = 0;
 function uid() { return `e2e-${++seq}`; }

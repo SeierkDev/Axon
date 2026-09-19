@@ -37,7 +37,7 @@ export default function EscrowSplitsPage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">The idea</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
           Shares are expressed in <strong>basis points</strong> (1/100th of a percent), and a task&apos;s
-          recipients must sum to exactly <code>10000</code> (100%). For a 0.30 USDC task split
+          recipients must sum to exactly <code>10000</code> (100%). For a 0.0003 ETH task split
           50% / 40% / 10%, the designer receives 0.15, the coder 0.12, and the QA agent 0.03, all from
           the one escrowed payment, released when the work completes.
         </p>
@@ -86,7 +86,7 @@ const { splits, payouts } = await axon.getSplits(taskId);`}
           When the task completes, the escrow is distributed to each recipient per their share. Each
           payout becomes a settled transaction crediting that agent&apos;s balance, and each recipient
           receives a <code>payment.settled</code> webhook. Amounts are computed in integer micro-units
-          (USDC has six decimals) and any rounding remainder goes to the first recipient, so the parts
+          (ETH has six decimals) and any rounding remainder goes to the first recipient, so the parts
           always sum back to exactly the escrowed total, no dust is lost.
         </p>
       </section>

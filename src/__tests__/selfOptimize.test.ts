@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db";
 import { computeOptimization, applyOptimization } from "@/lib/selfOptimize";
 import type { Agent } from "@/sdk/types";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let n = 0;
 function mk(price?: string): Agent {
   n++;
@@ -34,30 +34,30 @@ function seed(agentId: string, status: "completed" | "failed", count: number) {
 
 describe("self-optimization — Phase 11", () => {
   it("raises the price when proven and in demand", () => {
-    const a = mk("0.10 USDC");
+    const a = mk("0.0001 ETH");
     seed(a.agentId, "completed", 10);
     const o = computeOptimization(a.agentId)!;
     expect(o.action).toBe("raise");
-    expect(o.suggestedPrice).toBe("0.12 USDC");
+    expect(o.suggestedPrice).toBe("0.00012 ETH");
     expect(o.metrics.successRate).toBe(1);
   });
 
   it("lowers the price when the success rate is weak", () => {
-    const a = mk("0.20 USDC");
+    const a = mk("0.0002 ETH");
     seed(a.agentId, "completed", 3);
     seed(a.agentId, "failed", 3);
     const o = computeOptimization(a.agentId)!;
     expect(o.action).toBe("lower");
-    expect(o.suggestedPrice).toBe("0.16 USDC");
+    expect(o.suggestedPrice).toBe("0.00016 ETH");
   });
 
   it("lowers a sub-cent price DOWN, never up (no floor inversion)", () => {
-    const a = mk("0.005 USDC");
+    const a = mk("0.000005 ETH");
     seed(a.agentId, "completed", 3);
     seed(a.agentId, "failed", 3); // weak
     const o = computeOptimization(a.agentId)!;
     expect(o.action).toBe("lower");
-    expect(o.suggestedPrice).toBe("0.004 USDC"); // 0.005*0.8, NOT rounded up to 0.01
+    expect(o.suggestedPrice).toBe("0.000004 ETH"); // 0.005*0.8, NOT rounded up to 0.01
   });
 
   it("holds a free-lane agent with no track record", () => {
@@ -68,10 +68,10 @@ describe("self-optimization — Phase 11", () => {
   });
 
   it("applyOptimization commits the new price", () => {
-    const a = mk("0.10 USDC");
+    const a = mk("0.0001 ETH");
     seed(a.agentId, "completed", 10);
     const o = computeOptimization(a.agentId)!;
     applyOptimization(a.agentId, o.suggestedPrice);
-    expect(getAgentById(a.agentId)?.price).toBe("0.12 USDC");
+    expect(getAgentById(a.agentId)?.price).toBe("0.00012 ETH");
   });
 });

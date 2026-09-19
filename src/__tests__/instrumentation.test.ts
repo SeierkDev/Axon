@@ -6,7 +6,6 @@ import { assertReadyConfig } from "@/instrumentation";
 
 const REQUIRED = [
   "NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS",
-  "HELIUS_API_KEY",
   "SEED_SECRET",
   "DATABASE_PATH",
   "DATABASE_URL",
@@ -38,7 +37,6 @@ describe("assertReadyConfig", () => {
     mutableEnv.NODE_ENV = "development";
     // Should not throw regardless of missing vars
     delete process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS;
-    delete process.env.HELIUS_API_KEY;
     delete process.env.SEED_SECRET;
     delete process.env.DATABASE_PATH;
     delete process.env.DATABASE_URL;
@@ -48,7 +46,6 @@ describe("assertReadyConfig", () => {
   it("throws with a checklist when required vars are missing in production", () => {
     mutableEnv.NODE_ENV = "production";
     delete process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS;
-    delete process.env.HELIUS_API_KEY;
     delete process.env.SEED_SECRET;
     delete process.env.DATABASE_PATH;
     delete process.env.DATABASE_URL;
@@ -59,7 +56,6 @@ describe("assertReadyConfig", () => {
   it("includes the names of all missing vars in the error message", () => {
     mutableEnv.NODE_ENV = "production";
     delete process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS;
-    delete process.env.HELIUS_API_KEY;
     delete process.env.SEED_SECRET;
     delete process.env.DATABASE_PATH;
     delete process.env.DATABASE_URL;
@@ -71,38 +67,23 @@ describe("assertReadyConfig", () => {
       message = err instanceof Error ? err.message : String(err);
     }
     expect(message).toContain("NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS");
-    expect(message).toContain("HELIUS_API_KEY");
     expect(message).toContain("SEED_SECRET");
     expect(message).toContain("DATABASE_PATH");
   });
 
   it("passes when all required vars are set", () => {
     mutableEnv.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
-    process.env.HELIUS_API_KEY = "test-key";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
     process.env.SEED_SECRET = "test-secret";
     process.env.DATABASE_PATH = "/data/axon.db";
 
     expect(() => assertReadyConfig()).not.toThrow();
   });
 
-  it("skips HELIUS_API_KEY check when AXON_PAYMENT_VERIFIER=mock", () => {
-    mutableEnv.NODE_ENV = "production";
-    process.env.AXON_PAYMENT_VERIFIER = "mock";
-    delete process.env.HELIUS_API_KEY;
-    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
-    process.env.SEED_SECRET = "test-secret";
-    process.env.DATABASE_PATH = "/data/axon.db";
-
-    expect(() => assertReadyConfig()).not.toThrow();
-
-    delete process.env.AXON_PAYMENT_VERIFIER;
-  });
 
   it("requires DATABASE_AUTH_TOKEN when DATABASE_URL is a libsql endpoint", () => {
     mutableEnv.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
-    process.env.HELIUS_API_KEY = "test-key";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
     process.env.SEED_SECRET = "test-secret";
     process.env.DATABASE_URL = "libsql://my-db.turso.io";
     process.env.DATABASE_PATH = "/data/axon-replica.db";
@@ -115,8 +96,7 @@ describe("assertReadyConfig", () => {
 
   it("passes with DATABASE_URL and DATABASE_AUTH_TOKEN set for Turso", () => {
     mutableEnv.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
-    process.env.HELIUS_API_KEY = "test-key";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
     process.env.SEED_SECRET = "test-secret";
     process.env.DATABASE_URL = "libsql://my-db.turso.io";
     process.env.DATABASE_PATH = "/data/axon-replica.db";
@@ -130,8 +110,7 @@ describe("assertReadyConfig", () => {
 
   it("does not require DATABASE_AUTH_TOKEN when DATABASE_URL is not a libsql endpoint", () => {
     mutableEnv.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
-    process.env.HELIUS_API_KEY = "test-key";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
     process.env.SEED_SECRET = "test-secret";
     process.env.DATABASE_PATH = "/data/axon.db";
     delete process.env.DATABASE_URL;
@@ -142,8 +121,7 @@ describe("assertReadyConfig", () => {
 
   it("requires absolute DATABASE_PATH when DATABASE_URL is a libsql endpoint", () => {
     mutableEnv.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
-    process.env.HELIUS_API_KEY = "test-key";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
     process.env.SEED_SECRET = "test-secret";
     process.env.DATABASE_URL = "libsql://my-db.turso.io";
     process.env.DATABASE_AUTH_TOKEN = "test-token";
@@ -158,8 +136,7 @@ describe("assertReadyConfig", () => {
 
   it("requires DATABASE_PATH when DATABASE_URL is a libsql endpoint and no path is set", () => {
     mutableEnv.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
-    process.env.HELIUS_API_KEY = "test-key";
+    process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
     process.env.SEED_SECRET = "test-secret";
     process.env.DATABASE_URL = "libsql://my-db.turso.io";
     process.env.DATABASE_AUTH_TOKEN = "test-token";

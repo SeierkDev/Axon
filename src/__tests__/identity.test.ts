@@ -6,13 +6,11 @@ import {
 } from "@/lib/identity";
 import { getDb } from "@/lib/db";
 import { NextRequest } from "next/server";
-import nacl from "tweetnacl";
-import { encodeBase64 } from "tweetnacl-util";
 import { createHash, randomUUID } from "crypto";
+import { testWallet } from "./support/wallet";
 
-// Valid base58 Solana addresses (32 chars)
-const WALLET_A = "11111111111111111111111111111111";
-const WALLET_B = "11111111111111111111111111111112";
+const WALLET_A = "0x1111111111111111111111111111111111111111";
+const WALLET_B = "0x2222222222222222222222222222222222222222";
 
 describe("createApiKey", () => {
   it("creates a key with the correct structure", () => {
@@ -85,20 +83,24 @@ describe("revokeApiKeyById", () => {
 });
 
 describe("generateKeyPair", () => {
-  it("generates valid ed25519 base64 key pairs", () => {
-    const { publicKey, secretKey } = generateKeyPair();
-    expect(publicKey).toBeTruthy();
-    expect(secretKey).toBeTruthy();
-    // Public key is 32 bytes = 44 base64 chars; secret key is 64 bytes = 88 chars
-    expect(Buffer.from(publicKey, "base64").length).toBe(32);
-    expect(Buffer.from(secretKey, "base64").length).toBe(64);
+  it("generates a usable secp256k1 key and its address", () => {
+    const { address, privateKey } = generateKeyPair();
+    expect(address).toMatch(/^0x[0-9a-f]{40}$/);
+    expect(privateKey).toMatch(/^0x[0-9a-f]{64}$/);
   });
 
   it("generates unique key pairs each call", () => {
     const a = generateKeyPair();
     const b = generateKeyPair();
-    expect(a.publicKey).not.toBe(b.publicKey);
-    expect(a.secretKey).not.toBe(b.secretKey);
+    expect(a.address).not.toBe(b.address);
+    expect(a.privateKey).not.toBe(b.privateKey);
+  });
+
+  it("the generated key signs as the generated address", async () => {
+    const { address, privateKey } = generateKeyPair();
+    const { privateKeyToAccount } = await import("viem/accounts");
+    const signature = await privateKeyToAccount(privateKey as `0x${string}`).signMessage({ message: "proof" });
+    expect(await verifySignature({ address, message: "proof", signature })).toBe(true);
   });
 });
 
@@ -133,72 +135,92 @@ describe("createChallenge / consumeChallenge", () => {
 
 describe("createWalletChallenge / consumeWalletChallenge", () => {
   it("round-trips wallet challenge", () => {
-    const wallet = WALLET_A;
-    const value = createWalletChallenge(wallet);
-    expect(consumeWalletChallenge(wallet, value)).toBe(true);
+    const value = createWalletChallenge(WALLET_A);
+    expect(consumeWalletChallenge(WALLET_A, value)).toBe(true);
   });
 
   it("returns false for wrong value", () => {
-    const wallet = WALLET_A;
-    createWalletChallenge(wallet);
-    expect(consumeWalletChallenge(wallet, "wrong")).toBe(false);
+    createWalletChallenge(WALLET_A);
+    expect(consumeWalletChallenge(WALLET_A, "wrong")).toBe(false);
+  });
+
+  it("the challenge is a message a person can read, not a bare nonce", () => {
+    const value = createWalletChallenge(WALLET_A);
+    expect(value).toContain("wants you to sign in with your wallet");
+    expect(value).toContain(WALLET_A);
+    expect(value).toContain("does not move funds");
+  });
+
+  it("each challenge is different, so one signature cannot be replayed", () => {
+    const a = createWalletChallenge(WALLET_A);
+    const b = createWalletChallenge(WALLET_A);
+    expect(a).not.toBe(b);
+  });
+
+  // MetaMask returns a checksummed address; whatever case it arrives in has to find the challenge
+  it("is case-insensitive in the wallet address", () => {
+    const mixed = "0xAAaAaA1111111111111111111111111111111111";
+    const value = createWalletChallenge(mixed);
+    expect(consumeWalletChallenge(mixed.toLowerCase(), value)).toBe(true);
   });
 });
 
-// ── verifySignature ───────────────────────────────────────────────────────────
+// ── verifySignature / verifyWalletSignature (EIP-191) ────────────────────────
 
 describe("verifySignature", () => {
-  it("returns true for a valid ed25519 signature", () => {
-    const pair = nacl.sign.keyPair();
+  it("accepts a real personal_sign signature from the claimed address", async () => {
+    const w = testWallet();
     const message = "hello axon";
-    const msgBytes = new TextEncoder().encode(message);
-    const sigBytes = nacl.sign.detached(msgBytes, pair.secretKey);
+    expect(await verifySignature({ address: w.address, message, signature: await w.sign(message) })).toBe(true);
+  });
 
-    expect(verifySignature({
-      publicKeyB64: encodeBase64(pair.publicKey),
-      message,
-      signatureB64: encodeBase64(sigBytes),
+  it("accepts the checksummed spelling of the same address", async () => {
+    const w = testWallet();
+    const message = "hello axon";
+    expect(await verifySignature({ address: w.checksummed, message, signature: await w.sign(message) })).toBe(true);
+  });
+
+  it("rejects a tampered message", async () => {
+    const w = testWallet();
+    const signature = await w.sign("original");
+    expect(await verifySignature({ address: w.address, message: "tampered", signature })).toBe(false);
+  });
+
+  // the signature is perfectly valid, it just recovers to somebody else
+  it("rejects a valid signature made by a different wallet", async () => {
+    const signer = testWallet();
+    const other = testWallet();
+    const message = "hello axon";
+    expect(await verifySignature({ address: other.address, message, signature: await signer.sign(message) })).toBe(false);
+  });
+
+  it("returns false for malformed input rather than throwing", async () => {
+    expect(await verifySignature({ address: "not-an-address", message: "m", signature: "0xdead" })).toBe(false);
+    expect(await verifySignature({ address: WALLET_A, message: "m", signature: "not-hex!!" })).toBe(false);
+    expect(await verifySignature({ address: WALLET_A, message: "m", signature: "" })).toBe(false);
+  });
+});
+
+describe("verifyWalletSignature", () => {
+  it("verifies the exact challenge the wallet was handed", async () => {
+    const w = testWallet();
+    const challenge = createWalletChallenge(w.address);
+    expect(await verifyWalletSignature({
+      walletAddress: w.address, message: challenge, signature: await w.sign(challenge),
     })).toBe(true);
   });
 
-  it("returns false for a tampered message", () => {
-    const pair = nacl.sign.keyPair();
-    const msgBytes = new TextEncoder().encode("original");
-    const sigBytes = nacl.sign.detached(msgBytes, pair.secretKey);
-
-    expect(verifySignature({
-      publicKeyB64: encodeBase64(pair.publicKey),
-      message: "tampered",
-      signatureB64: encodeBase64(sigBytes),
+  it("rejects an address that is not an address", async () => {
+    const w = testWallet();
+    expect(await verifyWalletSignature({
+      walletAddress: "not-an-evm-address!!!", message: "hello", signature: await w.sign("hello"),
     })).toBe(false);
   });
 
-  it("returns false for invalid base64 input without throwing", () => {
-    expect(verifySignature({
-      publicKeyB64: "not-base64!!!",
-      message: "msg",
-      signatureB64: "not-base64!!!",
-    })).toBe(false);
-  });
-});
-
-// ── verifyWalletSignature ─────────────────────────────────────────────────────
-
-describe("verifyWalletSignature", () => {
-  it("returns false for an invalid Solana wallet address (not valid base58 pubkey)", () => {
-    expect(verifyWalletSignature({
-      walletAddress: "not-a-solana-address!!!",
-      message: "hello",
-      signatureB64: encodeBase64(new Uint8Array(64)),
-    })).toBe(false);
-  });
-
-  it("returns false when the signature does not match the message and key", () => {
-    // WALLET_A is a valid Solana address (system program) but the signature is all zeros
-    expect(verifyWalletSignature({
-      walletAddress: WALLET_A,
-      message: "hello axon",
-      signatureB64: encodeBase64(new Uint8Array(64)),
+  it("rejects a signature that does not match the message", async () => {
+    const w = testWallet();
+    expect(await verifyWalletSignature({
+      walletAddress: w.address, message: "hello axon", signature: await w.sign("something else"),
     })).toBe(false);
   });
 });

@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { randomUUID } from "crypto";
 import { getDb } from "@/lib/db";
+import { testWallet, evmAddress, type TestWallet } from "./support/wallet";
 import {
   createCommerceProfile,
   getCommerceProfile,
@@ -33,7 +34,7 @@ const CONTACT = { name: "Ada Lovelace", email: "ada@example.com", phone: "+15550
 const ADDRESS = { line1: "12 Analytical Way", city: "London", postalCode: "EC1A 1BB", country: "GB" };
 
 let n = 0;
-const wallet = () => `wallet-${++n}-${randomUUID().slice(0, 8)}`;
+const wallet = () => evmAddress(`w-${++n}-${randomUUID().slice(0, 8)}`);
 
 function setup(opts: { maxPerPurchase?: number; maxPerPeriod?: number; autoApproveUnder?: number; allowedHosts?: string[] } = {}) {
   const ownerWallet = wallet();
@@ -165,7 +166,7 @@ describe("approval", () => {
     const agentId = `pc-${randomUUID().slice(0, 8)}`;
     createAgent({
       agentId, name: "PreCleared", capabilities: ["shopping"], publicKey: `pk-${agentId}`,
-      walletAddress: "11111111111111111111111111111111", provider: "anthropic",
+      walletAddress: evmAddress("owner-a"), provider: "anthropic",
       reputation: 0, createdAt: new Date().toISOString(),
     });
     const profile = createCommerceProfile({ ownerWallet, label: "H", contact: CONTACT, address: ADDRESS });
@@ -357,26 +358,21 @@ describe("POST /api/commerce/intents/<id>/decision", () => {
     );
   }
 
-  // A buyer whose wallet is a real keypair, so approvals can actually be signed.
+  // A buyer whose wallet can really sign, so approvals are proved the way production proves them.
   async function signingBuyer() {
-    const nacl = (await import("tweetnacl")).default;
-    const { PublicKey } = await import("@solana/web3.js");
     const { createApiKey } = await import("@/lib/identity");
-    const kp = nacl.sign.keyPair();
-    const ownerWallet = new PublicKey(kp.publicKey).toBase58();
+    const wallet = testWallet();
+    const ownerWallet = wallet.address;
     const { apiKey } = createApiKey(ownerWallet);
     const agentId = `shopper-${randomUUID().slice(0, 8)}`;
     const profile = createCommerceProfile({ ownerWallet, label: "H", contact: CONTACT, address: ADDRESS });
     createSpendMandate({ ownerWallet, agentId, profileId: profile.profileId, maxPerPurchase: 500, maxPerPeriod: 900 });
-    return { kp, ownerWallet, apiKey, agentId };
+    return { wallet, ownerWallet, apiKey, agentId };
   }
 
-  async function sign(intentId: string, secretKey: Uint8Array) {
-    const nacl = (await import("tweetnacl")).default;
-    const { encodeBase64 } = await import("tweetnacl-util");
+  async function sign(intentId: string, wallet: TestWallet) {
     const { mandateMessage } = await import("@/lib/commerceComplete");
-    const msg = new TextEncoder().encode(mandateMessage(getPurchaseIntent(intentId)!));
-    return encodeBase64(nacl.sign.detached(msg, secretKey));
+    return wallet.sign(mandateMessage(getPurchaseIntent(intentId)!));
   }
 
   it("refuses to approve without the buyer's signature", async () => {
@@ -389,9 +385,9 @@ describe("POST /api/commerce/intents/<id>/decision", () => {
   });
 
   it("records the signature and approves, then tries to place the order", async () => {
-    const { apiKey, agentId, kp } = await signingBuyer();
+    const { apiKey, agentId, wallet } = await signingBuyer();
     const { intent } = propose(agentId, 120);
-    const res = await decide(intent.intentId, apiKey, "approve", await sign(intent.intentId, kp.secretKey));
+    const res = await decide(intent.intentId, apiKey, "approve", await sign(intent.intentId, wallet));
 
     // The approval and signature stick. Without a payment credential the order
     // can't be placed — 202, not a failure: the consent is recorded and valid.
@@ -412,7 +408,7 @@ describe("POST /api/commerce/intents/<id>/decision", () => {
 
   it("hides someone else's purchase behind a 404 rather than a 403", async () => {
     const { createApiKey } = await import("@/lib/identity");
-    const stranger = createApiKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+    const stranger = createApiKey(evmAddress("stranger"));
     const { agentId } = setup();
     const { intent } = propose(agentId, 60);
 
@@ -422,9 +418,9 @@ describe("POST /api/commerce/intents/<id>/decision", () => {
   });
 
   it("says plainly when the window has already closed", async () => {
-    const { apiKey, agentId, kp } = await signingBuyer();
+    const { apiKey, agentId, wallet } = await signingBuyer();
     const { intent } = propose(agentId, 60);
-    const signature = await sign(intent.intentId, kp.secretKey);
+    const signature = await sign(intent.intentId, wallet);
     getDb().prepare("UPDATE purchase_intents SET expires_at = ? WHERE intent_id = ?")
       .run(new Date(Date.now() - 1000).toISOString(), intent.intentId);
 
@@ -435,7 +431,7 @@ describe("POST /api/commerce/intents/<id>/decision", () => {
 
   it("rejects a decision that isn't approve or decline", async () => {
     const { createApiKey } = await import("@/lib/identity");
-    const { apiKey } = createApiKey("11111111111111111111111111111111");
+    const { apiKey } = createApiKey(evmAddress("owner-a"));
     const res = await decide(randomUUID(), apiKey, "maybe");
     expect(res.status).toBe(400);
   });
@@ -458,50 +454,39 @@ describe("the mandate the buyer signs", () => {
   });
 
   it("refuses a signature from anyone but the buyer", async () => {
-    const nacl = (await import("tweetnacl")).default;
-    const { encodeBase64 } = await import("tweetnacl-util");
-    const { PublicKey } = await import("@solana/web3.js");
     const { attachMandate, mandateMessage } = await import("@/lib/commerceComplete");
     const { CommerceError } = await import("@/lib/commerce");
 
-    // A buyer whose wallet is a real keypair, so a real signature can be made.
-    const kp = nacl.sign.keyPair();
-    const ownerWallet = new PublicKey(kp.publicKey).toBase58();
+    const buyer = testWallet();
+    const ownerWallet = buyer.address;
     const agentId = `shopper-${randomUUID().slice(0, 8)}`;
     const profile = createCommerceProfile({ ownerWallet, label: "H", contact: CONTACT, address: ADDRESS });
     createSpendMandate({ ownerWallet, agentId, profileId: profile.profileId, maxPerPurchase: 500, maxPerPeriod: 900 });
     const { intent } = propose(agentId, 90);
+    const msg = mandateMessage(intent);
 
     // Someone else's signature over the right message is still refused.
-    const impostor = nacl.sign.keyPair();
-    const msg = new TextEncoder().encode(mandateMessage(intent));
-    const wrong = encodeBase64(nacl.sign.detached(msg, impostor.secretKey));
-    expect(() => attachMandate(intent.intentId, wrong)).toThrow(CommerceError);
+    const impostor = testWallet();
+    await expect(attachMandate(intent.intentId, await impostor.sign(msg))).rejects.toThrow(CommerceError);
 
     // The buyer's own signature is accepted.
-    const right = encodeBase64(nacl.sign.detached(msg, kp.secretKey));
-    expect(attachMandate(intent.intentId, right).signed).toBe(true);
+    expect((await attachMandate(intent.intentId, await buyer.sign(msg))).signed).toBe(true);
   });
 
   it("a signature for one purchase can't be replayed onto another", async () => {
-    const nacl = (await import("tweetnacl")).default;
-    const { encodeBase64 } = await import("tweetnacl-util");
-    const { PublicKey } = await import("@solana/web3.js");
     const { attachMandate, mandateMessage } = await import("@/lib/commerceComplete");
 
-    const kp = nacl.sign.keyPair();
-    const ownerWallet = new PublicKey(kp.publicKey).toBase58();
+    const buyer = testWallet();
+    const ownerWallet = buyer.address;
     const agentId = `shopper-${randomUUID().slice(0, 8)}`;
     const profile = createCommerceProfile({ ownerWallet, label: "H", contact: CONTACT, address: ADDRESS });
     createSpendMandate({ ownerWallet, agentId, profileId: profile.profileId, maxPerPurchase: 500, maxPerPeriod: 900 });
 
     const cheap = propose(agentId, 20).intent;
     const dear = propose(agentId, 400).intent;
-    const sigForCheap = encodeBase64(
-      nacl.sign.detached(new TextEncoder().encode(mandateMessage(cheap)), kp.secretKey),
-    );
+    const sigForCheap = await buyer.sign(mandateMessage(cheap));
     // The message names the intent and the amount, so it doesn't transfer.
-    expect(() => attachMandate(dear.intentId, sigForCheap)).toThrow(/does not match/);
+    await expect(attachMandate(dear.intentId, sigForCheap)).rejects.toThrow(/does not match/);
   });
 });
 
@@ -598,7 +583,7 @@ describe("keep rate in the Proof Score", () => {
     const agentId = `scored-${randomUUID().slice(0, 8)}`;
     createAgent({
       agentId, name: "Scored Agent", capabilities: ["shopping"], publicKey: `pk-${agentId}`,
-      walletAddress: "11111111111111111111111111111111", provider: "anthropic",
+      walletAddress: evmAddress("owner-a"), provider: "anthropic",
       reputation: 0, createdAt: new Date().toISOString(),
     });
     const profile = createCommerceProfile({ ownerWallet, label: "H", contact: CONTACT, address: ADDRESS });
@@ -735,7 +720,7 @@ describe("GET /api/commerce/intents/<id>/payment", () => {
 
   it("hides someone else's purchase behind a 404", async () => {
     const { createApiKey } = await import("@/lib/identity");
-    const stranger = createApiKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+    const stranger = createApiKey(evmAddress("stranger"));
     const { agentId } = setup();
     const { intent } = propose(agentId, 30);
     expect((await ask(intent.intentId, stranger.apiKey)).status).toBe(404);
@@ -743,7 +728,7 @@ describe("GET /api/commerce/intents/<id>/payment", () => {
 
   it("refuses when there is no checkout session to pay for", async () => {
     const { createApiKey } = await import("@/lib/identity");
-    const ownerWallet = "11111111111111111111111111111111";
+    const ownerWallet = evmAddress("owner-a");
     const { apiKey } = createApiKey(ownerWallet);
     const agentId = `shopper-${randomUUID().slice(0, 8)}`;
     const profile = createCommerceProfile({ ownerWallet, label: "H", contact: CONTACT, address: ADDRESS });
@@ -822,24 +807,21 @@ describe("price movement is prevented, not detected", () => {
   it("refuses to sign an intent that has already been bought", async () => {
     // A mandate is proof of ONE transaction. If it could be replaced after the
     // fact, it would prove nothing.
-    const nacl = (await import("tweetnacl")).default;
-    const { encodeBase64 } = await import("tweetnacl-util");
-    const { PublicKey } = await import("@solana/web3.js");
     const { attachMandate, mandateMessage } = await import("@/lib/commerceComplete");
 
-    const kp = nacl.sign.keyPair();
-    const ownerWallet = new PublicKey(kp.publicKey).toBase58();
+    const buyer = testWallet();
+    const ownerWallet = buyer.address;
     const agentId = `shopper-${randomUUID().slice(0, 8)}`;
     const profile = createCommerceProfile({ ownerWallet, label: "H", contact: CONTACT, address: ADDRESS });
     createSpendMandate({ ownerWallet, agentId, profileId: profile.profileId, maxPerPurchase: 500, maxPerPeriod: 900 });
 
     const { intent } = propose(agentId, 70);
-    const sig = encodeBase64(nacl.sign.detached(new TextEncoder().encode(mandateMessage(intent)), kp.secretKey));
+    const sig = await buyer.sign(mandateMessage(intent));
     approvePurchase(intent.intentId, ownerWallet);
-    attachMandate(intent.intentId, sig);
+    await attachMandate(intent.intentId, sig);
     consumePurchaseIntent(intent.intentId, { orderId: "o1", settledAmount: 70 });
 
-    expect(() => attachMandate(intent.intentId, sig)).toThrow(/can no longer be set/);
+    await expect(attachMandate(intent.intentId, sig)).rejects.toThrow(/can no longer be set/);
   });
 
   it("a declined intent can't be signed back to life", async () => {
@@ -847,7 +829,7 @@ describe("price movement is prevented, not detected", () => {
     const { agentId, ownerWallet } = setup();
     const { intent } = propose(agentId, 40);
     declinePurchase(intent.intentId, ownerWallet);
-    expect(() => attachMandate(intent.intentId, "x".repeat(88))).toThrow(/can no longer be set/);
+    await expect(attachMandate(intent.intentId, "x".repeat(88))).rejects.toThrow(/can no longer be set/);
   });
 });
 
@@ -860,7 +842,7 @@ describe("the approval notification", () => {
     // A webhook needs a real registered agent to hang off.
     createAgent({
       agentId, name: "Notifier", capabilities: ["shopping"], publicKey: `pk-${agentId}`,
-      walletAddress: "11111111111111111111111111111111", provider: "anthropic",
+      walletAddress: evmAddress("owner-a"), provider: "anthropic",
       reputation: 0, createdAt: new Date().toISOString(),
     });
     const profile = createCommerceProfile({ ownerWallet, label: "H", contact: CONTACT, address: ADDRESS });

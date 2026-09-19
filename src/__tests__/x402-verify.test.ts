@@ -8,8 +8,8 @@ const { mockVerifyIncomingPayment } = vi.hoisted(() => ({
   mockVerifyIncomingPayment: vi.fn(),
 }));
 
-vi.mock("@/lib/solana", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/lib/solana")>();
+vi.mock("@/lib/money", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/money")>();
   return { ...original, verifyIncomingPayment: mockVerifyIncomingPayment };
 });
 
@@ -39,21 +39,13 @@ describe("verifyX402Payment: unrecognised price format", () => {
 
 // ── Non-USDC currency ─────────────────────────────────────────────────────────
 
-describe("verifyX402Payment: SOL price rejected (only USDC supported)", () => {
-  it("returns valid=false for SOL-priced agents", async () => {
-    const result = await verifyX402Payment(makeHeader(), "0.05 SOL");
-    expect(result.valid).toBe(false);
-    expect(result.error).toMatch(/Only USDC/);
-    expect(mockVerifyIncomingPayment).not.toHaveBeenCalled();
-  });
-});
 
 // ── On-chain verification fails ───────────────────────────────────────────────
 
 describe("verifyX402Payment: on-chain verification returns false", () => {
   it("returns valid=false when the signature does not verify on-chain", async () => {
     mockVerifyIncomingPayment.mockResolvedValueOnce(false);
-    const result = await verifyX402Payment(makeHeader(), "0.10 USDC");
+    const result = await verifyX402Payment(makeHeader(), "0.0001 ETH");
     expect(result.valid).toBe(false);
     expect(result.error).toMatch(/signature did not verify/);
   });
@@ -64,7 +56,7 @@ describe("verifyX402Payment: on-chain verification returns false", () => {
 describe("verifyX402Payment: on-chain verification succeeds", () => {
   it("returns valid=true when the signature verifies on-chain", async () => {
     mockVerifyIncomingPayment.mockResolvedValueOnce(true);
-    const result = await verifyX402Payment(makeHeader("5".repeat(88)), "0.10 USDC");
+    const result = await verifyX402Payment(makeHeader("5".repeat(88)), "0.0001 ETH");
     expect(result.valid).toBe(true);
     expect(result.error).toBeUndefined();
   });
@@ -77,7 +69,7 @@ describe("verifyX402Payment: config error propagates to caller (503 pattern)", (
     mockVerifyIncomingPayment.mockRejectedValueOnce(
       new Error("PAYMENT_RECEIVER_WALLET_ADDRESS is not set")
     );
-    await expect(verifyX402Payment(makeHeader(), "0.10 USDC")).rejects.toThrow(
+    await expect(verifyX402Payment(makeHeader(), "0.0001 ETH")).rejects.toThrow(
       /is not set/
     );
   });
@@ -86,7 +78,7 @@ describe("verifyX402Payment: config error propagates to caller (503 pattern)", (
     mockVerifyIncomingPayment.mockRejectedValueOnce(
       new Error("HELIUS_API_KEY is not set")
     );
-    await expect(verifyX402Payment(makeHeader(), "0.10 USDC")).rejects.toThrow(
+    await expect(verifyX402Payment(makeHeader(), "0.0001 ETH")).rejects.toThrow(
       /HELIUS/
     );
   });
@@ -97,14 +89,14 @@ describe("verifyX402Payment: config error propagates to caller (503 pattern)", (
 describe("verifyX402Payment: generic RPC error returns valid=false", () => {
   it("returns valid=false (does not throw) for transient RPC errors", async () => {
     mockVerifyIncomingPayment.mockRejectedValueOnce(new Error("Connection timed out"));
-    const result = await verifyX402Payment(makeHeader(), "0.10 USDC");
+    const result = await verifyX402Payment(makeHeader(), "0.0001 ETH");
     expect(result.valid).toBe(false);
     expect(result.error).toBe("Connection timed out");
   });
 
   it("uses 'Verification failed' message for non-Error throws", async () => {
     mockVerifyIncomingPayment.mockRejectedValueOnce("raw string error");
-    const result = await verifyX402Payment(makeHeader(), "0.10 USDC");
+    const result = await verifyX402Payment(makeHeader(), "0.0001 ETH");
     expect(result.valid).toBe(false);
     expect(result.error).toBe("Verification failed");
   });

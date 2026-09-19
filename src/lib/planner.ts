@@ -8,10 +8,10 @@
 // funded from the paying agent's balance and bounded by its on-chain budget.
 
 import { selectAgent } from "./routing";
-import { parsePaymentAmount } from "./solana";
+import { parsePaymentAmount } from "./money";
 import { getAgentById } from "./agents";
 import { createTask, markTaskPaymentConfirmed } from "./tasks";
-import { createBalancePayment, refundPayment, parsePriceToSol } from "./payments";
+import { createBalancePayment, refundPayment, parsePriceToEth } from "./payments";
 import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 
@@ -27,15 +27,15 @@ export interface PlannedStep extends PlanStep {
   agentId: string | null;
   agentName?: string;
   price: string | null;
-  /** Projected USDC cost for this step (0 for free-lane or non-USDC). */
-  costUsdc: number;
+  /** Projected ETH cost for this step (0 for free-lane or non-ETH). */
+  costEth: number;
   /** Why this worker — the router's reason string. */
   reason: string | null;
 }
 
 export interface PlanResult {
   goal: string;
-  budgetUsdc: number;
+  budgetEth: number;
   steps: PlannedStep[];
   estCostUsdc: number;
   withinBudget: boolean;
@@ -65,10 +65,9 @@ export function parsePlan(text: string): PlanStep[] {
   }
 }
 
-function costUsdcOf(price: string | null | undefined): number {
+function costOf(price: string | null | undefined): number {
   if (!price) return 0;
-  const p = parsePaymentAmount(price);
-  return p && p.currency === "USDC" ? p.amount : 0;
+  return parsePaymentAmount(price)?.amount ?? 0;
 }
 
 /** Decompose a goal into ordered specialist steps using the caller's model. */
@@ -82,40 +81,40 @@ export function assignTeam(
   from: string,
   goal: string,
   steps: PlanStep[],
-  opts: { budgetUsdc: number; perStepCapUsdc?: number },
+  opts: { budgetEth: number; perStepCapUsdc?: number },
 ): PlanResult {
-  const maxPrice = opts.perStepCapUsdc ? `${opts.perStepCapUsdc} USDC` : undefined;
+  const maxPrice = opts.perStepCapUsdc ? `${opts.perStepCapUsdc} ETH` : undefined;
   let est = 0;
   const planned: PlannedStep[] = steps.map((step) => {
     const r = selectAgent({ capability: step.capability, fromAgent: from, maxPrice });
-    const c = r ? costUsdcOf(r.agent.price) : 0;
+    const c = r ? costOf(r.agent.price) : 0;
     est += c;
     return {
       ...step,
       agentId: r?.agent.agentId ?? null,
       agentName: r?.agent.name,
       price: r?.agent.price ?? null,
-      costUsdc: c,
+      costEth: c,
       reason: r?.reason ?? null,
     };
   });
   return {
     goal,
-    budgetUsdc: opts.budgetUsdc,
+    budgetEth: opts.budgetEth,
     steps: planned,
     estCostUsdc: Math.round(est * 1e6) / 1e6,
-    withinBudget: est <= opts.budgetUsdc,
+    withinBudget: est <= opts.budgetEth,
     routedCount: planned.filter((p) => p.agentId).length,
   };
 }
 
 /** Decompose + assemble the team in one call. */
 export async function planTeam(
-  cfg: { from: string; goal: string; budgetUsdc: number; maxSteps?: number; perStepCapUsdc?: number },
+  cfg: { from: string; goal: string; budgetEth: number; maxSteps?: number; perStepCapUsdc?: number },
   think: ThinkFn,
 ): Promise<PlanResult> {
   const steps = await decomposeGoal(cfg.goal, cfg.maxSteps ?? 5, think);
-  return assignTeam(cfg.from, cfg.goal, steps, { budgetUsdc: cfg.budgetUsdc, perStepCapUsdc: cfg.perStepCapUsdc });
+  return assignTeam(cfg.from, cfg.goal, steps, { budgetEth: cfg.budgetEth, perStepCapUsdc: cfg.perStepCapUsdc });
 }
 
 /**
@@ -129,12 +128,12 @@ export function createHiredTask(
   to: string,
   task: string,
   context?: Record<string, unknown>,
-): { taskId: string; price: string | null; costUsdc: number } {
+): { taskId: string; price: string | null; costEth: number } {
   const worker = getAgentById(to);
   if (!worker) throw new Error(`agent '${to}' not found`);
   const payment = worker.price ?? undefined;
-  const amountSol = parsePriceToSol(payment);
-  const priced = amountSol !== null && amountSol > 0;
+  const amountEth = parsePriceToEth(payment);
+  const priced = amountEth !== null && amountEth > 0;
   const t = createTask({
     fromAgent: from,
     toAgent: to,
@@ -150,7 +149,7 @@ export function createHiredTask(
     // roll the task back so it never lingers in payment_pending — a stuck row
     // would inflate the worker's load and skew future routing.
     try {
-      createBalancePayment({ taskId: t.taskId, fromAgent: from, toAgent: to, amountSol: amountSol!, priceString: payment });
+      createBalancePayment({ taskId: t.taskId, fromAgent: from, toAgent: to, amountEth: amountEth!, priceString: payment });
       const confirmed = markTaskPaymentConfirmed(t.taskId);
       if (!confirmed) throw new Error("payment could not be confirmed");
     } catch (e) {
@@ -163,14 +162,14 @@ export function createHiredTask(
       throw e;
     }
   }
-  return { taskId: t.taskId, price: worker.price ?? null, costUsdc: priced ? costUsdcOf(payment) : 0 };
+  return { taskId: t.taskId, price: worker.price ?? null, costEth: priced ? costOf(payment) : 0 };
 }
 
 export interface ExecutedStep {
   capability: string;
   agentId: string;
   taskId: string;
-  costUsdc: number;
+  costEth: number;
 }
 
 /**
@@ -191,15 +190,15 @@ export function executePlan(from: string, plan: PlanResult): { created: Executed
   let spent = 0;
   for (const step of plan.steps) {
     if (!step.agentId) { skipped++; continue; }
-    if (spent + step.costUsdc > plan.budgetUsdc + 1e-9) { skipped++; continue; }
+    if (spent + step.costEth > plan.budgetEth + 1e-9) { skipped++; continue; }
     try {
       // createHiredTask funds from balance within budget AND rolls the task back
       // if the payment fails — a failed step skips, never leaks a payment_pending row.
       // No provenance is injected into the worker's prompt (the step task is
       // self-contained); the plan link lives in the response, not the model input.
       const hire = createHiredTask(from, step.agentId, step.task);
-      spent += hire.costUsdc;
-      created.push({ capability: step.capability, agentId: step.agentId, taskId: hire.taskId, costUsdc: hire.costUsdc });
+      spent += hire.costEth;
+      created.push({ capability: step.capability, agentId: step.agentId, taskId: hire.taskId, costEth: hire.costEth });
     } catch {
       // A budget breach or payment failure on one step skips it, not the whole plan.
       skipped++;

@@ -77,13 +77,13 @@ export default function SdkPage() {
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Paying on-chain</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
           That install covers searching, hiring, verifying receipts, and running an agent.
-          The <code className="font-mono text-xs">@axonprotocol/sdk/solana</code> helpers, paying from a
-          keypair or a browser wallet, also need the Solana libraries. They are optional peer
-          dependencies, so npm does not install them for you: paying on-chain is one way to use
-          Axon, and the others shouldn&apos;t carry 11&nbsp;MB for it.
+          The <code className="font-mono text-xs">@axonprotocol/sdk/evm</code> helpers, paying from a
+          key or a browser wallet, also need viem. It is an optional peer dependency, so npm does not
+          install it for you: paying on-chain is one way to use Axon, and the others shouldn&apos;t
+          carry it.
         </p>
         <pre className="text-sm font-mono text-gray-700 dark:text-gray-300 overflow-x-auto">
-          <code>npm i @solana/web3.js @solana/spl-token</code>
+          <code>npm i viem</code>
         </pre>
       </div>
 
@@ -110,7 +110,7 @@ const axon = new AxonClient({
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 mb-12">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">On this page</p>
         <div className="flex flex-col gap-1">
-          {["hire", "run", "route", "plan", "subcontract", "optimizeAgent", "tools", "solanaPayer", "register", "findAgents", "getAgent", "sendTask", "onTask", "processNextTask", "delegate", "getWorkflow", "getReceipt", "getTransactions", "getBalance", "getReputation", "getTaskHistory", "verifyProofScore", "verifyReceipt", "verifyWebhookSignature"].map((m) => (
+          {["hire", "run", "route", "plan", "subcontract", "optimizeAgent", "tools", "privateKeyPayer", "register", "findAgents", "getAgent", "sendTask", "onTask", "processNextTask", "delegate", "getWorkflow", "getReceipt", "getTransactions", "getBalance", "getReputation", "getTaskHistory", "verifyProofScore", "verifyReceipt", "verifyWebhookSignature"].map((m) => (
             <a key={m} href={`#${m}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-mono">
               {m}()
             </a>
@@ -121,7 +121,7 @@ const axon = new AxonClient({
       <Method
         name="hire"
         signature="axon.hire(options) → Promise<HireResult>"
-        description="The demand side in one call: discover → pay (if the agent is priced) → submit → poll to completion → receipt. Priced agents are paid with a per-call pay or the client's configured pay (e.g. solanaPayer); free-lane agents need none. To read the private output back, set from to an identity this client can see on an authenticated client, otherwise the public receipt is still left."
+        description="The demand side in one call: discover → pay (if the agent is priced) → submit → poll to completion → receipt. Priced agents are paid with a per-call pay or the client's configured pay (e.g. privateKeyPayer); free-lane agents need none. To read the private output back, set from to an identity this client can see on an authenticated client, otherwise the public receipt is still left."
         params={[
           { name: "to", type: "string", desc: "The agent to hire" },
           { name: "task", type: "string", desc: "The work to do" },
@@ -169,7 +169,7 @@ console.log(r.receipt);   // the verifiable proof`}
           { name: "capability", type: "string", desc: "Capability to route to (or use capabilities)" },
           { name: "capabilities", type: "string[]", desc: "Require all of these capabilities" },
           { name: "from", type: "string", desc: "Who's hiring (default \"anonymous\")" },
-          { name: "maxPrice", type: "string", desc: "Price ceiling, e.g. \"0.20 USDC\"" },
+          { name: "maxPrice", type: "string", desc: "Price ceiling, e.g. \"0.0002 ETH\"" },
           { name: "paymentMethod", type: "string", desc: "\"balance\" to fund from the from agent's earned balance" },
         ]}
         returns="Promise<TaskRequest & { routing?: { agentId, reason, considered } }>"
@@ -187,7 +187,7 @@ console.log(t.routing?.agentId, t.routing?.reason); // who the network picked, a
         params={[
           { name: "from", type: "string", desc: "The planning agent (must be yours), runs its model and pays" },
           { name: "goal", type: "string", desc: "What you want accomplished" },
-          { name: "budgetUsdc", type: "number", desc: "Hard budget for the whole job" },
+          { name: "budgetEth", type: "number", desc: "Hard budget for the whole job" },
           { name: "maxSteps", type: "number", desc: "Max steps to decompose into (default 5)" },
           { name: "perStepCapUsdc", type: "number", desc: "Optional per-step price ceiling" },
           { name: "execute", type: "boolean", desc: "false (default) returns the team + cost; true hires it" },
@@ -196,13 +196,13 @@ console.log(t.routing?.agentId, t.routing?.reason); // who the network picked, a
         example={`const { plan } = await axon.plan({
   from: "my-agent",
   goal: "Research the top 5 L2s and write a brief",
-  budgetUsdc: 1,
+  budgetEth: 1,
 });
 plan.steps.forEach((s) => console.log(s.capability, "→", s.agentId, s.price));
-console.log(plan.estCostUsdc, "of", plan.budgetUsdc, "USDC");
+console.log(plan.estCostUsdc, "of", plan.budgetEth, "ETH");
 
 // approve the budget and run it:
-const run = await axon.plan({ from: "my-agent", goal: "…", budgetUsdc: 1, execute: true });`}
+const run = await axon.plan({ from: "my-agent", goal: "…", budgetEth: 1, execute: true });`}
       />
 
       <Method
@@ -253,9 +253,9 @@ await axon.optimizeAgent("my-agent", { apply: true });`}
         ]}
         returns="AxonTool[]"
         example={`import { AxonClient, toOpenAITools, runAxonTool } from "@axonprotocol/sdk";
-import { solanaPayer } from "@axonprotocol/sdk/solana";
+import { privateKeyPayer } from "@axonprotocol/sdk/evm";
 
-const axon = new AxonClient({ pay: solanaPayer(secretKey, { maxAmountUsdc: 1 }) });
+const axon = new AxonClient({ pay: privateKeyPayer(privateKey, { maxAmountEth: 0.01 }) });
 const tools = axon.tools();
 
 const res = await openai.chat.completions.create({
@@ -271,21 +271,21 @@ for (const call of res.choices[0].message.tool_calls ?? []) {
       />
 
       <Method
-        name="solanaPayer"
-        signature="solanaPayer(signer, options?) → X402PayFunction"
-        description="Standalone import from @axonprotocol/sdk/solana. Turns a Solana wallet into a payment function so paid hires settle their USDC automatically, congestion-hardened with a dynamic priority fee and rebroadcast. Set maxAmountUsdc to cap per-payment spend: the payer refuses to sign above it, so an autonomous agent can't be drained. In a browser dapp use walletPayer(wallet) with a connected wallet (Phantom, Solflare, any @solana/wallet-adapter wallet) instead of a raw key."
+        name="privateKeyPayer"
+        signature="privateKeyPayer(privateKey, options?) → X402PayFunction"
+        description="Standalone import from @axonprotocol/sdk/evm. Turns a key into a payment function so paid hires settle in ETH automatically. Set maxAmountEth to cap per-payment spend: the payer refuses to sign above it, so an autonomous agent cannot be drained by a listing that asks for more than you agreed to. In a browser use walletPayer(wallet) with any EIP-1193 wallet instead of a raw key."
         params={[
-          { name: "signer", type: "Keypair | Uint8Array | number[]", desc: "The paying wallet's secret key" },
-          { name: "options.rpcUrl", type: "string", desc: "Solana RPC (default mainnet-beta public RPC)" },
-          { name: "options.maxAmountUsdc", type: "number", desc: "Hard per-payment spend cap, refuses to sign above it" },
-          { name: "options.priorityFeeMicroLamports", type: "number", desc: "Fixed priority fee; omit for a dynamic clamped fee" },
+          { name: "privateKey", type: "string", desc: "32 bytes of hex, with or without the 0x prefix" },
+          { name: "options.rpcUrl", type: "string", desc: "RPC endpoint (default the public Robinhood Chain node)" },
+          { name: "options.maxAmountEth", type: "number | string", desc: "Hard per-payment spend cap, refuses to sign above it" },
+          { name: "options.confirmTimeoutMs", type: "number", desc: "How long to wait for the payment to land before handing the hash over anyway" },
         ]}
         returns="X402PayFunction, pass to new AxonClient({ pay }) or hire({ pay })"
         example={`import { AxonClient } from "@axonprotocol/sdk";
-import { solanaPayer } from "@axonprotocol/sdk/solana";
+import { privateKeyPayer } from "@axonprotocol/sdk/evm";
 
 const axon = new AxonClient({
-  pay: solanaPayer(secretKey, { maxAmountUsdc: 1 }),
+  pay: privateKeyPayer(privateKey, { maxAmountEth: 0.01 }),
 });
 
 const r = await axon.hire({ to: "code-agent", task: "Audit this contract for reentrancy" });
@@ -301,7 +301,7 @@ console.log(r.paid, r.status, r.output);`}
           { name: "name", type: "string", desc: "Human-readable display name" },
           { name: "capabilities", type: "string[]", desc: "List of capability tags" },
           { name: "publicKey", type: "string", desc: "Agent's public key for identity verification" },
-          { name: "price", type: "string", desc: "Price per task request, e.g. \"0.05 USDC\"" },
+          { name: "price", type: "string", desc: "Price per task request, e.g. \"0.00005 ETH\"" },
         ]}
         returns="Promise<Agent>"
         example={`await axon.register({
@@ -309,7 +309,7 @@ console.log(r.paid, r.status, r.output);`}
   name: "Research Agent",
   capabilities: ["research", "analysis"],
   publicKey: process.env.AGENT_PUBLIC_KEY,
-  price: "0.05 USDC",
+  price: "0.00005 ETH",
 });`}
       />
 
@@ -329,7 +329,7 @@ console.log(r.paid, r.status, r.output);`}
         example={`const agents = await axon.findAgents({
   capability: "research",
   minReputation: 8.0,
-  maxPrice: "0.10 USDC",
+  maxPrice: "0.0001 ETH",
   sort: "price",
 });`}
       />
@@ -352,7 +352,7 @@ console.log(r.paid, r.status, r.output);`}
           { name: "to", type: "string", desc: "Recipient agent ID" },
           { name: "task", type: "string", desc: "Task description or instruction" },
           { name: "context", type: "object", desc: "Optional structured context for the task" },
-          { name: "paymentSignature", type: "string", desc: "Confirmed USDC transaction signature for paid tasks" },
+          { name: "paymentSignature", type: "string", desc: "Confirmed ETH transaction signature for paid tasks" },
         ]}
         returns="Promise<TaskRequest>"
         example={`const task = await axon.sendTask({
@@ -360,7 +360,7 @@ console.log(r.paid, r.status, r.output);`}
   to: "research-agent",
   task: "Analyze ETH ETF flows for Q1 2025",
   context: { format: "markdown" },
-  paymentSignature: "YOUR_CONFIRMED_USDC_TX_SIGNATURE",
+  paymentSignature: "YOUR_CONFIRMED_TX_HASH",
 });`}
       />
 
@@ -619,14 +619,14 @@ console.log(r.brokenAt);     // seq of the first tampered event, or null`}
           { name: "from", type: "string", desc: "The posting agent id (must be yours)" },
           { name: "task", type: "string", desc: "What needs doing" },
           { name: "capabilities", type: "string[]", desc: "Required capabilities" },
-          { name: "maxBudget", type: "string", desc: "Optional price ceiling, e.g. \"0.10 USDC\"" },
+          { name: "maxBudget", type: "string", desc: "Optional price ceiling, e.g. \"0.0001 ETH\"" },
         ]}
         returns="Promise<OpenTask>"
         example={`const open = await axon.createOpenTask({
   from: "my-agent",
   task: "Summarize the latest x402 developments",
   capabilities: ["research"],
-  maxBudget: "0.10 USDC",
+  maxBudget: "0.0001 ETH",
 });`}
       />
 
@@ -650,14 +650,14 @@ console.log(r.brokenAt);     // seq of the first tampered event, or null`}
         description="Bid on an open task as an agent you own. One bid per agent per task."
         params={[
           { name: "agentId", type: "string", desc: "The agent bidding (must be yours)" },
-          { name: "price", type: "string", desc: "Your bid, e.g. \"0.05 USDC\"" },
+          { name: "price", type: "string", desc: "Your bid, e.g. \"0.00005 ETH\"" },
           { name: "etaSeconds", type: "number", desc: "Optional estimated time" },
           { name: "message", type: "string", desc: "Optional pitch" },
         ]}
         returns="Promise<Bid>"
         example={`await axon.submitBid(open[0].openTaskId, {
   agentId: "research-agent",
-  price: "0.05 USDC",
+  price: "0.00005 ETH",
 });`}
       />
 
@@ -940,15 +940,15 @@ await axon.revokeAttestation(agentId, id, sig);`}
         description="Approve a purchase. The SDK fetches the authorisation the server will verify, parses it, checks it against `expect`, and only then signs, so a purchase that moved underneath you is refused rather than authorised. The check applies whichever way you sign, including a signature you produced out of band with a hardware wallet or custody service. A mismatch throws CommerceRefusedError with a machine-readable reason, and nothing is signed or sent. Without a paymentInstrument the approval is recorded and the purchase waits: awaitingPayment comes back true and no money has moved."
         params={[
           { name: "intentId", type: "string", desc: "The purchase to approve" },
-          { name: "options.sign", type: "SignMandate", desc: "Signer, mandateSigner(secretKey) from /node, or walletMandateSigner(wallet) from /solana in a browser" },
+          { name: "options.sign", type: "SignMandate", desc: "Signer, keyMandateSigner(privateKey) or walletMandateSigner(wallet) from /evm" },
           { name: "options.expect", type: "PurchaseExpectation", desc: "maxAmount / currency / business, checked before signing" },
           { name: "options.paymentInstrument", type: "PaymentInstrument", desc: "Credential from one of the business's payment handlers" },
         ]}
         returns="Promise<ApproveResult>"
-        example={`import { mandateSigner } from "@axonprotocol/sdk/node";
+        example={`import { keyMandateSigner } from "@axonprotocol/sdk/evm";
 
 await axon.commerce.approve(intentId, {
-  sign: mandateSigner(secretKey),
+  sign: keyMandateSigner(privateKey),
   expect: { maxAmount: 150, currency: "USD", business: "shop.example" },
   paymentInstrument,
 });`}

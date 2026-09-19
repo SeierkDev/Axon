@@ -29,7 +29,7 @@
     "ai",
     "agents",
     "cli",
-    "solana",
+    "ethereum",
     "x402",
     "receipts"
   ],
@@ -40,10 +40,12 @@
     "access": "public"
   },
   "devDependencies": {
-    "bs58": "^6.0.0",
     "esbuild": "^0.28.0",
-    "tweetnacl": "^1.0.3",
     "typescript": "^5.0.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "viem": "^2.21.0"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
   }
 }

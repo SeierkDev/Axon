@@ -71,16 +71,16 @@ export async function POST(req: NextRequest) {
     // The agent's own budget caps are the hard ceiling — a mission can ask for
     // less, never more. Without this a request could authorise a hire above the
     // payment layer's cap, which pays and is then rejected.
-    let budgetUsdc = body.budgetUsdc;
-    let perHireCapUsdc = body.perHireCapUsdc ?? Math.min(4, body.budgetUsdc);
+    let budgetEth = body.budgetEth;
+    let perHireCapEth = body.perHireCapEth ?? Math.min(4, body.budgetEth);
     const maxHires = body.maxHires ?? 6;
     const budget = getBudget(body.agentId);
     if (budget) {
-      if (budget.maxPerCallUsdc != null) perHireCapUsdc = Math.min(perHireCapUsdc, budget.maxPerCallUsdc);
-      const dayCeiling = budget.remainingTodayUsdc ?? budget.maxPerDayUsdc;
-      if (dayCeiling != null) budgetUsdc = Math.min(budgetUsdc, dayCeiling);
+      if (budget.maxPerCallEth != null) perHireCapEth = Math.min(perHireCapEth, budget.maxPerCallEth);
+      const dayCeiling = budget.remainingTodayEth ?? budget.maxPerDayEth;
+      if (dayCeiling != null) budgetEth = Math.min(budgetEth, dayCeiling);
     }
-    if (!(budgetUsdc > 0) || !(perHireCapUsdc > 0)) {
+    if (!(budgetEth > 0) || !(perHireCapEth > 0)) {
       return apiError(
         "VALIDATION_ERROR",
         "This agent's budget caps leave nothing to spend, raise them, or the mission has no room to hire",
@@ -100,8 +100,8 @@ export async function POST(req: NextRequest) {
     // would cost — shouldn't require committing to it first.
     if (body.dryRun) {
       try {
-        const preview = await previewGrowMission(deps, { mission: body.mission, budgetUsdc, perHireCapUsdc, maxHires });
-        return NextResponse.json({ dryRun: true, budgetUsdc, perHireCapUsdc, maxHires, ...preview });
+        const preview = await previewGrowMission(deps, { mission: body.mission, budgetEth, perHireCapEth, maxHires });
+        return NextResponse.json({ dryRun: true, budgetEth, perHireCapEth, maxHires, ...preview });
       } catch (err) {
         // Planning runs the agent's own model. A real run records that failure on
         // its timeline; a preview has no timeline to record it on, so say what
@@ -122,8 +122,8 @@ export async function POST(req: NextRequest) {
       agentId: body.agentId,
       ownerWallet: auth.user.walletAddress,
       mission: body.mission,
-      budgetUsdc,
-      perHireCapUsdc,
+      budgetEth,
+      perHireCapEth,
       maxHires,
       templateId,
     });
@@ -132,12 +132,12 @@ export async function POST(req: NextRequest) {
       req, actor: auth.user, action: "grow.mission_started",
       resourceType: "grow_run", resourceId: run.runId,
       ownerAgentId: body.agentId, ownerWallet: auth.user.walletAddress,
-      metadata: { budgetUsdc, perHireCapUsdc, maxHires },
+      metadata: { budgetEth, perHireCapEth, maxHires },
     });
 
     // Fire-and-forget: the mission runs in the background and the caller polls the
     // timeline. A crash is recorded and the run marked failed, never left hanging.
-    void runGrowMission(deps, { mission: body.mission, budgetUsdc, perHireCapUsdc, maxHires }, run.runId)
+    void runGrowMission(deps, { mission: body.mission, budgetEth, perHireCapEth, maxHires }, run.runId)
       .catch((e) => {
         try {
           recordGrowEvent(run.runId, { kind: "error", summary: `Run crashed: ${(e as Error).message}` });
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
       });
 
     return NextResponse.json(
-      { runId: run.runId, agentId: body.agentId, mission: body.mission, budgetUsdc, perHireCapUsdc, maxHires },
+      { runId: run.runId, agentId: body.agentId, mission: body.mission, budgetEth, perHireCapEth, maxHires },
       { status: 202 },
     );
   });

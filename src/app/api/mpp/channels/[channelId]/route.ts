@@ -1,5 +1,5 @@
 // GET    /api/mpp/channels/:channelId — inspect balance and status
-// DELETE /api/mpp/channels/:channelId — close channel and refund remaining USDC (requires Bearer key)
+// DELETE /api/mpp/channels/:channelId — close channel and refund remaining ETH (requires Bearer key)
 
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -8,7 +8,7 @@ import {
   getChannelById,
   verifyChannelKey,
 } from "@/lib/mpp";
-import { sendUsdcRefund } from "@/lib/solana";
+import { sendNative } from "@/lib/evm";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
 import { withRequestContext } from "@/lib/withRequestContext";
@@ -45,7 +45,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       return apiError("CONFLICT", "Channel is already closing or closed", 409);
     }
 
-    if (channel.balanceUsdc > 0 && !process.env.REFUND_SIGNER_PRIVATE_KEY) {
+    if (channel.balanceEth > 0 && !process.env.REFUND_SIGNER_PRIVATE_KEY) {
       return apiError(
         "PAYMENT_UNAVAILABLE",
         "Refund processing unavailable. REFUND_SIGNER_PRIVATE_KEY is required to close a funded channel.",
@@ -59,9 +59,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     }
 
     // ── Refund remaining balance before closing ──────────────────────────────────
-    if (claimed.balanceUsdc > 0) {
+    if (claimed.balanceEth > 0) {
       try {
-        const refundSignature = await sendUsdcRefund(claimed.ownerAddress, claimed.balanceUsdc);
+        const refundSignature = await sendNative(claimed.ownerAddress, claimed.balanceEth);
         const closed = finalizeChannelClose(channelId, true);
         if (!closed) return apiError("INTERNAL_ERROR", "Channel close could not be finalized", 500);
         recordAuditEvent({
@@ -72,14 +72,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
           resourceId: channelId,
           ownerWallet: claimed.ownerAddress,
           metadata: {
-            refundedUsdc: claimed.balanceUsdc,
+            refundedUsdc: claimed.balanceEth,
             refundSucceeded: true,
             status: closed.status,
           },
         });
         return NextResponse.json({
           channel: closed,
-          refundedUsdc: claimed.balanceUsdc,
+          refundedUsdc: claimed.balanceEth,
           refundSignature,
         });
       } catch (err) {

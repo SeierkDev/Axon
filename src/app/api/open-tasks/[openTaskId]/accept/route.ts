@@ -3,7 +3,7 @@ import { acceptBid, revertAccept, getOpenTaskById, getBidById } from "@/lib/bidd
 import {
   createPayment,
   getPaymentByIncomingSignature,
-  parsePriceToSol,
+  parsePriceToEth,
   refundPayment,
   isTransientPaymentError,
 } from "@/lib/payments";
@@ -63,10 +63,10 @@ async function handlePost(
   if (!bid || bid.openTaskId !== openTaskId) {
     return apiError("NOT_FOUND", "Bid not found for this task", 404);
   }
-  const amountSol = parsePriceToSol(bid.price);
+  const amountEth = parsePriceToEth(bid.price);
 
   // Paid bid: a payment signature is required to escrow the agreed amount.
-  if (amountSol !== null) {
+  if (amountEth !== null) {
     if (!body.paymentSignature) {
       return apiError(
         "PAYMENT_REQUIRED",
@@ -81,7 +81,7 @@ async function handlePost(
 
   // Create the task + close the open task. Paid bids start payment_pending.
   const result = acceptBid(openTaskId, body.bidId, {
-    initialStatus: amountSol !== null ? "payment_pending" : "queued",
+    initialStatus: amountEth !== null ? "payment_pending" : "queued",
   });
   if (!result.success) {
     const mapped = ACCEPT_ERROR[result.code];
@@ -89,13 +89,13 @@ async function handlePost(
   }
 
   // For paid bids, escrow the payment now; roll the accept back if it fails.
-  if (amountSol !== null && body.paymentSignature) {
+  if (amountEth !== null && body.paymentSignature) {
     try {
       await createPayment({
         taskId: result.task.taskId,
         fromAgent: openTask.fromAgent,
         toAgent: bid.agentId,
-        amountSol,
+        amountEth,
         paymentSignature: body.paymentSignature,
         priceString: bid.price,
       });

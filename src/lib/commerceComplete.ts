@@ -52,7 +52,7 @@ export function mandateMessage(intent: PurchaseIntent): string {
  * Record the buyer's signature against an intent. Verified against the owner's
  * own wallet, so a signature from anyone else — including the agent — is refused.
  */
-export function attachMandate(intentId: string, signatureB64: string): PurchaseIntent {
+export async function attachMandate(intentId: string, signatureB64: string): Promise<PurchaseIntent> {
   const intent = getPurchaseIntent(intentId);
   if (!intent) throw new CommerceError(`purchase intent '${intentId}' not found`, "NOT_FOUND");
 
@@ -64,7 +64,7 @@ export function attachMandate(intentId: string, signatureB64: string): PurchaseI
   }
 
   const message = mandateMessage(intent);
-  const ok = verifyWalletSignature({ walletAddress: intent.ownerWallet, message, signatureB64 });
+  const ok = await verifyWalletSignature({ walletAddress: intent.ownerWallet, message, signature: signatureB64 });
   if (!ok) {
     throw new CommerceError("signature does not match the buyer's wallet for this exact purchase", "BAD_SIGNATURE");
   }

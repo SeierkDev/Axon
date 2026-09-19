@@ -18,6 +18,7 @@ import { syncToTurso } from "./db-turso";
 import { encrypt, decrypt } from "./crypto";
 import { logger } from "./logger";
 import { queueWebhookEvent } from "./webhooks";
+import { sameAddress } from "./address";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -228,7 +229,7 @@ export function createSpendMandate(opts: {
 }): SpendMandate {
   const profile = getCommerceProfile(opts.profileId);
   if (!profile) throw new Error(`commerce profile '${opts.profileId}' not found`);
-  if (profile.ownerWallet !== opts.ownerWallet) throw new Error("profile belongs to a different owner");
+  if (!sameAddress(profile.ownerWallet, opts.ownerWallet)) throw new Error("profile belongs to a different owner");
 
   const mandateId = randomUUID();
   getDb().prepare(

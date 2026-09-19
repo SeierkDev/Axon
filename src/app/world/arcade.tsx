@@ -3,7 +3,7 @@
 // Axon World Arcade — the renderable pieces of the minigame layer.
 //
 // Minigames are opened from the 🎮 MINIGAMES tab (top-right of the world), not
-// walked to: the overlay lists every mode, gates entry (Phantom sign-in +
+// walked to: the overlay lists every mode, gates entry (wallet sign-in +
 // holding $AXON — see World3D), and PLAY warps the player to that mode's own
 // arena clearing far outside town. Every clearing is dressed like the city —
 // same grass, the same BoundaryScenery mountain country — so no edge ever
@@ -3913,7 +3913,7 @@ export function MinigamesOverlay({
           {gate === "guest" && (
             <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm text-amber-800">
-                Minigames need a Phantom sign-in, and the wallet must hold{" "}
+                Minigames need a wallet sign-in, and the wallet must hold{" "}
                 <span className="font-bold">{required.toLocaleString()} $AXON</span> to play.
               </p>
               <button
@@ -3921,7 +3921,7 @@ export function MinigamesOverlay({
                 disabled={connecting}
                 className="rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-bold px-4 py-2 shadow hover:brightness-110 disabled:opacity-70"
               >
-                {connecting ? "Connecting…" : "Log in with Phantom"}
+                {connecting ? "Connecting…" : "Log in with your wallet"}
               </button>
             </div>
           )}

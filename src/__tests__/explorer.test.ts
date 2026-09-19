@@ -26,7 +26,7 @@ function settlement(from: string, to: string, amount: number): string {
   const txId = randomUUID();
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at)
        VALUES (?, NULL, ?, ?, ?, 'completed', NULL, 0, 'USDC', ?, ?)`
     )
     .run(txId, from, to, amount, new Date().toISOString(), new Date().toISOString());
@@ -69,7 +69,7 @@ describe("network explorer", () => {
     // A split settlement: the escrow parent kept as 'split' + a 'completed' payout child.
     getDb()
       .prepare(
-        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
+        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at)
          VALUES (?, ?, ?, ?, 1.0, 'split', 'sig-x', 0, 'USDC', ?, ?)`
       )
       .run(randomUUID(), taskId, a.agentId, b.agentId, new Date().toISOString(), new Date().toISOString());
@@ -89,7 +89,7 @@ describe("network explorer", () => {
   it("assembles a feed with totals + recent activity", () => {
     const feed = getExplorerFeed(5);
     expect(feed.totals).toHaveProperty("agents");
-    expect(feed.totals).toHaveProperty("usdcTransacted");
+    expect(feed.totals).toHaveProperty("ethTransacted");
     expect(Array.isArray(feed.recentTasks)).toBe(true);
     expect(Array.isArray(feed.recentSettlements)).toBe(true);
     expect(feed.recentTasks.length).toBeLessThanOrEqual(5);

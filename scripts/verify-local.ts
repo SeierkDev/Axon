@@ -3,7 +3,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 const PORT = Number.parseInt(process.env.AXON_VERIFY_PORT ?? "3100", 10);
 const ENDPOINT = `http://localhost:${PORT}`;
 const READY_TIMEOUT_MS = 20_000;
-const MOCK_PAYMENT_RECEIVER = "11111111111111111111111111111111";
+const MOCK_PAYMENT_RECEIVER = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 
 function run(
   label: string,

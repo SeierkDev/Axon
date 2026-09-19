@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listAuditEvents } from "@/lib/audit";
 import { requireAgentOwner, requireApiKey } from "@/lib/apiAuth";
-import { isValidSolanaAddress } from "@/lib/solana";
+import { isWalletAddress } from "@/lib/address";
 import { apiError } from "@/lib/apiError";
+import { sameAddress } from "@/lib/address";
 
 function parseLimit(raw: string | null): number {
   const parsed = Number.parseInt(raw ?? "", 10);
@@ -27,12 +28,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ events: listAuditEvents({ ownerAgentId: agentId, limit }) });
   }
 
-  if (!ownerWallet || !isValidSolanaAddress(ownerWallet)) {
-    return apiError("VALIDATION_ERROR", "ownerWallet must be a valid Solana address", 400);
+  if (!ownerWallet || !isWalletAddress(ownerWallet)) {
+    return apiError("VALIDATION_ERROR", "ownerWallet must be a valid EVM address", 400);
   }
   const auth = requireApiKey(req);
   if (!auth.ok) return auth.response;
-  if (auth.user.walletAddress !== ownerWallet) {
+  if (!sameAddress(auth.user.walletAddress, ownerWallet)) {
     return apiError("FORBIDDEN", "API key does not belong to this owner wallet", 403);
   }
 

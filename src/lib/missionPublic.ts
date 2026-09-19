@@ -25,7 +25,7 @@ export interface PublicMissionStep {
   taskId?: string;
   /** Where anyone can verify this step independently. */
   receiptUrl?: string;
-  costUsdc: number;
+  costEth: number;
 }
 
 export interface PublicMission {
@@ -37,13 +37,13 @@ export interface PublicMission {
   /** The result, published deliberately by the owner. */
   deliverable?: string;
   status: GrowRun["status"];
-  budgetUsdc: number;
+  budgetEth: number;
   publishedAt?: string;
   completedAt?: string;
   /** Where to start the same job yourself. */
   template: { id: string; title: string } | null;
   steps: PublicMissionStep[];
-  totals: { hires: number; inHouse: number; spentUsdc: number };
+  totals: { hires: number; inHouse: number; spentEth: number };
   /** The receipt's chain hash and its verification, so the page is checkable. */
   receipt: { hash: string; verification: MissionVerification } | null;
 }
@@ -68,7 +68,7 @@ function deriveSteps(run: GrowRun, events: GrowEvent[]): { steps: PublicMissionS
         agentId: e.agentId,
         taskId: e.taskId,
         receiptUrl: e.receiptUrl,
-        costUsdc: e.costUsdc,
+        costEth: e.costEth,
       })),
       totals: manifest.totals,
     };
@@ -81,7 +81,7 @@ function deriveSteps(run: GrowRun, events: GrowEvent[]): { steps: PublicMissionS
     taskId
       ? events
           .filter((e) => e.kind === "payment" && e.taskId === taskId)
-          .reduce((s, e) => s + (e.amountUsdc ?? 0), 0)
+          .reduce((s, e) => s + (e.amountEth ?? 0), 0)
       : 0;
   let seq = 0;
   const steps: PublicMissionStep[] = events
@@ -96,7 +96,7 @@ function deriveSteps(run: GrowRun, events: GrowEvent[]): { steps: PublicMissionS
         agentId: isHire ? e.toAgent : undefined,
         taskId: isHire ? e.taskId : undefined,
         receiptUrl: isHire && e.taskId ? `/r/${e.taskId}` : undefined,
-        costUsdc: isHire ? paid(e.taskId) : 0,
+        costEth: isHire ? paid(e.taskId) : 0,
       };
     });
   return {
@@ -104,7 +104,7 @@ function deriveSteps(run: GrowRun, events: GrowEvent[]): { steps: PublicMissionS
     totals: {
       hires: steps.filter((s) => s.source === "hire").length,
       inHouse: steps.filter((s) => s.source === "in-house").length,
-      spentUsdc: Math.round(steps.reduce((s, x) => s + x.costUsdc, 0) * 10000) / 10000,
+      spentEth: Math.round(steps.reduce((s, x) => s + x.costEth, 0) * 10000) / 10000,
     },
   };
 }
@@ -127,7 +127,7 @@ export function toPublicMission(run: GrowRun, events: GrowEvent[]): PublicMissio
     mission: run.mission,
     deliverable: run.deliverable,
     status: run.status,
-    budgetUsdc: run.budgetUsdc,
+    budgetEth: run.budgetEth,
     publishedAt: run.publishedAt,
     completedAt: run.completedAt,
     template: tpl ? { id: tpl.id, title: tpl.title } : null,
@@ -145,7 +145,7 @@ export interface PublicMissionCard {
   publishedAt?: string;
   template: { id: string; title: string } | null;
   hires: number;
-  spentUsdc: number;
+  spentEth: number;
 }
 
 export function toPublicMissionCard(run: GrowRun, events: GrowEvent[]): PublicMissionCard {
@@ -158,6 +158,6 @@ export function toPublicMissionCard(run: GrowRun, events: GrowEvent[]): PublicMi
     publishedAt: run.publishedAt,
     template: tpl ? { id: tpl.id, title: tpl.title } : null,
     hires: totals.hires,
-    spentUsdc: totals.spentUsdc,
+    spentEth: totals.spentEth,
   };
 }

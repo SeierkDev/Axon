@@ -1,11 +1,11 @@
-import nacl from "tweetnacl";
-import { decodeBase64, encodeBase64 } from "tweetnacl-util";
 import { createHash, randomBytes, randomUUID, scryptSync } from "crypto";
-import { PublicKey } from "@solana/web3.js";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { recoverMessageAddress, type Hex } from "viem";
 import type { NextRequest } from "next/server";
 import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 import { getAgentById } from "./agents";
+import { normalizeAddress, sameAddress } from "./address";
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const API_KEY_BYTES = 32;
@@ -41,10 +41,9 @@ function hashApiKeySha256Legacy(apiKey: string): string {
 
 // ─── Challenges ───────────────────────────────────────────────────────────────
 
-export function createChallenge(agentId: string): string {
+export function createChallenge(agentId: string, value = randomNonce()): string {
   const db = getDb();
   const id = randomUUID();
-  const value = encodeBase64(nacl.randomBytes(32));
   const expiresAt = Date.now() + CHALLENGE_TTL_MS;
 
   db.prepare("DELETE FROM challenges WHERE expires_at < ?").run(Date.now());
@@ -56,8 +55,45 @@ export function createChallenge(agentId: string): string {
   return value;
 }
 
+function randomNonce(): string {
+  return randomBytes(24).toString("base64url");
+}
+
+function siteName(): string {
+  const origin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://axon-agents.com";
+  try {
+    return new URL(origin).host;
+  } catch {
+    return "axon-agents.com";
+  }
+}
+
+/**
+ * The exact text the wallet is asked to sign.
+ *
+ * MetaMask shows the signing payload to the person clicking approve. A bare random nonce shows up
+ * as a line of gibberish, which trains people to approve things they cannot read, and it carries
+ * no statement of what approving does. So the stored challenge IS this whole message, not just the
+ * nonce inside it: the signature is checked against the same string that was stored and shown, and
+ * there is nothing to reassemble or to trust the caller about.
+ */
+export function buildSignInMessage(walletAddress: string, nonce: string): string {
+  return [
+    `${siteName()} wants you to sign in with your wallet.`,
+    "",
+    `Wallet: ${walletAddress}`,
+    "",
+    "Signing proves you control this wallet. It does not move funds, approve tokens, or cost gas.",
+    "",
+    `Nonce: ${nonce}`,
+  ].join("\n");
+}
+
+/** Returns the full message to sign. The caller signs it verbatim and sends it back. */
 export function createWalletChallenge(walletAddress: string): string {
-  return createChallenge(`wallet:${walletAddress}`);
+  const normalized = normalizeAddress(walletAddress) ?? walletAddress;
+  const message = buildSignInMessage(normalized, randomNonce());
+  return createChallenge(`wallet:${normalized}`, message);
 }
 
 export function consumeChallenge(agentId: string, value: string): boolean {
@@ -70,39 +106,48 @@ export function consumeChallenge(agentId: string, value: string): boolean {
 }
 
 export function consumeWalletChallenge(walletAddress: string, value: string): boolean {
-  return consumeChallenge(`wallet:${walletAddress}`, value);
+  const normalized = normalizeAddress(walletAddress) ?? walletAddress;
+  return consumeChallenge(`wallet:${normalized}`, value);
 }
 
 // ─── Signature verification ────────────────────────────────────────────────────
 
-export function verifySignature(opts: {
-  publicKeyB64: string;
-  message: string;
-  signatureB64: string;
-}): boolean {
+/**
+ * EIP-191 personal_sign, which is what MetaMask produces.
+ *
+ * Recovery, not comparison: the signature yields the address that made it, and that address is
+ * checked against the one claimed. A malformed signature makes recovery throw rather than return
+ * a wrong answer, and an attacker's signature recovers to the attacker's own address, so both
+ * failures land on the same `false`.
+ */
+async function recoveredMatches(address: string, message: string, signature: string): Promise<boolean> {
+  const claimed = normalizeAddress(address);
+  if (!claimed) return false;
+  if (typeof signature !== "string" || !/^0x[0-9a-fA-F]+$/.test(signature)) return false;
   try {
-    const publicKey = decodeBase64(opts.publicKeyB64);
-    const signature = decodeBase64(opts.signatureB64);
-    const message = new TextEncoder().encode(opts.message);
-    return nacl.sign.detached.verify(message, signature, publicKey);
+    const recovered = await recoverMessageAddress({ message, signature: signature as Hex });
+    return sameAddress(recovered, claimed);
   } catch {
     return false;
   }
 }
 
+/** An agent proving control of its own key. `address` is the agent's registered EVM address. */
+export function verifySignature(opts: {
+  address: string;
+  message: string;
+  signature: string;
+}): Promise<boolean> {
+  return recoveredMatches(opts.address, opts.message, opts.signature);
+}
+
+/** A person proving control of the wallet they are signing in with. */
 export function verifyWalletSignature(opts: {
   walletAddress: string;
   message: string;
-  signatureB64: string;
-}): boolean {
-  try {
-    const publicKey = new PublicKey(opts.walletAddress);
-    const signature = decodeBase64(opts.signatureB64);
-    const message = new TextEncoder().encode(opts.message);
-    return nacl.sign.detached.verify(message, signature, publicKey.toBytes());
-  } catch {
-    return false;
-  }
+  signature: string;
+}): Promise<boolean> {
+  return recoveredMatches(opts.walletAddress, opts.message, opts.signature);
 }
 
 // ─── API key auth ─────────────────────────────────────────────────────────────
@@ -139,6 +184,8 @@ export function createApiKey(walletAddress: string): {
   walletAddress: string;
 } {
   const db = getDb();
+  const owner = normalizeAddress(walletAddress);
+  if (!owner) throw new Error(`createApiKey: '${walletAddress}' is not a wallet address`);
   const keyId = randomUUID();
   const secret = randomBytes(API_KEY_BYTES).toString("base64url");
   const apiKey = `${API_KEY_PREFIX}_${secret}`;
@@ -148,10 +195,10 @@ export function createApiKey(walletAddress: string): {
   db.prepare(`
     INSERT INTO api_keys (key_id, wallet_address, key_hash, key_prefix, hash_algorithm, created_at)
     VALUES (?, ?, ?, ?, 'scrypt', ?)
-  `).run(keyId, walletAddress, hashApiKeyScrypt(apiKey), keyPrefix, now);
+  `).run(keyId, owner, hashApiKeyScrypt(apiKey), keyPrefix, now);
   void syncToTurso();
 
-  return { keyId, apiKey, keyPrefix, walletAddress };
+  return { keyId, apiKey, keyPrefix, walletAddress: owner };
 }
 
 export function authenticateApiKey(req: NextRequest): AuthenticatedUser | null {
@@ -220,7 +267,7 @@ export function listApiKeys(walletAddress: string): ApiKeyInfo[] {
       FROM api_keys WHERE wallet_address = ?
       ORDER BY created_at DESC
     `)
-    .all(walletAddress) as Row[];
+    .all(normalizeAddress(walletAddress) ?? walletAddress) as Row[];
   return rows.map((r) => ({
     keyId: r.key_id,
     keyPrefix: r.key_prefix,
@@ -232,22 +279,27 @@ export function listApiKeys(walletAddress: string): ApiKeyInfo[] {
 export function revokeApiKeyById(keyId: string, walletAddress: string): boolean {
   const deleted = getDb()
     .prepare("DELETE FROM api_keys WHERE key_id = ? AND wallet_address = ?")
-    .run(keyId, walletAddress).changes > 0;
+    .run(keyId, normalizeAddress(walletAddress) ?? walletAddress).changes > 0;
   if (deleted) void syncToTurso();
   return deleted;
 }
 
 export function isAgentOwner(user: AuthenticatedUser, agentId: string): boolean {
   const agent = getAgentById(agentId);
-  return !!agent?.walletAddress && agent.walletAddress === user.walletAddress;
+  // sameAddress, not ===: the stored spelling and the signed-in one may differ in case only
+  return sameAddress(agent?.walletAddress, user.walletAddress);
 }
 
 // ─── Key pair generation (utility for SDK / testing) ──────────────────────────
 
-export function generateKeyPair(): { publicKey: string; secretKey: string } {
-  const pair = nacl.sign.keyPair();
+/**
+ * A fresh secp256k1 key for an agent. `address` is what gets registered and what signatures are
+ * checked against; `privateKey` never leaves the agent that generated it.
+ */
+export function generateKeyPair(): { address: string; privateKey: string } {
+  const privateKey = generatePrivateKey();
   return {
-    publicKey: encodeBase64(pair.publicKey),
-    secretKey: encodeBase64(pair.secretKey),
+    address: privateKeyToAccount(privateKey).address.toLowerCase(),
+    privateKey,
   };
 }

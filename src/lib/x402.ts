@@ -10,16 +10,18 @@
 import {
   parsePaymentAmount,
   PAYMENT_RECEIVER_WALLET_ADDRESS,
-  USDC_MINT,
-  USDC_DECIMALS,
+  TOKEN_ADDRESS,
+  ETH_DECIMALS,
   verifyIncomingPayment,
-} from "./solana";
+} from "./money";
+import { CHAIN_ID } from "./chain";
 
 export const X402_VERSION = "x402/1" as const;
 export const X402_SCHEME = "exact" as const;
 
-function solanaNetwork(): string {
-  return process.env.SOLANA_NETWORK === "devnet" ? "solana-devnet" : "solana-mainnet";
+/** x402 names a network with a CAIP-2 identifier; for an EVM chain that is eip155 plus its id. */
+function networkId(): string {
+  return `eip155:${CHAIN_ID}`;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -27,7 +29,7 @@ function solanaNetwork(): string {
 export interface X402PaymentOption {
   scheme: typeof X402_SCHEME;
   network: string;
-  maxAmountRequired: string; // micro-USDC (6 decimals), e.g. "100000" = 0.10 USDC
+  maxAmountRequired: string; // wei (18 decimals), e.g. "50000000000000000" = 0.05 ETH
   resource: string;          // full URL of the resource being paid for
   description: string;
   mimeType: string;
@@ -38,7 +40,7 @@ export interface X402PaymentOption {
     name: string;
     symbol: string;
     decimals: number;
-    contractAddress: string; // USDC mint address
+    contractAddress?: string; // only when an ERC-20 is configured; native ETH has no contract
   };
 }
 
@@ -48,7 +50,7 @@ export interface X402Requirements {
 }
 
 export interface X402PaymentPayload {
-  signature: string; // confirmed Solana transaction signature
+  signature: string; // confirmed transaction hash
   from: string;      // payer's wallet address (base58)
 }
 
@@ -62,32 +64,34 @@ export interface X402PaymentHeader {
 
 export function buildX402Requirements(opts: {
   resource: string;
-  price: string;      // e.g. "0.10 USDC"
+  price: string;      // e.g. "0.05 ETH"
   description: string;
 }): X402Requirements | null {
   if (!PAYMENT_RECEIVER_WALLET_ADDRESS) return null;
 
   const parsed = parsePaymentAmount(opts.price);
-  if (!parsed || parsed.currency !== "USDC") return null;
+  if (!parsed) return null;
 
   return {
     version: X402_VERSION,
     accepts: [
       {
         scheme: X402_SCHEME,
-        network: solanaNetwork(),
-          maxAmountRequired: parsed.units.toString(),
+        network: networkId(),
+        // Wei, as a string. The amount never passes through a float on its way to the client, so
+        // what is quoted is exactly what gets checked on-chain.
+        maxAmountRequired: parsed.wei.toString(),
         resource: opts.resource,
         description: opts.description,
         mimeType: "application/json",
         payToAddress: PAYMENT_RECEIVER_WALLET_ADDRESS,
         requiredDeadlineSeconds: 300, // client has 5 minutes to complete payment
-        asset: "USDC",
+        asset: "ETH",
         extra: {
-          name: "USD Coin",
-          symbol: "USDC",
-          decimals: USDC_DECIMALS,
-          contractAddress: USDC_MINT,
+          name: "Ether",
+          symbol: "ETH",
+          decimals: ETH_DECIMALS,
+          ...(TOKEN_ADDRESS ? { contractAddress: TOKEN_ADDRESS } : {}),
         },
       },
     ],
@@ -126,8 +130,8 @@ export function decodePaymentHeader(raw: string): X402PaymentHeader | null {
 
 // ── Verify ────────────────────────────────────────────────────────────────────
 
-// Verifies the on-chain Solana USDC payment described in an X-Payment header.
-// price must be in the same format as the agent's price field, e.g. "0.10 USDC".
+// Verifies the on-chain ETH payment described in an X-Payment header.
+// price must be in the same format as the agent's price field, e.g. "0.05 ETH".
 // Throws for server configuration errors (missing env vars) so callers can return 503.
 // Returns { valid: false } only for genuine payment failures.
 export async function verifyX402Payment(
@@ -136,7 +140,6 @@ export async function verifyX402Payment(
 ): Promise<{ valid: boolean; error?: string }> {
   const parsed = parsePaymentAmount(price);
   if (!parsed) return { valid: false, error: "Agent has an unrecognised price format" };
-  if (parsed.currency !== "USDC") return { valid: false, error: "Only USDC payments are supported" };
 
   try {
     const ok = await verifyIncomingPayment(header.payload.signature, parsed, header.payload.from);
@@ -146,7 +149,7 @@ export async function verifyX402Payment(
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Verification failed";
     // Config errors (missing wallet / API key) must propagate so callers return 503, not 402
-    if (/is not set|API_KEY|HELIUS/i.test(msg)) throw err;
+    if (/is not set|API_KEY|PRIVATE_KEY|RPC_URL/i.test(msg)) throw err;
     return { valid: false, error: msg };
   }
 }

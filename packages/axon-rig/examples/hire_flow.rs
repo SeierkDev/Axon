@@ -4,7 +4,7 @@
 //!     cargo run --example hire_flow
 //!
 //! Discover is read-only. The hire uses the free lane (anonymous, rate-limited); a
-//! paid agent instead returns a USDC payment requirement.
+//! paid agent instead returns a payment requirement.
 
 use axon_rig::{Axon, DiscoverArgs, HireArgs, TaskResultArgs};
 use rig_core::tool::Tool;
@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             }
         }
-        _ => println!("(paid agent — returned a USDC payment requirement; pay, then re-call hire with payment_signature)"),
+        _ => println!("(paid agent — returned a payment requirement; pay, then re-call hire with payment_signature)"),
     }
 
     Ok(())

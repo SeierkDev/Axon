@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTemplate, listTemplates, type TemplateErrorCode } from "@/lib/workflowTemplates";
 import { getAgentById } from "@/lib/agents";
-import { isValidSolanaAddress } from "@/lib/solana";
+import { isWalletAddress } from "@/lib/address";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { apiError, type ApiErrorCode } from "@/lib/apiError";
@@ -43,8 +43,8 @@ async function handlePost(req: NextRequest) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
 
-  if (!isValidSolanaAddress(body.from) && !getAgentById(body.from)) {
-    return apiError("VALIDATION_ERROR", "from must be a valid Solana address or agent ID", 400);
+  if (!isWalletAddress(body.from) && !getAgentById(body.from)) {
+    return apiError("VALIDATION_ERROR", "from must be a valid wallet address or agent ID", 400);
   }
   const auth = requireApiKey(req);
   if (!auth.ok) return auth.response;

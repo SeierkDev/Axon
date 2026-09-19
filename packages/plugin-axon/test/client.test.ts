@@ -23,12 +23,12 @@ test("searchAgents posts a tools/call and parses the content block", async () =>
     (body) => {
       assert.equal(body.method, "tools/call");
       assert.equal(body.params.name, "search_agents");
-      assert.equal(body.params.arguments.query, "research solana rpcs");
+      assert.equal(body.params.arguments.query, "research rpc providers");
       return mcpEnvelope({ agents: [{ agentId: "a1", name: "Researcher", capabilities: ["research"], proofScore: 700 }] });
     },
     async () => {
       const c = new AxonClient("https://axon-agents.com");
-      const { agents } = await c.searchAgents({ query: "research solana rpcs" });
+      const { agents } = await c.searchAgents({ query: "research rpc providers" });
       assert.equal(agents[0].agentId, "a1");
       assert.equal(agents[0].proofScore, 700);
     },
@@ -37,7 +37,7 @@ test("searchAgents posts a tools/call and parses the content block", async () =>
 
 test("hireAgent surfaces payment_required for paid agents", async () => {
   await withFetch(
-    () => mcpEnvelope({ status: "payment_required", price: "0.5 USDC", amount: 0.5, currency: "USDC", payTo: "Trez...", network: "solana-mainnet", instructions: "Pay 0.5 USDC…" }),
+    () => mcpEnvelope({ status: "payment_required", price: "0.5 ETH", amount: 0.5, currency: "ETH", payTo: "0x7099...", network: "eip155:4663", instructions: "Pay 0.5 ETH…" }),
     async () => {
       const c = new AxonClient();
       const r = await c.hireAgent({ agentId: "a1", task: "do it" });

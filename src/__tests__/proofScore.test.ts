@@ -30,18 +30,18 @@ function makeAgent(name = "Worker"): Agent {
 }
 
 // A completed task with a settled USDC transaction — the un-gameable substrate.
-function settledJob(from: string, to: string, usdc: number, content = "OUTPUT — never surfaces"): string {
-  const t = createTask({ fromAgent: from, toAgent: to, task: "CONFIDENTIAL brief", payment: `${usdc} USDC` });
+function settledJob(from: string, to: string, amountEth: number, content = "OUTPUT — never surfaces"): string {
+  const t = createTask({ fromAgent: from, toAgent: to, task: "CONFIDENTIAL brief", payment: `${amountEth} USDC` });
   startTask(t.taskId);
   completeTask(t.taskId, content);
   const ts = new Date().toISOString();
   getDb().prepare("UPDATE tasks SET completed_at = ?, started_at = ? WHERE task_id = ?").run(ts, ts, t.taskId);
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, fee_amount, currency, created_at, settled_at)
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, fee_amount, currency, created_at, settled_at)
        VALUES (?, ?, ?, ?, ?, 'completed', 0, 'USDC', ?, ?)`,
     )
-    .run(randomUUID(), t.taskId, from, to, usdc, ts, ts);
+    .run(randomUUID(), t.taskId, from, to, amountEth, ts, ts);
   return t.taskId;
 }
 
@@ -86,7 +86,7 @@ describe("computeProofScore", () => {
     const p = computeProofScore(to.agentId)!;
     expect(p.score).toBeGreaterThan(0);
     expect(p.score).toBeLessThanOrEqual(1000);
-    expect(p.inputs.settledUsdc).toBeCloseTo(0.5, 6);
+    expect(p.inputs.settledEth).toBeCloseTo(0.5, 6);
     expect(p.evidenceCount).toBe(1);
     expect(p.evidence[0]).toMatchObject({ taskId: id, receipt: `/r/${id}`, verify: `/api/receipts/${id}/public` });
   });
@@ -146,7 +146,7 @@ describe("computeProofScore", () => {
     for (let i = 0; i < 10; i++) freeJob(from.agentId, to.agentId); // lots of free work — cannot inflate the score
     const p = computeProofScore(to.agentId)!;
     expect(p.evidenceCount).toBe(0); // no settled work backs it
-    expect(p.inputs.settledUsdc).toBe(0);
+    expect(p.inputs.settledEth).toBe(0);
     expect(p.components.provenWork.factor).toBe(0);
     // quality still reflects the completed work (reputation counts free tasks)
     expect(p.inputs.tasksCompleted).toBe(10);
@@ -172,14 +172,14 @@ describe("computeProofScore", () => {
     const to = makeAgent();
     settledJob(from.agentId, to.agentId, 1); // one native Axon settlement
     recordCrossNetworkSettlement({
-      agentId: to.agentId, network: "agenc", externalRef: "sig-abc-123", usdc: 5,
-      receiptUrl: "https://agenc.ag/receipt/sig-abc-123", settledAt: new Date().toISOString(),
+      agentId: to.agentId, network: "peernet", externalRef: "sig-abc-123", amountEth: 5,
+      receiptUrl: "https://peernet.example/receipt/sig-abc-123", settledAt: new Date().toISOString(),
     });
     const p = computeProofScore(to.agentId)!;
     expect(p.evidenceCount).toBe(2); // native + cross-network
-    const cross = p.evidence.find((e) => e.network === "agenc");
+    const cross = p.evidence.find((e) => e.network === "peernet");
     expect(cross).toBeTruthy();
-    expect(cross!.receipt).toContain("agenc.ag");
+    expect(cross!.receipt).toContain("peernet.example");
     expect(cross!.verify).toBeNull(); // verify externally on the other network
 
     const v = verifyProofScore(to.agentId)!;
@@ -194,7 +194,7 @@ describe("computeProofScore", () => {
     const from = makeAgent();
     const to = makeAgent();
     settledJob(from.agentId, to.agentId, 1);
-    const s = { agentId: to.agentId, network: "agenc", externalRef: "dup-ref", usdc: 3, receiptUrl: "https://agenc.ag/receipt/dup-ref", settledAt: new Date().toISOString() };
+    const s = { agentId: to.agentId, network: "peernet", externalRef: "dup-ref", amountEth: 3, receiptUrl: "https://peernet.example/receipt/dup-ref", settledAt: new Date().toISOString() };
     recordCrossNetworkSettlement(s);
     recordCrossNetworkSettlement(s); // same (network, externalRef) — must not double-count
     expect(computeProofScore(to.agentId)!.evidenceCount).toBe(2);
@@ -210,8 +210,8 @@ describe("computeProofScore", () => {
 
     const curve = (v: number, anchor: number) => Math.min(1, Math.log10(1 + Math.max(0, v)) / Math.log10(1 + anchor));
     const round3 = (n: number) => Math.round(n * 1000) / 1000;
-    const fromEvidence = round3(Math.min(1, 0.6 * curve(p.evidenceCount, p.method.anchors.tasks) + 0.4 * curve(p.inputs.settledUsdc, p.method.anchors.usdc)));
-    const fromCompleted = round3(Math.min(1, 0.6 * curve(p.inputs.tasksCompleted, p.method.anchors.tasks) + 0.4 * curve(p.inputs.settledUsdc, p.method.anchors.usdc)));
+    const fromEvidence = round3(Math.min(1, 0.6 * curve(p.evidenceCount, p.method.anchors.tasks) + 0.4 * curve(p.inputs.settledEth, p.method.anchors.amountEth)));
+    const fromCompleted = round3(Math.min(1, 0.6 * curve(p.inputs.tasksCompleted, p.method.anchors.tasks) + 0.4 * curve(p.inputs.settledEth, p.method.anchors.amountEth)));
     expect(fromEvidence).toBe(p.components.provenWork.factor); // formula with evidenceCount reproduces the score
     expect(fromCompleted).not.toBe(p.components.provenWork.factor); // using tasksCompleted would be wrong
   });

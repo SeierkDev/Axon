@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useWallet } from "@/components/WalletProvider";
 
 interface Props {
   agentId: string;
@@ -8,21 +9,8 @@ interface Props {
 
 type Step = "idle" | "connecting" | "signing" | "submitting" | "done" | "error";
 
-declare global {
-  interface Window {
-    solana?: {
-      isPhantom?: boolean;
-      connect: () => Promise<{ publicKey: { toString: () => string } }>;
-      signMessage: (msg: Uint8Array, encoding: string) => Promise<{ signature: Uint8Array }>;
-    };
-  }
-}
-
-function encodeBase64(bytes: Uint8Array): string {
-  return btoa(String.fromCharCode(...bytes));
-}
-
 export default function ReviewForm({ agentId }: Props) {
+  const { signIn, error: walletError } = useWallet();
   const [step, setStep] = useState<Step>("idle");
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
@@ -35,38 +23,17 @@ export default function ReviewForm({ agentId }: Props) {
     setStep("connecting");
 
     try {
-      const phantom = window.solana;
-      if (!phantom?.isPhantom) {
-        setError("Phantom wallet not found. Install it at phantom.app.");
+      setStep("signing");
+      // The provider owns the whole round trip: connect, fetch the challenge, sign it, exchange it
+      // for a key. It also owns the phone case, where there is no injected wallet at all.
+      const signedIn = await signIn();
+      if (!signedIn) {
+        setError(walletError ?? "Signing in was cancelled.");
         setStep("error");
         return;
       }
-
-      const { publicKey } = await phantom.connect();
-      const walletAddress = publicKey.toString();
-      setStep("signing");
-
-      // Get challenge
-      const challengeRes = await fetch("/api/auth/challenge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress }),
-      });
-      const { challenge } = await challengeRes.json() as { challenge: string };
-
-      // Sign
-      const message = new TextEncoder().encode(challenge);
-      const { signature } = await phantom.signMessage(message, "utf8");
-
-      // Verify → get API key
       setStep("submitting");
-      const verifyRes = await fetch("/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress, challenge, signature: encodeBase64(signature) }),
-      });
-      const { apiKey } = await verifyRes.json() as { apiKey: string };
-      if (!apiKey) throw new Error("Authentication failed.");
+      const { apiKey } = signedIn;
 
       // Post review
       const reviewRes = await fetch(`/api/agents/${encodeURIComponent(agentId)}/reviews`, {
@@ -96,7 +63,7 @@ export default function ReviewForm({ agentId }: Props) {
   }
 
   const isLoading = step === "connecting" || step === "signing" || step === "submitting";
-  const loadingLabel = step === "connecting" ? "Connecting…" : step === "signing" ? "Sign in Phantom…" : "Submitting…";
+  const loadingLabel = step === "connecting" ? "Connecting…" : step === "signing" ? "Check your wallet…" : "Submitting…";
 
   return (
     <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800">
@@ -128,9 +95,9 @@ export default function ReviewForm({ agentId }: Props) {
         disabled={isLoading}
         className="text-sm px-4 py-2 bg-[#0a0a0a] dark:bg-white hover:bg-[#222] dark:hover:bg-gray-200 text-white dark:text-[#0a0a0a] rounded-lg font-medium transition-colors disabled:opacity-50"
       >
-        {isLoading ? loadingLabel : "Connect Phantom & Submit"}
+        {isLoading ? loadingLabel : "Connect wallet & submit"}
       </button>
-      <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-2">Requires Phantom wallet to prevent spam.</p>
+      <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-2">Requires a wallet signature to prevent spam.</p>
     </div>
   );
 }

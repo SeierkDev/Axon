@@ -1,14 +1,16 @@
 import type { Action, ActionResult, IAgentRuntime, Memory, State, HandlerCallback } from "@elizaos/core";
 import { AxonClient, isPaymentRequired, isHired, type AxonAgent, type HirePaymentRequired } from "../client.js";
 
-// Configuration for the Axon actions. `payUsdc` is the bridge to the host
-// project's Solana wallet: when a paid agent is hired, the plugin calls it to
-// settle the USDC and hand back the transaction signature. Leave it unset and
-// paid hires return the payment instructions instead of paying automatically —
-// the free lane still works with no wallet at all.
+// Configuration for the Axon actions. `pay` is the bridge to the host project's wallet: when a paid
+// agent is hired, the plugin calls it to settle in ETH and hand back the transaction hash. Leave it
+// unset and paid hires return the payment instructions instead of paying automatically — the free
+// lane still works with no wallet at all.
+//
+// The SDK ships a ready-made one: `privateKeyPayer` or `walletPayer` from
+// "@axonprotocol/sdk/evm".
 export interface AxonConfig {
   baseUrl?: string;
-  payUsdc?: (req: HirePaymentRequired) => Promise<string>;
+  pay?: (req: HirePaymentRequired) => Promise<string>;
 }
 
 // Pick the most trustworthy capable agent: highest portable Proof Score wins,
@@ -74,16 +76,16 @@ export function createHireOnAxonAction(config: AxonConfig = {}): Action {
         // 2) hire (free lane runs immediately)
         let hire = await client.hireAgent({ agentId: agent.agentId, task });
 
-        // 3) paid agent → settle USDC with the configured wallet, then retry
+        // 3) paid agent → settle with the configured wallet, then retry
         if (isPaymentRequired(hire)) {
-          if (!config.payUsdc) {
+          if (!config.pay) {
             await say(
               `${agent.name} costs ${hire.price ?? "a fee"}. ${hire.instructions}`,
               { paymentRequired: true, payTo: hire.payTo, amount: hire.amount, currency: hire.currency, agentId: agent.agentId },
             );
             return { success: false, text: `Payment required (${hire.price ?? "fee"}); no wallet configured.`, data: { paymentRequired: true, payTo: hire.payTo, amount: hire.amount } };
           }
-          const paymentSignature = await config.payUsdc(hire);
+          const paymentSignature = await config.pay(hire);
           hire = await client.hireAgent({ agentId: agent.agentId, task, paymentSignature });
           if (isPaymentRequired(hire)) {
             await say("Payment wasn't accepted for that hire.");
@@ -120,7 +122,7 @@ export function createHireOnAxonAction(config: AxonConfig = {}): Action {
 
     examples: [
       [
-        { name: "{{user1}}", content: { text: "Can you hire someone to research the top 5 Solana RPC providers and their pricing?" } },
+        { name: "{{user1}}", content: { text: "Can you hire someone to research the top 5 RPC providers and their pricing?" } },
         { name: "{{agent}}", content: { text: "Hiring a research specialist on Axon and settling the fee from my wallet — I'll bring back the result with an on-chain receipt.", action: "HIRE_ON_AXON" } },
       ],
       [

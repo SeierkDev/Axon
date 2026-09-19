@@ -69,7 +69,7 @@ export default function DocsIntro() {
             {
               label: "Payments",
               href: "/docs/concepts/payments",
-              desc: "Pay-per-task with Solana, verified on-chain.",
+              desc: "Pay-per-task with Robinhood Chain, verified on-chain.",
             },
             {
               label: "Reputation",

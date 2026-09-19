@@ -17,20 +17,20 @@ const field =
   "w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-600";
 const label = "block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5";
 
-// Parse a bid price like "0.05 USDC" — a positive amount means the bid is paid.
+// Parse a bid price like "0.05 ETH" — a positive amount means the bid is paid.
 function parsePrice(price: string): { amount: number; currency: string } | null {
-  const m = price.trim().match(/^([\d.]+)\s*(USDC|SOL)?$/i);
+  const m = price.trim().match(/^([\d.]+)\s*(ETH|SOL)?$/i);
   if (!m) return null;
   const amount = parseFloat(m[1]);
   if (!Number.isFinite(amount) || amount <= 0) return null;
-  return { amount, currency: (m[2] ?? "USDC").toUpperCase() };
+  return { amount, currency: (m[2] ?? "ETH").toUpperCase() };
 }
 
 function friendlyPayError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
-  if (msg === "PHANTOM_NOT_FOUND") return "Phantom wallet not found, install Phantom to pay the agent.";
-  if (msg.startsWith("INSUFFICIENT_USDC")) return "Not enough USDC in your wallet to pay this bid.";
-  if (msg === "INSUFFICIENT_SOL") return "Your wallet needs a little SOL to cover the network fee.";
+  if (msg === "WALLET_NOT_FOUND") return "No wallet found in this browser, install one to pay the agent.";
+  if (msg.startsWith("INSUFFICIENT_FUNDS")) return "Not enough ETH in your wallet to pay this bid.";
+
   if (msg === "PAYMENT_FAILED") return "The payment transaction failed on-chain.";
   return msg;
 }
@@ -106,19 +106,19 @@ export default function OpenTasksClient({ rpcUrl, treasury }: { rpcUrl: string; 
     try {
       let paymentSignature: string | undefined;
 
-      // Paid bid → pay the winning agent in USDC via the wallet, then send the
+      // Paid bid → pay the winning agent in ETH via the wallet, then send the
       // signature so the server can escrow it before the task runs.
       const parsed = parsePrice(bid.price);
       if (parsed && parsed.amount > 0) {
-        if (parsed.currency !== "USDC") {
-          throw new Error("Only USDC-priced bids can be paid in the browser.");
+        if (parsed.currency !== "ETH") {
+          throw new Error("Only ETH-priced bids can be paid in the browser.");
         }
-        if (!rpcUrl || !treasury) throw new Error("Payments aren't configured on this deployment.");
+        if (!treasury) throw new Error("Payments aren't configured on this deployment.");
         // Pay into the platform escrow wallet — the server verifies the payment
         // landed there before assigning the task, and the agent is paid out from
         // escrow on completion (same model as normal paid tasks).
         setPayingBidId(bid.bidId);
-        const { signature } = await payForBuild({ rpcUrl, treasury, usdcAmount: parsed.amount });
+        const { signature } = await payForBuild({ rpcUrl, treasury, ethAmount: parsed.amount });
         paymentSignature = signature;
       }
 
@@ -190,7 +190,7 @@ export default function OpenTasksClient({ rpcUrl, treasury }: { rpcUrl: string; 
           </div>
           <div>
             <label className={label} htmlFor="budget">Max budget (optional)</label>
-            <input id="budget" className={field} value={maxBudget} onChange={(e) => setMaxBudget(e.target.value)} placeholder="0.10 USDC" />
+            <input id="budget" className={field} value={maxBudget} onChange={(e) => setMaxBudget(e.target.value)} placeholder="0.10 ETH" />
           </div>
         </div>
         <button

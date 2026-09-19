@@ -7,10 +7,11 @@ import { getOutputCommitment } from "@/lib/outputCommitment";
 import { getDb } from "@/lib/db";
 import * as webhooksModule from "@/lib/webhooks";
 import type { Agent } from "@/sdk/types";
+import { EXPLORER } from "@/lib/chain";
 
 afterEach(() => { vi.restoreAllMocks(); });
 
-const TEST_WALLET = "11111111111111111111111111111111";
+const TEST_WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let counter = 0;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -366,29 +367,23 @@ describe("getReceipt: context bad JSON is handled gracefully", () => {
   });
 });
 
-// ── getOutputCommitment: devnet cluster param ────────────────────────────────
+// ── getOutputCommitment: explorer URL ────────────────────────────────────────
 
-describe("getOutputCommitment: devnet explorer URL", () => {
-  it("appends ?cluster=devnet to the explorerUrl when SOLANA_NETWORK=devnet", () => {
+describe("getOutputCommitment: explorer URL", () => {
+  it("points at the chain the commitment was actually written to", () => {
     const agent = makeAgent();
     createAgent(agent);
     const task = createTask({ fromAgent: agent.agentId, toAgent: agent.agentId, task: "commit" });
 
-    // Directly set output_hash and output_commitment to simulate a committed output
     const fakeHash = "a".repeat(64);
-    const fakeSig = "5".repeat(88);
+    const fakeSig = `0x${"5".repeat(64)}`;
     getDb()
       .prepare("UPDATE tasks SET output_hash = ?, output_commitment = ? WHERE task_id = ?")
       .run(fakeHash, fakeSig, task.taskId);
 
-    vi.stubEnv("SOLANA_NETWORK", "devnet");
-    try {
-      const commitment = getOutputCommitment(task.taskId);
-      expect(commitment).not.toBeNull();
-      expect(commitment!.explorerUrl).toContain("?cluster=devnet");
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    const commitment = getOutputCommitment(task.taskId);
+    expect(commitment).not.toBeNull();
+    expect(commitment!.explorerUrl).toBe(`${EXPLORER}/tx/${fakeSig}`);
   });
 });
 
@@ -445,12 +440,12 @@ describe("getReceipt: hasOpenMppChannel detected when open MPP channel exists", 
       fromAgent: agent.walletAddress ?? agent.agentId,
       toAgent: agent.agentId,
       task: "mpp path test",
-      payment: "5 USDC",
+      payment: "0.005 ETH",
     });
 
     // Insert a minimal open MPP channel for the fromAgent wallet
     getDb().prepare(`
-      INSERT INTO mpp_channels (channel_id, owner_address, key_hash, balance_usdc, balance_micro_usdc, status, created_at, updated_at)
+      INSERT INTO mpp_channels (channel_id, owner_address, key_hash, balance_eth, balance_wei, status, created_at, updated_at)
       VALUES ('mpp-test-ch', ?, 'khash', 10.0, 10000000, 'open', datetime('now'), datetime('now'))
     `).run(agent.walletAddress);
 

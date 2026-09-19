@@ -6,6 +6,7 @@ import { checkRateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { approvePurchase, declinePurchase, getPurchaseIntent, CommerceError } from "@/lib/commerce";
 import { attachMandate, mandateMessage, completeApprovedPurchase } from "@/lib/commerceComplete";
 import { recordAuditEvent } from "@/lib/audit";
+import { sameAddress } from "@/lib/address";
 
 export const runtime = "nodejs";
 
@@ -25,7 +26,7 @@ export async function GET(
   if (!auth.ok) return auth.response;
   const { intentId } = await params;
   const intent = getPurchaseIntent(intentId);
-  if (!intent || intent.ownerWallet !== auth.user.walletAddress) {
+  if (!intent || !sameAddress(intent.ownerWallet, auth.user.walletAddress)) {
     return apiError("NOT_FOUND", `Purchase intent '${intentId}' not found`, 404);
   }
   return NextResponse.json({
@@ -60,7 +61,7 @@ export async function POST(
 
     const existing = getPurchaseIntent(intentId);
     if (!existing) return apiError("NOT_FOUND", `Purchase intent '${intentId}' not found`, 404);
-    if (existing.ownerWallet !== auth.user.walletAddress) {
+    if (!sameAddress(existing.ownerWallet, auth.user.walletAddress)) {
       // Same shape as a miss: don't confirm the existence of someone else's purchase.
       return apiError("NOT_FOUND", `Purchase intent '${intentId}' not found`, 404);
     }
@@ -84,7 +85,7 @@ export async function POST(
         );
       }
       try {
-        attachMandate(intentId, body.signature);
+        await attachMandate(intentId, body.signature);
       } catch (err) {
         const code = err instanceof CommerceError ? err.code : "BAD_SIGNATURE";
         return apiError("VALIDATION_ERROR", err instanceof Error ? err.message : "invalid signature", 400, { reason: code });

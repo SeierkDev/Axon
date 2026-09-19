@@ -6,7 +6,7 @@
 import { getDb } from "./db";
 import { searchAgents } from "./agents";
 import { getBudget } from "./budgets";
-import { parsePaymentAmount } from "./solana";
+import { parsePaymentAmount } from "./money";
 import type { Agent } from "@/sdk/types";
 
 export interface RouteOptions {
@@ -14,7 +14,7 @@ export interface RouteOptions {
   capability?: string;
   /** Multiple capabilities — the worker must have ALL of them. */
   capabilities?: string[];
-  /** Price ceiling, e.g. "0.50 USDC". Free agents always pass. */
+  /** Price ceiling, e.g. "0.50 ETH". Free agents always pass. */
   maxPrice?: string;
   /** The paying identity. Its budget allow-list is honoured, and it's never routed to itself. */
   fromAgent?: string;
@@ -39,7 +39,7 @@ export interface Candidate {
 export interface RouteResult {
   agent: Agent;
   score: number;
-  /** Human-readable why-this-one, e.g. "Proof 951 · 0.15 USDC · load 0". */
+  /** Human-readable why-this-one, e.g. "Proof 951 · 0.15 ETH · load 0". */
   reason: string;
   /** How many candidates were weighed. */
   considered: number;

@@ -9,7 +9,7 @@ import {
 import { createAgent } from "@/lib/agents";
 import { getDb } from "@/lib/db";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let seq = 0;
 function uid() { return `emb-${++seq}`; }
 
@@ -301,8 +301,8 @@ describe("semanticSearchAgents", () => {
 
   it("filters by maxPrice — excludes agents whose price exceeds the cap", async () => {
     const idFree      = uid(); makeAgent(idFree);
-    const idCheap     = uid(); makeAgent(idCheap, { price: "0.05 USDC" });
-    const idExpensive = uid(); makeAgent(idExpensive, { price: "1.00 USDC" });
+    const idCheap     = uid(); makeAgent(idCheap, { price: "0.00005 ETH" });
+    const idExpensive = uid(); makeAgent(idExpensive, { price: "0.001 ETH" });
     storeAgentEmbedding(idFree, unitVec(0));
     storeAgentEmbedding(idCheap, unitVec(0));
     storeAgentEmbedding(idExpensive, unitVec(0));
@@ -310,7 +310,7 @@ describe("semanticSearchAgents", () => {
     process.env.OPENAI_API_KEY = "test-key";
     vi.stubGlobal("fetch", fakeOkFetch(unitVec(0)));
 
-    const results = await semanticSearchAgents("test", { q: "test", maxPrice: "0.10 USDC", limit: 100 });
+    const results = await semanticSearchAgents("test", { q: "test", maxPrice: "0.0001 ETH", limit: 100 });
     expect(results).not.toBeNull();
     const ids = results!.map((r) => r.agentId);
     expect(ids).toContain(idFree);

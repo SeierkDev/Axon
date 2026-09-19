@@ -10,10 +10,11 @@ import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
 import { createAgent, getAgentById } from "@/lib/agents";
 import * as webhooksModule from "@/lib/webhooks";
 import type { Agent } from "@/sdk/types";
+import { toWei } from "@/lib/money";
 
 afterEach(() => { vi.restoreAllMocks(); });
 
-const TEST_WALLET = "11111111111111111111111111111111";
+const TEST_WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let counter = 0;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -31,8 +32,8 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
   };
 }
 
-function mockSig(units: number, nonce: string | number): string {
-  return `mockpay:USDC:${units}:${TEST_WALLET}:${TEST_WALLET}:${nonce}`;
+function mockSig(eth: number | string, nonce: string | number): string {
+  return `mockpay:ETH:${toWei(eth)}:${TEST_WALLET}:${TEST_WALLET}:${nonce}`;
 }
 
 // ── Complete path ─────────────────────────────────────────────────────────────
@@ -53,9 +54,9 @@ describe("settlement invariants: complete path", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, "si-complete-1"),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, "si-complete-1"),
+      priceString: "0.001 ETH",
     });
 
     const completed = completeTask(task.taskId, "Output");
@@ -87,13 +88,13 @@ describe("settlement invariants: complete path", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 2,
-      paymentSignature: mockSig(2_000_000, "si-escrow-clear"),
-      priceString: "2 USDC",
+      amountEth: 2,
+      paymentSignature: mockSig(0.002, "si-escrow-clear"),
+      priceString: "0.002 ETH",
     });
 
     const before = getAgentBalance(sender.agentId);
-    expect(before.totalEscrow).toBe(2);
+    expect(before.totalEscrow).toBe(0.002);
     expect(before.totalSpent).toBe(0);
 
     completeTask(task.taskId, "done");
@@ -101,7 +102,7 @@ describe("settlement invariants: complete path", () => {
 
     const after = getAgentBalance(sender.agentId);
     expect(after.totalEscrow).toBe(0);
-    expect(after.totalSpent).toBe(2);
+    expect(after.totalSpent).toBe(0.002);
   });
 
   it("cannot double-settle the same task", async () => {
@@ -117,9 +118,9 @@ describe("settlement invariants: complete path", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, "si-no-double"),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, "si-no-double"),
+      priceString: "0.001 ETH",
     });
 
     completeTask(task.taskId, "done");
@@ -147,9 +148,9 @@ describe("settlement invariants: refund path", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, "si-refund-1"),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, "si-refund-1"),
+      priceString: "0.001 ETH",
     });
 
     failTask(task.taskId, "Provider error");
@@ -172,9 +173,9 @@ describe("settlement invariants: refund path", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, "si-refund-note"),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, "si-refund-note"),
+      priceString: "0.001 ETH",
     });
 
     failTask(task.taskId, "Provider exploded");
@@ -198,9 +199,9 @@ describe("settlement invariants: refund path", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, "si-no-double-refund"),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, "si-no-double-refund"),
+      priceString: "0.001 ETH",
     });
 
     failTask(task.taskId, "Error");
@@ -226,21 +227,21 @@ describe("settlement invariants: escrow balance consistency", () => {
       taskId: task1.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, "si-escrow-sum-1"),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, "si-escrow-sum-1"),
+      priceString: "0.001 ETH",
     });
     await createPayment({
       taskId: task2.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 3,
-      paymentSignature: mockSig(3_000_000, "si-escrow-sum-2"),
-      priceString: "3 USDC",
+      amountEth: 3,
+      paymentSignature: mockSig(0.003, "si-escrow-sum-2"),
+      priceString: "0.003 ETH",
     });
 
     const balance = getAgentBalance(sender.agentId);
-    expect(balance.totalEscrow).toBe(4);
+    expect(balance.totalEscrow).toBe(0.004);
   });
 
   it("worker earned balance only increases after settlement, not before", async () => {
@@ -256,9 +257,9 @@ describe("settlement invariants: escrow balance consistency", () => {
       taskId: task.taskId,
       fromAgent: sender.agentId,
       toAgent: worker.agentId,
-      amountSol: 1,
-      paymentSignature: mockSig(1_000_000, "si-earned-timing"),
-      priceString: "1 USDC",
+      amountEth: 1,
+      paymentSignature: mockSig(0.001, "si-earned-timing"),
+      priceString: "0.001 ETH",
     });
 
     expect(getAgentBalance(worker.agentId).totalEarned).toBe(0);
@@ -266,6 +267,6 @@ describe("settlement invariants: escrow balance consistency", () => {
     completeTask(task.taskId, "done");
     releasePayment(task.taskId);
 
-    expect(getAgentBalance(worker.agentId).totalEarned).toBe(1);
+    expect(getAgentBalance(worker.agentId).totalEarned).toBe(0.001);
   });
 });

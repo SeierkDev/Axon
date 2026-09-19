@@ -4,7 +4,7 @@
 import { vi, describe, it, expect, afterEach } from "vitest";
 import { getHealthReport, getReadinessReport } from "@/lib/health";
 import { getDb } from "@/lib/db";
-import * as solanaModule from "@/lib/solana";
+import * as evmModule from "@/lib/evm";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -32,7 +32,7 @@ describe("getHealthReport: structure", () => {
     expect(names).toContain("memory");
     expect(names).toContain("tasks");
     expect(names).toContain("agents");
-    expect(names).toContain("helius_circuit");
+    expect(names).toContain("rpc_circuit");
   });
 
   it("reports database as ok in the test environment", () => {
@@ -43,7 +43,7 @@ describe("getHealthReport: structure", () => {
 
   it("reports helius_circuit state as closed (no failures in test environment)", () => {
     const report = getHealthReport();
-    const circuit = report.checks.find((c) => c.name === "helius_circuit")!;
+    const circuit = report.checks.find((c) => c.name === "rpc_circuit")!;
     expect(circuit.status).toBe("ok");
     expect(circuit.details?.state).toBe("closed");
     expect(circuit.details?.consecutiveFailures).toBe(0);
@@ -188,13 +188,13 @@ describe("getReadinessReport: production_config ok path", () => {
 
 describe("getHealthReport: helius_circuit open → error status", () => {
   it("reports error status when the helius circuit is open", () => {
-    vi.spyOn(solanaModule, "getHeliusCircuitState").mockReturnValueOnce({
+    vi.spyOn(evmModule, "getRpcCircuitState").mockReturnValueOnce({
       state: "open",
       consecutiveFailures: 4,
     });
 
     const report = getHealthReport();
-    const check = report.checks.find((c) => c.name === "helius_circuit")!;
+    const check = report.checks.find((c) => c.name === "rpc_circuit")!;
     expect(check.status).toBe("error");
     expect(check.details?.state).toBe("open");
     expect(check.details?.consecutiveFailures).toBe(4);
@@ -204,13 +204,13 @@ describe("getHealthReport: helius_circuit open → error status", () => {
 
 describe("getHealthReport: helius_circuit half-open → warn status", () => {
   it("reports warn status when the helius circuit is half-open", () => {
-    vi.spyOn(solanaModule, "getHeliusCircuitState").mockReturnValueOnce({
+    vi.spyOn(evmModule, "getRpcCircuitState").mockReturnValueOnce({
       state: "half-open",
       consecutiveFailures: 1,
     });
 
     const report = getHealthReport();
-    const check = report.checks.find((c) => c.name === "helius_circuit")!;
+    const check = report.checks.find((c) => c.name === "rpc_circuit")!;
     expect(check.status).toBe("warn");
     expect(check.details?.state).toBe("half-open");
   });

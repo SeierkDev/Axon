@@ -9,7 +9,7 @@ import { queueWebhookEvent } from "./webhooks";
 export interface SpendThreshold {
   thresholdId: string;
   agentId: string;
-  thresholdUsdc: number;
+  thresholdEth: number;
   windowHours: number;
   enabled: boolean;
   createdAt: string;
@@ -20,8 +20,8 @@ export interface SpendAlert {
   alertId: string;
   agentId: string;
   thresholdId: string;
-  amountUsdc: number;
-  thresholdUsdc: number;
+  amountEth: number;
+  thresholdEth: number;
   windowHours: number;
   firedAt: string;
 }
@@ -35,7 +35,7 @@ export interface ThresholdStatus {
 interface ThresholdRow {
   threshold_id: string;
   agent_id: string;
-  threshold_usdc: number;
+  threshold_eth: number;
   window_hours: number;
   enabled: number;
   created_at: string;
@@ -46,8 +46,8 @@ interface AlertRow {
   alert_id: string;
   agent_id: string;
   threshold_id: string;
-  amount_usdc: number;
-  threshold_usdc: number;
+  amount_eth: number;
+  threshold_eth: number;
   window_hours: number;
   fired_at: string;
 }
@@ -56,7 +56,7 @@ function rowToThreshold(row: ThresholdRow): SpendThreshold {
   return {
     thresholdId: row.threshold_id,
     agentId: row.agent_id,
-    thresholdUsdc: row.threshold_usdc,
+    thresholdEth: row.threshold_eth,
     windowHours: row.window_hours,
     enabled: row.enabled === 1,
     createdAt: row.created_at,
@@ -69,8 +69,8 @@ function rowToAlert(row: AlertRow): SpendAlert {
     alertId: row.alert_id,
     agentId: row.agent_id,
     thresholdId: row.threshold_id,
-    amountUsdc: row.amount_usdc,
-    thresholdUsdc: row.threshold_usdc,
+    amountEth: row.amount_eth,
+    thresholdEth: row.threshold_eth,
     windowHours: row.window_hours,
     firedAt: row.fired_at,
   };
@@ -81,9 +81,9 @@ function rowToAlert(row: AlertRow): SpendAlert {
 function getWindowSpend(agentId: string, windowHours: number): number {
   const row = getDb()
     .prepare(`
-      SELECT COALESCE(SUM(amount_sol), 0) AS spent
+      SELECT COALESCE(SUM(amount_eth), 0) AS spent
       FROM transactions
-      WHERE from_agent = ? AND currency = 'USDC' AND status = 'completed'
+      WHERE from_agent = ? AND status = 'completed'
         AND settled_at >= datetime('now', '-' || ? || ' hours')
     `)
     .get(agentId, windowHours) as { spent: number };
@@ -101,7 +101,7 @@ function getThreshold(agentId: string): SpendThreshold | null {
 
 export function setThreshold(
   agentId: string,
-  thresholdUsdc: number,
+  thresholdEth: number,
   windowHours: number,
   enabled: boolean
 ): SpendThreshold {
@@ -114,14 +114,14 @@ export function setThreshold(
   if (existing) {
     db.prepare(`
       UPDATE spend_thresholds
-      SET threshold_usdc = ?, window_hours = ?, enabled = ?, updated_at = ?
+      SET threshold_eth = ?, window_hours = ?, enabled = ?, updated_at = ?
       WHERE agent_id = ?
-    `).run(thresholdUsdc, windowHours, enabled ? 1 : 0, now, agentId);
+    `).run(thresholdEth, windowHours, enabled ? 1 : 0, now, agentId);
   } else {
     db.prepare(`
-      INSERT INTO spend_thresholds (threshold_id, agent_id, threshold_usdc, window_hours, enabled, created_at, updated_at)
+      INSERT INTO spend_thresholds (threshold_id, agent_id, threshold_eth, window_hours, enabled, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(randomUUID(), agentId, thresholdUsdc, windowHours, enabled ? 1 : 0, now, now);
+    `).run(randomUUID(), agentId, thresholdEth, windowHours, enabled ? 1 : 0, now, now);
   }
 
   void syncToTurso();
@@ -163,7 +163,7 @@ function checkThreshold(agentId: string): void {
   if (!threshold || !threshold.enabled) return;
 
   const windowSpend = getWindowSpend(agentId, threshold.windowHours);
-  if (windowSpend < threshold.thresholdUsdc) return;
+  if (windowSpend < threshold.thresholdEth) return;
 
   const alreadyFired = getDb()
     .prepare(`
@@ -179,14 +179,14 @@ function checkThreshold(agentId: string): void {
   const alertId = randomUUID();
 
   getDb().prepare(`
-    INSERT INTO spend_alerts (alert_id, agent_id, threshold_id, amount_usdc, threshold_usdc, window_hours, fired_at)
+    INSERT INTO spend_alerts (alert_id, agent_id, threshold_id, amount_eth, threshold_eth, window_hours, fired_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(alertId, agentId, threshold.thresholdId, windowSpend, threshold.thresholdUsdc, threshold.windowHours, now);
+  `).run(alertId, agentId, threshold.thresholdId, windowSpend, threshold.thresholdEth, threshold.windowHours, now);
 
   logger.warn("spend.threshold_exceeded", "Agent spend threshold exceeded", {
     agentId,
     windowSpendUsdc: windowSpend,
-    thresholdUsdc: threshold.thresholdUsdc,
+    thresholdEth: threshold.thresholdEth,
     windowHours: threshold.windowHours,
   });
 
@@ -194,7 +194,7 @@ function checkThreshold(agentId: string): void {
     alertId,
     agentId,
     windowSpendUsdc: windowSpend,
-    thresholdUsdc: threshold.thresholdUsdc,
+    thresholdEth: threshold.thresholdEth,
     windowHours: threshold.windowHours,
     firedAt: now,
   });

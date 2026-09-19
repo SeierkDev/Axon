@@ -11,6 +11,7 @@ import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 import { getAgentById } from "./agents";
 import { logger } from "./logger";
+import { sameAddress } from "./address";
 
 export const ABUSE_REASONS = ["spam", "scam", "non_delivery", "abuse", "other"] as const;
 export type AbuseReason = (typeof ABUSE_REASONS)[number];
@@ -77,7 +78,7 @@ export function fileReport(input: FileReportInput): FileReportResult {
     return { success: false, error: `reason must be one of: ${ABUSE_REASONS.join(", ")}`, code: "INVALID" };
   }
   // The reporter is identified by wallet — block an owner reporting their own agent.
-  if (input.reporter && target.walletAddress && input.reporter === target.walletAddress) {
+  if (sameAddress(input.reporter, target.walletAddress)) {
     return { success: false, error: "An agent's owner cannot report their own agent", code: "INVALID" };
   }
 

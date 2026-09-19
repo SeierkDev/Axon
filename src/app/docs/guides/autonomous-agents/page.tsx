@@ -52,8 +52,8 @@ export default function AutonomousAgentsGuide() {
 
       <Callout>
         <strong>How it works in one sentence:</strong> your agent makes an API call, receives a 402
-        with payment terms, signs a USDC transaction on-chain, and retries, all programmatically.
-        No browser. No Phantom. No human approval.
+        with payment terms, signs an ETH transaction on-chain, and retries, all programmatically.
+        No browser. No MetaMask. No human approval.
       </Callout>
 
       {/* Flow diagram */}
@@ -69,7 +69,7 @@ export default function AutonomousAgentsGuide() {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gray-400">3.</span>
-            <span>Your agent → signs USDC tx on-chain, gets signature</span>
+            <span>Your agent → signs ETH tx on-chain, gets signature</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gray-400">4.</span>
@@ -93,85 +93,63 @@ export default function AutonomousAgentsGuide() {
         </p>
         <CodeBlock
           label="INSTALL"
-          code={`npm install @axonprotocol/sdk @solana/web3.js @solana/spl-token`}
+          code={`npm install @axonprotocol/sdk viem`}
         />
       </Step>
 
       <Step n={2} title="Set up your agent's wallet">
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Your agent needs a Solana wallet to pay for tasks. On a server, load the keypair from
-          an environment variable, never hardcode it.
+          Your agent needs a wallet to pay for tasks. On a server, load the key from an
+          environment variable, never hardcode it.
         </p>
         <CodeBlock
           label="WALLET SETUP"
-          code={`import { Keypair, Connection, PublicKey } from "@solana/web3.js";
-import {
-  getAssociatedTokenAddressSync,
-  createTransferCheckedInstruction,
-  createAssociatedTokenAccountIdempotentInstruction,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
-import { Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+          code={`import { createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
-// Load your agent's keypair from env
-// AGENT_PRIVATE_KEY is a JSON array of 64 bytes, e.g. [1,2,...,64]
-const secretKey = Uint8Array.from(
-  JSON.parse(process.env.AGENT_PRIVATE_KEY!)
-);
-const agentKeypair = Keypair.fromSecretKey(secretKey);
+const chain = {
+  id: 4663,
+  name: "Robinhood Chain",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: { default: { http: ["https://rpc.mainnet.chain.robinhood.com"] } },
+} as const;
 
-const connection = new Connection(
-  \`https://mainnet.helius-rpc.com/?api-key=\${process.env.HELIUS_API_KEY}\`,
-  "confirmed"
-);
+// AGENT_PRIVATE_KEY is 32 bytes of hex, e.g. 0x59c6...
+const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as \`0x\${string}\`);
+const wallet = createWalletClient({ account, chain, transport: http(chain.rpcUrls.default.http[0]) });
 
-console.log("Agent wallet:", agentKeypair.publicKey.toBase58());`}
+console.log("Agent wallet:", account.address);`}
         />
       </Step>
 
       <Step n={3} title="Build the X402PayFunction">
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           The SDK calls this function when payment is required. It receives the payment requirements
-          from Axon and must return a confirmed Solana transaction signature.
+          from Axon and must return a confirmed transaction signature.
         </p>
         <CodeBlock
           label="PAY FUNCTION"
           code={`import { X402Requirements } from "@axonprotocol/sdk";
+import { createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-const USDC_DECIMALS = 6;
+const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as \`0x\${string}\`);
+const wallet = createWalletClient({ account, chain, transport: http(RPC_URL) });
 
 async function payWithAgentWallet(
   requirements: X402Requirements
 ): Promise<{ signature: string; from: string }> {
   const option = requirements.accepts[0];
 
-  // Convert micro-USDC to lamports
-  const microUsdc = BigInt(option.maxAmountRequired);
+  // maxAmountRequired is already in wei — pass it through, never parse it as a decimal
+  const value = BigInt(option.maxAmountRequired);
 
-  const receiver = new PublicKey(option.payToAddress);
-  const mintPk = new PublicKey(USDC_MINT);
+  const signature = await wallet.sendTransaction({
+    to: option.payToAddress as \`0x\${string}\`,
+    value,
+  });
 
-  const fromAta = getAssociatedTokenAddressSync(mintPk, agentKeypair.publicKey, true);
-  const toAta = getAssociatedTokenAddressSync(mintPk, receiver, true);
-
-  const tx = new Transaction().add(
-    createAssociatedTokenAccountIdempotentInstruction(
-      agentKeypair.publicKey, toAta, receiver, mintPk
-    ),
-    createTransferCheckedInstruction(
-      fromAta, mintPk, toAta,
-      agentKeypair.publicKey,
-      microUsdc,
-      USDC_DECIMALS
-    )
-  );
-
-  const signature = await sendAndConfirmTransaction(
-    connection, tx, [agentKeypair], { commitment: "confirmed" }
-  );
-
-  return { signature, from: agentKeypair.publicKey.toBase58() };
+  return { signature, from: account.address };
 }`}
         />
       </Step>
@@ -205,7 +183,7 @@ const task = await axon.submitTaskX402(
   agent.agentId,
   "Analyse keywords for an AI agent protocol targeting developers",
   payWithAgentWallet,           // your signing function from Step 3
-  { from: agentKeypair.publicKey.toBase58() }
+  { from: account.address }
 );
 
 console.log("Task submitted:", task.taskId);`}
@@ -251,43 +229,31 @@ console.log("Result:", result);`}
         </p>
         <CodeBlock
           label="FULL EXAMPLE, autonomous-agent.ts"
-          code={`import { Keypair, Connection, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
-import { PublicKey } from "@solana/web3.js";
-import {
-  getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountIdempotentInstruction,
-  createTransferCheckedInstruction,
-} from "@solana/spl-token";
+          code={`import { createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { AxonClient, X402Requirements } from "@axonprotocol/sdk";
 
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const chain = {
+  id: 4663,
+  name: "Robinhood Chain",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: { default: { http: ["https://rpc.mainnet.chain.robinhood.com"] } },
+} as const;
 
-const keypair = Keypair.fromSecretKey(
-  Uint8Array.from(JSON.parse(process.env.AGENT_PRIVATE_KEY!))
-);
-const connection = new Connection(
-  \`https://mainnet.helius-rpc.com/?api-key=\${process.env.HELIUS_API_KEY}\`,
-  "confirmed"
-);
+const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as \`0x\${string}\`);
+const wallet = createWalletClient({ account, chain, transport: http(chain.rpcUrls.default.http[0]) });
+
 const axon = new AxonClient();
 axon.init({ endpoint: process.env.AXON_ENDPOINT! });
 
 async function pay(req: X402Requirements) {
   const opt = req.accepts[0];
-  const mint = new PublicKey(USDC_MINT);
-  const receiver = new PublicKey(opt.payToAddress);
-  const fromAta = getAssociatedTokenAddressSync(mint, keypair.publicKey, true);
-  const toAta = getAssociatedTokenAddressSync(mint, receiver, true);
-  const tx = new Transaction().add(
-    createAssociatedTokenAccountIdempotentInstruction(
-      keypair.publicKey, toAta, receiver, mint
-    ),
-    createTransferCheckedInstruction(
-      fromAta, mint, toAta, keypair.publicKey, BigInt(opt.maxAmountRequired), 6
-    )
-  );
-  const signature = await sendAndConfirmTransaction(connection, tx, [keypair]);
-  return { signature, from: keypair.publicKey.toBase58() };
+  // maxAmountRequired is already in wei
+  const signature = await wallet.sendTransaction({
+    to: opt.payToAddress as \`0x\${string}\`,
+    value: BigInt(opt.maxAmountRequired),
+  });
+  return { signature, from: account.address };
 }
 
 async function run() {
@@ -327,13 +293,13 @@ run().catch(console.error);`}
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">High-frequency usage: MPP channels</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
           If your agent calls Axon hundreds of times a day, x402 requires a separate on-chain
-          transaction per call, slow and gas-heavy. Open an MPP channel instead: deposit USDC
+          transaction per call, slow and gas-heavy. Open an MPP channel instead: deposit ETH
           once, then each call debits the channel off-chain with no on-chain transaction.
         </p>
         <CodeBlock
           label="OPEN AN MPP CHANNEL"
           code={`// 1. Complete the MPP deposit payment, then use its tx signature
-const depositSignature = "..."; // your on-chain USDC transfer signature
+const depositSignature = "..."; // your on-chain ETH transfer signature
 
 // 2. Open the channel
 const { channel, channelKey } = await fetch(
@@ -343,7 +309,7 @@ const { channel, channelKey } = await fetch(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       ownerAddress: keypair.publicKey.toBase58(),
-      depositUsdc: 10,          // fund with 10 USDC
+      depositUsdc: 10,          // fund with 0.01 ETH
       depositSignature,
     }),
   }
@@ -351,7 +317,7 @@ const { channel, channelKey } = await fetch(
 
 // Save channelKey, shown once, never again
 console.log("Channel:", channel.channelId);
-console.log("Balance:", channel.balanceUsdc, "USDC");`}
+console.log("Balance:", channel.balanceEth, "ETH");`}
         />
         <CodeBlock
           label="USE THE CHANNEL (no on-chain tx per call)"
@@ -380,8 +346,8 @@ console.log("Task:", data.taskId);`}
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Environment variables</h2>
         <CodeBlock
           label=".env"
-          code={`# Your agent's Solana keypair (JSON array of 64 bytes)
-# Generate: solana-keygen new --outfile agent-keypair.json
+          code={`# Your agent's private key (JSON array of 64 bytes)
+# Generate: openssl rand -hex 32
 AGENT_PRIVATE_KEY=[1,2,3,...,64]
 
 # Helius RPC for on-chain transactions

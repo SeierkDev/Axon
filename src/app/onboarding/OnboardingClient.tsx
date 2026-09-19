@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
+import { useWallet } from "@/components/WalletProvider";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -81,57 +82,25 @@ function StepApiKey({
 }) {
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
-  const [phantomLoading, setPhantomLoading] = useState(false);
+  const { signIn, busy: phantomLoading, error: walletError } = useWallet();
   const [error, setError] = useState<string | null>(null);
   const [showPaste, setShowPaste] = useState(false);
   const [revealed, setRevealed] = useState<{ apiKey: string; walletAddress: string; keyId: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [keyVisible, setKeyVisible] = useState(false);
 
-  async function connectPhantom() {
-    setPhantomLoading(true);
+  async function connectWallet() {
     setError(null);
-    try {
-      const solana = (window as unknown as { solana?: { isPhantom?: boolean; connect: () => Promise<{ publicKey: { toString(): string } }>; signMessage: (msg: Uint8Array, encoding: string) => Promise<{ signature: Uint8Array }> } }).solana;
-      if (!solana?.isPhantom) {
-        // On mobile, Phantom is an app not an extension — open the page inside
-        // Phantom's built-in browser where window.solana is injected.
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobile) {
-          // Open this page inside Phantom's built-in browser where window.solana is injected.
-          // phantom:// scheme navigates directly to the browse URL on both iOS and Android.
-          const dest = encodeURIComponent(window.location.href);
-          window.location.href = `phantom://browse/${dest}`;
-          return;
-        }
-        throw new Error("Phantom wallet not found, install the extension from phantom.app");
-      }
-      const { publicKey } = await solana.connect();
-      const walletAddress = publicKey.toString();
-      const challengeRes = await fetch("/api/auth/challenge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress }),
-      });
-      const { challenge } = await challengeRes.json() as { challenge: string };
-      if (!challengeRes.ok || !challenge) throw new Error("Failed to get challenge");
-      const encoded = new TextEncoder().encode(challenge);
-      const { signature } = await solana.signMessage(encoded, "utf8");
-      const b64 = btoa(String.fromCharCode(...signature));
-      const loginRes = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress, challenge, signature: b64 }),
-      });
-      const loginBody = await loginRes.json() as { apiKey?: string; keyId?: string; error?: string };
-      if (!loginRes.ok || !loginBody.apiKey) throw new Error(loginBody.error ?? "Login failed");
-      // Show the key — don't skip past it
-      setRevealed({ apiKey: loginBody.apiKey, walletAddress, keyId: loginBody.keyId! });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Wallet connection failed");
-    } finally {
-      setPhantomLoading(false);
+    // The provider owns the whole round trip: connect, fetch the challenge, sign it with
+    // personal_sign, exchange it for a key. It also owns the phone case, where there is no injected
+    // wallet and the way in is the wallet's own browser.
+    const signedIn = await signIn();
+    if (!signedIn) {
+      if (walletError) setError(walletError);
+      return;
     }
+    // Show the key rather than skipping past it: it is the only time it is visible.
+    setRevealed({ apiKey: signedIn.apiKey, walletAddress: signedIn.walletAddress, keyId: signedIn.keyId });
   }
 
   function copyKey() {
@@ -170,7 +139,7 @@ function StepApiKey({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your API key</h2>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-          Copy this now, it won&apos;t be shown again. Each time you connect Phantom a new key is created. If yours gets leaked, connect again to get a new one, then revoke the old one from the dashboard.
+          Copy this now, it won&apos;t be shown again. Each time you connect MetaMask a new key is created. If yours gets leaked, connect again to get a new one, then revoke the old one from the dashboard.
         </p>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 mb-2">
           <div className="flex items-center justify-between mb-2">
@@ -236,15 +205,15 @@ function StepApiKey({
     <div>
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Get your API key</h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-        Connect your Phantom wallet to create a key instantly, or paste an existing one.
+        Connect your MetaMask wallet to create a key instantly, or paste an existing one.
       </p>
 
       <button
-        onClick={() => void connectPhantom()}
+        onClick={() => void connectWallet()}
         disabled={phantomLoading}
         className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-[#ab9ff2] hover:bg-[#9b8ee2] text-white text-sm font-semibold disabled:opacity-50 transition-colors mb-4"
       >
-        {phantomLoading ? "Connecting…" : "Connect Phantom"}
+        {phantomLoading ? "Connecting…" : "Connect wallet"}
       </button>
 
       <div className="flex items-center gap-3 mb-4">
@@ -462,7 +431,7 @@ function StepRegister({
           <input
             value={form.price}
             onChange={(e) => set("price", e.target.value)}
-            placeholder="0.10 USDC"
+            placeholder="0.10 ETH"
             className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white outline-none focus:border-gray-500"
           />
           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">Leave empty for a free agent.</p>

@@ -12,15 +12,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAgentById } from "@/lib/agents";
 import { createTask, markTaskPaymentConfirmed } from "@/lib/tasks";
 import { syncToTurso } from "@/lib/db-turso";
-import { createPayment, parsePriceToSol, refundPayment } from "@/lib/payments";
-import { isValidSolanaAddress } from "@/lib/solana";
+import { createPayment, parsePriceToEth, refundPayment } from "@/lib/payments";
+import { isWalletAddress } from "@/lib/address";
 import {
   buildX402Requirements,
   encodeRequirements,
   decodePaymentHeader,
 } from "@/lib/x402";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
-import { debitChannel, verifyChannelKey, getChannelById, parseMppUsdcPrice, refundDebitForTask } from "@/lib/mpp";
+import { debitChannel, verifyChannelKey, getChannelById, parseMppPrice, refundDebitForTask } from "@/lib/mpp";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { logger } from "@/lib/logger";
@@ -136,9 +136,9 @@ export function POST(req: NextRequest, { params }: Params) {
         return apiError("PAYMENT_REQUIRED", "MPP channel is closed or not found", 402);
       }
 
-      const price = parseMppUsdcPrice(agent.price);
+      const price = parseMppPrice(agent.price);
       if (!price) {
-        return apiError("VALIDATION_ERROR", "Agent price is not in USDC, MPP not supported for this agent", 400);
+        return apiError("VALIDATION_ERROR", "Agent price is not in ETH, MPP not supported for this agent", 400);
       }
 
       let task = createTask({
@@ -205,14 +205,14 @@ export function POST(req: NextRequest, { params }: Params) {
       initialStatus: "payment_pending",
     });
 
-    const amountSol = parsePriceToSol(agent.price);
-    if (amountSol !== null) {
+    const amountEth = parsePriceToEth(agent.price);
+    if (amountEth !== null) {
       try {
         await createPayment({
           taskId: task.taskId,
           fromAgent,
           toAgent: agentId,
-          amountSol,
+          amountEth,
           paymentSignature: paymentHeader.payload.signature,
           priceString: agent.price,
         });
@@ -246,8 +246,8 @@ export function POST(req: NextRequest, { params }: Params) {
 
   // ── Free agent ──────────────────────────────────────────────────────────────
   const from = body.from ?? "anonymous";
-  if (from !== "anonymous" && !isValidSolanaAddress(from) && !getAgentById(from)) {
-    return apiError("VALIDATION_ERROR", "from must be a valid Solana address or agent ID", 400);
+  if (from !== "anonymous" && !isWalletAddress(from) && !getAgentById(from)) {
+    return apiError("VALIDATION_ERROR", "from must be a valid wallet address or agent ID", 400);
   }
   if (from !== "anonymous") {
     const auth = requireApiKey(req);

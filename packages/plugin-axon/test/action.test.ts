@@ -20,7 +20,7 @@ function routeFetch(byTool: Record<string, (args: any) => unknown>) {
 }
 
 const runtime = { getSetting: () => undefined } as any;
-const msg = { content: { text: "hire someone to research the top Solana RPCs" } } as any;
+const msg = { content: { text: "hire someone to research the top RPC providers" } } as any;
 
 async function run(byTool: Record<string, (args: any) => unknown>, config: any = {}) {
   const orig = globalThis.fetch;
@@ -62,14 +62,14 @@ test("paid agent with NO wallet configured → success:false + payment data, no 
   let hireCalls = 0;
   const { result } = await run({
     search_agents: () => ({ agents: [{ agentId: "paid", name: "Paid", capabilities: ["research"], proofScore: 500 }] }),
-    hire_agent: () => { hireCalls++; return { status: "payment_required", price: "0.5 USDC", amount: 0.5, currency: "USDC", payTo: "Trez", network: "solana-mainnet", instructions: "pay" }; },
+    hire_agent: () => { hireCalls++; return { status: "payment_required", price: "0.0005 ETH", amount: 0.0005, currency: "ETH", payTo: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", network: "eip155:4663", instructions: "pay" }; },
   });
   assert.equal(result.success, false);
   assert.equal(result.data.paymentRequired, true);
   assert.equal(hireCalls, 1); // never retried without a signature
 });
 
-test("paid agent WITH payUsdc → pays, retries with signature, completes", async () => {
+test("paid agent WITH pay → pays, retries with signature, completes", async () => {
   let hireCalls = 0;
   let paidReq: any = null;
   const { result } = await run(
@@ -77,17 +77,17 @@ test("paid agent WITH payUsdc → pays, retries with signature, completes", asyn
       search_agents: () => ({ agents: [{ agentId: "paid", name: "Paid", capabilities: ["research"], proofScore: 500 }] }),
       hire_agent: (args) => {
         hireCalls++;
-        if (!args.paymentSignature) return { status: "payment_required", price: "0.5 USDC", amount: 0.5, currency: "USDC", payTo: "Trez", network: "solana-mainnet", instructions: "pay" };
-        assert.equal(args.paymentSignature, "sig123");
+        if (!args.paymentSignature) return { status: "payment_required", price: "0.0005 ETH", amount: 0.0005, currency: "ETH", payTo: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", network: "eip155:4663", instructions: "pay" };
+        assert.equal(args.paymentSignature, "0xsig123");
         return { taskId: "t9", status: "queued", claimToken: "ctok", receiptUrl: "x" };
       },
       get_task_result: () => ({ taskId: "t9", status: "completed", output: "done" }),
     },
-    { payUsdc: async (req: any) => { paidReq = req; return "sig123"; } },
+    { pay: async (req: any) => { paidReq = req; return "0xsig123"; } },
   );
   assert.equal(result.success, true);
   assert.equal(hireCalls, 2); // required → paid → retried
-  assert.equal(paidReq.amount, 0.5);
+  assert.equal(paidReq.amount, 0.0005);
   assert.equal(result.data.taskId, "t9");
 });
 

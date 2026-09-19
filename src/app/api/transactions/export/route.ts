@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     task_id: string | null;
     from_agent: string;
     to_agent: string;
-    amount_sol: number;
+    amount_eth: number;
     currency: string;
     status: string;
     signature: string | null;
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
   // Return only transactions involving this wallet's agents
   const rows = getDb().prepare(`
-    SELECT tx_id, task_id, from_agent, to_agent, amount_sol, currency, status, signature, created_at, settled_at
+    SELECT tx_id, task_id, from_agent, to_agent, amount_eth, currency, status, signature, created_at, settled_at
     FROM transactions
     WHERE from_agent IN (SELECT agent_id FROM agents WHERE wallet_address = ?)
        OR to_agent   IN (SELECT agent_id FROM agents WHERE wallet_address = ?)
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     escCsv(r.task_id),
     escCsv(r.from_agent),
     escCsv(r.to_agent),
-    escCsv(r.amount_sol),
+    escCsv(r.amount_eth),
     escCsv(r.currency),
     escCsv(r.status),
     escCsv(r.signature),

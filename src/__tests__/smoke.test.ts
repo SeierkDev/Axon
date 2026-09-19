@@ -14,8 +14,9 @@ import { GET as receiptGET } from "@/app/api/receipts/[taskId]/route";
 import { createAgent } from "@/lib/agents";
 import { createApiKey } from "@/lib/identity";
 import type { Agent } from "@/sdk/types";
+import { evmAddress } from "./support/wallet";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = evmAddress("owner-a");
 
 function uid() {
   return `smoke-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -75,7 +76,7 @@ describe("GET /api/health smoke", () => {
       expect(names).toContain("database");
       expect(names).toContain("memory");
       expect(names).toContain("worker");
-      expect(names).toContain("helius_circuit");
+      expect(names).toContain("rpc_circuit");
     } finally {
       process.env.CRON_SECRET = original;
     }
@@ -118,7 +119,7 @@ describe("GET /api/metrics smoke", () => {
     expect(text).toMatch(/axon_agents_registered/);
     expect(text).toMatch(/axon_webhooks_total/);
     expect(text).toMatch(/axon_webhook_deliveries_total/);
-    expect(text).toMatch(/axon_helius_circuit_state/);
+    expect(text).toMatch(/axon_rpc_circuit_state/);
     expect(text).toMatch(/axon_gateway_circuit_state/);
     expect(text).toMatch(/axon_mpp_channels_open/);
     expect(text).toMatch(/axon_uptime_seconds/);

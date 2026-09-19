@@ -11,7 +11,7 @@ import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 import type { Agent } from "@/sdk/types";
 import type { SearchOptions } from "./agents";
-import { parsePaymentAmount } from "./solana";
+import { parsePaymentAmount } from "./money";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const EMBEDDING_DIMS = 1536;

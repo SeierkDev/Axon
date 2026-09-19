@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isTransientPaymentError } from "@/lib/payments";
-import { CircuitOpenError } from "@/lib/solana";
+import { CircuitOpenError } from "@/lib/evm";
 
 describe("isTransientPaymentError", () => {
   it("treats a circuit-open error as transient", () => {

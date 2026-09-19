@@ -13,7 +13,6 @@ fetches the real authorisation, parses it, holds it against what you say you
 expect, and only then signs.
 """
 
-import base64
 import threading
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Union
@@ -21,7 +20,7 @@ from urllib.parse import quote, urlencode
 
 from .errors import AxonApiError
 
-#: Signs an authorisation message, returning a base64 Ed25519 signature.
+#: Signs an authorisation message, returning a 0x-prefixed EIP-191 signature.
 SignMandate = Callable[[str], str]
 
 def _seg(value: str) -> str:
@@ -580,41 +579,52 @@ class CommerceApi:
 # ── Signing ───────────────────────────────────────────────────────────────────
 
 
-def mandate_signer(secret_key: Union[bytes, bytearray, Iterable[int]]) -> SignMandate:
-    """Sign purchase authorisations with a raw Solana key, server-side.
+def mandate_signer(private_key: Union[str, bytes, bytearray]) -> SignMandate:
+    """Sign purchase authorisations with a raw key, server-side.
 
         from axon import AxonClient, mandate_signer
 
         client.commerce.approve(
             intent_id,
-            sign=mandate_signer(secret_key),
+            sign=mandate_signer(private_key),
             max_amount=150, currency="USD", business="shop.example",
         )
 
-    The signature is Ed25519 over the raw message bytes, base64 — the same thing
-    a browser wallet's ``signMessage`` produces, and what Axon verifies against
-    the buyer's wallet address.
+    The signature is EIP-191 ``personal_sign`` over the message, hex — the same
+    thing a browser wallet's ``personal_sign`` produces. Axon recovers the signer
+    from it and matches the buyer's address, so nothing else will verify.
 
-    Needs ``cryptography``: ``pip install "axonsdk[signing]"``. This key
+    Accepts 32 bytes of hex, with or without the ``0x``, or the raw bytes.
+
+    Needs ``eth-account``: ``pip install "axonsdk[signing]"``. This key
     authorises real money with no prompt in front of it, so state your bounds on
     every :meth:`CommerceApi.approve`; without them you are signing whatever you
     are handed.
     """
-    raw = bytes(secret_key)
-    if len(raw) != 64:
-        raise TypeError(f"expected a 64-byte Solana secret key, got {len(raw)} bytes")
+    if isinstance(private_key, (bytes, bytearray)):
+        raw = bytes(private_key)
+    else:
+        text = str(private_key).strip()
+        text = text[2:] if text.startswith("0x") else text
+        try:
+            raw = bytes.fromhex(text)
+        except ValueError as exc:
+            raise TypeError("private key must be 32 bytes of hex, with or without the 0x prefix") from exc
+    if len(raw) != 32:
+        raise TypeError(f"expected a 32-byte private key, got {len(raw)} bytes")
+
     try:
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from eth_account import Account
+        from eth_account.messages import encode_defunct
     except ImportError as exc:  # pragma: no cover - depends on the install
         raise ImportError(
-            'mandate_signer needs the "cryptography" package — pip install "axonsdk[signing]"'
+            'mandate_signer needs the "eth-account" package — pip install "axonsdk[signing]"'
         ) from exc
 
-    # The seed is the first 32 bytes of a Solana secret key; the rest is the
-    # public key, which Ed25519PrivateKey derives for itself.
-    key = Ed25519PrivateKey.from_private_bytes(raw[:32])
+    account = Account.from_key(raw)
 
     def sign(message: str) -> str:
-        return base64.b64encode(key.sign(message.encode("utf-8"))).decode("ascii")
+        signed = Account.sign_message(encode_defunct(text=message), private_key=account.key)
+        return signed.signature.hex()
 
     return sign

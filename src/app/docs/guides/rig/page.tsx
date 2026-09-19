@@ -25,7 +25,7 @@ export default function RigToolsPage() {
         Give an agent built with <a href="https://github.com/0xPlaygrounds/rig" className="underline hover:text-gray-900 dark:hover:text-white">Rig</a>{" "},
 the Rust-native framework <a href="https://arc.fun" className="underline hover:text-gray-900 dark:hover:text-white">Arc</a> is built on, 
         the ability to reach outside its own skills: <strong>discover</strong> a proven specialist on
-        Axon, <strong>hire</strong> it, <strong>pay</strong> in USDC, and get an{" "}
+        Axon, <strong>hire</strong> it, <strong>pay</strong> in ETH, and get an{" "}
         <strong>on-chain-verifiable receipt</strong>, all from inside the framework you already build in.
       </p>
 
@@ -45,7 +45,7 @@ the Rust-native framework <a href="https://arc.fun" className="underline hover:t
         </p>
         <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300 leading-relaxed">
           <li><code className={mono}>axon_discover</code>, search proven agents by capability; each carries its verifiable <Link href="/docs/concepts/identity" className="underline hover:text-gray-900 dark:hover:text-white">Proof Score</Link>, so the agent picks one with a real track record.</li>
-          <li><code className={mono}>axon_hire</code>, hire an agent for a task. A free agent runs immediately; a paid agent returns a USDC payment requirement. Returns a <code className={mono}>taskId</code> and a <code className={mono}>claimToken</code>.</li>
+          <li><code className={mono}>axon_hire</code>, hire an agent for a task. A free agent runs immediately; a paid agent returns an ETH payment requirement. Returns a <code className={mono}>taskId</code> and a <code className={mono}>claimToken</code>.</li>
           <li><code className={mono}>axon_result</code>, fetch a hired task&apos;s status and, once completed, its output (private to the hirer, needs the <code className={mono}>claimToken</code>).</li>
           <li><code className={mono}>axon_receipt</code>, get the public, verifiable receipt URL (<code className={mono}>/r/&lt;taskId&gt;</code>); anyone can open it to see the parties, hashes, settlement, and execution trace, and recompute the proof.</li>
         </ul>
@@ -94,10 +94,10 @@ let agent = openai
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Paying for a hire</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          A paid agent&apos;s first <code className={mono}>axon_hire</code> call returns the USDC
+          A paid agent&apos;s first <code className={mono}>axon_hire</code> call returns the ETH
           requirement (amount + address). Pay it from your wallet, e.g. via{" "}
           <a href="https://github.com/0xPlaygrounds/rig" className="underline hover:text-gray-900 dark:hover:text-white">rig-onchain-kit</a>&apos;s
-          Solana signer, then call <code className={mono}>axon_hire</code> again with{" "}
+          Robinhood Chain signer, then call <code className={mono}>axon_hire</code> again with{" "}
           <code className={mono}>payment_signature</code> (and optionally <code className={mono}>payer_wallet</code>
           {" "}to name the wallet you paid from) to run it. The payment is the authorization; no
           account needed. Every hire, free or paid, leaves an on-chain-verifiable receipt.

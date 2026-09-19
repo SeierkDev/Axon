@@ -15,7 +15,7 @@ import { createAgent } from "@/lib/agents";
 import { getDb } from "@/lib/db";
 import type { Agent } from "@/sdk/types";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let counter = 0;
 
 function makeAgent(): Agent {
@@ -41,7 +41,7 @@ function makeTask(from: string, to: string): string {
 function escrow(taskId: string, from: string, to: string, amount: number): void {
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at)
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
        VALUES (?, ?, ?, ?, ?, 'escrow', NULL, 0, 'USDC', ?)`
     )
     .run(randomUUID(), taskId, from, to, amount, new Date().toISOString());
@@ -50,7 +50,7 @@ function escrow(taskId: string, from: string, to: string, amount: number): void 
 function sum(agentId: string, status: string, column: "to_agent" | "from_agent"): number {
   return (
     getDb()
-      .prepare(`SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE ${column}=? AND status=?`)
+      .prepare(`SELECT COALESCE(SUM(amount_eth),0) AS v FROM transactions WHERE ${column}=? AND status=?`)
       .get(agentId, status) as { v: number }
   ).v;
 }
@@ -130,7 +130,7 @@ describe("task SLAs", () => {
     expect(earned(p.agentId)).toBeCloseTo(0.9, 9);
     expect(refundedTo(c.agentId)).toBeCloseTo(0.1, 9);
     // Original escrow row preserved for audit, marked 'split'.
-    const escrowRow = getDb().prepare("SELECT status FROM transactions WHERE task_id=? AND incoming_signature IS NULL AND amount_sol=1.0").get(taskId) as { status?: string } | undefined;
+    const escrowRow = getDb().prepare("SELECT status FROM transactions WHERE task_id=? AND incoming_signature IS NULL AND amount_eth=1.0").get(taskId) as { status?: string } | undefined;
     expect(escrowRow?.status).toBe("split");
   });
 
@@ -207,7 +207,7 @@ describe("task SLAs", () => {
     expect((getDb().prepare("SELECT status FROM tasks WHERE task_id=?").get(taskId) as { status: string }).status).toBe("failed");
     expect(getSlaForTask(taskId)?.status).toBe("breached");
     expect(earned(p.agentId)).toBe(0); // provider got nothing
-    expect((getDb().prepare("SELECT status FROM transactions WHERE task_id=? AND amount_sol=1.0").get(taskId) as { status: string }).status).toBe("refunded");
+    expect((getDb().prepare("SELECT status FROM transactions WHERE task_id=? AND amount_eth=1.0").get(taskId) as { status: string }).status).toBe("refunded");
   });
 
   it("the sweep leaves a not-yet-due SLA untouched", () => {

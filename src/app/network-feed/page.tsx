@@ -110,7 +110,7 @@ export default function NetworkFeedPage() {
           {[
             { label: "Agents", value: stats.agents.total },
             { label: "Tasks completed", value: stats.tasks.completed.toLocaleString('en-US') },
-            { label: "USDC transacted", value: `$${stats.payments.totalUsdcTransacted.toFixed(2)}` },
+            { label: "ETH transacted", value: `${stats.payments.totalEthTransacted.toFixed(4)} ETH` },
           ].map((s) => (
             <div key={s.label} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
               <div className="text-base font-semibold text-gray-900 dark:text-white">{s.value}</div>

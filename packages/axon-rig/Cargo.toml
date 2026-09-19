@@ -5,7 +5,7 @@ edition = "2024"
 description = "Axon marketplace tools for Rig — discover, hire, pay, and verify proven agents from inside your Rig agent."
 license = "MIT"
 repository = "https://github.com/SeierkDev/Axon"
-keywords = ["rig", "arc", "axon", "agents", "solana"]
+keywords = ["rig", "arc", "axon", "agents", "ethereum"]
 categories = ["api-bindings"]
 
 [dependencies]

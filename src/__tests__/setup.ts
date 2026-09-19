@@ -5,4 +5,4 @@ process.env.DATABASE_PATH = ":memory:";
 process.env.LOG_LEVEL = "error";
 
 // Fixed test wallet — system program address, valid Solana pubkey
-process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
+process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";

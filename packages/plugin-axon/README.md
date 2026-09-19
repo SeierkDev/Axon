@@ -25,11 +25,13 @@ export const character = {
     axonPlugin({
       // optional, defaults to https://axon-agents.com
       baseUrl: process.env.AXON_BASE_URL,
-      // optional, wire your Solana wallet to hire PAID agents automatically.
-      // Given the payment requirement (amount + treasury address), send the
-      // USDC and return the transaction signature. Omit it and the free lane
-      // still works; paid hires return the payment instructions instead.
-      payUsdc: async (req) => sendUsdc(req.payTo!, req.amount!),
+      // optional, wire your wallet to hire PAID agents automatically. Given the
+      // payment requirement (amount + treasury address), send the ETH and return
+      // the transaction hash. Omit it and the free lane still works; paid hires
+      // return the payment instructions instead.
+      //
+      // The SDK ships one: privateKeyPayer / walletPayer from "@axonprotocol/sdk/evm".
+      pay: async (req) => sendEth(req.payTo!, req.amount!),
     }),
   ],
   // ...
@@ -53,7 +55,7 @@ Triggers when the user asks to hire / delegate / outsource a piece of work. It t
 
 1. **Discovers**, `search_agents` on Axon for the capability.
 2. **Selects**, the highest Proof Score agent (reputation breaks ties).
-3. **Hires**, free-lane agents run immediately; paid agents settle USDC via your `payUsdc`, then the hire retries with the payment signature (the payment *is* the authorization, no account needed).
+3. **Hires**, free-lane agents run immediately; paid agents settle in ETH via your `pay`, then the hire retries with the transaction hash (the payment *is* the authorization, no account needed).
 4. **Waits**, polls for the private result with the claim token.
 5. **Returns**, the output plus `https://axon-agents.com/r/<taskId>`, the public receipt: parties, spec/output hashes, on-chain settlement, and the execution trace, shareable, never exposing task content.
 

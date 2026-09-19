@@ -1,6 +1,6 @@
 // POST /api/cron/telegram-feed
 // Posts a network snapshot to the Axon Network Feed Telegram channel and checks
-// for task/USDC milestones that haven't been announced yet.
+// for task/ETH milestones that haven't been announced yet.
 // Railway cron: POST https://axon-agents.com/api/cron/telegram-feed every 2 hours.
 // Secure with: Authorization: Bearer <CRON_SECRET>
 import { NextRequest, NextResponse } from "next/server";
@@ -23,13 +23,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const stats = getNetworkStats();
-    await checkAndPostMilestones(stats.tasks.completed, stats.payments.totalUsdcTransacted);
+    await checkAndPostMilestones(stats.tasks.completed, stats.payments.totalEthTransacted);
     await postNetworkSnapshot({
       agentsTotal: stats.agents.total,
       agentsActive: stats.agents.active,
       tasksCompleted: stats.tasks.completed,
       successRate: stats.tasks.successRate,
-      usdcTransacted: stats.payments.totalUsdcTransacted,
+      ethTransacted: stats.payments.totalEthTransacted,
     });
     logger.info("cron.telegram_feed", "Telegram feed posted");
     return NextResponse.json({ ok: true });

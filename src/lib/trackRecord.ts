@@ -4,13 +4,14 @@ import { computeProofScore } from "./proofScore";
 import { getAttestationsForAgent } from "./attestations";
 import { getAgentById, isContractTestAgent } from "./agents";
 import { isOwnerVerified } from "./ownerVerification";
+import { formatEth } from "./money";
 
 // Agent Track Records — a proof-backed public profile.
 //
 // This module NEVER computes a stat a different surface already owns; it
 // composes the exact same functions the Explorer, reputation system and world
 // use, so the numbers can't drift (an Explorer count of 268 is a track-record
-// count of 268, by construction). The only piece it adds is USDC-earned, using
+// count of 268, by construction). The only piece it adds is ETH-earned, using
 // the identical settlement query the world snapshot runs. Same privacy rule as
 // receipts: parties, counts, timestamps, terms — never task content.
 
@@ -37,7 +38,7 @@ export interface AgentTrackRecord {
   successRate: number; // 0..1
   avgResponseSec: number;
   paymentReliability: number; // 0..1
-  usdcEarned: number;
+  ethEarned: number;
   // Live status, same source as the world house terminal.
   running: number;
   queued: number;
@@ -68,13 +69,13 @@ function liveStatus(agentId: string): { running: number; queued: number; lastCom
   };
 }
 
-// The SAME settlement sum the world snapshot uses (completed USDC only).
-function usdcEarned(agentId: string): number {
+// The SAME settlement sum the world snapshot uses (completed ETH only).
+function ethEarned(agentId: string): number {
   const row = getDb()
     .prepare(
-      `SELECT COALESCE(SUM(amount_sol), 0) AS usdc
+      `SELECT COALESCE(SUM(amount_eth), 0) AS usdc
        FROM transactions
-       WHERE to_agent = ? AND status = 'completed' AND currency = 'USDC'`,
+       WHERE to_agent = ? AND status = 'completed'`,
     )
     .get(agentId) as { usdc: number };
   return Math.round(row.usdc * 1_000_000) / 1_000_000;
@@ -90,17 +91,17 @@ const SYSTEM_COUNTERPARTY: Record<string, string> = {
 function recentJobs(agentId: string): TrackRecordJob[] {
   // Over-fetch so filtering contract-test rows still leaves a full list.
   // The displayed amount is what the agent ACTUALLY settled for the job (the
-  // same transactions usdcEarned sums) — the task.payment field is often null
+  // same transactions ethEarned sums) — the task.payment field is often null
   // on seed/demo jobs even though they settled, which showed a paid job as
   // "free". Fall back to task.payment (agreed terms) only if nothing settled.
   const rows = getDb()
     .prepare(
       `SELECT t.task_id, t.from_agent, t.payment, t.completed_at,
               COALESCE(a.name, t.from_agent) AS counterparty,
-              (SELECT x.amount_sol FROM transactions x
+              (SELECT x.amount_eth FROM transactions x
                  WHERE x.task_id = t.task_id AND x.to_agent = t.to_agent
-                   AND x.status = 'completed' AND x.currency = 'USDC'
-                 LIMIT 1) AS settled_usdc
+                   AND x.status = 'completed'
+                 LIMIT 1) AS settled_eth
        FROM tasks t LEFT JOIN agents a ON a.agent_id = t.from_agent
        WHERE t.to_agent = ? AND t.status = 'completed'
        ORDER BY t.completed_at DESC LIMIT 40`,
@@ -111,7 +112,7 @@ function recentJobs(agentId: string): TrackRecordJob[] {
       payment: string | null;
       completed_at: string;
       counterparty: string;
-      settled_usdc: number | null;
+      settled_eth: number | null;
     }[];
   return rows
     // Contract-test jobs are automated checks, not real work — the whole
@@ -121,8 +122,8 @@ function recentJobs(agentId: string): TrackRecordJob[] {
     .map((r) => ({
       taskId: r.task_id,
       counterparty: SYSTEM_COUNTERPARTY[r.from_agent] ?? r.counterparty,
-      // 2-decimal USDC to match listed-price formatting ("0.10", not "0.1").
-      payment: r.settled_usdc != null ? `${r.settled_usdc.toFixed(2)} USDC` : r.payment,
+      // The price as written, not rounded: two decimals would render every ETH amount here as 0.00.
+      payment: r.settled_eth != null ? formatEth(r.settled_eth) : r.payment,
       completedAt: r.completed_at,
     }));
 }
@@ -150,7 +151,7 @@ export function getAgentTrackRecord(agentId: string): AgentTrackRecord | null {
     successRate: rep.successRate,
     avgResponseSec: rep.avgResponseTimeSec,
     paymentReliability: rep.paymentReliability,
-    usdcEarned: usdcEarned(agentId),
+    ethEarned: ethEarned(agentId),
     running: act.running,
     queued: act.queued,
     lastCompletedAt: act.lastCompletedAt,

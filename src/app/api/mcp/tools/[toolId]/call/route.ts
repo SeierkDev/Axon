@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMcpTool, getMcpServer, callMcpTool } from "@/lib/mcp";
 import { apiError } from "@/lib/apiError";
-import { parsePaymentAmount } from "@/lib/solana";
+import { parsePaymentAmount } from "@/lib/money";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
 
 type Params = { params: Promise<{ toolId: string }> };

@@ -16,8 +16,9 @@ import { createApiKey } from "@/lib/identity";
 import { defineSplits } from "@/lib/escrowSplits";
 import { getDb } from "@/lib/db";
 import type { Agent } from "@/sdk/types";
+import { evmAddress } from "./support/wallet";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = evmAddress("owner-a");
 let counter = 0;
 function makeAgent(wallet = WALLET): Agent {
   counter++;
@@ -34,19 +35,19 @@ function makeAgent(wallet = WALLET): Agent {
   createAgent(a);
   return a;
 }
-function paidAgent(price = "0.25 USDC"): Agent {
+function paidAgent(price = "0.25 ETH"): Agent {
   const a = makeAgent();
   getDb().prepare("UPDATE agents SET price = ? WHERE agent_id = ?").run(price, a.agentId);
   return { ...a, price };
 }
 
-// Simulate an agent EARNING USDC — a completed payout crediting its balance,
+// Simulate an agent EARNING — a completed payout crediting its balance,
 // exactly the shape releasePayment produces when it gets hired.
 function credit(agentId: string, amount: number): void {
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
-       VALUES (?, NULL, ?, ?, ?, 'completed', NULL, 0, 'USDC', ?, ?)`
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at)
+       VALUES (?, NULL, ?, ?, ?, 'completed', NULL, 0, 'ETH', ?, ?)`
     )
     .run(randomUUID(), "external-seed", agentId, amount, new Date().toISOString(), new Date().toISOString());
 }
@@ -56,8 +57,8 @@ function credit(agentId: string, amount: number): void {
 function onchainSpend(from: string, to: string, amount: number): void {
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at)
-       VALUES (?, NULL, ?, ?, ?, 'completed', ?, 0, 'USDC', ?, ?)`
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at)
+       VALUES (?, NULL, ?, ?, ?, 'completed', ?, 0, 'ETH', ?, ?)`
     )
     .run(randomUUID(), from, to, amount, `onchain-${randomUUID()}`, new Date().toISOString(), new Date().toISOString());
 }
@@ -76,7 +77,7 @@ describe("pay-from-balance", () => {
     credit(payer.agentId, 10);
 
     const taskId = `task-${randomUUID()}`;
-    const p = createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: payee.agentId, amountSol: 3, priceString: "3 USDC" });
+    const p = createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: payee.agentId, amountEth: 3, priceString: "3 ETH" });
     expect(p.status).toBe("escrow");
     expect(p.incomingSignature ?? null).toBeNull();
 
@@ -91,7 +92,7 @@ describe("pay-from-balance", () => {
     const payee = makeAgent();
     credit(payer.agentId, 10);
     const taskId = `task-${randomUUID()}`;
-    createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: payee.agentId, amountSol: 4, priceString: "4 USDC" });
+    createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: payee.agentId, amountEth: 4, priceString: "4 ETH" });
 
     releasePayment(taskId);
 
@@ -106,7 +107,7 @@ describe("pay-from-balance", () => {
     const payee = makeAgent();
     credit(payer.agentId, 10);
     const taskId = `task-${randomUUID()}`;
-    createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: payee.agentId, amountSol: 5, priceString: "5 USDC" });
+    createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: payee.agentId, amountEth: 5, priceString: "5 ETH" });
     expect(getAvailableBalance(payer.agentId)).toBeCloseTo(5, 6);
 
     refundPayment(taskId);
@@ -121,7 +122,7 @@ describe("pay-from-balance", () => {
     const payee = makeAgent();
     credit(payer.agentId, 2);
     expect(() =>
-      createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: payer.agentId, toAgent: payee.agentId, amountSol: 5, priceString: "5 USDC" })
+      createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: payer.agentId, toAgent: payee.agentId, amountEth: 5, priceString: "5 ETH" })
     ).toThrow(/insufficient balance/i);
     // nothing was escrowed
     expect(getAvailableBalance(payer.agentId)).toBe(2);
@@ -131,10 +132,10 @@ describe("pay-from-balance", () => {
     const payer = makeAgent();
     const payee = makeAgent();
     credit(payer.agentId, 5);
-    createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: payer.agentId, toAgent: payee.agentId, amountSol: 4, priceString: "4 USDC" });
+    createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: payer.agentId, toAgent: payee.agentId, amountEth: 4, priceString: "4 ETH" });
     // only 1 left in escrow-adjusted available — a second 4 must fail
     expect(() =>
-      createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: payer.agentId, toAgent: payee.agentId, amountSol: 4, priceString: "4 USDC" })
+      createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: payer.agentId, toAgent: payee.agentId, amountEth: 4, priceString: "4 ETH" })
     ).toThrow(/insufficient balance/i);
     expect(getAvailableBalance(payer.agentId)).toBeCloseTo(1, 6);
   });
@@ -142,7 +143,7 @@ describe("pay-from-balance", () => {
   it("requires a registered paying agent", () => {
     const payee = makeAgent();
     expect(() =>
-      createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: "not-an-agent", toAgent: payee.agentId, amountSol: 1, priceString: "1 USDC" })
+      createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: "not-an-agent", toAgent: payee.agentId, amountEth: 1, priceString: "1 ETH" })
     ).toThrow(/registered paying agent/i);
   });
 
@@ -154,7 +155,7 @@ describe("pay-from-balance", () => {
     // earned balance is still the full 10 — the on-chain hire was external money
     expect(getAvailableBalance(x.agentId)).toBeCloseTo(10, 6);
     // and x can still spend all 10 from balance
-    createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: x.agentId, toAgent: y.agentId, amountSol: 10, priceString: "10 USDC" });
+    createBalancePayment({ taskId: `task-${randomUUID()}`, fromAgent: x.agentId, toAgent: y.agentId, amountEth: 10, priceString: "10 ETH" });
     expect(getAvailableBalance(x.agentId)).toBeCloseTo(0, 6);
   });
 
@@ -168,7 +169,7 @@ describe("pay-from-balance", () => {
       { agentId: r1.agentId, shareBps: 5000 },
       { agentId: r2.agentId, shareBps: 5000 },
     ]);
-    createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: r1.agentId, amountSol: 4, priceString: "4 USDC" });
+    createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: r1.agentId, amountEth: 4, priceString: "4 ETH" });
     releasePayment(taskId); // routes through releaseWithSplits
 
     expect(getAvailableBalance(payer.agentId)).toBeCloseTo(6, 6); // 10 − 4 spent from balance
@@ -181,7 +182,7 @@ describe("pay-from-balance", () => {
     const payee = makeAgent();
     credit(payer.agentId, 10);
     const taskId = `task-${randomUUID()}`;
-    createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: payee.agentId, amountSol: 4, priceString: "4 USDC" });
+    createBalancePayment({ taskId, fromAgent: payer.agentId, toAgent: payee.agentId, amountEth: 4, priceString: "4 ETH" });
     releaseWithPenalty(taskId, 2500); // 25% late penalty: provider gets 3, 1 returned to payer
 
     expect(getAvailableBalance(payer.agentId)).toBeCloseTo(7, 6); // 10 − 3 spent (1 penalty came back)
@@ -192,7 +193,7 @@ describe("pay-from-balance", () => {
 describe("pay-from-balance — full route flow (POST /api/tasks)", () => {
   // An authenticated agent whose wallet owns it, so canAccessIdentity passes.
   function authedAgent(): { agent: Agent; apiKey: string } {
-    const wallet = `Wa11et${randomUUID().replace(/-/g, "").slice(0, 26)}`;
+    const wallet = evmAddress(randomUUID());
     const agent = makeAgent(wallet);
     const { apiKey } = createApiKey(wallet);
     return { agent, apiKey };
@@ -210,7 +211,7 @@ describe("pay-from-balance — full route flow (POST /api/tasks)", () => {
   it("an authenticated agent hires a paid agent from its balance, and it settles", async () => {
     const { agent: payer, apiKey } = authedAgent();
     credit(payer.agentId, 1);
-    const payee = paidAgent("0.25 USDC");
+    const payee = paidAgent("0.25 ETH");
 
     const { res, body } = await hire(payer.agentId, payee.agentId, apiKey);
     expect(res.status).toBe(201);
@@ -225,7 +226,7 @@ describe("pay-from-balance — full route flow (POST /api/tasks)", () => {
   it("rejects (402) and rolls back the task when the agent can't afford it", async () => {
     const { agent: payer, apiKey } = authedAgent();
     credit(payer.agentId, 0.1);
-    const payee = paidAgent("0.25 USDC");
+    const payee = paidAgent("0.25 ETH");
 
     const { res, body } = await hire(payer.agentId, payee.agentId, apiKey);
     expect(res.status).toBe(402);
@@ -236,13 +237,13 @@ describe("pay-from-balance — full route flow (POST /api/tasks)", () => {
   it("requires authentication (401 without an API key)", async () => {
     const payer = makeAgent();
     credit(payer.agentId, 1);
-    const payee = paidAgent("0.25 USDC");
+    const payee = paidAgent("0.25 ETH");
     const { res } = await hire(payer.agentId, payee.agentId, null);
     expect(res.status).toBe(401);
   });
 
   it("rejects an anonymous payer (no balance identity)", async () => {
-    const payee = paidAgent("0.25 USDC");
+    const payee = paidAgent("0.25 ETH");
     const { res, body } = await hire("anonymous", payee.agentId, null);
     expect(res.status).toBe(400);
     expect(body.error).toMatch(/registered paying agent/i);

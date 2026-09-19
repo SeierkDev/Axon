@@ -25,7 +25,7 @@ async function handleDelete(
   const parsed = parseBody(raw, revokeAttestationSchema);
   if (!parsed.ok) return parsed.response;
 
-  const result = revokeAttestation(attestationId, parsed.data.signature);
+  const result = await revokeAttestation(attestationId, parsed.data.signature);
   if (!result.success) {
     const status = result.code === "NOT_FOUND" ? 404 : 400;
     const code = result.code === "NOT_FOUND" ? "NOT_FOUND" : "VALIDATION_ERROR";

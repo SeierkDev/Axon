@@ -10,17 +10,17 @@ npm install @axonprotocol/sdk
 
 That is everything you need to search, hire, verify receipts, and run an agent.
 
-The `@axonprotocol/sdk/solana` subpath, the helpers that pay on-chain from a
-keypair or a browser wallet, additionally needs the Solana libraries. They are
+The `@axonprotocol/sdk/evm` subpath, the helpers that pay on-chain from a key or a
+browser wallet, additionally needs viem. It is
 optional peer dependencies, so they are not installed for you: paying on-chain is
 one way to use Axon, and the other ways shouldn't carry 11 MB for it.
 
 ```bash
-npm install @solana/web3.js @solana/spl-token
+npm install viem
 ```
 
-Importing `@axonprotocol/sdk/solana` without them fails with
-`Cannot find module '@solana/web3.js'`.
+Importing `@axonprotocol/sdk/evm` without it fails with
+`Cannot find module 'viem'`.
 
 ## Quick start
 
@@ -112,16 +112,16 @@ console.log(r.output);   // the answer
 console.log(r.receipt);  // the verifiable proof
 
 // Priced agent, give the client a wallet once, and paid hires just pay.
-// `solanaPayer` (from the /solana subpath) builds the USDC transfer for you,
+// `privateKeyPayer` (from the /evm subpath) builds the transfer for you,
 // congestion-hardened (dynamic priority fee + rebroadcast). No hand-written
 // payment code.
 import { AxonClient } from "@axonprotocol/sdk";
-import { solanaPayer } from "@axonprotocol/sdk/solana";
+import { privateKeyPayer } from "@axonprotocol/sdk/evm";
 
 const axon = new AxonClient({
-  pay: solanaPayer(mySecretKey, {
+  pay: privateKeyPayer(myPrivateKey, {
     rpcUrl: "https://your-rpc",
-    maxAmountUsdc: 1,   // hard per-payment cap, see below
+    maxAmountEth: 1,   // hard per-payment cap, see below
   }),
 });
 
@@ -135,24 +135,24 @@ console.log(paid.paid, paid.status, paid.output);
 // X402PayFunction if you'd rather sign elsewhere (browser wallet, custodian, …).
 ```
 
-**Set a spend cap when an agent pays on its own.** `maxAmountUsdc` is a hard
+**Set a spend cap when an agent pays on its own.** `maxAmountEth` is a hard
 per-payment ceiling, if a listing asks for more, the payer refuses to sign and
 nothing is sent. Whenever a wallet is handed to an autonomous loop, set it, so a
 malicious or buggy listing can't drain the wallet:
 
 ```ts
-const axon = new AxonClient({ pay: solanaPayer(secretKey, { maxAmountUsdc: 1 }) });
-// a hire that would cost > 1 USDC throws before signing, no funds move
+const axon = new AxonClient({ pay: privateKeyPayer(privateKey, { maxAmountEth: 0.01 }) });
+// a hire that would cost more than 0.01 ETH throws before signing, no funds move
 ```
 
-`walletPayer` takes the same `maxAmountUsdc`.
+`walletPayer` takes the same `maxAmountEth`.
 
 In a browser dapp, use **`walletPayer(wallet)`** from the same subpath instead, it
-pays through the connected wallet (Phantom, Solflare, any `@solana/wallet-adapter`
+pays through the connected wallet (MetaMask, Rabby, any EIP-1193
 wallet) rather than a raw key:
 
 ```ts
-import { walletPayer } from "@axonprotocol/sdk/solana";
+import { walletPayer } from "@axonprotocol/sdk/evm";
 const axon = new AxonClient({ pay: walletPayer(wallet) }); // wallet from useWallet()
 ```
 
@@ -185,9 +185,9 @@ dependencies. Give the client a wallet and the agent hires and pays on its own.
 
 ```ts
 import { AxonClient, toOpenAITools, runAxonTool } from "@axonprotocol/sdk";
-import { solanaPayer } from "@axonprotocol/sdk/solana";
+import { privateKeyPayer } from "@axonprotocol/sdk/evm";
 
-const axon = new AxonClient({ pay: solanaPayer(secretKey) });
+const axon = new AxonClient({ pay: privateKeyPayer(privateKey) });
 const tools = axon.tools();
 
 // OpenAI function-calling:
@@ -214,7 +214,7 @@ receipt), give the tools a readable identity on an authenticated client, the sam
 rule as `run` above:
 
 ```ts
-const axon = new AxonClient({ apiKey: "axon_...", pay: solanaPayer(secretKey) });
+const axon = new AxonClient({ apiKey: "axon_...", pay: privateKeyPayer(privateKey) });
 const tools = axon.tools({ from: "my-agent" }); // an agent you own, or your wallet address
 ```
 
@@ -229,7 +229,7 @@ signature from your wallet over a message naming that exact cart at that exact p
 
 ```ts
 import { AxonClient } from "@axonprotocol/sdk";
-import { mandateSigner } from "@axonprotocol/sdk/node";
+import { keyMandateSigner } from "@axonprotocol/sdk/evm";
 
 const axon = new AxonClient({ apiKey: process.env.AXON_API_KEY });
 
@@ -264,7 +264,7 @@ signed and nothing is sent.
 
 ```ts
 await axon.commerce.approve(intentId, {
-  sign: mandateSigner(secretKey),
+  sign: keyMandateSigner(privateKey),
   expect: { maxAmount: 150, currency: "USD", business: "shop.example" },
   paymentInstrument,  // from one of the business's payment handlers
 });
@@ -275,10 +275,10 @@ authorisation before they agree to it, which is the surface AP2 expects a paymen
 mandate to come from:
 
 ```ts
-import { walletMandateSigner } from "@axonprotocol/sdk/solana";
+import { walletMandateSigner } from "@axonprotocol/sdk/evm";
 
 await axon.commerce.approve(intentId, {
-  sign: walletMandateSigner(window.phantom.solana),
+  sign: walletMandateSigner(window.ethereum),
   expect: { maxAmount: 150, currency: "USD", business: "shop.example" },
 });
 ```
@@ -336,7 +336,7 @@ axon.commerce.autoApprove({
   maxAmount: 40,
   currency: "USD",
   allowedHosts: ["groceries.example"],
-  sign: mandateSigner(secretKey),
+  sign: keyMandateSigner(privateKey),
   onApproved: (r) => console.log("bought", r.orderId),
   onSkipped: (intent, reason) => console.log("left for you:", intent.summary, reason),
 });
@@ -438,7 +438,7 @@ const top = await axon.findAgents({ sort: "reputation", limit: 5 });
 const task = await axon.sendTask({
   from: "my-agent",
   to: "research-agent",
-  task: "What is Solana?",
+  task: "What is Robinhood Chain?",
 });
 
 // Paid task, attach a payment reference (e.g. an on-chain signature).

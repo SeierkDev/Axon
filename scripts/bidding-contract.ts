@@ -92,7 +92,7 @@ async function main() {
   await registerAgent(endpoint, bidderAuth.apiKey, bidderAgent, bidderAddr, Keypair.generate());
 
   // 1. Open a task (poster). Unauthenticated post is rejected.
-  const body = JSON.stringify({ from: posterAgent, task: "Summarize x402", capabilities: ["research"], maxBudget: "0.10 USDC" });
+  const body = JSON.stringify({ from: posterAgent, task: "Summarize x402", capabilities: ["research"], maxBudget: "0.0001 ETH" });
   assertError(
     "open task without auth",
     await request<ErrorBody>(endpoint, "/api/open-tasks", { method: "POST", headers: authHeaders(), body }),
@@ -119,7 +119,7 @@ async function main() {
   }
 
   // 3. Bid (bidder). A second bid from the same agent is rejected.
-  const bidBody = JSON.stringify({ agentId: bidderAgent, price: "0.05 USDC", message: "I can do this" });
+  const bidBody = JSON.stringify({ agentId: bidderAgent, price: "0.00005 ETH", message: "I can do this" });
   const bid = await request<{ bidId: string }>(endpoint, `/api/open-tasks/${openTaskId}/bids`, {
     method: "POST",
     headers: authHeaders(bidderAuth.apiKey),

@@ -27,10 +27,10 @@ function finished(opts: { templateId?: string; owner?: string } = {}) {
     agentId: `a-${randomUUID().slice(0, 8)}`,
     ownerWallet: opts.owner ?? OWNER,
     mission: "PRIVATE BRIEF",
-    budgetUsdc: 5,
+    budgetEth: 5,
     templateId: opts.templateId,
   });
-  recordGrowEvent(run.runId, { kind: "payment", summary: "paid", taskId: "tk1", amountUsdc: 1 });
+  recordGrowEvent(run.runId, { kind: "payment", summary: "paid", taskId: "tk1", amountEth: 1 });
   recordGrowEvent(run.runId, {
     kind: "result", summary: "did the research", taskId: "tk1", toAgent: "atlas",
     data: { capability: "research", preview: "PREVIEW TEXT FROM THE SPECIALIST" },
@@ -64,13 +64,13 @@ async function realRun() {
         : p.includes("deciding what is still worth doing") ? "[]" : "FINAL",
     search: async ({ capability }) =>
       capability === "research"
-        ? [{ agentId: "atlas", name: "Atlas Research", priceUsdc: 1, proofScore: 900, capabilities: [] }]
+        ? [{ agentId: "atlas", name: "Atlas Research", priceEth: 1, proofScore: 900, capabilities: [] }]
         : [],
-    hire: async () => ({ taskId: "tk1", status: "completed" as const, output: "the work", costUsdc: 1 }),
+    hire: async () => ({ taskId: "tk1", status: "completed" as const, output: "the work", costEth: 1 }),
     attempt: async () => "in-house work",
     fetchOutput: async () => "the work",
   };
-  const res = await runGrowMission(deps, { mission: "m", budgetUsdc: 5, perHireCapUsdc: 2, maxHires: 2 });
+  const res = await runGrowMission(deps, { mission: "m", budgetEth: 5, perHireCapEth: 2, maxHires: 2 });
   return getGrowRun(res.run.runId)!;
 }
 
@@ -102,11 +102,11 @@ describe("templates", () => {
 
   it("keeps every budget within what specialists actually charge", () => {
     for (const t of MISSION_TEMPLATES) {
-      expect(t.perHireCapUsdc).toBeGreaterThan(0);
+      expect(t.perHireCapEth).toBeGreaterThan(0);
       // Most listed specialists are at or under 1 USDC — a cap below that would
       // offer a template that can never hire anyone.
-      expect(t.perHireCapUsdc).toBeGreaterThanOrEqual(1);
-      expect(t.budgetUsdc).toBeGreaterThanOrEqual(t.perHireCapUsdc);
+      expect(t.perHireCapEth).toBeGreaterThanOrEqual(1);
+      expect(t.budgetEth).toBeGreaterThanOrEqual(t.perHireCapEth);
       expect(t.maxHires).toBeGreaterThan(0);
     }
   });
@@ -150,7 +150,7 @@ describe("publishing is the owner's act, and reverses", () => {
   });
 
   it("won't publish a mission that is still running", () => {
-    const run = createGrowRun({ agentId: "a", ownerWallet: OWNER, mission: "m", budgetUsdc: 5 });
+    const run = createGrowRun({ agentId: "a", ownerWallet: OWNER, mission: "m", budgetEth: 5 });
     // The page would show a half-built result that then changes under its readers.
     expect(setGrowRunPublished(run.runId, OWNER, true)).toBeNull();
   });
@@ -200,8 +200,8 @@ describe("what a published mission shows — and what it must not", () => {
     expect(pub.mission).toBe("PRIVATE BRIEF");        // published deliberately
     expect(pub.deliverable).toBe("THE RESULT");       // published deliberately
     expect(pub.steps).toHaveLength(2);
-    expect(pub.steps[0]).toMatchObject({ source: "hire", agentId: "atlas", receiptUrl: "/r/tk1", costUsdc: 1 });
-    expect(pub.steps[1]).toMatchObject({ source: "in-house", costUsdc: 0 });
+    expect(pub.steps[0]).toMatchObject({ source: "hire", agentId: "atlas", receiptUrl: "/r/tk1", costEth: 1 });
+    expect(pub.steps[1]).toMatchObject({ source: "in-house", costEth: 0 });
     expect(pub.steps[1].receiptUrl).toBeUndefined();  // nobody witnessed it
     expect(pub.template).toEqual({ id: "compare", title: "Compare the options" });
     expect(pub.receipt?.verification.ok).toBe(true);
@@ -235,7 +235,7 @@ describe("what a published mission shows — and what it must not", () => {
     // Force the fallback path: same shape, rebuilt from the timeline.
     const pub = toPublicMission({ ...run, manifest: undefined }, getGrowEvents(run.runId));
     expect(pub.steps).toHaveLength(2);
-    expect(pub.totals).toMatchObject({ hires: 1, inHouse: 1, spentUsdc: 1 });
+    expect(pub.totals).toMatchObject({ hires: 1, inHouse: 1, spentEth: 1 });
     expect(pub.receipt).toBeNull();
     expect(JSON.stringify(pub)).not.toContain("PREVIEW TEXT FROM THE SPECIALIST");
   });
@@ -244,8 +244,8 @@ describe("what a published mission shows — and what it must not", () => {
     // Sealing the receipt is best-effort, so a finished mission can have none.
     // The card and the page used to work their totals out separately, and a run
     // in that state showed "1 hire" on its page and "0 hires" on its own card.
-    const run = createGrowRun({ agentId: "a", ownerWallet: OWNER, mission: "m", budgetUsdc: 5 });
-    recordGrowEvent(run.runId, { kind: "payment", summary: "paid", taskId: "tk1", amountUsdc: 2 });
+    const run = createGrowRun({ agentId: "a", ownerWallet: OWNER, mission: "m", budgetEth: 5 });
+    recordGrowEvent(run.runId, { kind: "payment", summary: "paid", taskId: "tk1", amountEth: 2 });
     recordGrowEvent(run.runId, { kind: "result", summary: "done", taskId: "tk1", toAgent: "atlas", data: { capability: "research" } });
     updateGrowRun(run.runId, { status: "completed", deliverable: "RESULT" });
     const unsealed = getGrowRun(run.runId)!;
@@ -255,7 +255,7 @@ describe("what a published mission shows — and what it must not", () => {
     const page = toPublicMission(unsealed, events);
     const card = toPublicMissionCard(unsealed, events);
     expect(card.hires).toBe(page.totals.hires);
-    expect(card.spentUsdc).toBe(page.totals.spentUsdc);
+    expect(card.spentEth).toBe(page.totals.spentEth);
     expect(card.hires).toBe(1);
   });
 

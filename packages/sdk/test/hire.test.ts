@@ -12,10 +12,10 @@ const REQUIREMENTS: X402Requirements = {
   accepts: [
     {
       scheme: "exact",
-      network: "solana-mainnet",
+      network: "eip155:4663",
       maxAmountRequired: "250000",
       resource: "https://axon-agents.com/api/agents/code-agent/x402",
-      description: "0.25 USDC",
+      description: "0.00025 ETH",
       mimeType: "application/json",
       payToAddress: "TREASURY",
     } as X402Requirements["accepts"][number],

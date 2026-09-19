@@ -3,8 +3,8 @@ import { createTask, getTaskById, getTaskByIdempotency, markTaskPaymentConfirmed
 import { syncToTurso } from "@/lib/db-turso";
 import { getAgentById } from "@/lib/agents";
 import { selectAgent, type RouteResult } from "@/lib/routing";
-import { createPayment, createBalancePayment, getPaymentByIncomingSignature, parsePriceToSol, refundPayment } from "@/lib/payments";
-import { isValidSolanaAddress } from "@/lib/solana";
+import { createPayment, createBalancePayment, getPaymentByIncomingSignature, parsePriceToEth, refundPayment } from "@/lib/payments";
+import { isWalletAddress } from "@/lib/address";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
@@ -89,8 +89,8 @@ async function handlePost(req: NextRequest) {
   }
 
   // from must be a wallet address, a registered agent ID, or "anonymous" (unauthenticated free tasks)
-  if (body.from !== "anonymous" && !isValidSolanaAddress(body.from) && !getAgentById(body.from)) {
-    return apiError("VALIDATION_ERROR", "from must be a valid Solana address or agent ID", 400);
+  if (body.from !== "anonymous" && !isWalletAddress(body.from) && !getAgentById(body.from)) {
+    return apiError("VALIDATION_ERROR", "from must be a valid wallet address or agent ID", 400);
   }
 
   // Auth gates all attributed requests — must run before payment check so probing
@@ -105,7 +105,7 @@ async function handlePost(req: NextRequest) {
         403
       );
     }
-  } else if (!process.env.VITEST && parsePriceToSol(agent.price) === null) {
+  } else if (!process.env.VITEST && parsePriceToEth(agent.price) === null) {
     // 3 free calls per IP per agent — 1 year window so refreshing the page doesn't
     // reset it. Gates ONLY the actual free lane: an anonymous request to a PAID
     // agent is authorized by its on-chain payment (verified below), so the demo
@@ -115,26 +115,26 @@ async function handlePost(req: NextRequest) {
     if (!freeRl.allowed) {
       return apiError(
         "FREE_LIMIT_REACHED",
-        "You've used your 3 free demo calls. Connect your Phantom wallet at axon-agents.com/onboarding to get an API key and continue.",
+        "You've used your 3 free demo calls. Connect your MetaMask wallet at axon-agents.com/onboarding to get an API key and continue.",
         429
       );
     }
   }
 
   const payment = agent.price;
-  const amountSol = parsePriceToSol(payment);
+  const amountEth = parsePriceToEth(payment);
 
   // "balance" funds a paid hire from the paying agent's earned ledger balance
   // instead of a fresh on-chain transfer — so an agent can reinvest what it earns.
   // It belongs to an identity, so it requires an authenticated registered agent
   // (the auth block above already proved `from` is owned by the caller).
-  const useBalance = amountSol !== null && body.paymentMethod === "balance";
+  const useBalance = amountEth !== null && body.paymentMethod === "balance";
   if (useBalance && !getAgentById(body.from)) {
     return apiError("VALIDATION_ERROR", "balance payments require a registered paying agent", 400);
   }
 
   // Paid tasks require either a payment signature (on-chain) or balance funding.
-  if (amountSol !== null && !body.paymentSignature && !useBalance) {
+  if (amountEth !== null && !body.paymentSignature && !useBalance) {
     return apiError(
       "PAYMENT_REQUIRED",
       "paymentSignature is required for paid tasks, complete the x402 payment first, or set paymentMethod:\"balance\" to spend your earned balance",
@@ -144,8 +144,8 @@ async function handlePost(req: NextRequest) {
 
   // payerWallet lets an anonymous hire name the wallet that paid — it's verified
   // on-chain as the transaction's signer, so it must be a real address if given.
-  if (body.payerWallet && !isValidSolanaAddress(body.payerWallet)) {
-    return apiError("VALIDATION_ERROR", "payerWallet must be a valid Solana address", 400);
+  if (body.payerWallet && !isWalletAddress(body.payerWallet)) {
+    return apiError("VALIDATION_ERROR", "payerWallet must be a valid EVM address", 400);
   }
 
   const idempotencyKey = normalizeIdempotencyKey(req.headers.get("Idempotency-Key"));
@@ -183,7 +183,7 @@ async function handlePost(req: NextRequest) {
     }
   }
 
-  if (amountSol !== null && body.paymentSignature) {
+  if (amountEth !== null && body.paymentSignature) {
     const existingPayment = getPaymentByIncomingSignature(body.paymentSignature);
     if (existingPayment?.taskId) {
       const existingTask = getTaskById(existingPayment.taskId);
@@ -191,7 +191,7 @@ async function handlePost(req: NextRequest) {
         existingTask &&
         existingPayment.fromAgent === body.from &&
         existingPayment.toAgent === toAgentId &&
-        Math.abs(existingPayment.amountSol - amountSol) < 0.000001
+        Math.abs(existingPayment.amountEth - amountEth) < 0.000001
       ) {
         return taskResponse(existingTask, 200, "payment", rateLimitHeaders(rl, RATE_LIMIT));
       }
@@ -208,8 +208,8 @@ async function handlePost(req: NextRequest) {
       context: body.context,
       payment,
       signature: body.signature,
-      queueQueuedWebhook: amountSol === null,
-      initialStatus: amountSol !== null ? "payment_pending" : "queued",
+      queueQueuedWebhook: amountEth === null,
+      initialStatus: amountEth !== null ? "payment_pending" : "queued",
       idempotencyScope,
       idempotencyKey: idempotencyKey ?? undefined,
       idempotencyHash,
@@ -227,14 +227,14 @@ async function handlePost(req: NextRequest) {
     throw err;
   }
 
-  if (amountSol !== null && (body.paymentSignature || useBalance)) {
+  if (amountEth !== null && (body.paymentSignature || useBalance)) {
     try {
       if (useBalance) {
         createBalancePayment({
           taskId: task.taskId,
           fromAgent: body.from,
           toAgent: toAgentId,
-          amountSol,
+          amountEth,
           priceString: payment,
         });
       } else {
@@ -242,7 +242,7 @@ async function handlePost(req: NextRequest) {
           taskId: task.taskId,
           fromAgent: body.from,
           toAgent: toAgentId,
-          amountSol,
+          amountEth,
           paymentSignature: body.paymentSignature!,
           priceString: payment,
           payerWallet: body.payerWallet,
@@ -255,7 +255,7 @@ async function handlePost(req: NextRequest) {
       void syncToTurso();
       const msg = err instanceof Error ? err.message : "Payment verification failed";
       // Don't expose internal config details (missing env vars, etc.) to callers
-      const safeMsg = /is not set|API_KEY|HELIUS/i.test(msg)
+      const safeMsg = /is not set|API_KEY|PRIVATE_KEY|RPC_URL/i.test(msg)
         ? "Payment processing unavailable"
         : msg;
       return apiError(

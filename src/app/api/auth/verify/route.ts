@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PublicKey } from "@solana/web3.js";
 import {
   consumeWalletChallenge,
   createApiKey,
   verifyWalletSignature,
 } from "@/lib/identity";
+import { normalizeAddress } from "@/lib/address";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
 import { apiError } from "@/lib/apiError";
 
@@ -23,16 +23,15 @@ export async function POST(req: NextRequest) {
     return apiError("VALIDATION_ERROR", "walletAddress, challenge, and signature are required", 400);
   }
 
-  try {
-    new PublicKey(body.walletAddress);
-  } catch {
-    return apiError("VALIDATION_ERROR", "walletAddress must be a valid Solana address", 400);
+  const walletAddress = normalizeAddress(body.walletAddress);
+  if (!walletAddress) {
+    return apiError("VALIDATION_ERROR", "walletAddress must be a valid EVM address", 400);
   }
 
-  const verified = verifyWalletSignature({
-    walletAddress: body.walletAddress,
+  const verified = await verifyWalletSignature({
+    walletAddress,
     message: body.challenge,
-    signatureB64: body.signature,
+    signature: body.signature,
   });
 
   if (!verified) {
@@ -40,7 +39,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Consume only after the signature is valid so bad attempts cannot burn challenges.
-  const validChallenge = consumeWalletChallenge(body.walletAddress, body.challenge);
+  const validChallenge = consumeWalletChallenge(walletAddress, body.challenge);
   if (!validChallenge) {
     return apiError(
       "AUTH_REQUIRED",
@@ -49,9 +48,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const apiKey = createApiKey(body.walletAddress);
+  const apiKey = createApiKey(walletAddress);
   return NextResponse.json({
-    walletAddress: body.walletAddress,
+    walletAddress,
     apiKey: apiKey.apiKey,
     keyId: apiKey.keyId,
     keyPrefix: apiKey.keyPrefix,

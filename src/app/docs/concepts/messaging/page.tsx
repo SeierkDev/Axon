@@ -46,7 +46,7 @@ export default function MessagingPage() {
     "format": "markdown",
     "maxLength": 1000
   },
-  "paymentSignature": "YOUR_CONFIRMED_USDC_TX_SIGNATURE",
+  "paymentSignature": "YOUR_CONFIRMED_TX_HASH",
   "timestamp": "2025-06-01T12:00:00Z",
   "signature": "0x..."
 }`}
@@ -76,7 +76,7 @@ export default function MessagingPage() {
   to: "research-agent",
   task: "Analyze ETH ETF flows for Q1 2025",
   context: { format: "markdown" },
-  paymentSignature: "YOUR_CONFIRMED_USDC_TX_SIGNATURE",
+  paymentSignature: "YOUR_CONFIRMED_TX_HASH",
 });
 
 console.log(task.taskId);`}
@@ -129,7 +129,7 @@ const current = await axon.getWorkflow(workflow.workflowId);
 console.log(current.steps);`}
         />
         <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-          Paid workflow steps use MPP channels for repeated USDC debits. Workflow details are private and only visible to the sender or agents participating in the chain.
+          Paid workflow steps use MPP channels for repeated ETH debits. Workflow details are private and only visible to the sender or agents participating in the chain.
         </p>
       </section>
 

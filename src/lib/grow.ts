@@ -17,8 +17,8 @@ export interface GrowRun {
   /** Whose mission this is. Null on the original platform experiment runs. */
   ownerWallet?: string;
   mission: string;
-  budgetUsdc: number;
-  perHireCapUsdc?: number;
+  budgetEth: number;
+  perHireCapEth?: number;
   maxHires?: number;
   status: GrowStatus;
   /** The owner called it off; the runner stops at the next safe point. */
@@ -44,21 +44,21 @@ export interface GrowEvent {
   summary: string;
   taskId?: string;
   toAgent?: string;
-  amountUsdc?: number;
+  amountEth?: number;
   data?: unknown;
   createdAt: string;
 }
 
 interface GrowRunRow {
   run_id: string; agent_id: string; owner_wallet: string | null; mission: string;
-  budget_usdc: number; per_hire_cap_usdc: number | null; max_hires: number | null;
+  budget_eth: number; per_hire_cap_eth: number | null; max_hires: number | null;
   status: string; canceled: number; plan: string | null; deliverable: string | null; manifest: string | null;
   published: number; published_at: string | null; template_id: string | null;
   started_at: string; updated_at: string; completed_at: string | null;
 }
 interface GrowEventRow {
   id: number; run_id: string; kind: string; summary: string; task_id: string | null;
-  to_agent: string | null; amount_usdc: number | null; data: string | null; created_at: string;
+  to_agent: string | null; amount_eth: number | null; data: string | null; created_at: string;
 }
 
 function parseJson(s: string | null): unknown {
@@ -68,8 +68,8 @@ function parseJson(s: string | null): unknown {
 function rowToRun(r: GrowRunRow): GrowRun {
   return {
     runId: r.run_id, agentId: r.agent_id, ownerWallet: r.owner_wallet ?? undefined,
-    mission: r.mission, budgetUsdc: r.budget_usdc,
-    perHireCapUsdc: r.per_hire_cap_usdc ?? undefined, maxHires: r.max_hires ?? undefined,
+    mission: r.mission, budgetEth: r.budget_eth,
+    perHireCapEth: r.per_hire_cap_eth ?? undefined, maxHires: r.max_hires ?? undefined,
     status: r.status as GrowStatus, canceled: r.canceled === 1, plan: parseJson(r.plan),
     deliverable: r.deliverable ?? undefined, manifest: parseJson(r.manifest),
     published: r.published === 1, publishedAt: r.published_at ?? undefined,
@@ -81,25 +81,25 @@ function rowToEvent(r: GrowEventRow): GrowEvent {
   return {
     id: r.id, runId: r.run_id, kind: r.kind as GrowEventKind, summary: r.summary,
     taskId: r.task_id ?? undefined, toAgent: r.to_agent ?? undefined,
-    amountUsdc: r.amount_usdc ?? undefined, data: parseJson(r.data), createdAt: r.created_at,
+    amountEth: r.amount_eth ?? undefined, data: parseJson(r.data), createdAt: r.created_at,
   };
 }
 
 export function createGrowRun(opts: {
-  agentId: string; mission: string; budgetUsdc: number;
-  ownerWallet?: string; perHireCapUsdc?: number; maxHires?: number; templateId?: string;
+  agentId: string; mission: string; budgetEth: number;
+  ownerWallet?: string; perHireCapEth?: number; maxHires?: number; templateId?: string;
 }): GrowRun {
   const db = getDb();
   const runId = randomUUID();
   const now = new Date().toISOString();
   db.prepare(`
     INSERT INTO grow_runs
-      (run_id, agent_id, owner_wallet, mission, budget_usdc, per_hire_cap_usdc, max_hires, template_id,
+      (run_id, agent_id, owner_wallet, mission, budget_eth, per_hire_cap_eth, max_hires, template_id,
        status, started_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'planning', ?, ?)
   `).run(
-    runId, opts.agentId, opts.ownerWallet ?? null, opts.mission, opts.budgetUsdc,
-    opts.perHireCapUsdc ?? null, opts.maxHires ?? null, opts.templateId ?? null, now, now,
+    runId, opts.agentId, opts.ownerWallet ?? null, opts.mission, opts.budgetEth,
+    opts.perHireCapEth ?? null, opts.maxHires ?? null, opts.templateId ?? null, now, now,
   );
   void syncToTurso();
   return rowToRun(db.prepare("SELECT * FROM grow_runs WHERE run_id = ?").get(runId) as GrowRunRow);
@@ -164,16 +164,16 @@ export function updateGrowRun(
 
 export function recordGrowEvent(runId: string, ev: {
   kind: GrowEventKind; summary: string; taskId?: string; toAgent?: string;
-  amountUsdc?: number; data?: unknown;
+  amountEth?: number; data?: unknown;
 }): GrowEvent {
   const db = getDb();
   const now = new Date().toISOString();
   const info = db.prepare(`
-    INSERT INTO grow_events (run_id, kind, summary, task_id, to_agent, amount_usdc, data, created_at)
+    INSERT INTO grow_events (run_id, kind, summary, task_id, to_agent, amount_eth, data, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     runId, ev.kind, ev.summary, ev.taskId ?? null, ev.toAgent ?? null,
-    ev.amountUsdc ?? null, ev.data !== undefined ? JSON.stringify(ev.data) : null, now,
+    ev.amountEth ?? null, ev.data !== undefined ? JSON.stringify(ev.data) : null, now,
   );
   void syncToTurso();
   return rowToEvent(
@@ -289,7 +289,7 @@ export function listPublishedGrowRuns(limit = 12, perOwner = 2): GrowRun[] {
 /** How much of the budget has been committed to hires so far (sum of payment events). */
 export function getGrowSpent(runId: string): number {
   const { spent } = getDb().prepare(
-    "SELECT COALESCE(SUM(amount_usdc), 0) AS spent FROM grow_events WHERE run_id = ? AND kind = 'payment'",
+    "SELECT COALESCE(SUM(amount_eth), 0) AS spent FROM grow_events WHERE run_id = ? AND kind = 'payment'",
   ).get(runId) as { spent: number };
   return Math.round(spent * 10000) / 10000;
 }

@@ -11,11 +11,10 @@ import { computeReputation } from "@/lib/reputation";
 import { getAgentTrackRecord } from "@/lib/trackRecord";
 import { computeProofScore } from "@/lib/proofScore";
 import { describeToolGrant, toolsActiveFor } from "@/lib/agentTools";
-import { parsePriceToSol } from "@/lib/payments";
+import { parsePriceToEth } from "@/lib/payments";
 import type { Review } from "@/sdk/types";
 import SiteNav from "@/components/SiteNav";
 import ReviewForm from "@/components/ReviewForm";
-import AgencCrossListing from "./AgencCrossListing";
 import ProofScoreCard from "./ProofScoreCard";
 import HirePanel from "./HirePanel";
 import HireLinkShare from "./HireLinkShare";
@@ -60,18 +59,18 @@ export default async function AgentProfilePage({
   const recentWork = getAgentRecentWork(agentId, 8);
   const proofScore = computeProofScore(agentId);
   const price = agent.price?.trim() || "Free";
-  // Paid means what the tasks route enforces (parsePriceToSol) — a degenerate
-  // price like "0 USDC" or unparseable text runs on the free lane there, so the
+  // Paid means what the tasks route enforces (parsePriceToEth) — a degenerate
+  // price like "0 ETH" or unparseable text runs on the free lane there, so the
   // page must show it as free too, not claim x402 is required.
-  const isPaid = parsePriceToSol(agent.price) !== null;
-  // For the in-browser paid hire: where USDC is sent (the treasury) + the RPC to
+  const isPaid = parsePriceToEth(agent.price) !== null;
+  // For the in-browser paid hire: where ETH is sent (the treasury) + the RPC to
   // build/confirm the payment. Read at request time — NEXT_PUBLIC_* may only be
   // set at runtime on the host, not at build.
   const receiver =
     process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS?.trim() ??
     process.env.NEXT_PUBLIC_WALLET_ADDRESS?.trim() ??
     "";
-  const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_URL?.trim() ?? "";
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL?.trim() ?? "";
   const avgLatency =
     metrics.avgLatencyMs !== null ? `${(metrics.avgLatencyMs / 1000).toFixed(1)}s` : "No data";
   const uptime = metrics.uptimePct !== null ? `${metrics.uptimePct.toFixed(1)}%` : "No data";
@@ -206,9 +205,9 @@ export default async function AgentProfilePage({
               </div>
               <div className="p-4">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  ${Number(track.usdcEarned.toFixed(2))}
+                  ${Number(track.ethEarned.toFixed(2))}
                 </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">USDC earned</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">ETH earned</p>
               </div>
               <div className="p-4">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -391,8 +390,6 @@ export default async function AgentProfilePage({
           </div>
         </div>
 
-        {/* AgenC cross-listing (opt-in interop) */}
-        <AgencCrossListing agentId={agent.agentId} />
 
         {/* Identity */}
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden mb-10">
@@ -431,13 +428,13 @@ export default async function AgentProfilePage({
             <div>
               {isPaid ? (
                 <>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{price} per task · paid via x402 · settles on Solana</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Attach a signed Solana USDC transfer to each request. The SDK handles this automatically, or follow the manual flow below.</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{price} per task · paid via x402 · settles on Robinhood Chain</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Attach a signed Robinhood Chain ETH transfer to each request. The SDK handles this automatically, or follow the manual flow below.</p>
                 </>
               ) : (
                 <>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">Free route · no payment required</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Send tasks directly with your API key. No USDC attachment needed.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Send tasks directly with your API key. No ETH attachment needed.</p>
                 </>
               )}
             </div>
@@ -461,7 +458,7 @@ const task = await axon.submitTaskX402(
   "Describe what you need...",
   async (requirements) => {
     const { payToAddress, maxAmountRequired } = requirements.accepts[0];
-    // Send ${price} USDC to payToAddress using your wallet library
+    // Send ${price} ETH to payToAddress using your wallet library
     // const txSig = await yourWallet.sendUsdc(payToAddress, maxAmountRequired);
     return { signature: "<tx-signature>", from: "<your-wallet-address>" };
   }
@@ -491,11 +488,11 @@ console.log(result.output);`,
 curl https://axon-agents.com/api/agents/${agent.agentId}/x402
 # ← 402 + X-Payment-Required header (base64 JSON with payToAddress, amount)
 
-# Step 2, send ${price} USDC to payToAddress on Solana
+# Step 2, send ${price} ETH to payToAddress on Robinhood Chain
 # → TX_SIG = confirmed transaction signature
 
 # Step 3, build X-Payment header (base64 of JSON) and submit
-X_PAYMENT=$(echo -n '{"scheme":"exact","network":"solana-mainnet","payload":{"signature":"TX_SIG","from":"YOUR_WALLET"}}' | base64)
+X_PAYMENT=$(echo -n '{"scheme":"exact","network":"eip155:4663","payload":{"signature":"TX_SIG","from":"YOUR_WALLET"}}' | base64)
 
 curl -X POST https://axon-agents.com/api/agents/${agent.agentId}/x402 \\
   -H "Content-Type: application/json" \\
@@ -517,14 +514,14 @@ const rawReq = probeRes.headers.get("x-payment-required");
 const requirements = JSON.parse(atob(rawReq));
 const { payToAddress, maxAmountRequired } = requirements.accepts[0];
 
-// Step 2, send USDC on-chain (using @solana/web3.js + @solana/spl-token)
-// const txSig = await sendUsdcTransfer(payToAddress, maxAmountRequired, yourKeypair);
+// Step 2, send the ETH on-chain. maxAmountRequired is already in wei.
+// const txHash = await wallet.sendTransaction({ to: payToAddress, value: BigInt(maxAmountRequired) });
 
 // Step 3, build X-Payment header and submit
 const xPayment = btoa(JSON.stringify({
   scheme: "exact",
-  network: "solana-mainnet",
-  payload: { signature: txSig, from: "YOUR_WALLET_ADDRESS" },
+  network: "eip155:4663",
+  payload: { signature: txHash, from: "YOUR_WALLET_ADDRESS" },
 }));
 
 const res = await fetch("https://axon-agents.com/api/agents/${agent.agentId}/x402", {
@@ -559,15 +556,15 @@ probe = httpx.get("https://axon-agents.com/api/agents/${agent.agentId}/x402")
 raw_req = probe.headers["x-payment-required"]
 requirements = json.loads(base64.b64decode(raw_req))
 pay_to = requirements["accepts"][0]["payToAddress"]
-amount = requirements["accepts"][0]["maxAmountRequired"]  # micro-USDC
+amount = requirements["accepts"][0]["maxAmountRequired"]  # micro-ETH
 
-# Step 2, send ${price} USDC to pay_to on Solana
-# tx_sig = your_solana_wallet.send_usdc(pay_to, amount)
+# Step 2, send ${price} ETH to pay_to on Robinhood Chain
+# tx_hash = your_wallet.send(pay_to, wei)
 
 # Step 3, build X-Payment header and submit
 x_payment = base64.b64encode(json.dumps({
     "scheme": "exact",
-    "network": "solana-mainnet",
+    "network": "eip155:4663",
     "payload": {"signature": tx_sig, "from": "YOUR_WALLET_ADDRESS"},
 }).encode()).decode()
 

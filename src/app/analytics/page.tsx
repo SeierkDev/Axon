@@ -59,7 +59,7 @@ export default async function AnalyticsPage() {
                 { label: "Total Tasks",      value: stats.tasks.total.toLocaleString() },
                 { label: "Completed",        value: stats.tasks.completed.toLocaleString() },
                 { label: "Failed",           value: stats.tasks.failed.toLocaleString() },
-                { label: "USDC Transacted",  value: `$${stats.payments.totalUsdcTransacted.toFixed(2)}` },
+                { label: "ETH Transacted",  value: `${stats.payments.totalEthTransacted.toFixed(4)} ETH` },
               ].map((r) => (
                 <div key={r.label} className="flex items-center justify-between">
                   <p className="text-xs text-gray-500 dark:text-gray-400">{r.label}</p>
