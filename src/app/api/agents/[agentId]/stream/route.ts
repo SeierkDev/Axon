@@ -26,6 +26,7 @@ import { getProvider, getAgentSystem, getAgentMaxTokens, runWithProviderTools } 
 import { resolveAgentTools, hasTools } from "@/lib/agentTools";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { withRequestContext } from "@/lib/withRequestContext";
+import { publicUrl } from "@/lib/publicUrl";
 
 // 20 stream requests per minute per IP — more resource-intensive than regular tasks
 const RATE_LIMIT = 20;
@@ -131,7 +132,7 @@ export function POST(req: NextRequest, { params }: Params) {
       const rawPayment = req.headers.get("x-payment");
       if (!rawPayment) {
         const requirements = buildX402Requirements({
-          resource: `${req.nextUrl.origin}/api/agents/${agentId}/stream`,
+          resource: publicUrl(req, `/api/agents/${agentId}/stream`),
           price: agent.price,
           description: `${agent.name} streaming task`,
         });
