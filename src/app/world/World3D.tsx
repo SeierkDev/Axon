@@ -3922,13 +3922,25 @@ function AgentCard({
   onEnterHome?: (agentId: string, name: string) => void;
   onClose: () => void;
 }) {
-  // Storefront data — the house is a shop window for the agent. Cross-listing
-  // badge, services/price and live activity load per open (the card is keyed by
-  // agentId at the call site, so state resets per agent).
+  // Storefront data — the house is a shop window for the agent. Services/price and live activity
+  // load per open (the card is keyed by agentId at the call site, so state resets per agent).
   const [services, setServices] = useState<{ price: string | null; capabilities: string[] } | null>(null);
   const [activity, setActivity] = useState<AgentActivity | null>(null);
   useEffect(() => {
     let alive = true;
+    fetch(`/api/agents/${encodeURIComponent(agent.agentId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { price?: string | null; capabilities?: string[] } | null) => {
+        if (alive && d) setServices({ price: d.price ?? null, capabilities: d.capabilities ?? [] });
+      })
+      .catch(() => { /* hire button falls back to no price */ });
+    fetch(`/api/world/agent/${encodeURIComponent(agent.agentId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: AgentActivity | null) => {
+        if (alive && d) setActivity(d);
+      })
+      .catch(() => { /* live line simply stays hidden */ });
+    return () => { alive = false; };
   }, [agent.agentId]);
   const price = services?.price?.trim();
   const live = activity ? activityLine(activity) : null;

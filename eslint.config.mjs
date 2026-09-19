@@ -27,6 +27,11 @@ const eslintConfig = defineConfig([
     // Standalone packages have their own tsconfig/build/lint — not app code
     // (mirrors the "packages" exclude in the app's tsconfig).
     "packages/**",
+    // Vendored Solidity dependencies, pulled in as git submodules. They ship their own JS test
+    // suites, which are not ours to lint and which drown out real findings: locally, with the
+    // submodules checked out, they accounted for over a thousand errors. CI never saw them because
+    // it does not check out submodules, so the noise was invisible there and blinding here.
+    "contracts/lib/**",
   ]),
 ]);
 

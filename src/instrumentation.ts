@@ -45,7 +45,6 @@ export function assertReadyConfig(): void {
   // In test or CI environments, skip startup validation
   if (process.env.NODE_ENV !== "production") return;
 
-  const useMockPayments = process.env.AXON_PAYMENT_VERIFIER === "mock";
   const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
   const isTurso = databaseUrl.startsWith("libsql://") || databaseUrl.startsWith("libsqls://");
 
