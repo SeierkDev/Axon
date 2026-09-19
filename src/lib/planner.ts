@@ -37,7 +37,7 @@ export interface PlanResult {
   goal: string;
   budgetEth: number;
   steps: PlannedStep[];
-  estCostUsdc: number;
+  estCostEth: number;
   withinBudget: boolean;
   /** How many steps got a worker (some may be unroutable). */
   routedCount: number;
@@ -81,9 +81,9 @@ export function assignTeam(
   from: string,
   goal: string,
   steps: PlanStep[],
-  opts: { budgetEth: number; perStepCapUsdc?: number },
+  opts: { budgetEth: number; perStepCapEth?: number },
 ): PlanResult {
-  const maxPrice = opts.perStepCapUsdc ? `${opts.perStepCapUsdc} ETH` : undefined;
+  const maxPrice = opts.perStepCapEth ? `${opts.perStepCapEth} ETH` : undefined;
   let est = 0;
   const planned: PlannedStep[] = steps.map((step) => {
     const r = selectAgent({ capability: step.capability, fromAgent: from, maxPrice });
@@ -102,7 +102,7 @@ export function assignTeam(
     goal,
     budgetEth: opts.budgetEth,
     steps: planned,
-    estCostUsdc: Math.round(est * 1e6) / 1e6,
+    estCostEth: Math.round(est * 1e6) / 1e6,
     withinBudget: est <= opts.budgetEth,
     routedCount: planned.filter((p) => p.agentId).length,
   };
@@ -110,11 +110,11 @@ export function assignTeam(
 
 /** Decompose + assemble the team in one call. */
 export async function planTeam(
-  cfg: { from: string; goal: string; budgetEth: number; maxSteps?: number; perStepCapUsdc?: number },
+  cfg: { from: string; goal: string; budgetEth: number; maxSteps?: number; perStepCapEth?: number },
   think: ThinkFn,
 ): Promise<PlanResult> {
   const steps = await decomposeGoal(cfg.goal, cfg.maxSteps ?? 5, think);
-  return assignTeam(cfg.from, cfg.goal, steps, { budgetEth: cfg.budgetEth, perStepCapUsdc: cfg.perStepCapUsdc });
+  return assignTeam(cfg.from, cfg.goal, steps, { budgetEth: cfg.budgetEth, perStepCapEth: cfg.perStepCapEth });
 }
 
 /**

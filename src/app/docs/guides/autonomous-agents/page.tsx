@@ -308,8 +308,8 @@ const { channel, channelKey } = await fetch(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      ownerAddress: keypair.publicKey.toBase58(),
-      depositUsdc: 10,          // fund with 0.01 ETH
+      ownerAddress: account.address,
+      depositEth: 10,          // fund with 0.01 ETH
       depositSignature,
     }),
   }

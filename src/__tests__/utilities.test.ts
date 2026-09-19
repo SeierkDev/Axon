@@ -445,7 +445,7 @@ describe("getAllTimeLeaders", () => {
     if (leaders.topEarners.length > 0) {
       const first = leaders.topEarners[0];
       expect(typeof first.agentId).toBe("string");
-      expect(typeof first.totalEarnedUsdc).toBe("number");
+      expect(typeof first.totalEarnedEth).toBe("number");
     }
   });
 });

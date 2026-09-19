@@ -318,7 +318,7 @@ export interface ProofScoreVerification {
   receiptsChecked: number; // native Axon settlements re-fetched from public receipts
   receiptsSettled: number; // of those, confirmed completed with an on-chain settlement
   crossNetworkSettlements: number; // cross-network settlements counted (verify externally via each evidence receipt)
-  confirmedUsdc: number; // ETH summed only from confirmed settlements (native + cross-network)
+  confirmedEth: number; // ETH summed only from confirmed settlements (native + cross-network)
   recomputedScore: number; // score re-derived from what was confirmed
   scoreMatches: boolean;
   checkedAt: string;
@@ -338,22 +338,22 @@ export function verifyProofScore(agentId: string): ProofScoreVerification | null
   const nativeCount = work.filter((w) => w.network === "axon").length;
   let receiptsSettled = 0;
   let crossNetwork = 0;
-  let confirmedUsdc = 0;
+  let confirmedEth = 0;
   for (const w of work) {
     if (w.network === "axon") {
       const r = getPublicReceipt(w.taskId);
       if (r && r.status === "completed" && r.settlement) {
         receiptsSettled++;
-        confirmedUsdc += w.settledEth;
+        confirmedEth += w.settledEth;
       }
     } else {
       crossNetwork++; // externally verifiable via w.receipt on the originating network
-      confirmedUsdc += w.settledEth;
+      confirmedEth += w.settledEth;
     }
   }
-  confirmedUsdc = round(confirmedUsdc, 6);
+  confirmedEth = round(confirmedEth, 6);
 
-  const recomputedVolume = round(provenWorkFactor(receiptsSettled + crossNetwork, confirmedUsdc));
+  const recomputedVolume = round(provenWorkFactor(receiptsSettled + crossNetwork, confirmedEth));
   const recomputedScore = Math.round(
     round(SCALE * QUALITY_WEIGHT * proof.components.quality.factor, 2) + round(SCALE * VOLUME_WEIGHT * recomputedVolume, 2),
   );
@@ -369,7 +369,7 @@ export function verifyProofScore(agentId: string): ProofScoreVerification | null
     receiptsChecked: nativeCount,
     receiptsSettled,
     crossNetworkSettlements: crossNetwork,
-    confirmedUsdc,
+    confirmedEth,
     recomputedScore,
     scoreMatches,
     checkedAt: new Date().toISOString(),

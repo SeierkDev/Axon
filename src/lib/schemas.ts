@@ -141,7 +141,7 @@ export const planTaskSchema = z.object({
   goal: z.string().min(1, "goal is required").max(8_000, "goal must be 8 000 characters or fewer"),
   budgetEth: z.number().positive("budgetEth must be positive").max(1_000_000),
   maxSteps: z.number().int().positive().max(10).optional(),
-  perStepCapUsdc: z.number().positive().max(1_000_000).optional(),
+  perStepCapEth: z.number().positive().max(1_000_000).optional(),
   // false (default) returns the assembled team + projected cost without hiring —
   // "approve a budget, not a plan". true creates the routed tasks.
   execute: z.boolean().optional(),

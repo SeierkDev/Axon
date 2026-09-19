@@ -16,7 +16,7 @@ export async function GET(
   const status = getThresholdStatus(agentId);
   return NextResponse.json({
     threshold: status?.threshold ?? null,
-    windowSpendUsdc: status?.windowSpendUsdc ?? 0,
+    windowSpendEth: status?.windowSpendEth ?? 0,
     lastAlert: status?.lastAlert ?? null,
   });
 }

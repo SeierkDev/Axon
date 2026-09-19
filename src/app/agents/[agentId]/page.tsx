@@ -459,7 +459,7 @@ const task = await axon.submitTaskX402(
   async (requirements) => {
     const { payToAddress, maxAmountRequired } = requirements.accepts[0];
     // Send ${price} ETH to payToAddress using your wallet library
-    // const txSig = await yourWallet.sendUsdc(payToAddress, maxAmountRequired);
+    // const txSig = await yourWallet.sendEth(payToAddress, maxAmountRequired);
     return { signature: "<tx-signature>", from: "<your-wallet-address>" };
   }
 );

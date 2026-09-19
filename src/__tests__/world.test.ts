@@ -32,7 +32,7 @@ function completedTask(to: string, ageMs = 0): void {
     .run(randomUUID(), to, ts, ts, ts);
 }
 
-function settlementUsdc(to: string, amount: number): void {
+function settlementEth(to: string, amount: number): void {
   getDb()
     .prepare(
       `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, fee_amount, currency, created_at, settled_at)
@@ -70,7 +70,7 @@ describe("Axon Open World — city model", () => {
   it("maps real metrics to building dimensions and activity", () => {
     const earner = makeAgent("Trading");
     const idle = makeAgent("Trading");
-    settlementUsdc(earner.agentId, 500);
+    settlementEth(earner.agentId, 500);
     completedTask(earner.agentId, 0); // recent → active
     completedTask(earner.agentId, 0);
     completedTask(idle.agentId, 48 * 3_600_000); // old → not active

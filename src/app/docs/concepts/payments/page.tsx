@@ -84,8 +84,8 @@ export default function PaymentsPage() {
   "trading-agent",
   "Analyze ETH ETF flows for Q1 2025",
   async (requirements) => {
-    const signature = await wallet.sendUsdc(requirements.accepts[0]);
-    return { signature, from: wallet.publicKey.toBase58() };
+    const signature = await wallet.sendEth(requirements.accepts[0]);
+    return { signature, from: wallet.address };
   },
 );`}
         />
@@ -108,8 +108,8 @@ export default function PaymentsPage() {
     "Authorization": \`Bearer \${process.env.AXON_API_KEY}\`,
   },
   body: JSON.stringify({
-    ownerAddress: wallet.publicKey.toBase58(),
-    depositUsdc: "25.00",
+    ownerAddress: wallet.address,
+    depositEth: "25.00",
     depositSignature: confirmedDepositSignature,
   }),
 });

@@ -1,7 +1,7 @@
 // POST /api/mpp/channels/:channelId/topup — add ETH to an existing channel
 //
 // 1. Send ETH to the payment receiver wallet on-chain
-// 2. POST body: { depositUsdc, depositSignature }
+// 2. POST body: { depositEth, depositSignature }
 // Requires: Authorization: Bearer <channelKey>
 
 import { NextRequest, NextResponse } from "next/server";
@@ -31,16 +31,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const body = await req.json().catch(() => null) as {
-    depositUsdc?: number | string;
+    depositEth?: number | string;
     depositSignature?: string;
   } | null;
   if (!body || typeof body !== "object") {
     return apiError("INVALID_JSON", "Request body must be valid JSON", 400);
   }
 
-  const deposit = parseMppAmount(body.depositUsdc);
+  const deposit = parseMppAmount(body.depositEth);
   if (!deposit) {
-    return apiError("VALIDATION_ERROR", "depositUsdc must be a positive ETH amount with at most 6 decimals", 400);
+    return apiError("VALIDATION_ERROR", "depositEth must be a positive ETH amount with at most 6 decimals", 400);
   }
   if (!body.depositSignature) {
     return apiError(
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     resourceId: channelId,
     ownerWallet: updated.ownerAddress,
     metadata: {
-      depositUsdc: deposit.amountEth,
+      depositEth: deposit.amountEth,
       balanceEth: updated.balanceEth,
       status: updated.status,
     },

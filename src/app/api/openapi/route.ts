@@ -651,7 +651,7 @@ const SPEC = {
                   goal: { type: "string", maxLength: 8000 },
                   budgetEth: { type: "number", description: "Hard budget for the whole job" },
                   maxSteps: { type: "integer", maximum: 10, description: "Max steps (default 5)" },
-                  perStepCapUsdc: { type: "number", description: "Optional per-step price ceiling" },
+                  perStepCapEth: { type: "number", description: "Optional per-step price ceiling" },
                   execute: { type: "boolean", description: "false (default) returns team + cost; true hires the team" },
                 },
               },
@@ -1471,7 +1471,7 @@ const SPEC = {
         operationId: "getThreshold",
         tags: ["Budgets"],
         responses: {
-          200: { description: "Threshold status", content: { "application/json": { schema: { type: "object", properties: { threshold: { type: "object", nullable: true }, windowSpendUsdc: { type: "number" }, lastAlert: { type: "object", nullable: true } } } } } },
+          200: { description: "Threshold status", content: { "application/json": { schema: { type: "object", properties: { threshold: { type: "object", nullable: true }, windowSpendEth: { type: "number" }, lastAlert: { type: "object", nullable: true } } } } } },
           401: { $ref: "#/components/responses/Unauthorized" },
         },
       },

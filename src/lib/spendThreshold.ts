@@ -28,7 +28,7 @@ export interface SpendAlert {
 
 export interface ThresholdStatus {
   threshold: SpendThreshold;
-  windowSpendUsdc: number;
+  windowSpendEth: number;
   lastAlert: SpendAlert | null;
 }
 
@@ -137,14 +137,14 @@ export function getThresholdStatus(agentId: string): ThresholdStatus | null {
   const threshold = getThreshold(agentId);
   if (!threshold) return null;
 
-  const windowSpendUsdc = getWindowSpend(agentId, threshold.windowHours);
+  const windowSpendEth = getWindowSpend(agentId, threshold.windowHours);
   const lastAlertRow = getDb()
     .prepare("SELECT * FROM spend_alerts WHERE agent_id = ? ORDER BY fired_at DESC LIMIT 1")
     .get(agentId) as AlertRow | undefined;
 
   return {
     threshold,
-    windowSpendUsdc,
+    windowSpendEth,
     lastAlert: lastAlertRow ? rowToAlert(lastAlertRow) : null,
   };
 }
@@ -185,7 +185,7 @@ function checkThreshold(agentId: string): void {
 
   logger.warn("spend.threshold_exceeded", "Agent spend threshold exceeded", {
     agentId,
-    windowSpendUsdc: windowSpend,
+    windowSpendEth: windowSpend,
     thresholdEth: threshold.thresholdEth,
     windowHours: threshold.windowHours,
   });
@@ -193,7 +193,7 @@ function checkThreshold(agentId: string): void {
   queueWebhookEvent(agentId, "spend.threshold_exceeded", {
     alertId,
     agentId,
-    windowSpendUsdc: windowSpend,
+    windowSpendEth: windowSpend,
     thresholdEth: threshold.thresholdEth,
     windowHours: threshold.windowHours,
     firedAt: now,

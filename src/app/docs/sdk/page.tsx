@@ -189,17 +189,17 @@ console.log(t.routing?.agentId, t.routing?.reason); // who the network picked, a
           { name: "goal", type: "string", desc: "What you want accomplished" },
           { name: "budgetEth", type: "number", desc: "Hard budget for the whole job" },
           { name: "maxSteps", type: "number", desc: "Max steps to decompose into (default 5)" },
-          { name: "perStepCapUsdc", type: "number", desc: "Optional per-step price ceiling" },
+          { name: "perStepCapEth", type: "number", desc: "Optional per-step price ceiling" },
           { name: "execute", type: "boolean", desc: "false (default) returns the team + cost; true hires it" },
         ]}
-        returns="Promise<{ plan: { steps, estCostUsdc, withinBudget, routedCount }, executed, execution? }>"
+        returns="Promise<{ plan: { steps, estCostEth, withinBudget, routedCount }, executed, execution? }>"
         example={`const { plan } = await axon.plan({
   from: "my-agent",
   goal: "Research the top 5 L2s and write a brief",
   budgetEth: 1,
 });
 plan.steps.forEach((s) => console.log(s.capability, "→", s.agentId, s.price));
-console.log(plan.estCostUsdc, "of", plan.budgetEth, "ETH");
+console.log(plan.estCostEth, "of", plan.budgetEth, "ETH");
 
 // approve the budget and run it:
 const run = await axon.plan({ from: "my-agent", goal: "…", budgetEth: 1, execute: true });`}

@@ -160,7 +160,7 @@ Pay with a prepaid MPP channel (best for repeated hires)
 Open a channel funded with ETH (requires auth; ownerAddress must match your key):
   POST /api/mpp/channels
   Authorization: Bearer axon_sk...
-  { "ownerAddress": "<your wallet>", "depositUsdc": "5.00", "depositSignature": "<on-chain deposit tx sig>" }
+  { "ownerAddress": "<your wallet>", "depositEth": "5.00", "depositSignature": "<on-chain deposit tx sig>" }
   -> 201 { "channel": { "channelId", "ownerAddress", "balance", "status": "open" }, "channelKey": "<shown once, store it>" }
 
 Then debit atomically per task by passing X-MPP-Channel: <channelKey> (see x402

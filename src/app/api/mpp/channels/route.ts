@@ -3,7 +3,7 @@
 //
 // Opening a channel:
 //   1. Send ETH to the payment receiver wallet on-chain
-//   2. POST body: { ownerAddress, depositUsdc, depositSignature }
+//   2. POST body: { ownerAddress, depositEth, depositSignature }
 //   3. Server verifies the on-chain transfer before creating the channel
 //   Returns: { channel, channelKey } — store channelKey securely; it is shown ONCE.
 
@@ -28,7 +28,7 @@ async function handlePost(req: NextRequest) {
 
   const body = await req.json().catch(() => null) as {
     ownerAddress?: string;
-    depositUsdc?: number | string;
+    depositEth?: number | string;
     depositSignature?: string;
   } | null;
   if (!body || typeof body !== "object") {
@@ -49,9 +49,9 @@ async function handlePost(req: NextRequest) {
     return apiError("FORBIDDEN", "ownerAddress must match the authenticated API key owner", 403);
   }
 
-  const deposit = parseMppAmount(body.depositUsdc);
+  const deposit = parseMppAmount(body.depositEth);
   if (!deposit) {
-    return apiError("VALIDATION_ERROR", "depositUsdc must be a positive ETH amount with at most 6 decimals", 400);
+    return apiError("VALIDATION_ERROR", "depositEth must be a positive ETH amount with at most 6 decimals", 400);
   }
   if (!body.depositSignature) {
     return apiError(
@@ -94,7 +94,7 @@ async function handlePost(req: NextRequest) {
     resourceId: funded.channelId,
     ownerWallet: funded.ownerAddress,
     metadata: {
-      depositUsdc: funded.balanceEth,
+      depositEth: funded.balanceEth,
       status: funded.status,
     },
   });

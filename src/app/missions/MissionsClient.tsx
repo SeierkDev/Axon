@@ -46,7 +46,7 @@ interface PreviewStep {
 }
 interface Preview {
   steps: PreviewStep[];
-  estimatedUsdc: number;
+  estimatedEth: number;
   withinBudget: boolean;
 }
 
@@ -472,7 +472,7 @@ export default function MissionsClient({ initialTemplateId = null }: { initialTe
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-xs font-mono text-gray-400">THE PLAN, nothing hired, nothing spent</p>
                   <span className={`ml-auto text-xs font-mono font-bold ${preview.withinBudget ? "text-teal-600 dark:text-teal-400" : "text-red-600 dark:text-red-400"}`}>
-                    ~{preview.estimatedUsdc} ETH
+                    ~{preview.estimatedEth} ETH
                   </span>
                 </div>
                 <ol className="space-y-2">

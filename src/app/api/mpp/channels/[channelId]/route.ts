@@ -72,14 +72,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
           resourceId: channelId,
           ownerWallet: claimed.ownerAddress,
           metadata: {
-            refundedUsdc: claimed.balanceEth,
+            refundedEth: claimed.balanceEth,
             refundSucceeded: true,
             status: closed.status,
           },
         });
         return NextResponse.json({
           channel: closed,
-          refundedUsdc: claimed.balanceEth,
+          refundedEth: claimed.balanceEth,
           refundSignature,
         });
       } catch (err) {
@@ -109,11 +109,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       resourceId: channelId,
       ownerWallet: claimed.ownerAddress,
       metadata: {
-        refundedUsdc: 0,
+        refundedEth: 0,
         refundSucceeded: true,
         status: closed.status,
       },
     });
-    return NextResponse.json({ channel: closed, refundedUsdc: 0 });
+    return NextResponse.json({ channel: closed, refundedEth: 0 });
   });
 }

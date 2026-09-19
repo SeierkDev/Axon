@@ -50,7 +50,7 @@ async function handle(req: NextRequest) {
   let plan;
   try {
     plan = await planTeam(
-      { from: body.from, goal: body.goal, budgetEth: body.budgetEth, maxSteps: body.maxSteps, perStepCapUsdc: body.perStepCapUsdc },
+      { from: body.from, goal: body.goal, budgetEth: body.budgetEth, maxSteps: body.maxSteps, perStepCapEth: body.perStepCapEth },
       think,
     );
   } catch (e) {
