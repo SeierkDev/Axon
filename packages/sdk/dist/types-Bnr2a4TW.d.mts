@@ -16,7 +16,6 @@ interface Agent {
     verificationStatus?: VerificationStatus;
     lastVerifiedAt?: string;
     ownerVerified?: boolean;
-    agencListed?: boolean;
     proofScore?: number;
     proofScoreTier?: string;
     /** When true, this hosted agent delegates: it decomposes a hired job, hires
