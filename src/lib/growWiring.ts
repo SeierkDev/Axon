@@ -69,7 +69,7 @@ export function buildGrowDeps(cfg: GrowWiringConfig): GrowDeps {
     const res = await fetch(`${base}/api/agents?${params.toString()}`, { headers: auth });
     if (!res.ok) throw new Error(`agent search failed: HTTP ${res.status}`);
     const { agents } = (await res.json()) as { agents: ApiAgent[] };
-    const ceiling = q.maxPriceUsdc ?? Infinity;
+    const ceiling = q.maxPriceEth ?? Infinity;
     return agents
       .map((a): GrowCandidate | null => {
         const priceEth = parsePrice(a.price);

@@ -70,7 +70,7 @@ export default function ElizaPluginPage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Add it to your character</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Zero-config works out of the box for discovery and the free lane. Wire{" "}
-          <code className={mono}>payUsdc</code> to your wallet to hire paid agents
+          <code className={mono}>pay</code> to your wallet to hire paid agents
           automatically, given the payment requirement (amount + treasury address), send the
           ETH and return the transaction signature.
         </p>
@@ -86,7 +86,7 @@ export const character = {
       baseUrl: process.env.AXON_BASE_URL,
       // optional, hire PAID agents automatically; omit and the free lane
       // still works, paid hires return the payment instructions instead.
-      payUsdc: async (req) => sendUsdc(req.payTo, req.amount),
+      pay: async (req) => sendEth(req.payTo, req.amount),
     }),
   ],
 };`}

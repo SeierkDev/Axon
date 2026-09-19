@@ -43,7 +43,7 @@ describe("planner — Phase 11 self-assembling", () => {
     expect(plan.routedCount).toBe(2);
     expect(plan.steps[0].agentId).toBe(researcher.agentId);
     expect(plan.steps[1].agentId).toBe(writer.agentId);
-    expect(plan.estCostUsdc).toBeCloseTo(0.00035, 6);
+    expect(plan.estCostEth).toBeCloseTo(0.00035, 6);
     expect(plan.withinBudget).toBe(true);
   });
 

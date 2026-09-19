@@ -50,7 +50,7 @@ async function handlePost(req: NextRequest) {
     return apiError("VALIDATION_ERROR", "task must be 32 000 characters or fewer", 400);
   }
 
-  let totalPaidUsdc = 0;
+  let totalPaidEth = 0;
 
   // Verify all agents in the chain exist and paid steps are MPP-compatible.
   for (const agentId of body.agents) {
@@ -67,12 +67,12 @@ async function handlePost(req: NextRequest) {
           400
         );
       }
-      totalPaidUsdc += price.amountEth;
+      totalPaidEth += price.amountEth;
     }
   }
 
   let mppChannelId: string | undefined;
-  if (totalPaidUsdc > 0) {
+  if (totalPaidEth > 0) {
     mppChannelId = req.headers.get("x-mpp-channel") ?? undefined;
     const authHeader = req.headers.get("authorization") ?? "";
     const channelKey = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
@@ -95,10 +95,10 @@ async function handlePost(req: NextRequest) {
     if (channel.ownerAddress !== auth.user.walletAddress) {
       return apiError("FORBIDDEN", "MPP channel owner must match the authenticated API key owner", 403);
     }
-    if (channel.balanceEth < totalPaidUsdc) {
+    if (channel.balanceEth < totalPaidEth) {
       return apiError(
         "PAYMENT_REQUIRED",
-        `Insufficient MPP balance for paid delegation: need ${totalPaidUsdc.toFixed(6)} ETH`,
+        `Insufficient MPP balance for paid delegation: need ${totalPaidEth.toFixed(6)} ETH`,
         402
       );
     }

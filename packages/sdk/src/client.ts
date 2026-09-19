@@ -453,7 +453,7 @@ export class AxonClient {
       goal: opts.goal,
       budgetEth: opts.budgetEth,
       maxSteps: opts.maxSteps,
-      perStepCapUsdc: opts.perStepCapUsdc,
+      perStepCapEth: opts.perStepCapEth,
       execute: opts.execute,
     }) as Promise<PlanResult>;
   }

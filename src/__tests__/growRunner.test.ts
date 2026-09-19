@@ -321,7 +321,7 @@ describe("seeing the cost before committing to it", () => {
     expect(hires).toBe(0);
     expect(p.steps.map((s) => s.pick?.agentId)).toEqual(["research-pro", "writing-pro"]); // most proven
     expect(p.steps[0].alternatives).toBe(1);
-    expect(p.estimatedUsdc).toBe(4);
+    expect(p.estimatedEth).toBe(4);
     expect(p.withinBudget).toBe(true);
   });
 
@@ -333,8 +333,8 @@ describe("seeing the cost before committing to it", () => {
         p.includes("Return ONLY a JSON array")
           ? '[{"capability":"a","task":"1"},{"capability":"b","task":"2"},{"capability":"c","task":"3"}]'
           : "FINAL",
-      search: async ({ capability, maxPriceUsdc }) =>
-        (maxPriceUsdc ?? 0) >= 2
+      search: async ({ capability, maxPriceEth }) =>
+        (maxPriceEth ?? 0) >= 2
           ? [{ agentId: `${capability}-pro`, name: "p", priceEth: 2, proofScore: 500, capabilities: [] }]
           : [],
       hire: async () => { throw new Error("a preview must never hire"); },
@@ -342,7 +342,7 @@ describe("seeing the cost before committing to it", () => {
     // Budget 5 covers two hires at 2; the third has 1 left and finds nothing.
     const p = await previewGrowMission(deps, { mission: "m", budgetEth: 5, perHireCapEth: 2, maxHires: 3 });
     expect(p.steps.map((s) => s.pick !== null)).toEqual([true, true, false]);
-    expect(p.estimatedUsdc).toBe(4);
+    expect(p.estimatedEth).toBe(4);
   });
 });
 

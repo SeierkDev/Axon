@@ -107,7 +107,7 @@ type SpendAlert = {
 
 type ThresholdStatus = {
   threshold: SpendThreshold;
-  windowSpendUsdc: number;
+  windowSpendEth: number;
   lastAlert: SpendAlert | null;
 };
 
@@ -671,7 +671,7 @@ export default function DashboardClient() {
           const existing = prev.thresholds[agentId];
           const newStatus: ThresholdStatus = {
             threshold,
-            windowSpendUsdc: existing?.windowSpendUsdc ?? 0,
+            windowSpendEth: existing?.windowSpendEth ?? 0,
             lastAlert: existing?.lastAlert ?? null,
           };
           return { ...prev, thresholds: { ...prev.thresholds, [agentId]: newStatus } };
@@ -1484,7 +1484,7 @@ npm run demo:agent`}</code>
                           {status?.threshold && (
                             <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
                               <span>Alert at: <span className="font-medium text-gray-700 dark:text-gray-300">{status.threshold.thresholdEth} ETH / {status.threshold.windowHours}h</span></span>
-                              <span>Window spend: <span className={`font-medium ${status.windowSpendUsdc >= status.threshold.thresholdEth ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300"}`}>{status.windowSpendUsdc.toFixed(4)} ETH</span></span>
+                              <span>Window spend: <span className={`font-medium ${status.windowSpendEth >= status.threshold.thresholdEth ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300"}`}>{status.windowSpendEth.toFixed(4)} ETH</span></span>
                               {status.lastAlert && (
                                 <span>Last alert: <span className="font-medium text-amber-600 dark:text-amber-400">{dateTime(status.lastAlert.firedAt)}</span></span>
                               )}

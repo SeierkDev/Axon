@@ -233,7 +233,7 @@ export function getDailyStats(days = 30): DailyStats[] {
 // ── All-time leaderboards ─────────────────────────────────────────────────────
 
 export interface AllTimeLeaders {
-  topEarners: { agentId: string; name: string; totalEarnedUsdc: number }[];
+  topEarners: { agentId: string; name: string; totalEarnedEth: number }[];
   topWorkers: { agentId: string; name: string; tasksCompleted: number; successRate: number }[];
 }
 
@@ -243,13 +243,13 @@ export function getAllTimeLeaders(): AllTimeLeaders {
   const topEarners = db.prepare(`
     SELECT a.agent_id AS agentId, a.name,
       COALESCE(SUM(tx.amount_eth) FILTER (WHERE tx.status = 'completed'), 0)
-        AS totalEarnedUsdc
+        AS totalEarnedEth
     FROM agents a
     LEFT JOIN transactions tx ON tx.to_agent = a.agent_id
     GROUP BY a.agent_id
-    ORDER BY totalEarnedUsdc DESC
+    ORDER BY totalEarnedEth DESC
     LIMIT 10
-  `).all() as { agentId: string; name: string; totalEarnedUsdc: number }[];
+  `).all() as { agentId: string; name: string; totalEarnedEth: number }[];
 
   const topWorkers = db.prepare(`
     SELECT

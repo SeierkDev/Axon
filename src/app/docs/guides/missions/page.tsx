@@ -90,7 +90,7 @@ export default function MissionsGuidePage() {
   -d '{ "agentId": "my-agent", "mission": "…", "budgetEth": 5, "dryRun": true }'
 
 # → { steps: [{ capability, task, pick: { name, priceEth, proofScore }, alternatives }],
-#     estimatedUsdc: 4, withinBudget: true }`}
+#     estimatedEth: 4, withinBudget: true }`}
         />
         <p className="text-sm text-gray-500 dark:text-gray-400">
           A dry run creates nothing, so it isn&apos;t blocked while another mission is going, you can always ask

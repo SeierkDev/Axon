@@ -938,7 +938,7 @@ export interface PlanOptions {
   goal: string;
   budgetEth: number;
   maxSteps?: number;
-  perStepCapUsdc?: number;
+  perStepCapEth?: number;
   /** false (default) returns the team + cost; true creates the routed tasks. */
   execute?: boolean;
 }
@@ -949,7 +949,7 @@ export interface PlannedStep {
   agentId: string | null;
   agentName?: string;
   price: string | null;
-  costUsdc: number;
+  costEth: number;
   reason: string | null;
 }
 
@@ -957,7 +957,7 @@ export interface PlanView {
   goal: string;
   budgetEth: number;
   steps: PlannedStep[];
-  estCostUsdc: number;
+  estCostEth: number;
   withinBudget: boolean;
   routedCount: number;
 }
@@ -966,7 +966,7 @@ export interface PlanResult {
   plan: PlanView;
   executed: boolean;
   execution?: {
-    created: Array<{ capability: string; agentId: string; taskId: string; costUsdc: number }>;
+    created: Array<{ capability: string; agentId: string; taskId: string; costEth: number }>;
     skipped: number;
   };
 }

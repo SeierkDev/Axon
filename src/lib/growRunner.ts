@@ -60,7 +60,7 @@ export interface GrowDeps {
    * so the timeline has to say so rather than passing it off as a hire.
    */
   attempt?: (task: string, context?: string) => Promise<string>;
-  search: (q: { capability?: string; query?: string; maxPriceUsdc?: number; limit?: number }) => Promise<GrowCandidate[]>;
+  search: (q: { capability?: string; query?: string; maxPriceEth?: number; limit?: number }) => Promise<GrowCandidate[]>;
   hire: (o: { to: string; task: string; context?: string; priceEth: number }) => Promise<GrowHireOutcome>;
 }
 
@@ -178,10 +178,10 @@ const SCORE_MARGIN = 0.05;
  * still by score. So value wins among equals, but a genuinely better specialist
  * is never passed over for a cheap one.
  */
-function rankAffordable(candidates: GrowCandidate[], self: string, ceilingUsdc: number): GrowCandidate[] {
+function rankAffordable(candidates: GrowCandidate[], self: string, ceilingEth: number): GrowCandidate[] {
   const affordable = candidates
     .filter((c) => c.agentId !== self)
-    .filter((c) => (c.priceEth ?? 0) <= ceilingUsdc);
+    .filter((c) => (c.priceEth ?? 0) <= ceilingEth);
   if (affordable.length === 0) return [];
 
   const best = Math.max(...affordable.map((c) => c.proofScore ?? 0));
@@ -230,7 +230,7 @@ export interface GrowPreviewStep {
 export interface GrowPreview {
   plan: GrowSubtask[];
   steps: GrowPreviewStep[];
-  estimatedUsdc: number;
+  estimatedEth: number;
   withinBudget: boolean;
 }
 
@@ -247,21 +247,21 @@ export async function previewGrowMission(deps: GrowDeps, cfg: GrowConfig): Promi
   const plan = parsePlan(raw).slice(0, cfg.maxHires);
 
   const steps: GrowPreviewStep[] = [];
-  let estimatedUsdc = 0;
+  let estimatedEth = 0;
   for (const step of plan) {
     // Price each step against what is still notionally left, exactly as the real
     // run would — so a preview can't promise a hire the budget wouldn't reach.
-    const ceiling = Math.min(cfg.perHireCapEth, Math.max(0, cfg.budgetEth - estimatedUsdc));
+    const ceiling = Math.min(cfg.perHireCapEth, Math.max(0, cfg.budgetEth - estimatedEth));
     let ranked: GrowCandidate[] = [];
     if (ceiling > 0) {
       try {
-        ranked = rankAffordable(await deps.search({ capability: step.capability, maxPriceUsdc: ceiling, limit: 10 }), deps.self, ceiling);
+        ranked = rankAffordable(await deps.search({ capability: step.capability, maxPriceEth: ceiling, limit: 10 }), deps.self, ceiling);
       } catch {
         ranked = []; // discovery hiccup, report the step as unfilled rather than failing the preview
       }
     }
     const best = ranked[0];
-    if (best) estimatedUsdc += best.priceEth ?? 0;
+    if (best) estimatedEth += best.priceEth ?? 0;
     steps.push({
       capability: step.capability,
       task: step.task,
@@ -270,8 +270,8 @@ export async function previewGrowMission(deps: GrowDeps, cfg: GrowConfig): Promi
     });
   }
 
-  estimatedUsdc = Math.round(estimatedUsdc * 10000) / 10000;
-  return { plan, steps, estimatedUsdc, withinBudget: estimatedUsdc <= cfg.budgetEth };
+  estimatedEth = Math.round(estimatedEth * 10000) / 10000;
+  return { plan, steps, estimatedEth, withinBudget: estimatedEth <= cfg.budgetEth };
 }
 
 export interface GrowResult {
@@ -523,7 +523,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
 
     let candidates;
     try {
-      candidates = await deps.search({ capability: step.capability, maxPriceUsdc: ceiling, limit: 10 });
+      candidates = await deps.search({ capability: step.capability, maxPriceEth: ceiling, limit: 10 });
     } catch (e) {
       recordGrowEvent(runId, { kind: "error", summary: `Search failed for "${step.capability}": ${(e as Error).message}` });
       return false;
@@ -531,7 +531,7 @@ export async function runGrowMission(deps: GrowDeps, cfg: GrowConfig, existingRu
     recordGrowEvent(runId, {
       kind: "search",
       summary: `Searched for a "${step.capability}" specialist, ${candidates.length} found.`,
-      data: { capability: step.capability, ceilingUsdc: ceiling, found: candidates.length },
+      data: { capability: step.capability, ceilingEth: ceiling, found: candidates.length },
     });
 
     const ranked = rankAffordable(candidates, deps.self, ceiling);
