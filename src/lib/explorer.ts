@@ -41,6 +41,8 @@ export interface ExplorerTotals {
   tasksCompleted: number;
   ethTransacted: number;
   successRate: number;
+  /** The window successRate is measured over, in hours. */
+  successRateWindowHours: number;
 }
 
 export interface ExplorerFeed {
@@ -124,7 +126,7 @@ export function getRecentSettlements(limit?: number): ExplorerSettlement[] {
 }
 
 export function getExplorerFeed(limit?: number): ExplorerFeed {
-  let totals: ExplorerTotals = { agents: 0, tasksCompleted: 0, ethTransacted: 0, successRate: 0 };
+  let totals: ExplorerTotals = { agents: 0, tasksCompleted: 0, ethTransacted: 0, successRate: 0, successRateWindowHours: 24 };
   try {
     const stats = getNetworkStats();
     totals = {
@@ -132,6 +134,7 @@ export function getExplorerFeed(limit?: number): ExplorerFeed {
       tasksCompleted: stats.tasks.completed,
       ethTransacted: stats.payments.totalEthTransacted,
       successRate: stats.tasks.successRate,
+      successRateWindowHours: stats.tasks.successRateWindowHours,
     };
   } catch {
     // Fall back to zeroed totals so the explorer still renders if stats fail.

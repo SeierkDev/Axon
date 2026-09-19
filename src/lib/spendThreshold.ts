@@ -4,6 +4,7 @@ import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 import { queueWebhookEvent } from "./webhooks";
 import { IS_REPORTING_CURRENCY } from "./money";
+import { ISO_HOURS_AGO_PARAM } from "./sqlTime";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ function getWindowSpend(agentId: string, windowHours: number): number {
       SELECT COALESCE(SUM(amount_eth), 0) AS spent
       FROM transactions
       WHERE from_agent = ? AND status = 'completed' AND ${IS_REPORTING_CURRENCY}
-        AND settled_at >= datetime('now', '-' || ? || ' hours')
+        AND settled_at >= ${ISO_HOURS_AGO_PARAM}
     `)
     .get(agentId, windowHours) as { spent: number };
   return Math.round(row.spent * 10000) / 10000;
@@ -169,7 +170,7 @@ function checkThreshold(agentId: string): void {
   const alreadyFired = getDb()
     .prepare(`
       SELECT 1 FROM spend_alerts
-      WHERE agent_id = ? AND fired_at >= datetime('now', '-' || ? || ' hours')
+      WHERE agent_id = ? AND fired_at >= ${ISO_HOURS_AGO_PARAM}
       LIMIT 1
     `)
     .get(agentId, threshold.windowHours);

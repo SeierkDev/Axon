@@ -1,5 +1,6 @@
 import { getDb } from "./db";
 import { IS_REPORTING_CURRENCY } from "./money";
+import { isoHoursAgo } from "./sqlTime";
 
 export interface NetworkStats {
   agents: {
@@ -13,7 +14,11 @@ export interface NetworkStats {
     failed: number;
     running: number;
     queued: number;
+    /** Over the last SUCCESS_RATE_WINDOW_HOURS, not over all time. */
     successRate: number;
+    /** Every task ever settled. Kept for the record; not the headline figure. */
+    allTimeSuccessRate: number;
+    successRateWindowHours: number;
     weeklyCompleted: number;
     weeklyFailed: number;
     weeklySuccessRate: number;
@@ -30,6 +35,20 @@ export interface NetworkStats {
   topCapabilities: { capability: string; agentCount: number }[];
   activityByDay: { date: string; completed: number; failed: number }[];
 }
+
+/**
+ * How many hours of settled tasks the headline success rate is measured over.
+ *
+ * 24 by default: long enough to smooth over a quiet hour, short enough that a fix shows up the
+ * same day. Set AXON_SUCCESS_RATE_WINDOW_HOURS to change it.
+ */
+/** Below this many settled tasks in the window, the window is too small to draw a rate from. */
+const MIN_WINDOW_SAMPLE = 20;
+
+export const SUCCESS_RATE_WINDOW_HOURS = (() => {
+  const raw = Number(process.env.AXON_SUCCESS_RATE_WINDOW_HOURS);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 24;
+})();
 
 let _statsCache: { at: number; data: NetworkStats } | null = null;
 // Memoize the heavy aggregate (~9 queries) so the unauthenticated public
@@ -74,8 +93,38 @@ function computeNetworkStats(): NetworkStats {
     "SELECT COUNT(DISTINCT capability) n FROM agent_capabilities"
   ).get() as { n: number }).n, 0);
 
-  const settled = taskCounts.completed + taskCounts.failed;
-  const successRate = settled > 0 ? taskCounts.completed / settled : 0;
+  // The headline success rate describes how the network is running, so it is measured over a
+  // recent window rather than over all time.
+  //
+  // An all-time rate cannot recover from a bad stretch: a two-day provider outage in September
+  // left ~6,800 failures in a ledger of ~26,000 tasks, and with every task from then on
+  // succeeding it would still take six figures of new work to drag the number back up. It stops
+  // describing the present and starts being a permanent record of the worst thing that happened.
+  //
+  // The window is in hours and configurable, so it can be widened for a calmer signal or narrowed
+  // when something has just been fixed and the question is whether the fix worked.
+  const windowStats = safe(() => db.prepare(`
+    SELECT
+      COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+      COUNT(*) FILTER (WHERE status = 'failed')    AS failed
+    FROM tasks
+    WHERE completed_at IS NOT NULL
+      AND completed_at >= ${isoHoursAgo(SUCCESS_RATE_WINDOW_HOURS)}
+  `).get() as { completed: number; failed: number }, { completed: 0, failed: 0 });
+
+  const windowSettled = windowStats.completed + windowStats.failed;
+  const allTimeSettled = taskCounts.completed + taskCounts.failed;
+  // A handful of tasks is not a rate. Three failures in a quiet night would otherwise be
+  // published as 0%, which says far more than the evidence does, so below a floor of settled
+  // work the window has nothing useful to report and all-time is what there is.
+  const haveEnough = windowSettled >= MIN_WINDOW_SAMPLE;
+  const successRate =
+    haveEnough
+      ? windowStats.completed / windowSettled
+      : allTimeSettled > 0
+        ? taskCounts.completed / allTimeSettled
+        : 0;
+  const allTimeSuccessRate = allTimeSettled > 0 ? taskCounts.completed / allTimeSettled : 0;
 
   const weeklyTasks = safe(() => db.prepare(`
     SELECT
@@ -153,6 +202,8 @@ function computeNetworkStats(): NetworkStats {
       running: taskCounts.running,
       queued: taskCounts.queued,
       successRate: Math.round(successRate * 1000) / 1000,
+      allTimeSuccessRate: Math.round(allTimeSuccessRate * 1000) / 1000,
+      successRateWindowHours: SUCCESS_RATE_WINDOW_HOURS,
       weeklyCompleted: weeklyTasks.completed,
       weeklyFailed: weeklyTasks.failed,
       weeklySuccessRate: Math.round(weeklySuccessRate * 1000) / 1000,
