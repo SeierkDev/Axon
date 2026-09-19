@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { MODEL_LOOKS_USABLE } from "@/lib/modelHealth";
 import { NextRequest, NextResponse } from "next/server";
 import { getAllAgents } from "@/lib/agents";
 import type { Agent } from "@/sdk/types";
@@ -135,7 +136,17 @@ export async function POST(req: NextRequest) {
   const gatewayIds = new Set(
     (getDb().prepare("SELECT provider_id FROM gateway_providers").all() as { provider_id: string }[]).map((r) => r.provider_id)
   );
-  const generalAgents = getAllAgents().filter((a) => !a.agentId.startsWith("build-") && !gatewayIds.has(a.agentId));
+  // Agents whose model the provider has just told us does not exist are left out. They cannot
+  // complete anything, and picking them uniformly with everyone else is what turned a few typo'd
+  // registrations into a steady stream of failures across the whole network.
+  const modelBroken = new Set(
+    (getDb()
+      .prepare(`SELECT agent_id FROM agents WHERE NOT ${MODEL_LOOKS_USABLE}`)
+      .all() as { agent_id: string }[]).map((r) => r.agent_id)
+  );
+  const generalAgents = getAllAgents().filter(
+    (a) => !a.agentId.startsWith("build-") && !gatewayIds.has(a.agentId) && !modelBroken.has(a.agentId)
+  );
   // Settle each task at the worker agent's real listed price, not a flat amount.
   const priceByAgent = new Map(generalAgents.map((a) => [a.agentId, a.price ?? null]));
   // Full agent records — needed to run each task on the provider that backs it.
