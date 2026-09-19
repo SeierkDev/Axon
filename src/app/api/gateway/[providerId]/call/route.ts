@@ -23,6 +23,7 @@ import {
 import { apiError } from "@/lib/apiError";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
+import { publicUrl } from "@/lib/publicUrl";
 
 const RATE_LIMIT = 60;
 const RATE_WINDOW_MS = 60_000;
@@ -35,7 +36,7 @@ function requiresPayment(
   providerId: string
 ) {
   const requirements = buildX402Requirements({
-    resource: `${req.nextUrl.origin}/api/gateway/${providerId}/call`,
+    resource: publicUrl(req, `/api/gateway/${providerId}/call`),
     price: provider.pricePerCall,
     description: `${provider.name} API call`,
   });

@@ -25,6 +25,7 @@ import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { logger } from "@/lib/logger";
 import { withRequestContext } from "@/lib/withRequestContext";
+import { publicUrl } from "@/lib/publicUrl";
 
 // 30 paid requests per minute per IP — tighter than the free task endpoint
 const RATE_LIMIT = 30;
@@ -33,7 +34,7 @@ const RATE_WINDOW_MS = 60_000;
 type Params = { params: Promise<{ agentId: string }> };
 
 function resourceUrl(req: NextRequest, agentId: string): string {
-  return `${req.nextUrl.origin}/api/agents/${agentId}/x402`;
+  return publicUrl(req, `/api/agents/${agentId}/x402`);
 }
 
 function paymentRequiredResponse(
