@@ -65,3 +65,8 @@ scripts/.demo-bidders.json
 # Publishable package artefacts — built by scripts/release-packages.mjs
 packages/cli/dist/
 *.tgz
+
+# foundry (contracts/)
+contracts/out/
+contracts/cache/
+contracts/broadcast/

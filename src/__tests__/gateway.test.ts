@@ -26,7 +26,7 @@ import { createAgent } from "@/lib/agents";
 import { createTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let seq = 0;
 function uid() { return `gw-${++seq}`; }
 
@@ -65,13 +65,13 @@ beforeEach(() => {
 
 describe("normalizeGatewayPrice", () => {
   it("returns the provided price when set", () => {
-    expect(normalizeGatewayPrice("0.05 USDC")).toBe("0.05 USDC");
+    expect(normalizeGatewayPrice("0.00005 ETH")).toBe("0.00005 ETH");
   });
 
   it("returns the default price when undefined or empty", () => {
-    expect(normalizeGatewayPrice(undefined)).toBe("0.10 USDC");
-    expect(normalizeGatewayPrice("")).toBe("0.10 USDC");
-    expect(normalizeGatewayPrice("   ")).toBe("0.10 USDC");
+    expect(normalizeGatewayPrice(undefined)).toBe("0.0001 ETH");
+    expect(normalizeGatewayPrice("")).toBe("0.0001 ETH");
+    expect(normalizeGatewayPrice("   ")).toBe("0.0001 ETH");
   });
 });
 
@@ -89,7 +89,7 @@ describe("createGatewayProvider", () => {
     expect(p.providerId).toBeTruthy();
     expect(p.name).toBe("Test Provider");
     expect(p.method).toBe("POST");
-    expect(p.pricePerCall).toBe("0.10 USDC");
+    expect(p.pricePerCall).toBe("0.0001 ETH");
     expect(p.status).toBe("active");
     expect(p.timeoutMs).toBe(30_000);
     expect(p.forwardHeaders).toEqual([]);
@@ -136,12 +136,12 @@ describe("createGatewayProvider", () => {
       name: "Forwarding Provider",
       endpoint: "https://forward.example.com/",
       forwardHeaders: ["X-Request-Id", "Accept-Language"],
-      pricePerCall: "0.02 USDC",
+      pricePerCall: "0.00002 ETH",
       method: "GET",
       ownerAgentId: a.agentId,
     });
     expect(p.forwardHeaders).toEqual(["X-Request-Id", "Accept-Language"]);
-    expect(p.pricePerCall).toBe("0.02 USDC");
+    expect(p.pricePerCall).toBe("0.00002 ETH");
     expect(p.method).toBe("GET");
   });
 });

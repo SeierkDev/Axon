@@ -1,29 +1,30 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
+import { toWei, weiToEth, formatEth } from "./money";
 
 export interface Budget {
   budgetId: string;
   agentId: string;
   name?: string;
-  maxPerCallUsdc?: number;   // max USDC per single payment
-  maxPerDayUsdc?: number;    // max USDC in a rolling calendar day (UTC)
+  maxPerCallEth?: number;   // max ETH per single payment
+  maxPerDayEth?: number;    // max ETH in a rolling calendar day (UTC)
   allowedToAgents?: string[]; // null = any agent allowed
   status: "active" | "paused";
   createdAt: string;
 }
 
 export interface BudgetStatus extends Budget {
-  spentTodayUsdc: number;
-  remainingTodayUsdc: number | null;
+  spentTodayEth: number;
+  remainingTodayEth: number | null;
 }
 
 interface BudgetRow {
   budget_id: string;
   agent_id: string;
   name: string | null;
-  max_per_call_usdc: number | null;
-  max_per_day_usdc: number | null;
+  max_per_call_eth: number | null;
+  max_per_day_eth: number | null;
   allowed_to_agents: string | null;
   status: string;
   created_at: string;
@@ -34,8 +35,8 @@ function rowToBudget(row: BudgetRow): Budget {
     budgetId: row.budget_id,
     agentId: row.agent_id,
     name: row.name ?? undefined,
-    maxPerCallUsdc: row.max_per_call_usdc ?? undefined,
-    maxPerDayUsdc: row.max_per_day_usdc ?? undefined,
+    maxPerCallEth: row.max_per_call_eth ?? undefined,
+    maxPerDayEth: row.max_per_day_eth ?? undefined,
     allowedToAgents: row.allowed_to_agents
       ? (() => { try { return JSON.parse(row.allowed_to_agents) as string[]; } catch { return undefined; } })()
       : undefined,
@@ -47,8 +48,8 @@ function rowToBudget(row: BudgetRow): Budget {
 export function createBudget(opts: {
   agentId: string;
   name?: string;
-  maxPerCallUsdc?: number;
-  maxPerDayUsdc?: number;
+  maxPerCallEth?: number;
+  maxPerDayEth?: number;
   allowedToAgents?: string[];
 }): Budget {
   const db = getDb();
@@ -56,20 +57,20 @@ export function createBudget(opts: {
   const now = new Date().toISOString();
 
   db.prepare(`
-    INSERT INTO agent_budgets (budget_id, agent_id, name, max_per_call_usdc, max_per_day_usdc, allowed_to_agents, status, created_at)
+    INSERT INTO agent_budgets (budget_id, agent_id, name, max_per_call_eth, max_per_day_eth, allowed_to_agents, status, created_at)
     VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
     ON CONFLICT(agent_id) DO UPDATE SET
       name              = excluded.name,
-      max_per_call_usdc = excluded.max_per_call_usdc,
-      max_per_day_usdc  = excluded.max_per_day_usdc,
+      max_per_call_eth = excluded.max_per_call_eth,
+      max_per_day_eth  = excluded.max_per_day_eth,
       allowed_to_agents = excluded.allowed_to_agents,
       status            = 'active'
   `).run(
     budgetId,
     opts.agentId,
     opts.name ?? null,
-    opts.maxPerCallUsdc ?? null,
-    opts.maxPerDayUsdc ?? null,
+    opts.maxPerCallEth ?? null,
+    opts.maxPerDayEth ?? null,
     opts.allowedToAgents ? JSON.stringify(opts.allowedToAgents) : null,
     now,
   );
@@ -89,32 +90,39 @@ export function getBudget(agentId: string): BudgetStatus | null {
 
   const budget = rowToBudget(row);
 
-  // Sum USDC spent today (UTC calendar day) across completed transactions
+  // What this agent has spent today (UTC calendar day) across escrowed and completed transactions
   const today = new Date().toISOString().slice(0, 10);
   const { spent } = db.prepare(`
-    SELECT COALESCE(SUM(amount_sol), 0) AS spent
+    SELECT COALESCE(SUM(amount_eth), 0) AS spent
     FROM transactions
-    WHERE from_agent = ? AND currency = 'USDC'
+    WHERE from_agent = ?
       AND status IN ('escrow', 'completed')
       AND date(created_at) = ?
   `).get(agentId, today) as { spent: number };
 
+  const spentWei = toWei(spent) ?? 0n;
+  const capWei = budget.maxPerDayEth != null ? toWei(budget.maxPerDayEth) : null;
   return {
     ...budget,
-    spentTodayUsdc: Math.round(spent * 10000) / 10000,
-    remainingTodayUsdc: budget.maxPerDayUsdc != null
-      ? Math.max(0, Math.round((budget.maxPerDayUsdc - spent) * 10000) / 10000)
-      : null,
+    spentTodayEth: weiToEth(spentWei),
+    remainingTodayEth: capWei != null ? weiToEth(capWei > spentWei ? capWei - spentWei : 0n) : null,
   };
 }
 
 // Throws a descriptive error if the payment would violate any budget rule.
 // Called inside createPayment() before any DB write — if this throws the
 // payment is rejected and no money moves.
+/**
+ * Refuse a spend that would break a cap.
+ *
+ * The amount arrives in wei and the caps are compared in wei. A cap is the one number a caller
+ * cannot be allowed to creep past, and comparing floats is how you creep past it by a rounding
+ * error while every log still says the cap held.
+ */
 export function checkBudget(
   fromAgent: string,
   toAgent: string,
-  amountUsdc: number
+  amountWei: bigint
 ): void {
   const db = getDb();
   const row = db
@@ -124,9 +132,10 @@ export function checkBudget(
   if (!row) return; // no budget = no restrictions
 
   // Per-call cap
-  if (row.max_per_call_usdc !== null && amountUsdc > row.max_per_call_usdc) {
+  const perCallWei = row.max_per_call_eth !== null ? toWei(row.max_per_call_eth) : null;
+  if (perCallWei !== null && amountWei > perCallWei) {
     throw new Error(
-      `Budget exceeded: this call costs ${amountUsdc.toFixed(4)} USDC but the per-call cap is ${row.max_per_call_usdc.toFixed(4)} USDC`
+      `Budget exceeded: this call costs ${formatEth(amountWei)} but the per-call cap is ${formatEth(perCallWei)}`
     );
   }
 
@@ -146,20 +155,22 @@ export function checkBudget(
   }
 
   // Daily cap — sum today's spend
-  if (row.max_per_day_usdc !== null) {
+  if (row.max_per_day_eth !== null) {
     const today = new Date().toISOString().slice(0, 10);
     const { spent } = db.prepare(`
-      SELECT COALESCE(SUM(amount_sol), 0) AS spent
+      SELECT COALESCE(SUM(amount_eth), 0) AS spent
       FROM transactions
-      WHERE from_agent = ? AND currency = 'USDC'
+      WHERE from_agent = ?
         AND status IN ('escrow', 'completed')
         AND date(created_at) = ?
     `).get(fromAgent, today) as { spent: number };
 
-    if (spent + amountUsdc > row.max_per_day_usdc) {
+    const spentWei = toWei(spent) ?? 0n;
+    const dayCapWei = toWei(row.max_per_day_eth) ?? 0n;
+    if (spentWei + amountWei > dayCapWei) {
       throw new Error(
-        `Budget exceeded: daily cap is ${row.max_per_day_usdc.toFixed(4)} USDC, ` +
-        `already spent ${spent.toFixed(4)} USDC today`
+        `Budget exceeded: daily cap is ${formatEth(dayCapWei)}, ` +
+        `already spent ${formatEth(spentWei)} today`
       );
     }
   }

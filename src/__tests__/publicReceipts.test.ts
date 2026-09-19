@@ -33,7 +33,7 @@ describe("getPublicReceipt", () => {
   it("returns metadata + hashes + verdict, never the task content or output", async () => {
     const from = makeAgent("Requester");
     const to = makeAgent("Worker");
-    const task = createTask({ fromAgent: from.agentId, toAgent: to.agentId, task: SECRET, payment: "0.25 USDC" });
+    const task = createTask({ fromAgent: from.agentId, toAgent: to.agentId, task: SECRET, payment: "0.00025 ETH" });
     startTask(task.taskId);
     completeTask(task.taskId, SECRET_OUT);
     // The output hash commits asynchronously after completion — do it explicitly.
@@ -68,10 +68,10 @@ describe("getPublicReceipt", () => {
   it("includes the settlement when one exists", () => {
     const from = makeAgent("Requester");
     const to = makeAgent("Worker");
-    const task = createTask({ fromAgent: from.agentId, toAgent: to.agentId, task: "job", payment: "0.10 USDC" });
+    const task = createTask({ fromAgent: from.agentId, toAgent: to.agentId, task: "job", payment: "0.0001 ETH" });
     getDb()
       .prepare(
-        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, fee_amount, currency, signature, created_at, settled_at)
+        `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, fee_amount, currency, signature, created_at, settled_at)
          VALUES (?, ?, ?, ?, 0.1, 'completed', 0, 'USDC', 'sig123abc', ?, ?)`,
       )
       .run(randomUUID(), task.taskId, from.agentId, to.agentId, new Date().toISOString(), new Date().toISOString());

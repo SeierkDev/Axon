@@ -2,7 +2,7 @@
 //
 // Turns live network state into a *city model* that the 3D world renders: every
 // registered agent becomes a building plot, grouped into districts by capability
-// category, sized/lit by real metrics (USDC earned, task throughput, reputation,
+// category, sized/lit by real metrics (ETH earned, task throughput, reputation,
 // recent activity). The layout is DETERMINISTIC — a stable hash of the agent's
 // position in its district maps to fixed world coordinates, so the city looks the
 // same on every load and new agents slot into open lots without reshuffling the
@@ -20,13 +20,13 @@ export interface WorldPlot {
   district: string; // capability category
   x: number; // world coordinates (metres), city centred on origin
   z: number;
-  size: number; // building footprint scale, from USDC earned
+  size: number; // building footprint scale, from ETH earned
   height: number; // building height, from task throughput
   reputation: number; // raw reputation score
   reputationNorm: number; // 0..1 within this snapshot, for glow intensity
   active: boolean; // completed a task in the last 24h → lights on
   tasksCompleted: number;
-  usdcEarned: number;
+  ethEarned: number;
   verified: boolean;
   walletAddress: string | null;
   /** Cached Proof Score (0-1000) — the portable reputation credential. */
@@ -44,7 +44,7 @@ export interface WorldDistrict {
 export interface WorldTotals {
   agents: number;
   districts: number;
-  totalUsdcEarned: number;
+  totalEthEarned: number;
   totalTasksCompleted: number;
   activeAgents: number;
 }
@@ -53,7 +53,7 @@ export interface WorldTotals {
 export interface WeeklyTopAgent {
   agentId: string;
   name: string;
-  price: string | null; // listed terms, e.g. "0.25 USDC"
+  price: string | null; // listed terms, e.g. "0.25 ETH"
   tasks7d: number;
 }
 
@@ -85,7 +85,7 @@ interface AgentRow {
   proof_score: number | null;
   tasks_completed: number;
   tasks_recent: number;
-  usdc_earned: number;
+  eth_earned: number;
 }
 
 // Map a metric to a building dimension on a gentle log curve so a few whales
@@ -100,7 +100,7 @@ function scaleHeight(tasks: number): number {
 function computeSnapshot(): WorldSnapshot {
   const cutoff24h = new Date(Date.now() - 24 * 3_600_000).toISOString();
 
-  // One pass: every agent with its earnings (completed USDC settlements) and task
+  // One pass: every agent with its earnings (completed ETH settlements) and task
   // throughput (all-time + last 24h). Ordered category → created_at → agent_id so
   // a given agent always lands in the same district slot, and newer agents append
   // after older ones without disturbing existing positions.
@@ -110,7 +110,7 @@ function computeSnapshot(): WorldSnapshot {
          a.agent_id, a.name, a.category, a.reputation, a.wallet_address, a.verification_status, a.proof_score,
          COALESCE(t.completed, 0) AS tasks_completed,
          COALESCE(t.recent, 0)    AS tasks_recent,
-         COALESCE(x.usdc, 0)      AS usdc_earned
+         COALESCE(x.usdc, 0)      AS eth_earned
        FROM agents a
        LEFT JOIN (
          SELECT to_agent,
@@ -120,7 +120,7 @@ function computeSnapshot(): WorldSnapshot {
        ) t ON t.to_agent = a.agent_id
        LEFT JOIN (
          SELECT to_agent,
-                SUM(amount_sol) FILTER (WHERE status = 'completed' AND currency = 'USDC') AS usdc
+                SUM(amount_eth) FILTER (WHERE status = 'completed') AS usdc
          FROM transactions GROUP BY to_agent
        ) x ON x.to_agent = a.agent_id
        ORDER BY a.category ASC, a.created_at ASC, a.agent_id ASC`
@@ -185,13 +185,13 @@ function computeSnapshot(): WorldSnapshot {
         district: name,
         x: Math.round(x * 100) / 100,
         z: Math.round(z * 100) / 100,
-        size: Math.round(scaleSize(a.usdc_earned) * 1000) / 1000,
+        size: Math.round(scaleSize(a.eth_earned) * 1000) / 1000,
         height: Math.round(scaleHeight(a.tasks_completed) * 1000) / 1000,
         reputation: a.reputation,
         reputationNorm: maxReputation > 0 ? Math.round((a.reputation / maxReputation) * 1000) / 1000 : 0,
         active: a.tasks_recent > 0,
         tasksCompleted: a.tasks_completed,
-        usdcEarned: Math.round(a.usdc_earned * 1_000_000) / 1_000_000,
+        ethEarned: Math.round(a.eth_earned * 1_000_000) / 1_000_000,
         // "verified" isn't a real status (valid: platform/x402_compliant/
         // reachable/unreachable) — the old check made EVERY house unverified.
         verified: a.verification_status === "platform" || a.verification_status === "x402_compliant",
@@ -211,7 +211,7 @@ function computeSnapshot(): WorldSnapshot {
   const totals: WorldTotals = {
     agents: agents.length,
     districts: districtNames.length,
-    totalUsdcEarned: Math.round(agents.reduce((s, a) => s + a.usdc_earned, 0) * 1_000_000) / 1_000_000,
+    totalEthEarned: Math.round(agents.reduce((s, a) => s + a.eth_earned, 0) * 1_000_000) / 1_000_000,
     totalTasksCompleted: agents.reduce((s, a) => s + a.tasks_completed, 0),
     activeAgents: agents.reduce((s, a) => s + (a.tasks_recent > 0 ? 1 : 0), 0),
   };

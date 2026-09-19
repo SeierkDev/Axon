@@ -1,15 +1,17 @@
 import type { Database } from "better-sqlite3";
 import { getDb } from "./db";
-import { agencJobSpecHash, type AgencJobSpec } from "./integrations/agenc";
+import { createHash } from "crypto";
+import { canonicalStringify } from "./traceEvents";
 
-// Verifiable work — the input-side commitment, pinned via AgenC.
+// Verifiable work — the input-side commitment.
 //
-// hashSpec pins the exact job agreement (who hired whom, the task rules, context,
-// and payment terms) at task creation using AgenC's canonical job-spec hash
-// (their marketplace SDK). It's the counterpart to outputCommitment's deliverable
-// hash: spec_hash proves what was agreed, output_hash proves what was delivered.
-// Because the hash uses AgenC's canonical form, an Axon job spec is verifiable on
-// AgenC's protocol — a real interop point, not a re-implementation.
+// hashSpec pins the exact job agreement (who hired whom, the task rules, context, and payment
+// terms) at task creation. It is the counterpart to outputCommitment's deliverable hash: spec_hash
+// proves what was agreed, output_hash proves what was delivered.
+//
+// The digest is SHA-256 over canonical JSON — keys sorted recursively, no whitespace — which is the
+// same canonical form the trace hash chain uses, so there is one definition of "canonical" in this
+// codebase rather than two that could quietly drift apart.
 
 export interface SpecInput {
   fromAgent: string;
@@ -19,24 +21,24 @@ export interface SpecInput {
   payment?: string | null;
 }
 
-function toAgencSpec(spec: SpecInput): AgencJobSpec {
-  return {
+/** The pinned shape. Field order here is irrelevant: the canonical form sorts them. */
+function canonicalSpec(spec: SpecInput): string {
+  return canonicalStringify({
     from: spec.fromAgent,
     to: spec.toAgent,
     task: spec.task,
     context: spec.context ?? null,
     payment: spec.payment ?? null,
-  };
+  });
 }
 
 export function hashSpec(spec: SpecInput): string {
-  return agencJobSpecHash(toAgencSpec(spec));
+  return createHash("sha256").update(canonicalSpec(spec), "utf8").digest("hex");
 }
 
-// One-time backfill: pin the AgenC canonical spec hash for tasks that predate the
-// spec_hash column. The hash is a pure function of each task's stored fields, so
-// historical job specs get their canonical AgenC hash too. Idempotent — only
-// touches rows where spec_hash IS NULL, so it's a no-op after the first run.
+// One-time backfill: pin the canonical spec hash for tasks that predate the spec_hash column. The
+// hash is a pure function of each task's stored fields, so historical job specs get one too.
+// Idempotent — only touches rows where spec_hash IS NULL, so it is a no-op after the first run.
 export function backfillSpecHashes(db: Database): number {
   const rows = db
     .prepare("SELECT task_id, from_agent, to_agent, task, context, payment FROM tasks WHERE spec_hash IS NULL")

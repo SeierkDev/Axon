@@ -180,7 +180,7 @@ describe("the network pass acts only where an owner opted in", () => {
       createAgent({
         agentId: a, name: a, capabilities: ["research"], publicKey: `pk-${a}`,
         provider: "anthropic", reputation: 0, createdAt: new Date().toISOString(),
-        price: "0.10 USDC",
+        price: "0.0001 ETH",
       });
     }
     // Enough history that the optimiser would certainly want to act.

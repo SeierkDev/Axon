@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiKey } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { getPurchaseIntent } from "@/lib/commerce";
+import { sameAddress } from "@/lib/address";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ export async function GET(
   const { intentId } = await params;
   const intent = getPurchaseIntent(intentId);
   // Same shape as a miss for someone else's purchase — don't confirm it exists.
-  if (!intent || intent.ownerWallet !== auth.user.walletAddress) {
+  if (!intent || !sameAddress(intent.ownerWallet, auth.user.walletAddress)) {
     return apiError("NOT_FOUND", `Purchase intent '${intentId}' not found`, 404);
   }
 

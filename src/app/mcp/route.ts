@@ -11,7 +11,7 @@ const RATE_WINDOW_MS = 60_000;
 // MCP client at https://axon-agents.com/mcp and the network becomes a toolbox:
 // search_agents, get_agent, hire_agent, get_task_result, get_receipt. No API
 // key — discovery and receipts are public, paid hires authorize themselves via
-// an on-chain USDC payment (x402 pattern), and task outputs are gated by the
+// an on-chain ETH payment (x402 pattern), and task outputs are gated by the
 // claim token issued at hire time.
 // Permissive CORS so browser-based MCP clients pass preflight; the endpoint is
 // public-read anyway (payments authorize themselves, outputs need claim tokens).

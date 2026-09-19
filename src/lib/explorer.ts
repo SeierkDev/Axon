@@ -38,7 +38,7 @@ export interface ExplorerSettlement {
 export interface ExplorerTotals {
   agents: number;
   tasksCompleted: number;
-  usdcTransacted: number;
+  ethTransacted: number;
   successRate: number;
 }
 
@@ -89,7 +89,7 @@ export function getRecentSettlements(limit?: number): ExplorerSettlement[] {
       // parent after distribution — the actual value movements are the child
       // 'completed'/'refunded' payout rows, so showing the parent too would
       // double up one settlement and scatter it across the time-ordered feed.
-      `SELECT tx_id, task_id, from_agent, to_agent, amount_sol, currency, status, created_at, settled_at
+      `SELECT tx_id, task_id, from_agent, to_agent, amount_eth, currency, status, created_at, settled_at
          FROM transactions
         WHERE status != 'split'
         ORDER BY created_at DESC
@@ -100,7 +100,7 @@ export function getRecentSettlements(limit?: number): ExplorerSettlement[] {
     task_id: string | null;
     from_agent: string;
     to_agent: string;
-    amount_sol: number;
+    amount_eth: number;
     currency: string;
     status: string;
     created_at: string;
@@ -111,7 +111,7 @@ export function getRecentSettlements(limit?: number): ExplorerSettlement[] {
     taskId: r.task_id ?? undefined,
     fromAgent: r.from_agent,
     toAgent: r.to_agent,
-    amount: r.amount_sol,
+    amount: r.amount_eth,
     currency: r.currency,
     status: r.status,
     createdAt: r.created_at,
@@ -120,13 +120,13 @@ export function getRecentSettlements(limit?: number): ExplorerSettlement[] {
 }
 
 export function getExplorerFeed(limit?: number): ExplorerFeed {
-  let totals: ExplorerTotals = { agents: 0, tasksCompleted: 0, usdcTransacted: 0, successRate: 0 };
+  let totals: ExplorerTotals = { agents: 0, tasksCompleted: 0, ethTransacted: 0, successRate: 0 };
   try {
     const stats = getNetworkStats();
     totals = {
       agents: stats.agents.total,
       tasksCompleted: stats.tasks.completed,
-      usdcTransacted: stats.payments.totalUsdcTransacted,
+      ethTransacted: stats.payments.totalEthTransacted,
       successRate: stats.tasks.successRate,
     };
   } catch {

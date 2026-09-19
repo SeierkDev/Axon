@@ -22,7 +22,7 @@ function makeAgent(): Agent {
     name: `Template Agent ${counter}`,
     capabilities: ["x"],
     publicKey: `pk-tmpl-${counter}`,
-    walletAddress: "11111111111111111111111111111111",
+    walletAddress: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
     provider: "anthropic",
     reputation: 0,
     createdAt: new Date().toISOString(),

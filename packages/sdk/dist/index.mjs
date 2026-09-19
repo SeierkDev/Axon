@@ -466,7 +466,7 @@ function buildAxonTools(client, opts = {}) {
   return [
     {
       name: "axon_hire_specialist",
-      description: `Hire a proven specialist agent on the Axon marketplace to do a task you can't do yourself. Give a "capability" (e.g. "research", "code", "trading") to auto-pick the highest-Proof-Score agent, or an exact "agent_id". It hires, pays in USDC, and returns a verifiable receipt (plus the specialist's output when this client is configured with a readable identity). Use this when the task needs a skill you lack.`,
+      description: `Hire a proven specialist agent on the Axon marketplace to do a task you can't do yourself. Give a "capability" (e.g. "research", "code", "trading") to auto-pick the highest-Proof-Score agent, or an exact "agent_id". It hires, pays in ETH, and returns a verifiable receipt (plus the specialist's output when this client is configured with a readable identity). Use this when the task needs a skill you lack.`,
       parameters: {
         type: "object",
         properties: {
@@ -761,7 +761,7 @@ var AxonClient = class {
   /**
    * Hire an agent and wait for the result — discover pricing, pay, submit, poll to
    * completion, and return the output plus the verifiable receipt. Priced agents are
-   * paid with the per-call `pay`, or the client's configured `pay` (e.g. `solanaPayer`)
+   * paid with the per-call `pay`, or the client's configured `pay` (e.g. `privateKeyPayer`)
    * if none is given. Free-lane agents need no payer.
    */
   async hire(opts) {
@@ -834,7 +834,7 @@ var AxonClient = class {
     return this.post("/api/tasks/plan", {
       from: opts.from,
       goal: opts.goal,
-      budgetUsdc: opts.budgetUsdc,
+      budgetEth: opts.budgetEth,
       maxSteps: opts.maxSteps,
       perStepCapUsdc: opts.perStepCapUsdc,
       execute: opts.execute
@@ -942,7 +942,7 @@ var AxonClient = class {
     const requirements = decodeRequirements(rawReq);
     if (!requirements) throw new Error("Axon gateway x402: could not decode X-Payment-Required header");
     const { signature, from } = await pay(requirements);
-    const network = requirements.accepts[0]?.network ?? "solana-mainnet";
+    const network = requirements.accepts[0]?.network ?? "eip155:4663";
     const paymentHeader = buildPaymentHeader(signature, from, network);
     const paidRes = await fetch(`${this.baseUrl()}/api/gateway/${pathPart(providerId)}/call`, {
       method: "POST",
@@ -1140,7 +1140,7 @@ var AxonClient = class {
     const requirements = decodeRequirements(rawReq);
     if (!requirements) throw new Error("Axon x402 error: could not decode X-Payment-Required header");
     const { signature, from } = await pay(requirements);
-    const network = requirements.accepts[0]?.network ?? "solana-mainnet";
+    const network = requirements.accepts[0]?.network ?? "eip155:4663";
     const paymentHeader = buildPaymentHeader(signature, from, network);
     const submitRes = await fetch(`${this.baseUrl()}/api/agents/${pathPart(agentId)}/x402`, {
       method: "POST",
@@ -1325,13 +1325,13 @@ var SCALE = 1e3;
 var QUALITY_WEIGHT = 0.6;
 var VOLUME_WEIGHT = 0.4;
 var TASKS_ANCHOR = 30;
-var USDC_ANCHOR = 200;
+var ETH_ANCHOR = 200;
 var round = (n, dp = 3) => {
   const f = 10 ** dp;
   return Math.round(n * f) / f;
 };
 var curve = (v, anchor) => Math.min(1, Math.log10(1 + Math.max(0, v)) / Math.log10(1 + anchor));
-var provenWorkFactor = (count, usdc) => Math.min(1, 0.6 * curve(count, TASKS_ANCHOR) + 0.4 * curve(usdc, USDC_ANCHOR));
+var provenWorkFactor = (count, eth) => Math.min(1, 0.6 * curve(count, TASKS_ANCHOR) + 0.4 * curve(eth, ETH_ANCHOR));
 async function verifyProofScore(agentId, opts = {}) {
   const base = (opts.baseUrl ?? "https://axon-agents.com").replace(/\/+$/, "");
   const f = opts.fetch ?? globalThis.fetch;
@@ -1346,10 +1346,10 @@ async function verifyProofScore(agentId, opts = {}) {
   const cross = evidence.filter((e) => e.network !== "axon");
   let confirmedReceipts = null;
   let count = evidence.length;
-  let usdc = round(evidence.reduce((s, e) => s + e.settledUsdc, 0), 6);
+  let eth = round(evidence.reduce((s, e) => s + e.settledEth, 0), 6);
   if (opts.confirmReceipts) {
     let ok = 0;
-    let confirmedUsdc = 0;
+    let confirmedEth = 0;
     for (const e of native) {
       if (!e.verify) continue;
       try {
@@ -1358,16 +1358,16 @@ async function verifyProofScore(agentId, opts = {}) {
         const receipt = await r.json();
         if (receipt.status === "completed" && receipt.settlement) {
           ok++;
-          confirmedUsdc += e.settledUsdc;
+          confirmedEth += e.settledEth;
         }
       } catch {
       }
     }
     confirmedReceipts = ok;
     count = ok + cross.length;
-    usdc = round(confirmedUsdc + cross.reduce((s, e) => s + e.settledUsdc, 0), 6);
+    eth = round(confirmedEth + cross.reduce((s, e) => s + e.settledEth, 0), 6);
   }
-  const volumeFactor = round(provenWorkFactor(count, usdc));
+  const volumeFactor = round(provenWorkFactor(count, eth));
   const recomputedScore = Math.round(
     round(SCALE * QUALITY_WEIGHT * proof.components.quality.factor, 2) + round(SCALE * VOLUME_WEIGHT * volumeFactor, 2)
   );

@@ -53,7 +53,7 @@ export default function IdentityPage() {
   "capabilities": ["research", "analysis"],
   "publicKey": "7gF8kR2m...",
   "endpoint": "https://my-agent.com/axon",  // optional
-  "price": "0.05 USDC",
+  "price": "0.00005 ETH",
   "createdAt": "2025-01-01T00:00:00Z"
 }`}
         />

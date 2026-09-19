@@ -14,7 +14,7 @@ import { getTaskById } from "@/lib/tasks";
 import { createWebhook, getDeliveriesByWebhook } from "@/lib/webhooks";
 import type { Agent } from "@/sdk/types";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let counter = 0;
 
 function makeAgent(): Agent {
@@ -47,7 +47,7 @@ describe("bidding", () => {
     const poster = makeAgent();
     const worker = makeAgent();
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "do x", capabilities: ["research"] });
-    const bid = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.05 USDC" });
+    const bid = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.00005 ETH" });
     expect(bid.success).toBe(true);
     if (!bid.success) return;
 
@@ -56,7 +56,7 @@ describe("bidding", () => {
     if (!accepted.success) return;
     expect(accepted.task.fromAgent).toBe(poster.agentId);
     expect(accepted.task.toAgent).toBe(worker.agentId);
-    expect(accepted.task.payment).toBe("0.05 USDC");
+    expect(accepted.task.payment).toBe("0.00005 ETH");
     expect(getTaskById(accepted.task.taskId)).not.toBeNull();
     expect(getOpenTaskById(ot.openTaskId)?.status).toBe("accepted");
     expect(getOpenTaskById(ot.openTaskId)?.acceptedTaskId).toBe(accepted.task.taskId);
@@ -65,7 +65,7 @@ describe("bidding", () => {
   it("rejects bidding on your own task", () => {
     const poster = makeAgent();
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"] });
-    const r = submitBid({ openTaskId: ot.openTaskId, agentId: poster.agentId, price: "0.05 USDC" });
+    const r = submitBid({ openTaskId: ot.openTaskId, agentId: poster.agentId, price: "0.00005 ETH" });
     expect(r.success).toBe(false);
     if (!r.success) expect(r.code).toBe("FORBIDDEN");
   });
@@ -74,8 +74,8 @@ describe("bidding", () => {
     const poster = makeAgent();
     const worker = makeAgent();
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"] });
-    submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.05 USDC" });
-    const dup = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.04 USDC" });
+    submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.00005 ETH" });
+    const dup = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.00004 ETH" });
     expect(dup.success).toBe(false);
     if (!dup.success) expect(dup.code).toBe("DUPLICATE");
   });
@@ -83,8 +83,8 @@ describe("bidding", () => {
   it("rejects a bid over the max budget", () => {
     const poster = makeAgent();
     const worker = makeAgent();
-    const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"], maxBudget: "0.10 USDC" });
-    const r = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.20 USDC" });
+    const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"], maxBudget: "0.0001 ETH" });
+    const r = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.0002 ETH" });
     expect(r.success).toBe(false);
     if (!r.success) expect(r.code).toBe("INVALID");
   });
@@ -92,9 +92,9 @@ describe("bidding", () => {
   it("rejects a bid priced in a different currency than the max budget", () => {
     const poster = makeAgent();
     const worker = makeAgent();
-    const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"], maxBudget: "0.10 USDC" });
+    const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"], maxBudget: "0.0001 ETH" });
     // A SOL bid must not bypass a USDC budget by being incomparable.
-    const r = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.01 SOL" });
+    const r = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.01 ETH" });
     expect(r.success).toBe(false);
     if (!r.success) expect(r.code).toBe("INVALID");
   });
@@ -102,7 +102,7 @@ describe("bidding", () => {
   it("rejects an unknown bidder agent", () => {
     const poster = makeAgent();
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"] });
-    const r = submitBid({ openTaskId: ot.openTaskId, agentId: "no-such-agent", price: "0.05 USDC" });
+    const r = submitBid({ openTaskId: ot.openTaskId, agentId: "no-such-agent", price: "0.00005 ETH" });
     expect(r.success).toBe(false);
     if (!r.success) expect(r.code).toBe("NOT_FOUND");
   });
@@ -112,8 +112,8 @@ describe("bidding", () => {
     const worker = makeAgent();
     const worker2 = makeAgent();
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"] });
-    const bid1 = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.05 USDC" });
-    const bid2 = submitBid({ openTaskId: ot.openTaskId, agentId: worker2.agentId, price: "0.06 USDC" });
+    const bid1 = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.00005 ETH" });
+    const bid2 = submitBid({ openTaskId: ot.openTaskId, agentId: worker2.agentId, price: "0.00006 ETH" });
     expect(bid1.success && bid2.success).toBe(true);
     if (!bid1.success || !bid2.success) return;
 
@@ -125,7 +125,7 @@ describe("bidding", () => {
 
     // can't bid once accepted
     const worker3 = makeAgent();
-    const late = submitBid({ openTaskId: ot.openTaskId, agentId: worker3.agentId, price: "0.01 USDC" });
+    const late = submitBid({ openTaskId: ot.openTaskId, agentId: worker3.agentId, price: "0.00001 ETH" });
     expect(late.success).toBe(false);
     if (!late.success) expect(late.code).toBe("CLOSED");
 
@@ -140,7 +140,7 @@ describe("bidding", () => {
     const worker = makeAgent();
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"] });
     expect(cancelOpenTask(ot.openTaskId)?.status).toBe("cancelled");
-    const r = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.05 USDC" });
+    const r = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.00005 ETH" });
     expect(r.success).toBe(false);
     if (!r.success) expect(r.code).toBe("CLOSED");
   });
@@ -148,8 +148,8 @@ describe("bidding", () => {
   it("starts a paid bid's task in payment_pending, and revertAccept undoes the accept", () => {
     const poster = makeAgent();
     const worker = makeAgent();
-    const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"], maxBudget: "0.10 USDC" });
-    const bid = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.05 USDC" });
+    const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"], maxBudget: "0.0001 ETH" });
+    const bid = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.00005 ETH" });
     expect(bid.success).toBe(true);
     if (!bid.success) return;
 
@@ -170,7 +170,7 @@ describe("bidding", () => {
     const worker = makeAgent();
     const wh = createWebhook({ agentId: poster.agentId, url: "https://hook.example.com/", events: ["bid.received"] });
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"] });
-    submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.05 USDC" });
+    submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.00005 ETH" });
     expect(getDeliveriesByWebhook(wh.webhookId).some((d) => d.eventType === "bid.received")).toBe(true);
   });
 
@@ -179,7 +179,7 @@ describe("bidding", () => {
     const worker = makeAgent();
     const wh = createWebhook({ agentId: worker.agentId, url: "https://hook2.example.com/", events: ["bid.accepted"] });
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"] });
-    const bid = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.05 USDC" });
+    const bid = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.00005 ETH" });
     expect(bid.success).toBe(true);
     if (!bid.success) return;
     acceptBid(ot.openTaskId, bid.bid.bidId);
@@ -191,7 +191,7 @@ describe("bidding", () => {
     const worker = makeAgent();
     const past = new Date(Date.now() - 60_000).toISOString();
     const ot = createOpenTask({ fromAgent: poster.agentId, task: "x", capabilities: ["research"], deadline: past });
-    const r = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.05 USDC" });
+    const r = submitBid({ openTaskId: ot.openTaskId, agentId: worker.agentId, price: "0.00005 ETH" });
     expect(r.success).toBe(false);
     if (!r.success) expect(r.code).toBe("CLOSED");
   });

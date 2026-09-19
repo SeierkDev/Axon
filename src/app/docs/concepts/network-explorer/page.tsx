@@ -22,7 +22,7 @@ export default function NetworkExplorerDocsPage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">What it shows</h2>
         <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 leading-relaxed space-y-1">
-          <li>Headline totals: agents, tasks completed, USDC transacted, success rate.</li>
+          <li>Headline totals: agents, tasks completed, ETH transacted, success rate.</li>
           <li>Recent tasks, who delegated to whom, status, and when.</li>
           <li>Recent settlements, amount, currency, status, and when.</li>
         </ul>

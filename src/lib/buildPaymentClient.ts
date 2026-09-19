@@ -1,155 +1,91 @@
-// Client-side Phantom payment for paid Axon Build generations.
-// Builds and sends a USDC transfer to the treasury wallet, then returns the
-// transaction signature for the server to verify on-chain before generating.
+// Paying for a generation from the browser, with the visitor's own wallet.
+//
+// A native ETH transfer to the treasury, sent through the injected wallet. The server re-verifies
+// the hash on-chain before it generates anything, so this is a convenience for the payer rather
+// than a source of truth.
+//
+// Most of what the Solana version needed is simply gone: there are no associated token accounts to
+// create, no separate fee currency to hold, and no blockhash to expire. What is left is the part
+// that always mattered — check the balance BEFORE asking anyone to sign, and never throw away a
+// hash for a payment that might have landed.
 
-import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import {
-  createAssociatedTokenAccountInstruction,
-  createTransferCheckedInstruction,
-  getAssociatedTokenAddressSync,
-} from "@solana/spl-token";
-
-const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-const USDC_DECIMALS = 6;
-
-interface PhantomProvider {
-  isPhantom?: boolean;
-  connect(): Promise<{ publicKey: PublicKey }>;
-  signAndSendTransaction(tx: Transaction): Promise<{ signature: string }>;
-}
-
-function getPhantom(): PhantomProvider | null {
-  const w = window as unknown as {
-    phantom?: { solana?: PhantomProvider };
-    solana?: PhantomProvider;
-  };
-  const provider = w.phantom?.solana ?? w.solana;
-  return provider && provider.isPhantom ? provider : null;
-}
+import { parseEther, formatEther } from "viem";
+import { provider, isPhone, metaMaskDeepLink, type Eip1193 } from "./chain";
+import { normalizeAddress } from "./address";
 
 export interface BuildPaymentResult {
   signature: string;
   payer: string;
 }
 
+const hex = (v: bigint) => `0x${v.toString(16)}`;
+
 export async function payForBuild(opts: {
-  rpcUrl: string;
+  rpcUrl?: string;
   treasury: string;
-  usdcAmount: number;
+  ethAmount: number | string;
 }): Promise<BuildPaymentResult> {
-  const provider = getPhantom();
-  if (!provider) {
-    // Caller decides what to do (mobile → deeplink into Phantom's browser;
-    // desktop → prompt to install the extension).
-    throw new Error("PHANTOM_NOT_FOUND");
+  const p: Eip1193 | null = provider();
+  if (!p) {
+    // A phone has the wallet as an app, not an extension, so the way in is its own browser.
+    const coarse =
+      typeof window !== "undefined" && (window.matchMedia?.("(pointer: coarse)").matches ?? false);
+    if (typeof navigator !== "undefined" && isPhone(navigator.userAgent, coarse)) {
+      window.location.href = metaMaskDeepLink(window.location.href);
+      return new Promise<BuildPaymentResult>(() => {});
+    }
+    throw new Error("WALLET_NOT_FOUND");
   }
 
-  const { publicKey: payer } = await provider.connect();
+  const treasury = normalizeAddress(opts.treasury);
+  if (!treasury) throw new Error("TREASURY_NOT_CONFIGURED");
 
-  const connection = new Connection(opts.rpcUrl, "confirmed");
-  const treasuryPk = new PublicKey(opts.treasury);
-  const payerAta = getAssociatedTokenAddressSync(USDC_MINT, payer);
-  // allowOwnerOffCurve=true so PDA/multisig treasury addresses resolve correctly.
-  const treasuryAta = getAssociatedTokenAddressSync(USDC_MINT, treasuryPk, true);
-  const units = BigInt(Math.round(opts.usdcAmount * 10 ** USDC_DECIMALS));
+  const value = parseEther(String(opts.ethAmount));
+  if (value <= 0n) throw new Error("INVALID_AMOUNT");
 
-  // Pre-flight: confirm the payer actually holds enough USDC. Otherwise the
-  // transfer reverts on-chain with InsufficientFunds, which surfaces to the user
-  // as a vague "payment not confirmed" only after they've signed. A missing ATA
-  // (never held USDC) reads as a zero balance.
-  let payerUsdc = 0;
-  try {
-    const bal = await connection.getTokenAccountBalance(payerAta);
-    payerUsdc = bal.value.uiAmount ?? 0;
-  } catch {
-    payerUsdc = 0;
-  }
-  if (payerUsdc < opts.usdcAmount) {
-    throw new Error(`INSUFFICIENT_USDC:${payerUsdc}`);
-  }
+  const accounts = (await p.request({ method: "eth_requestAccounts" })) as string[];
+  const payer = accounts?.[0];
+  if (!payer) throw new Error("WALLET_NOT_FOUND");
 
-  // If the recipient has never held USDC, their associated token account does
-  // not exist yet — a transfer to a missing account reverts on-chain. Create it
-  // in the same transaction (the payer covers the ~0.002 SOL rent). The treasury
-  // already has one, so Build is unaffected; this only adds an instruction when
-  // paying a fresh wallet (e.g. a newly registered agent winning a bid).
-  const recipientAtaMissing = (await connection.getAccountInfo(treasuryAta)) === null;
-
-  // The wallet also needs a little SOL to pay the Solana network fee. USDC can't
-  // cover it — a wallet with 0 SOL produces a transaction that can never land,
-  // which otherwise surfaces as a baffling "transaction not found". When we also
-  // create the recipient's token account, budget for its rent on top of the fee.
-  const minLamports = recipientAtaMissing ? 3_000_000 : 1_000_000;
-  const solLamports = await connection.getBalance(payer);
-  if (solLamports < minLamports) {
-    throw new Error("INSUFFICIENT_SOL");
-  }
-
-  // Keep instructions minimal — Phantom attaches its own priority fee when it
-  // sends, and we do NOT add ComputeBudget instructions (they collide with
-  // Phantom's and trip its risk scanner). The optional ATA-creation instruction
-  // is a standard, expected one that Phantom handles cleanly.
-  const tx = new Transaction();
-  if (recipientAtaMissing) {
-    tx.add(
-      createAssociatedTokenAccountInstruction(payer, treasuryAta, treasuryPk, USDC_MINT),
-    );
-  }
-  tx.add(
-    createTransferCheckedInstruction(
-      payerAta,
-      USDC_MINT,
-      treasuryAta,
-      payer,
-      units,
-      USDC_DECIMALS,
-    ),
+  // Check the balance before asking for a signature. Otherwise the transaction fails after the
+  // visitor has already approved it, and surfaces as a vague "payment not confirmed".
+  const balance = BigInt(
+    (await p.request({ method: "eth_getBalance", params: [payer, "latest"] })) as string,
   );
-  tx.feePayer = payer;
-  const { blockhash } = await connection.getLatestBlockhash("confirmed");
-  tx.recentBlockhash = blockhash;
-
-  const { signature } = await provider.signAndSendTransaction(tx);
-
-  // Wait for the transaction to confirm. We poll signature status WITH history
-  // search, so a tx that has landed is reliably detected even if the RPC is a
-  // beat behind — the previous version gave up on blockhash expiry and
-  // false-failed payments that had actually gone through.
-  const status = await waitForConfirmation(connection, signature);
-  if (status === "failed") {
-    // Landed but reverted on-chain (e.g. ran out of funds mid-transfer).
-    throw new Error("PAYMENT_FAILED");
+  if (balance < value) {
+    throw new Error(`INSUFFICIENT_FUNDS:${formatEther(balance)}`);
   }
-  // "confirmed" or "timeout": hand the signature to the server regardless — it
-  // re-verifies on-chain and is the source of truth. A slow tx that lands after
-  // we time out is still found there (and the same signature is retryable, so no
-  // double charge). We never throw away a signature for a payment that may have
-  // succeeded.
-  return { signature, payer: payer.toBase58() };
+
+  const signature = (await p.request({
+    method: "eth_sendTransaction",
+    params: [{ from: payer, to: treasury, value: hex(value) }],
+  })) as string;
+
+  // Wait for it to land, but hand the hash back either way: the server re-verifies on-chain and is
+  // the source of truth, and the same hash is retryable, so a slow transaction is never lost and
+  // nobody pays twice for having waited.
+  await waitForReceipt(p, signature);
+  return { signature, payer: payer.toLowerCase() };
 }
 
-// Polls signature status until the tx confirms or fails on-chain, or we time out.
-// searchTransactionHistory: true so a landed-but-slightly-late tx is still seen.
-async function waitForConfirmation(
-  connection: Connection,
-  signature: string,
-): Promise<"confirmed" | "failed" | "timeout"> {
+/** Polls for a receipt. Throws only when the chain says the transaction actually failed. */
+async function waitForReceipt(p: Eip1193, hash: string): Promise<void> {
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     try {
-      const { value } = await connection.getSignatureStatus(signature, {
-        searchTransactionHistory: true,
-      });
-      if (value) {
-        if (value.err) return "failed";
-        if (value.confirmationStatus === "confirmed" || value.confirmationStatus === "finalized") {
-          return "confirmed";
-        }
+      const receipt = (await p.request({
+        method: "eth_getTransactionReceipt",
+        params: [hash],
+      })) as { status?: string } | null;
+      if (receipt) {
+        if (BigInt(receipt.status ?? "0x0") !== 1n) throw new Error("PAYMENT_FAILED");
+        return;
       }
-    } catch {
-      /* transient RPC hiccup — keep polling */
+    } catch (e) {
+      if (e instanceof Error && e.message === "PAYMENT_FAILED") throw e;
+      /* a transient read is not a verdict — keep polling */
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
-  return "timeout";
+  // Timed out without a verdict. The caller still submits the hash and the server decides.
 }

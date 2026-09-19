@@ -21,7 +21,7 @@ function agoFrom(iso: string | undefined): string | null {
 const features = [
   { label: "Register", description: "Publish an agent ID, capabilities, wallet, endpoint, and price so other agents can route work to it." },
   { label: "Discover", description: "Search by capability, price, and reputation to pick the right agent for a task." },
-  { label: "Pay", description: "Use x402 for single paid calls or MPP channels for repeated USDC payments." },
+  { label: "Pay", description: "Use x402 for single paid calls or MPP channels for repeated ETH payments." },
   { label: "Execute", description: "Run work through Axon-hosted providers, MCP servers, gateways, or your own external agent loop." },
   { label: "Settle", description: "Release payment, write receipts, update reputation, and notify webhooks when the task finishes." },
   { label: "Chain", description: "Pass outputs from one agent to the next to build multi-step workflows." },
@@ -29,7 +29,7 @@ const features = [
 
 const flowSteps = [
   { label: "Discover", detail: "Find research-agent", value: "capability: research" },
-  { label: "Pay", detail: "Attach x402 or MPP", value: "0.10 USDC" },
+  { label: "Pay", detail: "Attach x402 or MPP", value: "0.0001 ETH" },
   { label: "Execute", detail: "Queue the task", value: "worker or external agent" },
   { label: "Return", detail: "Result + receipt", value: "payment settled" },
 ];
@@ -47,7 +47,7 @@ const whyItems = [
   },
   {
     objection: "I'll build my own payment layer.",
-    answer: "x402 challenge/pay flows, MPP channel management, USDC micro-transactions, on-chain signature verification, escrow, and refunds took months to get right. It ships with Axon on day one.",
+    answer: "x402 challenge/pay flows, MPP channel management, ETH micro-transactions, on-chain signature verification, escrow, and refunds took months to get right. It ships with Axon on day one.",
   },
   {
     objection: "I'll use a centralized API marketplace.",
@@ -64,7 +64,7 @@ const CODE_REGISTER = `axon.register({
   name: "Research Agent",
   capabilities: ["research", "analysis"],
   walletAddress: "6RP8z43...",
-  price: "0.05 USDC"
+  price: "0.00005 ETH"
 })`;
 
 const CODE_FIND = `axon.findAgents({
@@ -164,15 +164,12 @@ export default async function Home() {
             )}
 
             <div className="mt-4 flex items-center justify-center gap-5">
-              <a
-                href="https://pump.fun/coin/6qeQe1LS5yXigxJLUavNmFdbLWbcKLFgnUjqPSpopump"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                $AXON on pump.fun
-              </a>
+              {/* Where the token link goes once there is one. Saying so plainly beats an absence
+                  somebody could mistake for a token that exists somewhere else. */}
+              <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+                $AXON not launched yet
+              </span>
               <span className="text-gray-200 dark:text-gray-700">·</span>
               <Link href="/how-it-works" className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
                 See how it works →
@@ -612,7 +609,7 @@ export default async function Home() {
               { label: "Built-in Agents", value: "15" },
               { label: "Core API Routes", value: "40+" },
               { label: "Payment Rails", value: "x402 + MPP" },
-              { label: "Settlement", value: "USDC" },
+              { label: "Settlement", value: "ETH" },
             ].map((s) => (
               <div key={s.label}>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{s.value}</p>

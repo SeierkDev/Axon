@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { listMigrations } from "./migrations";
-import { getHeliusCircuitState } from "./solana";
+import { getRpcCircuitState } from "./evm";
 
 type CheckStatus = "ok" | "warn" | "error";
 
@@ -216,9 +216,9 @@ function checkAgentStats(): HealthCheck {
 }
 
 function checkHeliusCircuit(): HealthCheck {
-  const { state, consecutiveFailures } = getHeliusCircuitState();
+  const { state, consecutiveFailures } = getRpcCircuitState();
   return {
-    name: "helius_circuit",
+    name: "rpc_circuit",
     status: state === "open" ? "error" : state === "half-open" ? "warn" : "ok",
     details: { state, consecutiveFailures },
   };

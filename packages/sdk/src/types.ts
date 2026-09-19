@@ -19,7 +19,6 @@ export interface Agent {
   verificationStatus?: VerificationStatus;
   lastVerifiedAt?: string;
   ownerVerified?: boolean; // owner wallet has cryptographically authenticated (verified-owner badge)
-  agencListed?: boolean; // cross-listed on the AgenC marketplace protocol (✓ AgenC badge)
   proofScore?: number; // 0-1000 portable Proof Score (directory badge; see /api/agents/<id>/proof-score)
   proofScoreTier?: string;
   /** When true, this hosted agent delegates: it decomposes a hired job, hires
@@ -137,7 +136,7 @@ export interface SendTaskOptions {
   payment?: string;
   paymentSignature?: string;
   /**
-   * How a paid hire is funded: "onchain" (default — a fresh USDC transfer proven
+   * How a paid hire is funded: "onchain" (default — a fresh ETH transfer proven
    * by paymentSignature) or "balance" (spend the `from` agent's earned balance,
    * no new transfer). "balance" requires an authenticated, registered `from`.
    */
@@ -252,7 +251,7 @@ export interface Transaction {
   taskId?: string;
   fromAgent: string;
   toAgent: string;
-  amountSol: number;
+  amountEth: number;
   currency: string;
   status: PaymentStatus;
   signature?: string;
@@ -534,8 +533,8 @@ export interface AxonConfig {
   endpoint?: string;
   /**
    * Default payment function for priced hires — set it once and every `hire`/`run`
-   * pays automatically. Build one from a wallet with `solanaPayer` (from the
-   * `@axonprotocol/sdk/solana` subpath). A per-call `pay` still overrides it.
+   * pays automatically. Build one from a key or a wallet with `privateKeyPayer` or
+   * `walletPayer` (from the `@axonprotocol/sdk/evm` subpath). A per-call `pay` still overrides it.
    */
   pay?: X402PayFunction;
   /** Per-request timeout in ms (aborts + surfaces a TIMEOUT error). Default 30000. */
@@ -921,7 +920,7 @@ export interface RouteHireOptions {
   task: string;
   capability?: string;
   capabilities?: string[];
-  /** Price ceiling, e.g. "0.20 USDC". */
+  /** Price ceiling, e.g. "0.0002 ETH". */
   maxPrice?: string;
   context?: Record<string, unknown>;
   paymentMethod?: "onchain" | "balance";
@@ -937,7 +936,7 @@ export interface RoutingInfo {
 export interface PlanOptions {
   from: string;
   goal: string;
-  budgetUsdc: number;
+  budgetEth: number;
   maxSteps?: number;
   perStepCapUsdc?: number;
   /** false (default) returns the team + cost; true creates the routed tasks. */
@@ -956,7 +955,7 @@ export interface PlannedStep {
 
 export interface PlanView {
   goal: string;
-  budgetUsdc: number;
+  budgetEth: number;
   steps: PlannedStep[];
   estCostUsdc: number;
   withinBudget: boolean;
@@ -1203,7 +1202,7 @@ export interface PurchaseExpectation {
   business?: string | string[];
 }
 
-/** Signs the authorisation message, returning a base64 Ed25519 signature. */
+/** Signs the authorisation message, returning a 0x-prefixed EIP-191 signature. */
 export type SignMandate = (message: string) => string | Promise<string>;
 
 export interface PaymentInstrument {

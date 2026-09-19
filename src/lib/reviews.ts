@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 import { getAgentById } from "./agents";
+import { sameAddress } from "./address";
 
 export interface Review {
   reviewId: string;
@@ -65,7 +66,7 @@ function detectReviewFraud(agentId: string, reviewerId: string): string | null {
   if (target?.walletAddress) {
     const reviewerAgent = getAgentById(reviewerId);
     const reviewerWallet = reviewerAgent?.walletAddress ?? reviewerId;
-    if (reviewerWallet === target.walletAddress) {
+    if (sameAddress(reviewerWallet, target.walletAddress)) {
       return "SELF_REVIEW: an operator cannot review their own agent";
     }
   }

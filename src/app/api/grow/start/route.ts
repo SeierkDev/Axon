@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = (await req.json().catch(() => ({}))) as {
-    mission?: string; budgetUsdc?: number; perHireCapUsdc?: number; maxHires?: number; baseUrl?: string;
+    mission?: string; budgetEth?: number; perHireCapEth?: number; maxHires?: number; baseUrl?: string;
   };
   const mission = body.mission?.trim();
   if (!mission) return NextResponse.json({ error: "mission is required" }, { status: 400 });
@@ -37,11 +37,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "a run is already in progress", runId: active.runId }, { status: 409 });
   }
 
-  let budgetUsdc = body.budgetUsdc ?? 20;
-  let perHireCapUsdc = body.perHireCapUsdc ?? 4;
+  let budgetEth = body.budgetEth ?? 20;
+  let perHireCapEth = body.perHireCapEth ?? 4;
   const maxHires = body.maxHires ?? 6;
-  if (!(budgetUsdc > 0) || !(perHireCapUsdc > 0) || !(maxHires > 0)) {
-    return NextResponse.json({ error: "budgetUsdc, perHireCapUsdc and maxHires must be positive" }, { status: 400 });
+  if (!(budgetEth > 0) || !(perHireCapEth > 0) || !(maxHires > 0)) {
+    return NextResponse.json({ error: "budgetEth, perHireCapEth and maxHires must be positive" }, { status: 400 });
   }
 
   // Clamp the run's SOFT caps to the agent's HARD on-chain budget cap. Without this,
@@ -49,24 +49,24 @@ export async function POST(req: NextRequest) {
   // on-chain path that pays, then checkBudget rejects the task — losing the funds.
   const budget = getBudget(self);
   if (budget) {
-    if (budget.maxPerCallUsdc != null) perHireCapUsdc = Math.min(perHireCapUsdc, budget.maxPerCallUsdc);
-    const dayCeiling = budget.remainingTodayUsdc ?? budget.maxPerDayUsdc;
-    if (dayCeiling != null) budgetUsdc = Math.min(budgetUsdc, dayCeiling);
+    if (budget.maxPerCallEth != null) perHireCapEth = Math.min(perHireCapEth, budget.maxPerCallEth);
+    const dayCeiling = budget.remainingTodayEth ?? budget.maxPerDayEth;
+    if (dayCeiling != null) budgetEth = Math.min(budgetEth, dayCeiling);
   }
 
-  const run = createGrowRun({ agentId: self, mission, budgetUsdc });
+  const run = createGrowRun({ agentId: self, mission, budgetEth });
   // GROW_AGENT_SECRET (the wallet's base64 secret) switches priced hires to the
   // on-chain path — the agent pays specialists directly from its own funded wallet.
   const deps = buildGrowDeps({ self, apiKey, baseUrl: body.baseUrl, walletSecret: process.env.GROW_AGENT_SECRET });
 
   // Fire-and-forget: run the mission in the background, keep serving. Any uncaught
   // crash is recorded and the run marked failed — never left silently hanging.
-  void runGrowMission(deps, { mission, budgetUsdc, perHireCapUsdc, maxHires }, run.runId).catch((e) => {
+  void runGrowMission(deps, { mission, budgetEth, perHireCapEth, maxHires }, run.runId).catch((e) => {
     try {
       recordGrowEvent(run.runId, { kind: "error", summary: `Run crashed: ${(e as Error).message}` });
       updateGrowRun(run.runId, { status: "failed" });
     } catch { /* best-effort */ }
   });
 
-  return NextResponse.json({ runId: run.runId, mission, budgetUsdc, perHireCapUsdc, maxHires }, { status: 202 });
+  return NextResponse.json({ runId: run.runId, mission, budgetEth, perHireCapEth, maxHires }, { status: 202 });
 }

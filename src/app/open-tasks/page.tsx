@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // Read the RPC URL at request time (NEXT_PUBLIC_* may only be set at runtime)
 // and hand it to the client, mirroring how the Build page sources payment config.
 export default function OpenTasksPage() {
-  const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_URL?.trim() ?? "";
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL?.trim() ?? "";
   // The bid payment goes into the platform escrow wallet (same as paid tasks and
   // Build); the server verifies it landed there before assigning the task.
   const treasury =

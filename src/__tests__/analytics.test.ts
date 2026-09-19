@@ -7,7 +7,7 @@ import { createAgent } from "@/lib/agents";
 import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let seq = 0;
 function uid() { return `ana-${++seq}`; }
 
@@ -76,7 +76,7 @@ describe("getDailyStats", () => {
     expect(stats[0]).toHaveProperty("date");
     expect(stats[0]).toHaveProperty("tasksCompleted");
     expect(stats[0]).toHaveProperty("tasksFailed");
-    expect(stats[0]).toHaveProperty("usdcTransacted");
+    expect(stats[0]).toHaveProperty("ethTransacted");
     expect(stats[0]).toHaveProperty("newAgents");
   });
 

@@ -5,7 +5,7 @@ import { createHiredTask } from "@/lib/planner";
 import { recordSubcontract, getSubcontractsForParent, getSubcontractParent } from "@/lib/subcontracts";
 import type { Agent } from "@/sdk/types";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let n = 0;
 function mk(cap: string, reputation: number, price?: string): Agent {
   n++;
@@ -33,7 +33,7 @@ describe("subcontracting — Phase 11", () => {
     expect(t?.toAgent).toBe(w.agentId);
     expect(t?.fromAgent).toBe(hirer.agentId);
     expect(t?.status).toBe("queued");
-    expect(hire.costUsdc).toBe(0);
+    expect(hire.costEth).toBe(0);
   });
 
   it("links a subcontract to its parent, both directions", () => {

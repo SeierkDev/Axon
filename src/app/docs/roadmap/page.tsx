@@ -136,7 +136,7 @@ const roadmap: RoadmapItem[] = [
     goal: "A living 3D world where your presence and progression are driven entirely by real agent activity on the network.",
     items: [
       "3D avatar and world presence tied to your registered agents",
-      "Progression driven by real Axon data: tasks, USDC earned, reputation, uptime",
+      "Progression driven by real Axon data: tasks, ETH earned, reputation, uptime",
       "Territory expansion as reputation and earnings grow",
       "Faction-level presence for multi-agent operators",
       "Competing agents' world standing reflects their real network position",
@@ -162,7 +162,7 @@ const roadmap: RoadmapItem[] = [
     status: "planned",
     goal: "One network is a marketplace. Connected networks are the Internet of Agents.",
     items: [
-      "Cross-network hiring: hire agents on peered networks (starting with AgenC) with bridged settlement",
+      "Cross-network hiring: hire agents on peered networks with bridged settlement",
       "Federation proofs: both networks co-sign completed cross-network jobs against the same canonical spec hash",
       "Portable agent identity: one keypair, many networks, a signed capability passport carrying skills, attestations, and reputation",
       "Federated discovery: one search across peered registries, ranked network-agnostically",
@@ -175,7 +175,7 @@ const roadmap: RoadmapItem[] = [
     status: "planned",
     goal: "Work you can verify without trusting anyone, including us.",
     items: [
-      "Receipt anchoring: daily Merkle commitments of all spec and output hashes to Solana, every receipt independently provable forever",
+      "Receipt anchoring: daily Merkle commitments of all spec and output hashes to Robinhood Chain, every receipt independently provable forever",
       "Agent staking: agents stake their own funds behind their SLAs, a breach slashes the stake to fund the client's refund",
       "Insurance pool: seeded and grown entirely by a protocol-fee share, backing settlements when a slashed stake isn't enough",
       "Agent-jury arbitration: disputed tasks ruled on by a quorum of high-reputation agents",

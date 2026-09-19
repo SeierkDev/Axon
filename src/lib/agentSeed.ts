@@ -21,33 +21,33 @@ const BUILTIN_AGENTS: BuiltinAgent[] = [
   // Grounded in live sources: research is the capability that most obviously
   // breaks when an agent can only answer from training data, so it's the first
   // platform agent to get tools.
-  { agentId: "research-agent", name: "Research Agent",  capabilities: ["research", "analysis", "summarization", "search"], category: "Research",     price: "0.10 USDC", tools: ["web_search", "web_fetch"] },
-  { agentId: "crypto-agent",   name: "Crypto Agent",    capabilities: ["crypto", "blockchain", "analysis"],                 category: "Finance",      price: "0.15 USDC" },
-  { agentId: "trading-agent",  name: "Trading Agent",   capabilities: ["trading", "analysis", "crypto"],                   category: "Finance",      price: "0.20 USDC" },
-  { agentId: "audit-agent",    name: "Audit Agent",     capabilities: ["smart-contract-audit", "security", "coding"],      category: "Development",  price: "0.50 USDC" },
-  { agentId: "defi-agent",     name: "DeFi Agent",      capabilities: ["defi", "analysis", "blockchain"],                  category: "Finance",      price: "0.15 USDC" },
-  { agentId: "data-agent",     name: "Data Agent",      capabilities: ["data-analysis", "analysis"],                       category: "Research",     price: "0.10 USDC" },
-  { agentId: "content-agent",  name: "Content Agent",   capabilities: ["writing", "content", "creative"],                  category: "Content",      price: "0.10 USDC" },
-  { agentId: "code-agent",     name: "Code Agent",      capabilities: ["coding", "development", "debugging"],              category: "Development",  price: "0.25 USDC" },
-  { agentId: "onchain-agent",  name: "On-Chain Agent",  capabilities: ["blockchain", "analysis", "data-analysis"],         category: "Finance",      price: "0.15 USDC" },
-  { agentId: "strategy-agent", name: "Strategy Agent",  capabilities: ["strategy", "analysis", "writing"],                 category: "Research",     price: "0.20 USDC" },
-  { agentId: "seo-agent",      name: "SEO Agent",       capabilities: ["seo", "writing", "analysis"],                      category: "Content",      price: "0.10 USDC" },
-  { agentId: "social-agent",   name: "Social Agent",    capabilities: ["writing", "social", "creative"],                   category: "Content",      price: "0.10 USDC" },
-  { agentId: "email-agent",    name: "Email Agent",     capabilities: ["writing", "email", "creative"],                    category: "Content",      price: "0.10 USDC" },
-  { agentId: "report-agent",   name: "Report Agent",    capabilities: ["writing", "analysis", "research"],                 category: "Research",     price: "0.25 USDC" },
+  { agentId: "research-agent", name: "Research Agent",  capabilities: ["research", "analysis", "summarization", "search"], category: "Research",     price: "0.0001 ETH", tools: ["web_search", "web_fetch"] },
+  { agentId: "crypto-agent",   name: "Crypto Agent",    capabilities: ["crypto", "blockchain", "analysis"],                 category: "Finance",      price: "0.00015 ETH" },
+  { agentId: "trading-agent",  name: "Trading Agent",   capabilities: ["trading", "analysis", "crypto"],                   category: "Finance",      price: "0.0002 ETH" },
+  { agentId: "audit-agent",    name: "Audit Agent",     capabilities: ["smart-contract-audit", "security", "coding"],      category: "Development",  price: "0.0005 ETH" },
+  { agentId: "defi-agent",     name: "DeFi Agent",      capabilities: ["defi", "analysis", "blockchain"],                  category: "Finance",      price: "0.00015 ETH" },
+  { agentId: "data-agent",     name: "Data Agent",      capabilities: ["data-analysis", "analysis"],                       category: "Research",     price: "0.0001 ETH" },
+  { agentId: "content-agent",  name: "Content Agent",   capabilities: ["writing", "content", "creative"],                  category: "Content",      price: "0.0001 ETH" },
+  { agentId: "code-agent",     name: "Code Agent",      capabilities: ["coding", "development", "debugging"],              category: "Development",  price: "0.00025 ETH" },
+  { agentId: "onchain-agent",  name: "On-Chain Agent",  capabilities: ["blockchain", "analysis", "data-analysis"],         category: "Finance",      price: "0.00015 ETH" },
+  { agentId: "strategy-agent", name: "Strategy Agent",  capabilities: ["strategy", "analysis", "writing"],                 category: "Research",     price: "0.0002 ETH" },
+  { agentId: "seo-agent",      name: "SEO Agent",       capabilities: ["seo", "writing", "analysis"],                      category: "Content",      price: "0.0001 ETH" },
+  { agentId: "social-agent",   name: "Social Agent",    capabilities: ["writing", "social", "creative"],                   category: "Content",      price: "0.0001 ETH" },
+  { agentId: "email-agent",    name: "Email Agent",     capabilities: ["writing", "email", "creative"],                    category: "Content",      price: "0.0001 ETH" },
+  { agentId: "report-agent",   name: "Report Agent",    capabilities: ["writing", "analysis", "research"],                 category: "Research",     price: "0.00025 ETH" },
   // Named "Web Agent", lists "web" and "search", and until now could not touch
   // the web. Its prompt already promises to analyse a given URL in full depth —
   // these grants are what make that true.
-  { agentId: "web-agent",          name: "Web Agent",          capabilities: ["research", "search", "web"],                 category: "Research", price: "0.10 USDC", tools: ["web_search", "web_fetch"] },
+  { agentId: "web-agent",          name: "Web Agent",          capabilities: ["research", "search", "web"],                 category: "Research", price: "0.0001 ETH", tools: ["web_search", "web_fetch"] },
   // Runs on xAI's Grok 4.5 (OpenAI-compatible API) — the one visibly-Grok agent
   // in the marketplace. Requires XAI_API_KEY at runtime.
-  { agentId: "grok-agent",         name: "Grok Agent",         capabilities: ["research", "analysis", "writing"],           category: "Research", price: "0.15 USDC", provider: "grok" },
-  { agentId: "build-orchestrator", name: "Build Orchestrator", capabilities: ["game-build", "orchestration", "planning"],    category: "Build", price: "0.05 USDC", providerModel: "claude-opus-4-8" },
-  { agentId: "build-designer",     name: "Build Designer",     capabilities: ["game-build", "game-design", "planning"],     category: "Build", price: "0.15 USDC", providerModel: "claude-opus-4-8" },
-  { agentId: "build-world",        name: "Build World",        capabilities: ["game-build", "world-design", "level-design"], category: "Build", price: "0.15 USDC", providerModel: "claude-opus-4-8" },
-  { agentId: "build-coder",        name: "Build Coder",        capabilities: ["game-build", "coding", "html5", "canvas"],   category: "Build", price: "0.25 USDC", providerModel: "claude-fable-5" },
-  { agentId: "build-artist",       name: "Build Artist",       capabilities: ["game-build", "art", "visual-design"],        category: "Build", price: "0.10 USDC", providerModel: "claude-opus-4-8" },
-  { agentId: "build-qa",           name: "Build QA",           capabilities: ["game-build", "qa", "testing"],               category: "Build", price: "0.10 USDC", providerModel: "claude-opus-4-8" },
+  { agentId: "grok-agent",         name: "Grok Agent",         capabilities: ["research", "analysis", "writing"],           category: "Research", price: "0.00015 ETH", provider: "grok" },
+  { agentId: "build-orchestrator", name: "Build Orchestrator", capabilities: ["game-build", "orchestration", "planning"],    category: "Build", price: "0.00005 ETH", providerModel: "claude-opus-4-8" },
+  { agentId: "build-designer",     name: "Build Designer",     capabilities: ["game-build", "game-design", "planning"],     category: "Build", price: "0.00015 ETH", providerModel: "claude-opus-4-8" },
+  { agentId: "build-world",        name: "Build World",        capabilities: ["game-build", "world-design", "level-design"], category: "Build", price: "0.00015 ETH", providerModel: "claude-opus-4-8" },
+  { agentId: "build-coder",        name: "Build Coder",        capabilities: ["game-build", "coding", "html5", "canvas"],   category: "Build", price: "0.00025 ETH", providerModel: "claude-fable-5" },
+  { agentId: "build-artist",       name: "Build Artist",       capabilities: ["game-build", "art", "visual-design"],        category: "Build", price: "0.0001 ETH", providerModel: "claude-opus-4-8" },
+  { agentId: "build-qa",           name: "Build QA",           capabilities: ["game-build", "qa", "testing"],               category: "Build", price: "0.0001 ETH", providerModel: "claude-opus-4-8" },
 ];
 
 // Static fallback definition for a built-in platform agent, built from the
@@ -173,9 +173,9 @@ const HISTORICAL_TASKS: Record<string, string[]> = {
   research:            ["Research top DeFi protocols by TVL", "Summarize latest Solana upgrade impact", "Compile institutional BTC holdings report", "Analyze AI agent adoption in crypto", "Research Ethereum Layer 2 ecosystem growth"],
   "data-analysis":     ["Aggregate DEX volume across Solana and Ethereum", "Process whale wallet clustering data", "Generate weekly DeFi liquidity flow report", "Analyze NFT floor price trends", "Process Dune Analytics protocol revenue query"],
   "smart-contract-audit": ["Audit token vesting contract for reentrancy", "Review AMM contract for price manipulation", "Security check on multisig wallet implementation", "Audit bridge contract for replay attacks", "Review staking contract reward logic"],
-  trading:             ["Generate BTC/USDC trading signal for 4h window", "Analyze ETH ETF inflow impact on price", "Build SOL momentum strategy from RSI data", "Identify CEX/DEX arbitrage opportunity", "Generate risk-adjusted ETH long entry"],
-  crypto:              ["Analyze on-chain whale movements for BTC", "Track large USDC transfers on Solana", "Monitor Binance order book depth for ETH", "Fetch real-time perpetual funding rates", "Analyze token unlock schedule impact"],
-  defi:                ["Identify highest yield farming on Solana", "Calculate impermanent loss for ETH/USDC LP", "Optimize liquidity range for concentrated pool", "Analyze protocol revenue vs emissions", "Scout new DeFi protocols launching this month"],
+  trading:             ["Generate BTC/ETH trading signal for 4h window", "Analyze ETH ETF inflow impact on price", "Build SOL momentum strategy from RSI data", "Identify CEX/DEX arbitrage opportunity", "Generate risk-adjusted ETH long entry"],
+  crypto:              ["Analyze on-chain whale movements for BTC", "Track large ETH transfers on Solana", "Monitor Binance order book depth for ETH", "Fetch real-time perpetual funding rates", "Analyze token unlock schedule impact"],
+  defi:                ["Identify highest yield farming on Solana", "Calculate impermanent loss for ETH/ETH LP", "Optimize liquidity range for concentrated pool", "Analyze protocol revenue vs emissions", "Scout new DeFi protocols launching this month"],
   coding:              ["Write TypeScript SDK wrapper for Axon API", "Debug memory leak in task processing loop", "Implement rate limiting for API routes", "Build CLI tool for registering agents", "Refactor payment verification for batch txns"],
   analysis:            ["Analyze market sentiment from on-chain signals", "Correlate BTC price with macro economic events", "Compare agent network growth to protocol adoption", "Evaluate token value accrual mechanisms", "Benchmark agent response times by capability"],
   writing:             ["Write weekly DeFi market update newsletter", "Draft technical docs for Axon SDK", "Create social thread on agent delegation", "Write Axon vs traditional APIs comparison", "Draft grant proposal for open-source tooling"],
@@ -244,12 +244,12 @@ function pickHistoricalTask(capabilities: string[]): string {
 
 function parseUsdcAmount(price: string | null): number {
   if (!price) return 0;
-  const m = price.match(/([\d.]+)\s*USDC/i);
+  const m = price.match(/([\d.]+)\s*ETH/i);
   return m ? parseFloat(m[1]) : 0;
 }
 
 // Correct synthetic demo settlements to each worker agent's real listed price.
-// The activity cron historically recorded a flat 0.10 USDC per completed task; now
+// The activity cron historically recorded a flat 0.10 ETH per completed task; now
 // it uses the agent's price, and this fixes the old rows so the explorer shows real
 // amounts. Only rows with NO on-chain signature (incoming or outgoing) are touched,
 // so real, signed settlements are never modified. Idempotent — a row already at the
@@ -260,17 +260,17 @@ export function backfillDemoSettlementAmounts(db: Database): number {
 
   const rows = db
     .prepare(
-      "SELECT tx_id, to_agent, amount_sol FROM transactions WHERE signature IS NULL AND incoming_signature IS NULL AND currency = 'USDC' AND status = 'completed'"
+      "SELECT tx_id, to_agent, amount_eth FROM transactions WHERE signature IS NULL AND incoming_signature IS NULL AND status = 'completed'"
     )
-    .all() as { tx_id: string; to_agent: string; amount_sol: number }[];
+    .all() as { tx_id: string; to_agent: string; amount_eth: number }[];
   if (rows.length === 0) return 0;
 
-  const update = db.prepare("UPDATE transactions SET amount_sol = ? WHERE tx_id = ?");
+  const update = db.prepare("UPDATE transactions SET amount_eth = ? WHERE tx_id = ?");
   let changed = 0;
   const run = db.transaction(() => {
     for (const r of rows) {
       const price = priceByAgent.get(r.to_agent) ?? 0;
-      if (price > 0 && Math.abs(price - r.amount_sol) > 1e-9) {
+      if (price > 0 && Math.abs(price - r.amount_eth) > 1e-9) {
         update.run(price, r.tx_id);
         changed++;
       }
@@ -295,8 +295,8 @@ export function backfillAgentHistory(db: Database): void {
 
   const insertTxn = db.prepare(`
     INSERT OR IGNORE INTO transactions
-      (tx_id, task_id, from_agent, to_agent, amount_sol, fee_amount, currency, status, incoming_signature, created_at, settled_at)
-    VALUES (?, ?, ?, ?, ?, 0, 'USDC', 'completed', ?, ?, ?)
+      (tx_id, task_id, from_agent, to_agent, amount_eth, fee_amount, currency, status, incoming_signature, created_at, settled_at)
+    VALUES (?, ?, ?, ?, ?, 0, 'ETH', 'completed', ?, ?, ?)
   `);
 
   const upsertMetric = db.prepare(`

@@ -13,9 +13,10 @@ import type { Agent } from "@/sdk/types";
 import { POST as subcontractPOST } from "@/app/api/tasks/[taskId]/subcontract/route";
 import { GET as optimizeGET, POST as optimizePOST } from "@/app/api/agents/[agentId]/optimize/route";
 import { POST as planPOST } from "@/app/api/tasks/plan/route";
+import { evmAddress } from "./support/wallet";
 
-const WALLET_A = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-const WALLET_B = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+const WALLET_A = evmAddress("owner-a");
+const WALLET_B = evmAddress("owner-b");
 let n = 0;
 
 function mk(wallet: string, opts: { cap?: string; price?: string; reputation?: number } = {}): Agent {
@@ -84,7 +85,7 @@ describe("Phase 11 routes — subcontract auth + flow", () => {
 
 describe("Phase 11 routes — optimize (owner only)", () => {
   it("403 for a non-owner, 200 recommendation for the owner, apply commits", async () => {
-    const agent = mk(WALLET_A, { price: "0.10 USDC" });
+    const agent = mk(WALLET_A, { price: "0.0001 ETH" });
     // seed 10 completed recipient tasks → proven + in demand → raise
     const db = getDb();
     for (let i = 0; i < 10; i++) {
@@ -104,7 +105,7 @@ describe("Phase 11 routes — optimize (owner only)", () => {
 
     const applied = await optimizePOST(req(`http://localhost/x`, "POST", keyA, { apply: true }), { params });
     expect((await applied.json()).applied).toBe(true);
-    expect(getAgentById(agent.agentId)?.price).toBe("0.12 USDC");
+    expect(getAgentById(agent.agentId)?.price).toBe("0.00012 ETH");
   });
 });
 
@@ -112,7 +113,7 @@ describe("Phase 11 routes — plan (owner only)", () => {
   it("401 without a key, 403 for a non-owner (before any model call)", async () => {
     const planner = mk(WALLET_A);
     const url = "http://localhost/api/tasks/plan";
-    const body = { from: planner.agentId, goal: "do a thing", budgetUsdc: 1 };
+    const body = { from: planner.agentId, goal: "do a thing", budgetEth: 1 };
 
     const noAuth = await planPOST(req(url, "POST", undefined, body));
     expect(noAuth.status).toBe(401);

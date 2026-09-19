@@ -8,8 +8,9 @@ import { createAgent } from "@/lib/agents";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { hashIdempotencyPayload } from "@/lib/idempotency";
 import type { Agent } from "@/sdk/types";
+import { toWei } from "@/lib/money";
 
-const TEST_WALLET = "11111111111111111111111111111111";
+const TEST_WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let counter = 0;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -27,8 +28,8 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
   };
 }
 
-function mockSig(nonce: string | number, units = 1_000_000, currency = "USDC"): string {
-  return `mockpay:${currency}:${units}:${TEST_WALLET}:${TEST_WALLET}:${nonce}`;
+function mockSig(nonce: string | number, eth: number | string = 0.001, currency = "ETH"): string {
+  return `mockpay:${currency}:${toWei(eth)}:${TEST_WALLET}:${TEST_WALLET}:${nonce}`;
 }
 
 // ── Double-spend: concurrent createPayment with the same signature ─────────────
@@ -50,16 +51,16 @@ describe("double-spend protection", () => {
       createPayment({
         fromAgent: sender.agentId,
         toAgent: receiver.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: sig,
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       }),
       createPayment({
         fromAgent: sender.agentId,
         toAgent: receiver.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: sig,
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       }),
     ]);
 
@@ -80,18 +81,18 @@ describe("double-spend protection", () => {
     await createPayment({
       fromAgent: sender.agentId,
       toAgent: receiver.agentId,
-      amountSol: 1,
+      amountEth: 1,
       paymentSignature: sig,
-      priceString: "1 USDC",
+      priceString: "0.001 ETH",
     });
 
     await expect(
       createPayment({
         fromAgent: sender.agentId,
         toAgent: receiver.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: sig,
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       })
     ).rejects.toThrow(/already used/);
   });
@@ -106,16 +107,16 @@ describe("double-spend protection", () => {
       createPayment({
         fromAgent: sender.agentId,
         toAgent: receiver.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: mockSig(`ds-ok-a-${counter++}`),
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       }),
       createPayment({
         fromAgent: sender.agentId,
         toAgent: receiver.agentId,
-        amountSol: 1,
+        amountEth: 1,
         paymentSignature: mockSig(`ds-ok-b-${counter++}`),
-        priceString: "1 USDC",
+        priceString: "0.001 ETH",
       }),
     ]);
 

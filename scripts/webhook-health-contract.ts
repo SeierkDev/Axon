@@ -23,7 +23,7 @@ async function main() {
       name: "Webhook Health Contract Agent",
       capabilities: ["testing"],
       publicKey: agentId,
-      walletAddress: "11111111111111111111111111111111",
+      walletAddress: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
       provider: "anthropic",
       category: "Testing",
       reputation: 0,

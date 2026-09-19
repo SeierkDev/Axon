@@ -10,15 +10,15 @@ function insertTx(toAgent: string, amount: number, opts: { incoming?: string; si
   const now = new Date().toISOString();
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, signature, fee_amount, currency, created_at, settled_at)
-       VALUES (?, NULL, 'req', ?, ?, 'completed', ?, ?, 0, 'USDC', ?, ?)`
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, signature, fee_amount, currency, created_at, settled_at)
+       VALUES (?, NULL, 'req', ?, ?, 'completed', ?, ?, 0, 'ETH', ?, ?)`
     )
     .run(txId, toAgent, amount, opts.incoming ?? null, opts.signature ?? null, now, now);
   return txId;
 }
 
 function amountOf(txId: string): number {
-  return (getDb().prepare("SELECT amount_sol FROM transactions WHERE tx_id = ?").get(txId) as { amount_sol: number }).amount_sol;
+  return (getDb().prepare("SELECT amount_eth FROM transactions WHERE tx_id = ?").get(txId) as { amount_eth: number }).amount_eth;
 }
 
 describe("demo settlement amount backfill", () => {
@@ -31,7 +31,7 @@ describe("demo settlement amount backfill", () => {
       publicKey: `pk-${agentId}`,
       provider: "anthropic",
       reputation: 0,
-      price: "0.15 USDC",
+      price: "0.00015 ETH",
       createdAt: new Date().toISOString(),
     };
     createAgent(agent);
@@ -41,7 +41,7 @@ describe("demo settlement amount backfill", () => {
 
     backfillDemoSettlementAmounts(getDb());
 
-    expect(amountOf(demo)).toBeCloseTo(0.15); // corrected to the agent's price
+    expect(amountOf(demo)).toBeCloseTo(0.00015); // corrected to the agent's price
     expect(amountOf(real)).toBeCloseTo(0.1); // signed settlement untouched
 
     // Idempotent — a second pass leaves the corrected row unchanged.

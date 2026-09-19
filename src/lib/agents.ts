@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
-import { parsePaymentAmount } from "./solana";
+import { parsePaymentAmount } from "./money";
 import { scheduleAgentEmbedding } from "./embeddings";
 import { normalizeToolGrants, parseToolsColumn } from "./agentTools";
 import type { Agent } from "@/sdk/types";
@@ -228,7 +228,7 @@ export interface SearchOptions {
   capabilities?: string[];
   category?: string;
   minReputation?: number;
-  maxPrice?: string; // e.g. "0.50 USDC", free agents (no price) always pass
+  maxPrice?: string; // e.g. "0.50 ETH", free agents (no price) always pass
   sort?: SortField;
   limit?: number;
 }
@@ -332,10 +332,9 @@ export function searchAgents(opts: SearchOptions): Agent[] {
       if (!priceA && !priceB) return b.reputation - a.reputation;
       if (!priceA) return -1;
       if (!priceB) return 1;
-      if (priceA.currency !== priceB.currency) {
-        return priceA.currency.localeCompare(priceB.currency);
-      }
-      return priceA.amount - priceB.amount;
+      // One currency now, so the order is the amount. Compared in wei: two prices can differ by
+      // less than a float can tell apart, and an unstable sort order is a confusing listing.
+      return priceA.wei === priceB.wei ? 0 : priceA.wei < priceB.wei ? -1 : 1;
     });
   }
 

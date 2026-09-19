@@ -38,8 +38,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const budget = createBudget({
     agentId,
     name: body.name,
-    maxPerCallUsdc: body.maxPerCallUsdc,
-    maxPerDayUsdc: body.maxPerDayUsdc,
+    maxPerCallEth: body.maxPerCallEth,
+    maxPerDayEth: body.maxPerDayEth,
     allowedToAgents: body.allowedToAgents,
   });
 
@@ -51,8 +51,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     resourceId: budget.budgetId,
     ownerAgentId: agentId,
     metadata: {
-      maxPerCallUsdc: budget.maxPerCallUsdc,
-      maxPerDayUsdc: budget.maxPerDayUsdc,
+      maxPerCallEth: budget.maxPerCallEth,
+      maxPerDayEth: budget.maxPerDayEth,
       allowedToAgentsCount: budget.allowedToAgents?.length ?? 0,
     },
   });

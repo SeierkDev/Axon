@@ -5,7 +5,7 @@ import { selectAgent, rankAgents } from "@/lib/routing";
 import { getDb } from "@/lib/db";
 import type { Agent } from "@/sdk/types";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let n = 0;
 
 // reputation drives the Proof Score fallback (×100) when proof_score is unset,
@@ -30,9 +30,9 @@ function mk(cap: string, reputation: number, price?: string): Agent {
 describe("routing — Phase 11 auto-routing", () => {
   it("picks the highest-Proof agent for a capability", () => {
     const cap = `rt-pick-${n}`;
-    mk(cap, 3, "0.10 USDC");
-    const best = mk(cap, 9, "0.10 USDC");
-    mk(cap, 6, "0.10 USDC");
+    mk(cap, 3, "0.0001 ETH");
+    const best = mk(cap, 9, "0.0001 ETH");
+    mk(cap, 6, "0.0001 ETH");
     const r = selectAgent({ capability: cap });
     expect(r?.agent.agentId).toBe(best.agentId);
     expect(r?.considered).toBe(3);
@@ -41,22 +41,22 @@ describe("routing — Phase 11 auto-routing", () => {
 
   it("prefers the cheaper agent when Proof is equal", () => {
     const cap = `rt-price-${n}`;
-    const cheap = mk(cap, 7, "0.05 USDC");
-    mk(cap, 7, "0.50 USDC");
+    const cheap = mk(cap, 7, "0.00005 ETH");
+    mk(cap, 7, "0.0005 ETH");
     expect(selectAgent({ capability: cap })?.agent.agentId).toBe(cheap.agentId);
   });
 
   it("skips agents in the exclude list", () => {
     const cap = `rt-excl-${n}`;
-    const top = mk(cap, 9, "0.10 USDC");
-    const second = mk(cap, 8, "0.10 USDC");
+    const top = mk(cap, 9, "0.0001 ETH");
+    const second = mk(cap, 8, "0.0001 ETH");
     expect(selectAgent({ capability: cap, exclude: [top.agentId] })?.agent.agentId).toBe(second.agentId);
   });
 
   it("honours the paying agent's budget allow-list", () => {
     const cap = `rt-budget-${n}`;
-    mk(cap, 9, "0.10 USDC"); // higher Proof, but not on the allow-list
-    const allowed = mk(cap, 5, "0.10 USDC");
+    mk(cap, 9, "0.0001 ETH"); // higher Proof, but not on the allow-list
+    const allowed = mk(cap, 5, "0.0001 ETH");
     const payer = mk(`rt-payer-${n}`, 0);
     createBudget({ agentId: payer.agentId, allowedToAgents: [allowed.agentId] });
     expect(selectAgent({ capability: cap, fromAgent: payer.agentId })?.agent.agentId).toBe(allowed.agentId);
@@ -68,8 +68,8 @@ describe("routing — Phase 11 auto-routing", () => {
 
   it("never routes to a gateway-provider agent (the worker can't drive them)", () => {
     const cap = `rt-gw-${n}`;
-    const gw = mk(cap, 9, "0.10 USDC");     // highest Proof, but a gateway provider
-    const normal = mk(cap, 5, "0.10 USDC");
+    const gw = mk(cap, 9, "0.0001 ETH");     // highest Proof, but a gateway provider
+    const normal = mk(cap, 5, "0.0001 ETH");
     getDb()
       .prepare("INSERT INTO gateway_providers (provider_id, name, endpoint, created_at) VALUES (?, ?, ?, ?)")
       .run(gw.agentId, "GW", "http://x", new Date().toISOString());
@@ -80,9 +80,9 @@ describe("routing — Phase 11 auto-routing", () => {
 
   it("rankAgents returns candidates best-first", () => {
     const cap = `rt-rank-${n}`;
-    mk(cap, 4, "0.10 USDC");
-    mk(cap, 9, "0.10 USDC");
-    mk(cap, 6, "0.10 USDC");
+    mk(cap, 4, "0.0001 ETH");
+    mk(cap, 9, "0.0001 ETH");
+    mk(cap, 6, "0.0001 ETH");
     const ranked = rankAgents({ capability: cap });
     expect(ranked.length).toBe(3);
     expect(ranked[0].proofScore).toBeGreaterThanOrEqual(ranked[1].proofScore);
@@ -93,7 +93,7 @@ describe("routing — Phase 11 auto-routing", () => {
     const cap = `rt-panel-${n}`;
     mk(cap, 9); // free
     mk(cap, 8); // free
-    mk(cap, 4, "0.10 USDC"); // priced — excluded from a free quorum panel
+    mk(cap, 4, "0.0001 ETH"); // priced — excluded from a free quorum panel
     const panel = rankAgents({ capability: cap }).filter((c) => !c.agent.price).map((c) => c.agent.agentId);
     expect(panel.length).toBe(2);
   });

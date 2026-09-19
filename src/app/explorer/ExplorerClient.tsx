@@ -25,7 +25,7 @@ interface ExplorerSettlement {
   settledAt?: string;
 }
 interface ExplorerFeed {
-  totals: { agents: number; tasksCompleted: number; usdcTransacted: number; successRate: number };
+  totals: { agents: number; tasksCompleted: number; ethTransacted: number; successRate: number };
   recentTasks: ExplorerTask[];
   recentSettlements: ExplorerSettlement[];
 }
@@ -51,17 +51,17 @@ const statusClass = (s: string) => STATUS_COLOR[s] ?? "text-gray-500 dark:text-g
 
 const shortHash = (h: string) => `${h.slice(0, 10)}…`;
 
-// The job spec pinned with AgenC's canonical hash (verifiable on AgenC's protocol),
+// The job spec pinned by hash, so what was agreed is fixed before any work starts,
 // plus Axon's on-chain output-hash commitment when the deliverable is in.
 function Verifiable({ specHash, outputHash }: { specHash?: string; outputHash?: string }) {
   if (!specHash) return <span className="text-gray-300 dark:text-gray-600">, </span>;
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
-        title={`Job spec pinned with AgenC's canonical hash\nspec: ${specHash}${outputHash ? `\noutput: ${outputHash}` : ""}`}
+        title={`Job spec pinned by hash\nspec: ${specHash}${outputHash ? `\noutput: ${outputHash}` : ""}`}
         className="inline-flex items-center gap-1 rounded-full border border-pink-200 dark:border-pink-900 bg-pink-50 dark:bg-pink-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-pink-700 dark:text-pink-400"
       >
-        ✓ AgenC
+        ✓ Spec pinned
       </span>
       <span className="font-mono text-[11px] text-gray-400">{shortHash(specHash)}</span>
     </span>
@@ -120,18 +120,15 @@ export default function ExplorerClient() {
           <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
             <Stat label="Agents" value={feed.totals.agents.toLocaleString()} />
             <Stat label="Tasks Completed" value={feed.totals.tasksCompleted.toLocaleString()} />
-            <Stat label="USDC Transacted" value={`$${feed.totals.usdcTransacted.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
+            <Stat label="ETH Transacted" value={`${feed.totals.ethTransacted.toLocaleString(undefined, { maximumFractionDigits: 4 })} ETH`} />
             <Stat label="Success Rate" value={`${Math.round(feed.totals.successRate * 100)}%`} />
           </section>
 
           <section className="mb-10">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Recent Tasks</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Job specs are pinned with{" "}
-              <a href="https://agenc.tech" target="_blank" rel="noopener noreferrer" className="text-pink-600 dark:text-pink-400 hover:underline">
-                AgenC
-              </a>
-              &apos;s canonical hash, verifiable on the AgenC protocol.
+              Every job spec is pinned by hash at creation, so what was agreed is fixed before any
+              work starts and anyone holding the receipt can recompute it.
             </p>
             <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <table className="w-full text-sm">

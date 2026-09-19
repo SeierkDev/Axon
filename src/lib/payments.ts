@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
-import { parsePaymentAmount, checkIncomingPayment, CircuitOpenError, isValidSolanaAddress } from "./solana";
+import { parsePaymentAmount, checkIncomingPayment, toWei, weiToEth, formatEth } from "./money";
+import { CircuitOpenError } from "./evm";
+import { isWalletAddress } from "./address";
 import { queueWebhookEvent } from "./webhooks";
 import { checkBudget } from "./budgets";
 import { getAgentById } from "./agents";
@@ -33,7 +35,7 @@ export interface Payment {
   taskId?: string;
   fromAgent: string;
   toAgent: string;
-  amountSol: number;
+  amountEth: number;
   currency: string;
   status: PaymentStatus;
   signature?: string;
@@ -47,7 +49,7 @@ interface PaymentRow {
   task_id: string | null;
   from_agent: string;
   to_agent: string;
-  amount_sol: number;
+  amount_eth: number;
   fee_amount: number;
   currency: string;
   status: PaymentStatus;
@@ -65,8 +67,8 @@ function rowToPayment(row: PaymentRow): Payment {
     taskId: row.task_id ?? undefined,
     fromAgent: row.from_agent,
     toAgent: row.to_agent,
-    amountSol: row.amount_sol,
-    currency: row.currency ?? "USDC",
+    amountEth: row.amount_eth,
+    currency: row.currency ?? "ETH",
     status: row.status,
     signature: row.signature ?? undefined,
     incomingSignature: row.incoming_signature ?? undefined,
@@ -76,7 +78,7 @@ function rowToPayment(row: PaymentRow): Payment {
 }
 
 function resolvePayerWallet(fromAgent: string): string | null {
-  if (isValidSolanaAddress(fromAgent)) return fromAgent;
+  if (isWalletAddress(fromAgent)) return fromAgent;
   const agent = getAgentById(fromAgent);
   return agent?.walletAddress ?? null;
 }
@@ -87,15 +89,15 @@ export async function createPayment(opts: {
   taskId?: string;
   fromAgent: string;
   toAgent: string;
-  amountSol: number;
+  amountEth: number;
   paymentSignature: string;
-  priceString?: string; // e.g. "5 USDC" or "0.05 SOL", used for verification
+  priceString?: string; // e.g. "0.05 ETH", used for verification
   payerWallet?: string; // explicit payer for anonymous hires, verified on-chain as the tx signer
 }): Promise<Payment> {
   const db = getDb();
 
-  const base = parsePaymentAmount(opts.priceString ?? `${opts.amountSol} SOL`);
-  if (!base) throw new Error("Payment amount must be a positive SOL or USDC amount");
+  const base = parsePaymentAmount(opts.priceString ?? formatEth(opts.amountEth));
+  if (!base) throw new Error("Payment amount must be a positive ETH amount");
 
   // Fast pre-check for replay and budget before hitting the Solana RPC
   const existingFast = db
@@ -109,7 +111,7 @@ export async function createPayment(opts: {
   // a caller can't claim a wallet that didn't actually sign the payment.
   const payerWallet =
     resolvePayerWallet(opts.fromAgent) ??
-    (opts.payerWallet && isValidSolanaAddress(opts.payerWallet) ? opts.payerWallet : null);
+    (opts.payerWallet && isWalletAddress(opts.payerWallet) ? opts.payerWallet : null);
   if (!payerWallet) {
     throw new Error("Payment payer must be a wallet address or an agent with a walletAddress");
   }
@@ -126,7 +128,7 @@ export async function createPayment(opts: {
   }
   if (!verification.ok) {
     const e = new Error(
-      `Payment not verified on-chain. Expected ${base.amount.toFixed(base.currency === "USDC" ? 2 : 4)} ${base.currency} signed by ${payerWallet} (${verification.reason})`
+      `Payment not verified on-chain. Expected ${formatEth(base.wei)} signed by ${payerWallet} (${verification.reason})`
     ) as PaymentError;
     // "Not found / not yet confirmed" can be RPC lag for a payment that did land.
     // Treat it as transient (retry the same signature) rather than a hard failure
@@ -147,14 +149,15 @@ export async function createPayment(opts: {
       .get(opts.paymentSignature);
     if (existing) throw new Error("Payment signature already used");
 
-    if (base.currency === "USDC") {
-      checkBudget(opts.fromAgent, opts.toAgent, base.amount);
-    }
+    checkBudget(opts.fromAgent, opts.toAgent, base.wei);
 
+    // The AMOUNT VERIFIED is what gets escrowed, not the number the caller passed alongside it.
+    // Those can disagree when a price string is supplied, and the one the chain actually proved is
+    // the only one that should end up in the ledger.
     db.prepare(`
-      INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at)
+      INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
       VALUES (?, ?, ?, ?, ?, 'escrow', ?, ?, ?, ?)
-    `).run(txId, opts.taskId ?? null, opts.fromAgent, opts.toAgent, opts.amountSol, opts.paymentSignature, 0, base.currency, createdAt);
+    `).run(txId, opts.taskId ?? null, opts.fromAgent, opts.toAgent, weiToEth(base.wei), opts.paymentSignature, 0, base.currency, createdAt);
   })();
 
   const payment = getPaymentById(txId);
@@ -206,7 +209,7 @@ export function releasePayment(taskId: string): Payment | null {
       taskId: payment.taskId,
       fromAgent: payment.fromAgent,
       toAgent: payment.toAgent,
-      amount: payment.amountSol,
+      amount: payment.amountEth,
       currency: payment.currency,
       settledAt: payment.settledAt,
     });
@@ -224,7 +227,7 @@ export function releasePayment(taskId: string): Payment | null {
     taskId: payment.taskId,
     fromAgent: payment.fromAgent,
     toAgent: payment.toAgent,
-    amount: payment.amountSol,
+    amount: payment.amountEth,
     currency: payment.currency,
   });
 
@@ -236,7 +239,7 @@ export function releasePayment(taskId: string): Payment | null {
       kind: "settlement.completed",
       fromAgent: payment.fromAgent,
       toAgent: payment.toAgent,
-      meta: { amount: payment.amountSol, currency: payment.currency },
+      meta: { amount: payment.amountEth, currency: payment.currency },
     });
   }
 
@@ -255,20 +258,22 @@ function releaseWithSplits(
   splits: TaskSplit[],
   settledAt: string
 ): Payment {
-  const payouts = computeSplitAmounts(escrow.amount_sol, splits);
+  // Divide the exact wei, not the stored decimal: the payouts must sum back to the escrow.
+  const escrowWei = toWei(escrow.amount_eth) ?? 0n;
+  const payouts = computeSplitAmounts(escrowWei, splits);
 
   db.transaction(() => {
     db.prepare("UPDATE transactions SET status='split', settled_at=? WHERE tx_id=?").run(settledAt, escrow.tx_id);
     const insert = db.prepare(
       `INSERT INTO transactions
-         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status, funding_source)
+         (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status, funding_source)
        VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?, ?, ?)`
     );
     for (const p of payouts) {
       const burn = getAgentById(p.agentId)?.verificationStatus === "platform" ? "pending" : null;
       // Carry the original escrow's funding source onto each payout so a
       // balance-funded split still counts as balance spend for the payer.
-      insert.run(randomUUID(), escrow.task_id, escrow.from_agent, p.agentId, p.amount, escrow.currency, settledAt, settledAt, burn, escrow.funding_source ?? null);
+      insert.run(randomUUID(), escrow.task_id, escrow.from_agent, p.agentId, weiToEth(p.wei), escrow.currency, settledAt, settledAt, burn, escrow.funding_source ?? null);
     }
   })();
 
@@ -281,7 +286,7 @@ function releaseWithSplits(
       kind: "settlement.completed",
       fromAgent: escrow.from_agent,
       toAgent: escrow.to_agent,
-      meta: { amount: escrow.amount_sol, currency: escrow.currency, splits: payouts.length },
+      meta: { amount: escrow.amount_eth, currency: escrow.currency, splits: payouts.length },
     });
   }
 
@@ -291,7 +296,7 @@ function releaseWithSplits(
         taskId: escrow.task_id,
         fromAgent: escrow.from_agent,
         toAgent: p.agentId,
-        amount: p.amount,
+        amount: weiToEth(p.wei),
         currency: escrow.currency,
         settledAt,
         split: true,
@@ -306,7 +311,7 @@ function releaseWithSplits(
   logger.info("payment.settled_split", "Escrow split settled", {
     taskId: escrow.task_id,
     recipients: payouts.length,
-    total: escrow.amount_sol,
+    total: escrow.amount_eth,
     currency: escrow.currency,
   });
 
@@ -335,46 +340,47 @@ export function releaseWithPenalty(taskId: string, penaltyBps: number): Payment 
   if (!row) return null;
 
   const settledAt = new Date().toISOString();
-  // Integer micro-unit math (USDC has 6 decimals) so payouts + penalty sum back
-  // to exactly the escrowed total — no dust.
-  const micro = Math.round(row.amount_sol * 1_000_000);
-  const penaltyUnits = Math.floor((micro * penaltyBps) / TOTAL_BPS);
-  const providerAmount = (micro - penaltyUnits) / 1_000_000;
-  const penaltyAmount = penaltyUnits / 1_000_000;
+  // Wei, so the payout and the penalty sum back to exactly the escrowed total with no dust. The
+  // penalty rounds DOWN, which means any single wei of remainder stays with the provider rather
+  // than being taken from them.
+  const escrowWei = toWei(row.amount_eth) ?? 0n;
+  const penaltyWei = (escrowWei * BigInt(penaltyBps)) / BigInt(TOTAL_BPS);
+  const providerWei = escrowWei - penaltyWei;
+  const penaltyAmount = weiToEth(penaltyWei);
 
   // Distribute the reduced payout: across the split recipients if a split exists,
   // otherwise the whole reduced amount to the single recipient.
   const splits = getSplitsForTask(taskId);
   const payouts =
     splits.length > 0
-      ? computeSplitAmounts(providerAmount, splits)
-      : [{ agentId: row.to_agent, amount: providerAmount }];
+      ? computeSplitAmounts(providerWei, splits)
+      : [{ agentId: row.to_agent, wei: providerWei }];
 
   db.transaction(() => {
     db.prepare("UPDATE transactions SET status='split', settled_at=? WHERE tx_id=?").run(settledAt, row.tx_id);
     const insert = db.prepare(
       `INSERT INTO transactions
-         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status, funding_source)
+         (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status, funding_source)
        VALUES (?, ?, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?, ?, ?)`
     );
     for (const p of payouts) {
       const burn = getAgentById(p.agentId)?.verificationStatus === "platform" ? "pending" : null;
       // Carry the escrow's funding source so a balance-funded hire still counts
       // as balance spend for the payer even when settled with an SLA penalty.
-      insert.run(randomUUID(), row.task_id, row.from_agent, p.agentId, p.amount, row.currency, settledAt, settledAt, burn, row.funding_source ?? null);
+      insert.run(randomUUID(), row.task_id, row.from_agent, p.agentId, weiToEth(p.wei), row.currency, settledAt, settledAt, burn, row.funding_source ?? null);
     }
     // Penalty returned to the client (from_agent). A 'refunded' row documents the
     // return without crediting it as agent earnings.
     db.prepare(
       `INSERT INTO transactions
-         (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status)
+         (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at, burn_status)
        VALUES (?, ?, ?, ?, ?, 'refunded', NULL, 0, ?, ?, ?, NULL)`
     ).run(randomUUID(), row.task_id, row.to_agent, row.from_agent, penaltyAmount, row.currency, settledAt, settledAt);
   })();
 
   recordRefundNote(
     taskId,
-    `SLA penalty: ${penaltyAmount} ${row.currency} (${penaltyBps} bps) refunded to client for late delivery`
+    `SLA penalty: ${formatEth(penaltyWei)} (${penaltyBps} bps) refunded to client for late delivery`
   );
 
   for (const p of payouts) {
@@ -383,7 +389,7 @@ export function releaseWithPenalty(taskId: string, penaltyBps: number): Payment 
         taskId: row.task_id,
         fromAgent: row.from_agent,
         toAgent: p.agentId,
-        amount: p.amount,
+        amount: weiToEth(p.wei),
         currency: row.currency,
         settledAt,
         slaPenaltyBps: penaltyBps,
@@ -402,7 +408,7 @@ export function releaseWithPenalty(taskId: string, penaltyBps: number): Payment 
     taskId: row.task_id,
     recipients: payouts.length,
     penaltyBps,
-    providerAmount,
+    providerAmount: weiToEth(providerWei),
     penaltyAmount,
     currency: row.currency,
   });
@@ -416,7 +422,7 @@ export function releaseWithPenalty(taskId: string, penaltyBps: number): Payment 
       kind: "settlement.completed",
       fromAgent: row.from_agent,
       toAgent: row.to_agent,
-      meta: { amount: providerAmount, currency: row.currency, penaltyBps },
+      meta: { amount: weiToEth(providerWei), currency: row.currency, penaltyBps },
     });
   }
 
@@ -445,7 +451,7 @@ export function refundPayment(taskId: string): Payment | null {
       taskId: payment.taskId,
       fromAgent: payment.fromAgent,
       toAgent: payment.toAgent,
-      amount: payment.amountSol,
+      amount: payment.amountEth,
       currency: payment.currency,
       refundedAt: payment.settledAt,
     });
@@ -463,7 +469,7 @@ export function refundPayment(taskId: string): Payment | null {
     taskId: payment.taskId,
     fromAgent: payment.fromAgent,
     toAgent: payment.toAgent,
-    amount: payment.amountSol,
+    amount: payment.amountEth,
     currency: payment.currency,
   });
 
@@ -532,15 +538,15 @@ export function getAgentBalance(agentId: string): AgentBalance {
   const db = getDb();
 
   const earned = (db.prepare(
-    "SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE to_agent=? AND status='completed'"
+    "SELECT COALESCE(SUM(amount_eth),0) AS v FROM transactions WHERE to_agent=? AND status='completed'"
   ).get(agentId) as { v: number }).v;
 
   const spent = (db.prepare(
-    "SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE from_agent=? AND status='completed'"
+    "SELECT COALESCE(SUM(amount_eth),0) AS v FROM transactions WHERE from_agent=? AND status='completed'"
   ).get(agentId) as { v: number }).v;
 
   const escrow = (db.prepare(
-    "SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE from_agent=? AND status='escrow'"
+    "SELECT COALESCE(SUM(amount_eth),0) AS v FROM transactions WHERE from_agent=? AND status='escrow'"
   ).get(agentId) as { v: number }).v;
 
   const tasksPaid = (db.prepare(
@@ -557,7 +563,7 @@ export function getAgentBalance(agentId: string): AgentBalance {
   };
 }
 
-// USDC an agent can spend from its earnings right now: everything it has earned,
+// ETH an agent can spend from its earnings right now: everything it has earned,
 // minus what it has already spent FROM BALANCE, minus what balance-funded hires
 // are holding in escrow. This is the agent's credit on the pooled receiver
 // wallet, NOT its own on-chain wallet.
@@ -579,9 +585,9 @@ export function getAgentBalance(agentId: string): AgentBalance {
 export function getAvailableBalance(agentId: string): number {
   const db = getDb();
   const v = (sql: string) => (db.prepare(sql).get(agentId) as { v: number }).v;
-  const earned = v("SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE to_agent=? AND status='completed' AND currency='USDC'");
-  const spent = v("SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE from_agent=? AND status='completed' AND currency='USDC' AND funding_source='balance'");
-  const escrow = v("SELECT COALESCE(SUM(amount_sol),0) AS v FROM transactions WHERE from_agent=? AND status='escrow' AND currency='USDC' AND funding_source='balance'");
+  const earned = v("SELECT COALESCE(SUM(amount_eth),0) AS v FROM transactions WHERE to_agent=? AND status='completed'");
+  const spent = v("SELECT COALESCE(SUM(amount_eth),0) AS v FROM transactions WHERE from_agent=? AND status='completed' AND funding_source='balance'");
+  const escrow = v("SELECT COALESCE(SUM(amount_eth),0) AS v FROM transactions WHERE from_agent=? AND status='escrow' AND funding_source='balance'");
   return earned - spent - escrow;
 }
 
@@ -589,20 +595,20 @@ export function getAvailableBalance(agentId: string): number {
 // on-chain transfer. The value is already pooled from when the agent earned it,
 // so this just creates an escrow that moves ledger entries — funded internally
 // (incoming_signature NULL), settled by the normal releasePayment/refundPayment
-// lifecycle exactly like an on-chain escrow. USDC only; the payer must be a
+// lifecycle exactly like an on-chain escrow. ETH only; the payer must be a
 // registered agent (a balance belongs to an identity). Throws (non-transient) if
 // the agent doesn't have enough available balance.
 export function createBalancePayment(opts: {
   taskId?: string;
   fromAgent: string;
   toAgent: string;
-  amountSol: number;
+  amountEth: number;
   priceString?: string;
 }): Payment {
   const db = getDb();
-  const base = parsePaymentAmount(opts.priceString ?? `${opts.amountSol} USDC`);
-  if (!base || base.currency !== "USDC") {
-    throw new Error("Balance payments must be a positive USDC amount");
+  const base = parsePaymentAmount(opts.priceString ?? formatEth(opts.amountEth));
+  if (!base) {
+    throw new Error("Balance payments must be a positive ETH amount");
   }
   if (!getAgentById(opts.fromAgent)) {
     throw new Error("Balance payments require a registered paying agent");
@@ -615,17 +621,19 @@ export function createBalancePayment(opts: {
   // concurrent hires can't both pass the check and overspend the same funds
   // (the second sees the first's escrow row).
   db.transaction(() => {
-    const available = getAvailableBalance(opts.fromAgent);
-    if (available < base.amount - 1e-9) {
+    // Compared in wei. A float comparison here needed an epsilon to paper over its own error, and
+    // an epsilon in a spend check is a licence to overspend by exactly that much.
+    const availableWei = toWei(getAvailableBalance(opts.fromAgent)) ?? 0n;
+    if (availableWei < base.wei) {
       throw new Error(
-        `Insufficient balance: ${available.toFixed(2)} USDC available, need ${base.amount.toFixed(2)} USDC`
+        `Insufficient balance: ${formatEth(availableWei)} available, need ${formatEth(base.wei)}`
       );
     }
-    checkBudget(opts.fromAgent, opts.toAgent, base.amount);
+    checkBudget(opts.fromAgent, opts.toAgent, base.wei);
     db.prepare(`
-      INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, status, incoming_signature, fee_amount, currency, created_at, funding_source)
+      INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, funding_source)
       VALUES (?, ?, ?, ?, ?, 'escrow', NULL, 0, ?, ?, 'balance')
-    `).run(txId, opts.taskId ?? null, opts.fromAgent, opts.toAgent, base.amount, base.currency, createdAt);
+    `).run(txId, opts.taskId ?? null, opts.fromAgent, opts.toAgent, weiToEth(base.wei), base.currency, createdAt);
   })();
 
   const payment = getPaymentById(txId);
@@ -643,7 +651,7 @@ export function createBalancePayment(opts: {
 }
 
 
-export function parsePriceToSol(price: string | undefined): number | null {
+export function parsePriceToEth(price: string | undefined): number | null {
   if (!price) return null;
   const parsed = parsePaymentAmount(price);
   if (!parsed) return null;

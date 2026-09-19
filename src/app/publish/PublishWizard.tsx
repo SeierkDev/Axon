@@ -16,7 +16,7 @@ interface AgentForm {
   agentId: string;
   name: string;
   capabilities: string;   // comma-separated
-  price: string;          // "0.10 USDC" or empty
+  price: string;          // "0.10 ETH" or empty
   provider: Provider;
   providerModel: string;
   providerEndpoint: string; // ollama only
@@ -221,8 +221,8 @@ export default function PublishWizard() {
     }
 
     if (form.price.trim()) {
-      if (!/^\d+(?:\.\d{1,6})?\s*(USDC|SOL)$/i.test(form.price.trim())) {
-        errors.price = "Format: 0.10 USDC or 0.05 SOL";
+      if (!/^\d+(?:\.\d{1,6})?\s*(ETH|SOL)$/i.test(form.price.trim())) {
+        errors.price = "Format: 0.10 ETH or 0.05 SOL";
       }
     }
 
@@ -453,11 +453,11 @@ export default function PublishWizard() {
             {formErrors.capabilities && <p className="text-xs text-red-500 mt-1">{formErrors.capabilities}</p>}
           </Field>
 
-          <Field label="Price per task" hint="Leave blank for free. Format: 0.10 USDC or 0.05 SOL">
+          <Field label="Price per task" hint="Leave blank for free. Format: 0.10 ETH or 0.05 SOL">
             <input
               value={form.price}
               onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-              placeholder="0.10 USDC"
+              placeholder="0.10 ETH"
               className={inputCls}
             />
             {formErrors.price && <p className="text-xs text-red-500 mt-1">{formErrors.price}</p>}

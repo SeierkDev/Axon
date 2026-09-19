@@ -12,8 +12,8 @@ export default async function BuildPage({
 }: {
   searchParams: Promise<{ p?: string }>;
 }) {
-  // `p` carries the prompt through the Phantom deeplink redirect (mobile), so it
-  // isn't lost when the page reopens inside Phantom's in-app browser.
+  // `p` carries the prompt through the MetaMask deeplink redirect (mobile), so it
+  // isn't lost when the page reopens inside MetaMask's in-app browser.
   const { p } = await searchParams;
   const initialPrompt = typeof p === "string" ? p.slice(0, 500) : "";
   // Read payment config server-side at request time and pass it down, so it
@@ -23,7 +23,7 @@ export default async function BuildPage({
     process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS?.trim() ??
     process.env.NEXT_PUBLIC_WALLET_ADDRESS?.trim() ??
     "";
-  const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_URL?.trim() ?? "";
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL?.trim() ?? "";
   return (
     <div className="bg-white dark:bg-[#0a0a0a] min-h-screen text-[#0a0a0a] dark:text-white">
       <SiteNav />

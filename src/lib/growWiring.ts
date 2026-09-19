@@ -6,7 +6,7 @@
 import { getAgentById } from "./agents";
 import { getProvider, runWithProviderTools } from "./providers";
 import { resolveAgentTools, hasTools, toolsActiveFor } from "./agentTools";
-import { payUsdc, PAYMENT_RECEIVER_WALLET_ADDRESS } from "./solana";
+import { payNative, PAYMENT_RECEIVER_WALLET_ADDRESS } from "./evm";
 import type { GrowDeps, GrowCandidate } from "./growRunner";
 
 const THINK_SYSTEM =
@@ -20,20 +20,20 @@ interface ApiAgent {
   capabilities?: string[];
 }
 
-/** Parse a listing price to USDC. 0 = free lane; null = not USDC-priced (can't pay from a USDC balance). */
-function parseUsdc(price?: string | null): number | null {
+/** Parse a listing price to ETH. 0 = free lane; null = not ETH-priced (cannot be paid from an ETH balance). */
+function parsePrice(price?: string | null): number | null {
   if (!price) return 0;
-  const m = price.trim().match(/^([\d.]+)\s*USDC$/i);
+  const m = price.trim().match(/^([\d.]+)\s*ETH$/i);
   return m ? parseFloat(m[1]) : null;
 }
 
-/** USDC amount settled/escrowed for a task, from its public receipt (0 if unavailable). */
-async function receiptCostUsdc(base: string, taskId: string): Promise<number> {
+/** ETH amount settled/escrowed for a task, from its public receipt (0 if unavailable). */
+async function receiptCost(base: string, taskId: string): Promise<number> {
   try {
     const rr = await fetch(`${base}/api/receipts/${encodeURIComponent(taskId)}/public`);
     if (rr.ok) {
       const pr = (await rr.json()) as { settlement?: { amount: number; currency: string } };
-      if (pr.settlement?.currency === "USDC") return pr.settlement.amount;
+      if (pr.settlement?.currency === "ETH") return pr.settlement.amount;
     }
   } catch {
     // best-effort
@@ -72,12 +72,12 @@ export function buildGrowDeps(cfg: GrowWiringConfig): GrowDeps {
     const ceiling = q.maxPriceUsdc ?? Infinity;
     return agents
       .map((a): GrowCandidate | null => {
-        const priceUsdc = parseUsdc(a.price);
-        if (priceUsdc === null || priceUsdc > ceiling) return null; // non-USDC or over budget
+        const priceEth = parsePrice(a.price);
+        if (priceEth === null || priceEth > ceiling) return null; // non-ETH or over budget
         return {
           agentId: a.agentId,
           name: a.name ?? a.agentId,
-          priceUsdc,
+          priceEth,
           proofScore: a.proofScore,
           capabilities: a.capabilities ?? [],
         };
@@ -85,13 +85,13 @@ export function buildGrowDeps(cfg: GrowWiringConfig): GrowDeps {
       .filter((x): x is GrowCandidate => x !== null);
   };
 
-  const hire: GrowDeps["hire"] = async ({ to, task, context, priceUsdc }) => {
+  const hire: GrowDeps["hire"] = async ({ to, task, context, priceEth }) => {
     // Free-lane specialists need no payment. Priced ones are paid either ON-CHAIN
-    // (the agent signs a real USDC transfer from its own wallet — non-custodial) or
+    // (the agent signs a real ETH transfer from its own wallet — non-custodial) or
     // from its earned balance. Either way it's a real hire with a real receipt.
     const payload: Record<string, unknown> = { from: cfg.self, to, task, context };
-    let committedUsdc = 0; // USDC irrevocably moved on-chain, the accounting floor if a receipt is slow/missing
-    if (priceUsdc > 0) {
+    let committedEth = 0; // ETH irrevocably moved on-chain, the accounting floor if a receipt is slow/missing
+    if (priceEth > 0) {
       if (cfg.walletSecret) {
         if (!PAYMENT_RECEIVER_WALLET_ADDRESS) throw new Error("PAYMENT_RECEIVER_WALLET_ADDRESS not configured");
         // The on-chain payment is irreversible and happens BEFORE task creation, so
@@ -99,16 +99,16 @@ export function buildGrowDeps(cfg: GrowWiringConfig): GrowDeps {
         // pay for a hire that won't be created, and never under/overpay a stale price.
         const agRes = await fetch(`${base}/api/agents/${encodeURIComponent(to)}`, { headers: auth });
         if (!agRes.ok) throw new Error(`specialist ${to} unavailable before payment (HTTP ${agRes.status}), not paying`);
-        const amount = parseUsdc((await agRes.json() as { price?: string | null }).price);
-        if (amount === null) throw new Error(`specialist ${to} is no longer USDC-priced, not paying`);
+        const amount = parsePrice((await agRes.json() as { price?: string | null }).price);
+        if (amount === null) throw new Error(`specialist ${to} is no longer ETH-priced, not paying`);
         // Never pay above what discovery authorized: if the price rose, the budget
         // cap would reject the task AFTER payment (funds lost). Bail before paying.
-        if (amount > priceUsdc) throw new Error(`specialist ${to} price rose (${amount} > ${priceUsdc} USDC) since discovery, not paying`);
+        if (amount > priceEth) throw new Error(`specialist ${to} price rose (${amount} > ${priceEth} ETH) since discovery, not paying`);
         if (amount > 0) {
-          const { signature, payerWallet } = await payUsdc(cfg.walletSecret, PAYMENT_RECEIVER_WALLET_ADDRESS, amount);
-          payload.paymentSignature = signature;
+          const { hash, payerWallet } = await payNative(cfg.walletSecret, PAYMENT_RECEIVER_WALLET_ADDRESS, amount);
+          payload.paymentSignature = hash;
           payload.payerWallet = payerWallet;
-          committedUsdc = amount;
+          committedEth = amount;
         }
         // amount === 0 → the listing went free; create the hire with no payment
       } else {
@@ -135,7 +135,7 @@ export function buildGrowDeps(cfg: GrowWiringConfig): GrowDeps {
       if (Date.now() >= deadline) {
         // Money may already be committed (paid on-chain / escrowed) — report it so the
         // budget never under-counts a timed-out hire whose escrow could still settle.
-        return { taskId, status: "timeout", costUsdc: (await receiptCostUsdc(base, taskId)) || committedUsdc };
+        return { taskId, status: "timeout", costEth: (await receiptCost(base, taskId)) || committedEth };
       }
       await new Promise((r) => setTimeout(r, 2500));
       try {
@@ -150,12 +150,12 @@ export function buildGrowDeps(cfg: GrowWiringConfig): GrowDeps {
         // transient read failure — keep polling until the deadline
       }
     }
-    if (status === "failed") return { taskId, status: "failed", error: error ?? "task failed", costUsdc: 0 };
+    if (status === "failed") return { taskId, status: "failed", error: error ?? "task failed", costEth: 0 };
 
     // Cost from the public receipt's settlement (authoritative); fall back to what we
     // know moved on-chain so a slow receipt never under-reports real spend.
-    const costUsdc = (await receiptCostUsdc(base, taskId)) || committedUsdc;
-    return { taskId, status: "completed", output: output ?? "", costUsdc, receiptUrl: `/r/${taskId}` };
+    const costEth = (await receiptCost(base, taskId)) || committedEth;
+    return { taskId, status: "completed", output: output ?? "", costEth, receiptUrl: `/r/${taskId}` };
   };
 
   /**

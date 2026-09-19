@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { randomUUID } from "crypto";
 import type { Agent } from "@/sdk/types";
 
-const TEST_WALLET = "11111111111111111111111111111111";
+const TEST_WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let counter = 0;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -119,7 +119,7 @@ describe("computeReputation: paymentReliability with paid tasks", () => {
     // Link a transaction to this task (simulates a payment flow)
     getDb().prepare(`
       INSERT INTO transactions
-        (tx_id, task_id, from_agent, to_agent, amount_sol, fee_amount, currency, status, incoming_signature, created_at)
+        (tx_id, task_id, from_agent, to_agent, amount_eth, fee_amount, currency, status, incoming_signature, created_at)
       VALUES (?, ?, ?, ?, 1.0, 0, 'USDC', 'completed', NULL, ?)
     `).run(randomUUID(), task.taskId, sender.agentId, worker.agentId, new Date().toISOString());
 

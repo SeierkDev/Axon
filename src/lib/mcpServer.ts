@@ -9,7 +9,7 @@
 //
 // Payments stay non-custodial, exactly like the rest of Axon: a paid hire
 // returns x402-style payment requirements (amount + treasury address); the
-// client pays USDC on Solana with its own wallet and calls hire_agent again
+// client pays with its own wallet and calls hire_agent again
 // with the payment signature. This module never touches funds — hire_agent
 // delegates to the real /api/tasks route handler, inheriting its free-lane
 // limits, payment verification, and replay guards without duplicating any of it.
@@ -27,8 +27,8 @@ import { getReproProof } from "./reproducibility";
 import { getPublicTrace } from "./traceEvents";
 import { computeProofScore } from "./proofScore";
 import { semanticSearchAgents } from "./embeddings";
-import { parsePriceToSol } from "./payments";
-import { parsePaymentAmount } from "./solana";
+import { parsePriceToEth } from "./payments";
+import { parsePaymentAmount } from "./money";
 import type { Agent } from "@/sdk/types";
 
 const PROTOCOL_VERSION = "2025-03-26";
@@ -85,7 +85,7 @@ export const MCP_TOOLS = [
   {
     name: "search_agents",
     description:
-      "Search the Axon agent marketplace. Returns agents with their id, capabilities, price (USDC per task; absent = free lane), reputation (0-10) and portable Proof Score (0-1000, third-party verifiable).",
+      "Search the Axon agent marketplace. Returns agents with their id, capabilities, price (ETH per task; absent = free lane), reputation (0-10) and portable Proof Score (0-1000, third-party verifiable).",
     inputSchema: {
       type: "object",
       properties: {
@@ -108,7 +108,7 @@ export const MCP_TOOLS = [
   {
     name: "hire_agent",
     description:
-      "Hire an Axon agent for a task. Free-lane agents run immediately. Paid agents return payment requirements (USDC amount + Solana address): pay with your own wallet, then call again with paymentSignature, the payment IS the authorization, no account needed. Returns a taskId plus a claimToken; keep the claimToken, it is the only way to read the result.",
+      "Hire an Axon agent for a task. Free-lane agents run immediately. Paid agents return payment requirements (an ETH amount and an address): pay with your own wallet, then call again with paymentSignature, the payment IS the authorization, no account needed. Returns a taskId plus a claimToken; keep the claimToken, it is the only way to read the result.",
     inputSchema: {
       type: "object",
       properties: {
@@ -117,11 +117,11 @@ export const MCP_TOOLS = [
         context: { type: "object", description: "Optional structured hints for the agent" },
         paymentSignature: {
           type: "string",
-          description: "Solana transaction signature of your USDC payment (required for paid agents, second call)",
+          description: "Transaction hash of your ETH payment (required for paid agents, second call)",
         },
         payerWallet: {
           type: "string",
-          description: "The Solana address that signed the payment (send with paymentSignature for paid agents)",
+          description: "The address that sent the payment (send with paymentSignature for paid agents)",
         },
       },
       required: ["agentId", "task"],
@@ -222,9 +222,9 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
 
   const paymentSignature = typeof args.paymentSignature === "string" ? args.paymentSignature.trim() : "";
   const payerWallet = typeof args.payerWallet === "string" ? args.payerWallet.trim() : "";
-  // Paid means exactly what the tasks route will enforce (parsePriceToSol) — a
-  // price of "0 USDC" or unparseable text is free there, so it is free here too.
-  const paid = parsePriceToSol(agent.price ?? undefined) !== null;
+  // Paid means exactly what the tasks route will enforce (parsePriceToEth) — a
+  // price of "0 ETH" or unparseable text is free there, so it is free here too.
+  const paid = parsePriceToEth(agent.price ?? undefined) !== null;
   if (paid && !paymentSignature) {
     const parsed = parsePaymentAmount(agent.price!);
     const payTo = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS ?? null;
@@ -234,8 +234,8 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
       amount: parsed?.amount ?? null,
       currency: parsed?.currency ?? null,
       payTo,
-      network: "solana-mainnet",
-      instructions: `Pay ${agent.price} to ${payTo ?? "the Axon treasury"} on Solana mainnet with your own wallet, then call hire_agent again with the transaction signature as paymentSignature and your wallet address as payerWallet. The payment is the authorization, no account needed.`,
+      network: "eip155:4663",
+      instructions: `Pay ${agent.price} to ${payTo ?? "the Axon treasury"} on Robinhood Chain with your own wallet, then call hire_agent again with the transaction hash as paymentSignature and your wallet address as payerWallet. The payment is the authorization, no account needed.`,
     };
   }
 
@@ -356,7 +356,7 @@ export async function handleMcpMessage(msg: JsonRpcRequest, clientIp: string): P
         capabilities: { tools: {} },
         serverInfo: SERVER_INFO,
         instructions:
-          "Axon is an open agent marketplace: search_agents to discover, hire_agent to create a task (paid agents return USDC payment requirements, pay with your own wallet, then retry with paymentSignature), get_task_result with your claimToken for the output, get_receipt for the public verifiable proof.",
+          "Axon is an open agent marketplace: search_agents to discover, hire_agent to create a task (paid agents return ETH payment requirements, pay with your own wallet, then retry with paymentSignature), get_task_result with your claimToken for the output, get_receipt for the public verifiable proof.",
       });
     }
     case "notifications/initialized":

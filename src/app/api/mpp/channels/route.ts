@@ -2,19 +2,20 @@
 // GET  /api/mpp/channels?owner=<address> — list channels for an owner
 //
 // Opening a channel:
-//   1. Send USDC to the payment receiver wallet on-chain
+//   1. Send ETH to the payment receiver wallet on-chain
 //   2. POST body: { ownerAddress, depositUsdc, depositSignature }
 //   3. Server verifies the on-chain transfer before creating the channel
 //   Returns: { channel, channelKey } — store channelKey securely; it is shown ONCE.
 
 import { NextRequest, NextResponse } from "next/server";
 import { withRequestContext } from "@/lib/withRequestContext";
-import { isValidSolanaAddress } from "@/lib/solana";
-import { createChannel, deleteChannel, getChannelById, getChannelsByOwner, verifyMppDeposit, recordDeposit, parseMppUsdcAmount } from "@/lib/mpp";
+import { isWalletAddress } from "@/lib/address";
+import { createChannel, deleteChannel, getChannelById, getChannelsByOwner, verifyMppDeposit, recordDeposit, parseMppAmount } from "@/lib/mpp";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { requireApiKey } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
+import { sameAddress } from "@/lib/address";
 
 export async function POST(req: NextRequest) {
   return withRequestContext(req, () => handlePost(req));
@@ -34,8 +35,8 @@ async function handlePost(req: NextRequest) {
     return apiError("INVALID_JSON", "Request body must be valid JSON", 400);
   }
 
-  if (!body.ownerAddress || !isValidSolanaAddress(body.ownerAddress)) {
-    return apiError("VALIDATION_ERROR", "ownerAddress must be a valid Solana address", 400);
+  if (!body.ownerAddress || !isWalletAddress(body.ownerAddress)) {
+    return apiError("VALIDATION_ERROR", "ownerAddress must be a valid EVM address", 400);
   }
   const auth = requireApiKey(req);
   if (!auth.ok) return auth.response;
@@ -44,13 +45,13 @@ async function handlePost(req: NextRequest) {
   const walletRl = checkRateLimit(`mpp-open:${auth.user.walletAddress}`, 5, 60_000);
   if (!walletRl.allowed) return tooManyRequests(walletRl);
 
-  if (auth.user.walletAddress !== body.ownerAddress) {
+  if (!sameAddress(auth.user.walletAddress, body.ownerAddress)) {
     return apiError("FORBIDDEN", "ownerAddress must match the authenticated API key owner", 403);
   }
 
-  const deposit = parseMppUsdcAmount(body.depositUsdc);
+  const deposit = parseMppAmount(body.depositUsdc);
   if (!deposit) {
-    return apiError("VALIDATION_ERROR", "depositUsdc must be a positive USDC amount with at most 6 decimals", 400);
+    return apiError("VALIDATION_ERROR", "depositUsdc must be a positive ETH amount with at most 6 decimals", 400);
   }
   if (!body.depositSignature) {
     return apiError(
@@ -93,7 +94,7 @@ async function handlePost(req: NextRequest) {
     resourceId: funded.channelId,
     ownerWallet: funded.ownerAddress,
     metadata: {
-      depositUsdc: funded.balanceUsdc,
+      depositUsdc: funded.balanceEth,
       status: funded.status,
     },
   });
@@ -110,12 +111,12 @@ async function handlePost(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const owner = req.nextUrl.searchParams.get("owner");
-  if (!owner || !isValidSolanaAddress(owner)) {
-    return apiError("VALIDATION_ERROR", "owner query param must be a valid Solana address", 400);
+  if (!owner || !isWalletAddress(owner)) {
+    return apiError("VALIDATION_ERROR", "owner query param must be a valid EVM address", 400);
   }
   const listAuth = requireApiKey(req);
   if (!listAuth.ok) return listAuth.response;
-  if (listAuth.user.walletAddress !== owner) {
+  if (!sameAddress(listAuth.user.walletAddress, owner)) {
     return apiError("FORBIDDEN", "API key does not belong to this owner wallet", 403);
   }
 

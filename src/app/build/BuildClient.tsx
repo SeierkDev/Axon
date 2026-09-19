@@ -4,7 +4,8 @@ import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from "
 import { payForBuild } from "@/lib/buildPaymentClient";
 
 // Price per generation. Keep in sync with BUILD_PRICE in src/app/api/build/route.ts.
-const BUILD_PRICE_USDC = 5;
+// 0.005 ETH was the old price; 0.005 ETH keeps it in the same bracket for this chain.
+const BUILD_PRICE_ETH = 0.005;
 
 function IconExpand() {
   return (
@@ -286,7 +287,7 @@ export default function BuildClient({
       // Keep the URL alive long enough for the new tab to load, then release it.
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } else {
-      // In-app wallet browsers (Phantom's dApp browser, etc.) are WebViews that
+      // In-app wallet browsers (MetaMask's dApp browser, etc.) are WebViews that
       // often can't open a new tab at all — window.open returns null. Load the
       // game in the current view instead so the user never gets a black/blank
       // screen; their browser back button returns to the build (state persists).
@@ -422,7 +423,7 @@ export default function BuildClient({
       void startBuild(paidSignature, paidPayer);
       return;
     }
-    if (!rpcUrl || !treasury) {
+    if (!treasury) {
       setError("Payments aren't configured yet. Please try again later.");
       setPhase("error");
       return;
@@ -433,7 +434,7 @@ export default function BuildClient({
       const { signature, payer } = await payForBuild({
         rpcUrl,
         treasury,
-        usdcAmount: BUILD_PRICE_USDC,
+        ethAmount: BUILD_PRICE_ETH,
       });
       setPaidSignature(signature);
       setPaidPayer(payer);
@@ -444,27 +445,22 @@ export default function BuildClient({
     } catch (err) {
       setPaying(false);
       const msg = err instanceof Error ? err.message : "Payment failed";
-      if (msg === "PHANTOM_NOT_FOUND") {
+      if (msg === "WALLET_NOT_FOUND") {
         if (isMobileDevice()) {
-          // Reopen this page inside Phantom's in-app browser, where the wallet
+          // Reopen this page inside MetaMask's in-app browser, where the wallet
           // is injected. Carry the prompt through so it isn't lost.
           const target = `${window.location.origin}/build?p=${encodeURIComponent(prompt.trim())}`;
           window.location.href =
             `https://phantom.app/ul/browse/${encodeURIComponent(target)}?ref=${encodeURIComponent(window.location.origin)}`;
           return;
         }
-        setError("Phantom wallet not found, install the Phantom extension to pay and generate.");
+        setError("MetaMask wallet not found, install the MetaMask extension to pay and generate.");
         setPhase("error");
         return;
       }
-      if (msg.startsWith("INSUFFICIENT_USDC:")) {
+      if (msg.startsWith("INSUFFICIENT_FUNDS:")) {
         const have = msg.split(":")[1] ?? "0";
-        setError(`Not enough USDC, this costs ${BUILD_PRICE_USDC} USDC, but your wallet only has ${have}. Add USDC and try again.`);
-        setPhase("error");
-        return;
-      }
-      if (msg === "INSUFFICIENT_SOL") {
-        setError("Your wallet has no SOL to pay the Solana network fee. Add a little SOL (about 0.02) to your wallet and try again, USDC alone can't cover the fee.");
+        setError(`Not enough ETH: this costs ${BUILD_PRICE_ETH} ETH and your wallet holds ${have}. Add some and try again.`);
         setPhase("error");
         return;
       }
@@ -565,10 +561,10 @@ export default function BuildClient({
               ? "Confirm payment in your wallet…"
               : paidSignature
                 ? "Retry Build →"
-                : `Pay $${BUILD_PRICE_USDC} & Build →`}
+                : `Pay ${BUILD_PRICE_ETH} ETH & Build →`}
           </button>
           <p className="text-[11px] text-center text-gray-400 dark:text-gray-500 mb-10">
-            ${BUILD_PRICE_USDC} USDC per game · pay with Phantom on Solana
+            {BUILD_PRICE_ETH} ETH per game · pay with your wallet on Robinhood Chain
           </p>
 
           <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-3">Try an example</p>

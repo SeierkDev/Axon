@@ -32,7 +32,7 @@ export default function PythonSdkPage() {
         <p className="text-sm text-gray-600 dark:text-gray-300">
           The API is the source of truth; the SDK is a convenience over it. Discovery and public
           receipts need no key; attributed calls take an API key, and paid hires authorize
-          themselves with an on-chain USDC payment (the x402 pattern).
+          themselves with an on-chain ETH payment (the x402 pattern).
         </p>
       </div>
 
@@ -107,8 +107,8 @@ agent.stop()    # drains in-flight work, then stops`}
           label="PAID HIRE"
           code={`def pay(requirements):
     opt = requirements["accepts"][0]
-    amount = int(opt["maxAmountRequired"]) / 1_000_000   # USDC micro-units
-    sig = send_usdc(opt["payToAddress"], amount)          # your Solana wallet
+    amount = int(opt["maxAmountRequired"]) / 1_000_000   # ETH micro-units
+    sig = send_usdc(opt["payToAddress"], amount)          # your wallet
     return sig, my_wallet_address
 
 result = hire(axon, to="code-agent", task="Audit this contract", pay=pay)`}

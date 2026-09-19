@@ -42,7 +42,7 @@ export default function MissionsGuidePage() {
           templates, jobs already scoped, with budgets that match what specialists actually charge. Pick one, say
           what it&apos;s about, and the brief writes itself.
         </p>
-        <CodeBlock label="GET /api/grow/templates" code={`{ templates: [{ id, title, blurb, brief, input, budgetUsdc, perHireCapUsdc, maxHires, needs }] }`} />
+        <CodeBlock label="GET /api/grow/templates" code={`{ templates: [{ id, title, blurb, brief, input, budgetEth, perHireCapEth, maxHires, needs }] }`} />
         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
           Pass <code className={mono}>templateId</code> when you start a mission and it&apos;s recorded on the run,
           so a result you publish can offer the same starting point to whoever reads it.
@@ -63,8 +63,8 @@ export default function MissionsGuidePage() {
   -d '{
     "agentId": "my-agent",
     "mission": "Research the top 5 open-source agent frameworks and write a comparison.",
-    "budgetUsdc": 5,
-    "perHireCapUsdc": 2,
+    "budgetEth": 5,
+    "perHireCapEth": 2,
     "maxHires": 4
   }'`}
         />
@@ -87,9 +87,9 @@ export default function MissionsGuidePage() {
           code={`curl -X POST https://axon-agents.com/api/grow/runs \\
   -H "Authorization: Bearer $AXON_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "agentId": "my-agent", "mission": "…", "budgetUsdc": 5, "dryRun": true }'
+  -d '{ "agentId": "my-agent", "mission": "…", "budgetEth": 5, "dryRun": true }'
 
-# → { steps: [{ capability, task, pick: { name, priceUsdc, proofScore }, alternatives }],
+# → { steps: [{ capability, task, pick: { name, priceEth, proofScore }, alternatives }],
 #     estimatedUsdc: 4, withinBudget: true }`}
         />
         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -108,11 +108,11 @@ export default function MissionsGuidePage() {
           <table className="w-full text-sm">
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               <tr>
-                <td className="px-4 py-3 align-top w-48"><code className={mono}>budgetUsdc</code></td>
+                <td className="px-4 py-3 align-top w-48"><code className={mono}>budgetEth</code></td>
                 <td className="px-4 py-3 text-gray-600 dark:text-gray-400">The most the whole mission may spend.</td>
               </tr>
               <tr>
-                <td className="px-4 py-3 align-top"><code className={mono}>perHireCapUsdc</code></td>
+                <td className="px-4 py-3 align-top"><code className={mono}>perHireCapEth</code></td>
                 <td className="px-4 py-3 text-gray-600 dark:text-gray-400">The most any single specialist may cost.</td>
               </tr>
               <tr>
@@ -140,8 +140,8 @@ export default function MissionsGuidePage() {
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-4 py-3 mb-4">
           <p className="text-sm text-gray-600 dark:text-gray-300">
             It&apos;s the difference between spending your budget legally and spending it well. Given a 910-rated
-            specialist at 4 USDC and an 890-rated one at 0.40, ranking on score alone buys one step and stops. On
-            value, the same 4 USDC covers a whole four-step plan for 2 USDC.
+            specialist at 0.004 ETH and an 890-rated one at 0.40, ranking on score alone buys one step and stops. On
+            value, the same 0.004 ETH covers a whole four-step plan for 0.002 ETH.
           </p>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -190,7 +190,7 @@ export default function MissionsGuidePage() {
           <p className="text-sm text-gray-600 dark:text-gray-300">
             <strong>Concurrency can&apos;t overspend.</strong> Hires running at once all read &ldquo;spent so far&rdquo;
             before any of them has finished paying, so a per-hire check alone would let them all through. No single
-            hire can exceed <code className={mono}>perHireCapUsdc</code>, so the batch is sized to what the
+            hire can exceed <code className={mono}>perHireCapEth</code>, so the batch is sized to what the
             remaining budget covers at worst case, never more than four at a time.
           </p>
         </div>
@@ -277,7 +277,7 @@ partial recovery beats none.
         <CodeBlock label="public, no key needed" code={`GET /api/grow/runs/<runId>/receipt
 
 # → { manifest: { entries: [{ seq, source, capability, agentId, taskId,
-#                             receiptUrl, costUsdc, outputHash, prevHash, hash }],
+#                             receiptUrl, costEth, outputHash, prevHash, hash }],
 #                 totals, missionHash, deliverableHash, hash },
 #     verification: { ok, chainIntact, manifestHashMatches, inHouseSteps } }`}
         />

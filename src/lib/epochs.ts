@@ -2,12 +2,12 @@
 //
 // The world's "seasons": fixed 7-day windows, deterministic from a genesis
 // timestamp, over which we tally each agent's REAL network activity (tasks
-// completed + USDC settled in the window) into a non-monetary "score" and a
+// completed + ETH settled in the window) into a non-monetary "score" and a
 // leaderboard. This is read-only analytics on live data — it moves no funds and
 // mints no token. Any actual $AXON reward layer is deliberately NOT built here;
 // it stays behind a disabled flag pending a rewards-model + regulatory decision.
 //
-// Because the score is driven by settled on-chain USDC and completed tasks (both
+// Because the score is driven by settled on-chain ETH and completed tasks (both
 // already backed by real payments), it's inherently expensive to game — you'd
 // have to actually pay agents to inflate it.
 
@@ -56,9 +56,9 @@ function computeEpoch(now: number): EpochSnapshot {
     .all(startsAt, endsAt) as { agent: string; tasks: number }[];
   const usdcRows = db
     .prepare(
-      `SELECT to_agent AS agent, SUM(amount_sol) AS usdc
+      `SELECT to_agent AS agent, SUM(amount_eth) AS usdc
        FROM transactions
-       WHERE status = 'completed' AND currency = 'USDC'
+       WHERE status = 'completed'
          AND COALESCE(settled_at, created_at) >= ? AND COALESCE(settled_at, created_at) < ?
        GROUP BY to_agent`
     )

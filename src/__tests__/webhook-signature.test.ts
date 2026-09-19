@@ -14,7 +14,7 @@ function serverSign(secret: string, timestamp: number, body: string): string {
 }
 
 const SECRET = "whsec_test_0123456789abcdef";
-const BODY = JSON.stringify({ event: "task.completed", taskId: "task_abc", amount: "0.10 USDC" });
+const BODY = JSON.stringify({ event: "task.completed", taskId: "task_abc", amount: "0.0001 ETH" });
 const now = () => Math.floor(Date.now() / 1000);
 
 describe("verifyWebhookSignature", () => {
@@ -54,7 +54,7 @@ describe("verifyWebhookSignature", () => {
   it("rejects a tampered body", async () => {
     const ts = now();
     const signature = `sha256=${serverSign(SECRET, ts, BODY)}`;
-    const tampered = BODY.replace("0.10", "9.99");
+    const tampered = BODY.replace("0.0001", "9.99");
     expect(await verifyWebhookSignature({ secret: SECRET, rawBody: tampered, signature, timestamp: ts })).toBe(false);
   });
 

@@ -359,8 +359,8 @@ export class AxonClient {
 
   async createBudget(agentId: string, opts: {
     name?: string;
-    maxPerCallUsdc?: number;
-    maxPerDayUsdc?: number;
+    maxPerCallEth?: number;
+    maxPerDayEth?: number;
     allowedToAgents?: string[];
   }): Promise<{ budget: unknown }> {
     return this.post(`/api/agents/${pathPart(agentId)}/budget`, opts) as Promise<{ budget: unknown }>;
@@ -373,7 +373,7 @@ export class AxonClient {
   /**
    * Hire an agent and wait for the result — discover pricing, pay, submit, poll to
    * completion, and return the output plus the verifiable receipt. Priced agents are
-   * paid with the per-call `pay`, or the client's configured `pay` (e.g. `solanaPayer`)
+   * paid with the per-call `pay`, or the client's configured `pay` (e.g. `privateKeyPayer`)
    * if none is given. Free-lane agents need no payer.
    */
   async hire(opts: HireOptions): Promise<HireResult> {
@@ -451,7 +451,7 @@ export class AxonClient {
     return this.post("/api/tasks/plan", {
       from: opts.from,
       goal: opts.goal,
-      budgetUsdc: opts.budgetUsdc,
+      budgetEth: opts.budgetEth,
       maxSteps: opts.maxSteps,
       perStepCapUsdc: opts.perStepCapUsdc,
       execute: opts.execute,
@@ -585,7 +585,7 @@ export class AxonClient {
     if (!requirements) throw new Error("Axon gateway x402: could not decode X-Payment-Required header");
 
     const { signature, from } = await pay(requirements);
-    const network = requirements.accepts[0]?.network ?? "solana-mainnet";
+    const network = requirements.accepts[0]?.network ?? "eip155:4663";
     const paymentHeader = buildPaymentHeader(signature, from, network);
 
     const paidRes = await fetch(`${this.baseUrl()}/api/gateway/${pathPart(providerId)}/call`, {
@@ -845,7 +845,7 @@ export class AxonClient {
     if (!requirements) throw new Error("Axon x402 error: could not decode X-Payment-Required header");
 
     const { signature, from } = await pay(requirements);
-    const network = requirements.accepts[0]?.network ?? "solana-mainnet";
+    const network = requirements.accepts[0]?.network ?? "eip155:4663";
     const paymentHeader = buildPaymentHeader(signature, from, network);
 
     const submitRes = await fetch(`${this.baseUrl()}/api/agents/${pathPart(agentId)}/x402`, {

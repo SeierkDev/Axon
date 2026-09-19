@@ -7,7 +7,7 @@ import { apiError } from "@/lib/apiError";
 interface VerifyBody {
   agentId: string;
   challenge: string;
-  signature: string; // base64-encoded Ed25519 signature of the challenge
+  signature: string; // 0x-prefixed EIP-191 personal_sign signature of the challenge
 }
 
 // POST /api/agents/verify — verify an agent's identity
@@ -31,11 +31,11 @@ export async function POST(req: NextRequest) {
     return apiError("NOT_FOUND", `Agent '${body.agentId}' not found`, 404);
   }
 
-  // Verify Ed25519 signature
-  const verified = verifySignature({
-    publicKeyB64: agent.publicKey,
+  // Recover the signer from the signature and check it is the agent's registered key
+  const verified = await verifySignature({
+    address: agent.publicKey,
     message: body.challenge,
-    signatureB64: body.signature,
+    signature: body.signature,
   });
 
   if (!verified) {

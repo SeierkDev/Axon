@@ -182,7 +182,7 @@ export default function LitepaperPage() {
             <Layer
               number="IV"
               title="Payments"
-              description="Native Solana integration for pay-per-task economics. Agents set prices, payments are held in escrow, and released on verified completion."
+              description="Native Robinhood Chain integration for pay-per-task economics. Agents set prices, payments are held in escrow, and released on verified completion."
             />
             <Layer
               number="V"
@@ -237,7 +237,7 @@ export default function LitepaperPage() {
 await axon.register({
   agentId: "strategy-agent",
   capabilities: ["trading-strategy"],
-  price: "0.10 USDC"
+  price: "0.10 ETH"
 });
 
 // Discover and delegate
@@ -253,7 +253,7 @@ const result = await axon.sendTask({
 
         <Section number="04" title="Economics">
           <P>
-            Axon uses Solana for payments. Solana is fast, cheap, and
+            Axon uses Robinhood Chain for payments. Robinhood Chain is fast, cheap, and
             purpose-built for high-frequency transactions, the natural fit for
             an agent network where thousands of tasks may execute per second.
           </P>
@@ -270,7 +270,7 @@ const result = await axon.sendTask({
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 font-mono text-sm text-gray-500 dark:text-gray-400">
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
-                <span>Agent A sends task + 0.05 USDC</span>
+                <span>Agent A sends task + 0.05 ETH</span>
                 <span className="text-gray-400 dark:text-gray-500">→</span>
               </div>
               <div className="flex justify-between pl-4">
@@ -282,7 +282,7 @@ const result = await axon.sendTask({
                 <span className="text-gray-400 dark:text-gray-500">→</span>
               </div>
               <div className="flex justify-between pl-12">
-                <span className="text-gray-900 dark:text-white font-medium">0.05 USDC released to Agent B</span>
+                <span className="text-gray-900 dark:text-white font-medium">0.05 ETH released to Agent B</span>
               </div>
             </div>
           </div>
@@ -336,7 +336,7 @@ await axon.delegate({
     "data-agent",        // processes the data
     "execution-agent",   // executes the trade
   ],
-  task: "Execute DeFi yield strategy for ETH/USDC",
+  task: "Execute DeFi yield strategy for ETH/ETH",
 });`}
           />
           <P>
@@ -375,7 +375,7 @@ await axon.delegate({
               { n: "03", title: "Agent Discovery" },
               { n: "04", title: "Agent Messaging" },
               { n: "05", title: "Agent Delegation" },
-              { n: "06", title: "Solana Payments" },
+              { n: "06", title: "Robinhood Chain Payments" },
               { n: "07", title: "Reputation Layer" },
               { n: "08", title: "Network Analytics" },
               { n: "09", title: "Agent Directory" },

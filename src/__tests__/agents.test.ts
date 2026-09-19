@@ -17,7 +17,7 @@ import type { Agent } from "@/sdk/types";
 let counter = 0;
 
 // Minimal valid Solana address (base58, 32 chars)
-const TEST_WALLET = "11111111111111111111111111111111";
+const TEST_WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
   counter++;
@@ -204,11 +204,11 @@ describe("searchAgents: maxPrice filter", () => {
   const PREFIX = "maxp";
 
   it("includes free agents and paid agents at or below maxPrice; excludes those above", () => {
-    createAgent(makeAgent({ agentId: `${PREFIX}-cheap`, price: "0.5 USDC", capabilities: ["coding"] }));
-    createAgent(makeAgent({ agentId: `${PREFIX}-expensive`, price: "1.5 USDC", capabilities: ["coding"] }));
+    createAgent(makeAgent({ agentId: `${PREFIX}-cheap`, price: "0.0005 ETH", capabilities: ["coding"] }));
+    createAgent(makeAgent({ agentId: `${PREFIX}-expensive`, price: "0.0015 ETH", capabilities: ["coding"] }));
     createAgent(makeAgent({ agentId: `${PREFIX}-free`, capabilities: ["coding"] }));
 
-    const results = searchAgents({ maxPrice: "1 USDC", limit: 50 });
+    const results = searchAgents({ maxPrice: "0.001 ETH", limit: 50 });
     const ids = results.map((a) => a.agentId);
     expect(ids).toContain(`${PREFIX}-cheap`);
     expect(ids).toContain(`${PREFIX}-free`);
@@ -245,7 +245,7 @@ describe("searchAgents: price sort", () => {
 
   it("sorts free agents before paid agents", () => {
     createAgent(makeAgent({ agentId: `${PREFIX}-free`, capabilities: ["analysis"] }));
-    createAgent(makeAgent({ agentId: `${PREFIX}-paid`, price: "2 USDC", capabilities: ["analysis"] }));
+    createAgent(makeAgent({ agentId: `${PREFIX}-paid`, price: "0.002 ETH", capabilities: ["analysis"] }));
 
     const results = searchAgents({ sort: "price", limit: 50 });
     const ids = results.map((a) => a.agentId);
@@ -290,7 +290,7 @@ describe("getAgentCounts", () => {
 
   it("increments total and paid when a priced agent is added", () => {
     const before = getAgentCounts();
-    createAgent(makeAgent({ agentId: "count-paid-agent", price: "1 USDC" }));
+    createAgent(makeAgent({ agentId: "count-paid-agent", price: "0.001 ETH" }));
     const after = getAgentCounts();
     expect(after.total).toBe(before.total + 1);
     expect(after.paid).toBe(before.paid + 1);
@@ -318,9 +318,9 @@ describe("updateAgent: price", () => {
   it("sets a price on an agent that had none", () => {
     const agent = makeAgent({ agentId: "price-update-agent" });
     createAgent(agent);
-    const updated = updateAgent(agent.agentId, { price: "2 USDC" });
+    const updated = updateAgent(agent.agentId, { price: "0.002 ETH" });
     expect(updated).not.toBeNull();
-    expect(updated!.price).toBe("2 USDC");
+    expect(updated!.price).toBe("0.002 ETH");
   });
 });
 
@@ -333,34 +333,32 @@ describe("searchAgents: maxPrice filter with unparseable and cross-currency pric
 
   it("excludes an agent with a malformed (unparseable) price string", () => {
     createAgent(makeAgent({ agentId: `${PREFIX}-malformed`, price: "not-a-price", capabilities: ["archive"] }));
-    const results = searchAgents({ maxPrice: "1 USDC", capability: "archive", limit: 50 });
+    const results = searchAgents({ maxPrice: "0.001 ETH", capability: "archive", limit: 50 });
     const ids = results.map((a) => a.agentId);
     expect(ids).not.toContain(`${PREFIX}-malformed`);
   });
 
-  it("excludes a SOL-priced agent when maxPrice is in USDC (currency mismatch)", () => {
-    createAgent(makeAgent({ agentId: `${PREFIX}-sol`, price: "0.001 SOL", capabilities: ["archive"] }));
-    const results = searchAgents({ maxPrice: "1 USDC", capability: "archive", limit: 50 });
-    const ids = results.map((a) => a.agentId);
-    expect(ids).not.toContain(`${PREFIX}-sol`);
+  // One currency, so the ceiling is purely a number. An agent priced exactly at it is INSIDE it.
+  it("includes an agent priced exactly at the ceiling, and excludes one above", () => {
+    createAgent(makeAgent({ agentId: `${PREFIX}-at`, price: "0.001 ETH", capabilities: ["archive"] }));
+    createAgent(makeAgent({ agentId: `${PREFIX}-over`, price: "0.002 ETH", capabilities: ["archive"] }));
+    const ids = searchAgents({ maxPrice: "0.001 ETH", capability: "archive", limit: 50 }).map((a) => a.agentId);
+    expect(ids).toContain(`${PREFIX}-at`);
+    expect(ids).not.toContain(`${PREFIX}-over`);
   });
 });
 
-describe("searchAgents: price sort with mixed currencies", () => {
+describe("searchAgents: price sort", () => {
   const PREFIX = "mixcur";
 
-  it("sorts SOL-priced agents before USDC-priced agents (localeCompare)", () => {
-    createAgent(makeAgent({ agentId: `${PREFIX}-sol`, price: "0.001 SOL", capabilities: ["translate"] }));
-    createAgent(makeAgent({ agentId: `${PREFIX}-usdc`, price: "1 USDC", capabilities: ["translate"] }));
+  // Sorted by amount, and by the EXACT amount: two prices can differ by less than a float can tell
+  // apart, and an order that flickers between requests reads as a broken listing.
+  it("sorts by price, cheapest first, down to a single wei", () => {
+    createAgent(makeAgent({ agentId: `${PREFIX}-cheap`, price: "0.000000000000000001 ETH", capabilities: ["translate"] }));
+    createAgent(makeAgent({ agentId: `${PREFIX}-dear`, price: "0.000000000000000002 ETH", capabilities: ["translate"] }));
 
-    const results = searchAgents({ capability: "translate", sort: "price", limit: 50 });
-    const ids = results.map((a) => a.agentId);
-    const solIdx = ids.indexOf(`${PREFIX}-sol`);
-    const usdcIdx = ids.indexOf(`${PREFIX}-usdc`);
-    expect(solIdx).toBeGreaterThanOrEqual(0);
-    expect(usdcIdx).toBeGreaterThanOrEqual(0);
-    // "SOL".localeCompare("USDC") < 0, so SOL comes before USDC
-    expect(solIdx).toBeLessThan(usdcIdx);
+    const ids = searchAgents({ capability: "translate", sort: "price", limit: 50 }).map((a) => a.agentId);
+    expect(ids.indexOf(`${PREFIX}-cheap`)).toBeLessThan(ids.indexOf(`${PREFIX}-dear`));
   });
 });
 

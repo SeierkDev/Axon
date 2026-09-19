@@ -1,10 +1,10 @@
 // POST /api/cron/burn
-// Swaps accumulated USDC from platform agent payments into $AXON and burns it.
-// Railway cron: POST https://axon-agents.com/api/cron/burn once daily.
-// Skips if pending USDC is below $1 threshold.
+// Forwards what the platform has earned to the Splitter, which feeds the burn.
+// Railway cron: POST https://axon-agents.com/api/cron/burn.
+// Skips when there is less queued than a transaction is worth.
 
 import { NextRequest, NextResponse } from "next/server";
-import { executeDailyBurn } from "@/lib/burn";
+import { forwardEarningsToSplitter } from "@/lib/burn";
 import { logger } from "@/lib/logger";
 
 function authorized(req: NextRequest): boolean {
@@ -19,12 +19,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await executeDailyBurn();
+    const result = await forwardEarningsToSplitter();
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
-    logger.error("cron.burn_failed", "Daily burn cron failed", { err });
+    logger.error("cron.burn_failed", "Burn forwarding cron failed", { err });
     return NextResponse.json(
-      { error: "Burn failed", detail: err instanceof Error ? err.message : String(err) },
+      { error: "Forwarding failed", detail: err instanceof Error ? err.message : String(err) },
       { status: 500 }
     );
   }

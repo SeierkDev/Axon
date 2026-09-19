@@ -117,7 +117,7 @@ export function getDb(): Database.Database {
   applyMigrations(_db);
   seedBuiltinAgents(_db);
   backfillAgentHistory(_db);
-  // Pin AgenC canonical spec hashes for any tasks created before the spec_hash
+  // Pin canonical spec hashes for any tasks created before the spec_hash
   // column existed (idempotent — no-op once all rows have one).
   backfillSpecHashes(_db);
   // Correct old flat-rate demo settlements to each agent's real listed price.

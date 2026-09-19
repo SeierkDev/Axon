@@ -13,8 +13,8 @@ const TIER_STYLES: Record<string, string> = {
   New: "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400",
 };
 
-// Proper display names for networks (the stored key is lowercase, e.g. "agenc").
-const NETWORK_LABEL: Record<string, string> = { agenc: "AgenC", axon: "Axon" };
+// Proper display names for networks (the stored key is lowercase).
+const NETWORK_LABEL: Record<string, string> = { axon: "Axon" };
 function networkLabel(n: string): string {
   return NETWORK_LABEL[n.toLowerCase()] ?? n.charAt(0).toUpperCase() + n.slice(1);
 }
@@ -48,7 +48,7 @@ export default function ProofScoreCard({ proof, agentId }: { proof: ProofScore; 
   const quality = Math.round(proof.components.quality.factor * 100);
   const provenWork = Math.round(proof.components.provenWork.factor * 100);
   const tierStyle = TIER_STYLES[proof.tier] ?? TIER_STYLES.New;
-  // Work this agent proved on OTHER networks (e.g. AgenC) — its reputation follows
+  // Work this agent proved on OTHER networks — its reputation follows
   // it across the boundary instead of resetting, each item verifiable on its origin.
   const crossNetwork = (proof.evidence ?? []).filter((e) => e.network !== "axon");
 
@@ -205,7 +205,7 @@ export function ScoreMath({ proof }: { proof: ProofScore }) {
         <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">The inputs</p>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
           <Fact k="Reputation" v={`${inputs.reputation} / 10`} />
-          <Fact k="Settled value" v={`${inputs.settledUsdc} USDC`} />
+          <Fact k="Settled value" v={`${inputs.settledEth} ETH`} />
           <Fact k="Tasks completed" v={String(inputs.tasksCompleted)} />
           <Fact k="Tasks failed" v={String(inputs.tasksFailed)} />
           <Fact k="Success rate" v={pct(inputs.successRate)} />
@@ -225,7 +225,7 @@ export function ScoreMath({ proof }: { proof: ProofScore }) {
             {native.map((e) => (
               <li key={e.taskId} className="flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-300">
                 <span className="tabular-nums text-gray-400 dark:text-gray-500">{new Date(e.completedAt).toISOString().slice(0, 10)}</span>
-                <span className="flex-1 text-center tabular-nums">{e.settledUsdc} USDC</span>
+                <span className="flex-1 text-center tabular-nums">{e.settledEth} ETH</span>
                 <a href={e.receipt} target="_blank" rel="noopener noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline whitespace-nowrap">
                   receipt<ExtArrow />
                 </a>

@@ -16,8 +16,8 @@ export interface PaymentPathOptions {
   expectedCallsPerDay?: number;
 }
 
-// MPP wins when the agent prices in USDC and the caller already has an open
-// channel — the per-call overhead drops from one on-chain tx to a DB debit.
+// MPP wins when the caller already has an open channel — the per-call overhead drops from one
+// on-chain transaction to a database debit.
 // At >= 5 calls/day the amortised gas savings tip clearly in MPP's favour.
 export function recommendPaymentPath(
   opts: PaymentPathOptions
@@ -28,9 +28,9 @@ export function recommendPaymentPath(
     return { protocol: "free", reason: "Agent is free, no payment required" };
   }
 
-  const isUsdc = /USDC/i.test(agentPrice);
-
-  if (isUsdc && hasOpenMppChannel && expectedCallsPerDay >= 5) {
+  // One currency, so there is no longer a "can this even go through a channel" question. What is
+  // left is whether the caller has a channel and whether the traffic justifies using it.
+  if (hasOpenMppChannel && expectedCallsPerDay >= 5) {
     return {
       protocol: "mpp",
       reason: `Pre-paid MPP channel recommended: ${expectedCallsPerDay} calls/day eliminates per-call on-chain fees`,
@@ -38,7 +38,7 @@ export function recommendPaymentPath(
     };
   }
 
-  if (isUsdc && hasOpenMppChannel) {
+  if (hasOpenMppChannel) {
     return {
       protocol: "mpp",
       reason: "Pre-paid MPP channel available, use it to avoid on-chain fees",
@@ -48,9 +48,7 @@ export function recommendPaymentPath(
 
   return {
     protocol: "x402",
-    reason: isUsdc
-      ? "No open MPP channel, defaulting to x402 on-chain payment"
-      : "SOL-priced agent: use x402 on-chain payment",
+    reason: "No open MPP channel, defaulting to x402 on-chain payment",
     priceString: agentPrice,
   };
 }

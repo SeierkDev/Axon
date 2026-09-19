@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { evmAddress } from "./support/wallet";
 import {
   registerAgentSchema,
   updateAgentSchema,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/schemas";
 
 // Solana system program address — 32 chars, all valid base58
-const VALID_WALLET = "11111111111111111111111111111111";
+const VALID_WALLET = evmAddress("owner-a");
 
 describe("registerAgentSchema", () => {
   const valid = {
@@ -54,7 +55,7 @@ describe("registerAgentSchema", () => {
     const r = registerAgentSchema.safeParse({
       ...valid,
       endpoint: "https://agent.example.com",
-      price: "0.10 USDC",
+      price: "0.0001 ETH",
       provider: "anthropic",
       providerModel: "claude-3",
     });
@@ -102,17 +103,17 @@ describe("createTaskSchema", () => {
 
 describe("createBudgetSchema", () => {
   it("accepts optional numeric limits", () => {
-    expect(createBudgetSchema.safeParse({ maxPerCallUsdc: 1.5, maxPerDayUsdc: 10 }).success).toBe(true);
+    expect(createBudgetSchema.safeParse({ maxPerCallEth: 1.5, maxPerDayEth: 10 }).success).toBe(true);
     expect(createBudgetSchema.safeParse({}).success).toBe(true);
   });
 
   it("rejects negative or zero values", () => {
-    expect(createBudgetSchema.safeParse({ maxPerCallUsdc: 0 }).success).toBe(false);
-    expect(createBudgetSchema.safeParse({ maxPerCallUsdc: -1 }).success).toBe(false);
+    expect(createBudgetSchema.safeParse({ maxPerCallEth: 0 }).success).toBe(false);
+    expect(createBudgetSchema.safeParse({ maxPerCallEth: -1 }).success).toBe(false);
   });
 
   it("rejects non-numeric values", () => {
-    expect(createBudgetSchema.safeParse({ maxPerCallUsdc: "1.0" }).success).toBe(false);
+    expect(createBudgetSchema.safeParse({ maxPerCallEth: "1.0" }).success).toBe(false);
   });
 });
 
@@ -155,11 +156,11 @@ describe("parseBody helper", () => {
   });
 
   it("includes field path in error message", async () => {
-    const result = parseBody({ maxPerCallUsdc: -5 }, createBudgetSchema);
+    const result = parseBody({ maxPerCallEth: -5 }, createBudgetSchema);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       const body = await result.response.json() as { error: string };
-      expect(body.error).toMatch(/maxPerCallUsdc/);
+      expect(body.error).toMatch(/maxPerCallEth/);
     }
   });
 });

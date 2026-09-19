@@ -25,7 +25,7 @@ const TASK_POOL: Record<string, string[]> = {
     "Review staking contract logic and reward calculation",
   ],
   trading: [
-    "Generate BTC/USDC trading signal for next 4 hours",
+    "Generate BTC/ETH trading signal for next 4 hours",
     "Analyze ETH ETF inflow impact on spot price",
     "Build momentum strategy for SOL based on RSI and volume",
     "Identify arbitrage opportunity between CEX and DEX prices",
@@ -33,14 +33,14 @@ const TASK_POOL: Record<string, string[]> = {
   ],
   crypto: [
     "Analyze on-chain whale wallet movements for BTC",
-    "Track large USDC transfers on Solana in last 24h",
+    "Track large ETH transfers on Solana in last 24h",
     "Monitor Binance order book depth for ETH",
     "Fetch real-time funding rates across perpetual markets",
     "Analyze token unlock schedule impact on price",
   ],
   defi: [
     "Identify highest yield farming opportunities on Solana",
-    "Calculate impermanent loss for ETH/USDC LP position",
+    "Calculate impermanent loss for ETH/ETH LP position",
     "Optimize liquidity range for concentrated liquidity pool",
     "Analyze protocol revenue vs token emissions ratio",
     "Scout new DeFi protocols launching this month",

@@ -8,6 +8,7 @@
 
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
+import { sameAddress } from "./address";
 import { syncToTurso } from "./db-turso";
 import { getAgentById } from "./agents";
 import { verifyWalletSignature } from "./identity";
@@ -61,7 +62,7 @@ export interface CreateAttestationInput {
   signature: string; // base64 signature over attestationMessage(agentId, capability)
 }
 
-export function createAttestation(input: CreateAttestationInput): CreateAttestationResult {
+export async function createAttestation(input: CreateAttestationInput): Promise<CreateAttestationResult> {
   const agent = getAgentById(input.agentId);
   if (!agent) return { success: false, error: `Agent '${input.agentId}' not found`, code: "NOT_FOUND" };
 
@@ -71,15 +72,15 @@ export function createAttestation(input: CreateAttestationInput): CreateAttestat
   }
 
   // An owner vouching for their own agent is worthless — block self-attestation.
-  if (agent.walletAddress && agent.walletAddress === input.verifier) {
+  if (sameAddress(agent.walletAddress, input.verifier)) {
     return { success: false, error: "An agent's owner cannot attest its own capabilities", code: "FORBIDDEN" };
   }
 
   // The signature proves the verifier vouches — this is the only auth required.
-  const ok = verifyWalletSignature({
+  const ok = await verifyWalletSignature({
     walletAddress: input.verifier,
     message: attestationMessage(input.agentId, input.capability),
-    signatureB64: input.signature,
+    signature: input.signature,
   });
   if (!ok) {
     return { success: false, error: "Signature does not verify for the given verifier wallet", code: "SIGNATURE" };
@@ -129,14 +130,14 @@ export type RevokeResult = { success: true } | { success: false; error: string; 
 
 // Revoke an attestation — only the original verifier can, proven by a signature
 // over the revocation message.
-export function revokeAttestation(attestationId: string, signature: string): RevokeResult {
+export async function revokeAttestation(attestationId: string, signature: string): Promise<RevokeResult> {
   const attestation = getAttestationById(attestationId);
   if (!attestation) return { success: false, error: "Attestation not found", code: "NOT_FOUND" };
 
-  const ok = verifyWalletSignature({
+  const ok = await verifyWalletSignature({
     walletAddress: attestation.verifier,
     message: revocationMessage(attestationId),
-    signatureB64: signature,
+    signature,
   });
   if (!ok) return { success: false, error: "Signature does not verify for the attesting verifier", code: "SIGNATURE" };
 

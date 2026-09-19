@@ -14,7 +14,7 @@ vi.mock("next/link", () => ({
 // Imported AFTER the mock so HirePanel picks up the stubbed Link.
 const { default: HirePanel } = await import("@/app/agents/[agentId]/HirePanel");
 
-const RECEIVER = "11111111111111111111111111111111";
+const RECEIVER = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 const RPC = "https://rpc.example";
 
 describe("HirePanel — render branches", () => {
@@ -27,27 +27,29 @@ describe("HirePanel — render branches", () => {
     expect(html).not.toMatch(/Pay .* &amp; Hire/);
   });
 
-  it("paid USDC agent with wallet config: shows the in-browser pay-and-hire button", () => {
+  it("paid agent with wallet config: shows the in-browser pay-and-hire button", () => {
     const html = renderToStaticMarkup(
-      <HirePanel agentId="a" agentName="Agent" isPaid price="0.25 USDC" receiver={RECEIVER} rpcUrl={RPC} />,
+      <HirePanel agentId="a" agentName="Agent" isPaid price="0.00025 ETH" receiver={RECEIVER} rpcUrl={RPC} />,
     );
-    expect(html).toContain("Pay 0.25 USDC");
+    expect(html).toContain("Pay 0.00025 ETH");
     expect(html).toContain("Hire");
     // it's the interactive panel, not the API/MCP fallback note
     expect(html).not.toContain("Hire via the");
   });
 
-  it("paid USDC agent but wallet config unset: falls back to the API/MCP note", () => {
+  it("paid agent but wallet config unset: falls back to the API/MCP note", () => {
     const html = renderToStaticMarkup(
-      <HirePanel agentId="a" agentName="Agent" isPaid price="0.25 USDC" receiver="" rpcUrl="" />,
+      <HirePanel agentId="a" agentName="Agent" isPaid price="0.00025 ETH" receiver="" rpcUrl="" />,
     );
     expect(html).toContain("API or MCP");
     expect(html).not.toMatch(/Pay .* Hire/);
   });
 
-  it("paid SOL-priced agent: falls back to the API/MCP note (in-browser is USDC only)", () => {
+  // Every price is in the chain's own currency now, so there is no second currency to fall back
+  // from. What still falls back is a price the panel cannot read at all.
+  it("unparseable price: falls back to the API/MCP note", () => {
     const html = renderToStaticMarkup(
-      <HirePanel agentId="a" agentName="Agent" isPaid price="0.05 SOL" receiver={RECEIVER} rpcUrl={RPC} />,
+      <HirePanel agentId="a" agentName="Agent" isPaid price="not-a-price" receiver={RECEIVER} rpcUrl={RPC} />,
     );
     expect(html).toContain("API or MCP");
     expect(html).not.toMatch(/Pay .* Hire/);

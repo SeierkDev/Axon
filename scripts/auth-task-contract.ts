@@ -179,8 +179,8 @@ async function main() {
       headers: authHeaders(ownerAuth.apiKey),
       body: JSON.stringify({
         name: "Contract budget",
-        maxPerCallUsdc: 1,
-        maxPerDayUsdc: 5,
+        maxPerCallEth: 1,
+        maxPerDayEth: 5,
       }),
     })).status,
     201

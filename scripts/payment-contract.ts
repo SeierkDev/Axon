@@ -26,7 +26,7 @@ interface ChannelBody {
   channel: {
     channelId: string;
     ownerAddress: string;
-    balanceUsdc: number;
+    balanceEth: number;
     status: string;
   };
   channelKey: string;
@@ -137,7 +137,7 @@ async function main() {
       capabilities: ["testing", "local-smoke", `payment-${suffix}`],
       publicKey: Buffer.from(agentKeys.publicKey.toBytes()).toString("base64"),
       walletAddress: ownerAddress,
-      price: "0.10 USDC",
+      price: "0.0001 ETH",
     }),
   });
   assertStatus("register paid agent", register.status, 201);
@@ -218,7 +218,7 @@ async function main() {
     body: JSON.stringify({ task: "Paid x402 contract task" }),
   });
   assertStatus("valid x402 payment creates task", paidTask.status, 201);
-  if (paidTask.body.status !== "queued" || paidTask.body.payment !== "0.10 USDC") {
+  if (paidTask.body.status !== "queued" || paidTask.body.payment !== "0.0001 ETH") {
     throw new Error(`valid x402 payment: unexpected task state ${JSON.stringify(paidTask.body)}`);
   }
 
@@ -269,7 +269,7 @@ async function main() {
     }),
   });
   assertStatus("MPP channel opens with verified deposit", openChannel.status, 201);
-  assertApprox("MPP opening balance", openChannel.body.channel.balanceUsdc, 0.25);
+  assertApprox("MPP opening balance", openChannel.body.channel.balanceEth, 0.25);
 
   const mppTask = await request<TaskBody>(endpoint, `/api/agents/${agentId}/x402`, {
     method: "POST",
@@ -282,16 +282,16 @@ async function main() {
   });
   assertStatus("MPP debit creates task", mppTask.status, 201);
 
-  const afterDebit = await request<{ channel: { balanceUsdc: number } }>(
+  const afterDebit = await request<{ channel: { balanceEth: number } }>(
     endpoint,
     `/api/mpp/channels/${openChannel.body.channel.channelId}`,
     { headers: { Authorization: `Bearer ${openChannel.body.channelKey}` } }
   );
   assertStatus("MPP channel readable after debit", afterDebit.status, 200);
-  assertApprox("MPP balance after debit", afterDebit.body.channel.balanceUsdc, 0.15);
+  assertApprox("MPP balance after debit", afterDebit.body.channel.balanceEth, 0.15);
 
   const topupSig = mockSignature({ signer: ownerAddress, units: 50_000, nonce: `mpp-topup-${suffix}` });
-  const topup = await request<{ channel: { balanceUsdc: number } }>(
+  const topup = await request<{ channel: { balanceEth: number } }>(
     endpoint,
     `/api/mpp/channels/${openChannel.body.channel.channelId}/topup`,
     {
@@ -301,7 +301,7 @@ async function main() {
     }
   );
   assertStatus("MPP top-up succeeds", topup.status, 200);
-  assertApprox("MPP balance after top-up", topup.body.channel.balanceUsdc, 0.2);
+  assertApprox("MPP balance after top-up", topup.body.channel.balanceEth, 0.2);
 
   const replayTopup = await request<ErrorBody>(
     endpoint,

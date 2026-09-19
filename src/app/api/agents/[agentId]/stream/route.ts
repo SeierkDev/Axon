@@ -14,13 +14,13 @@ import { NextRequest } from "next/server";
 import { getAgentById } from "@/lib/agents";
 import { createTask, completeTask, failTask, confirmAndStartTask } from "@/lib/tasks";
 import { syncToTurso } from "@/lib/db-turso";
-import { createPayment, parsePriceToSol, refundPayment } from "@/lib/payments";
+import { createPayment, parsePriceToEth, refundPayment } from "@/lib/payments";
 import { settleCompletedTask } from "@/lib/sla";
 import { logger } from "@/lib/logger";
-import { isValidSolanaAddress } from "@/lib/solana";
+import { isWalletAddress } from "@/lib/address";
 import { decodePaymentHeader, buildX402Requirements, encodeRequirements } from "@/lib/x402";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
-import { debitChannel, verifyChannelKey, getChannelById, refundDebitForTask, parseMppUsdcPrice } from "@/lib/mpp";
+import { debitChannel, verifyChannelKey, getChannelById, refundDebitForTask, parseMppPrice } from "@/lib/mpp";
 import { formatContext } from "@/lib/formatContext";
 import { getProvider, getAgentSystem, getAgentMaxTokens, runWithProviderTools } from "@/lib/providers";
 import { resolveAgentTools, hasTools } from "@/lib/agentTools";
@@ -118,11 +118,11 @@ export function POST(req: NextRequest, { params }: Params) {
       if (!channel || channel.status !== "open") {
         return jsonError("MPP channel is closed or not found", "PAYMENT_REQUIRED", 402);
       }
-      const price = parseMppUsdcPrice(agent.price);
+      const price = parseMppPrice(agent.price);
       if (!price) {
-        return jsonError("Agent price is not in USDC, MPP not supported for this agent", "VALIDATION_ERROR", 400);
+        return jsonError("Agent price is not in ETH, MPP not supported for this agent", "VALIDATION_ERROR", 400);
       }
-      if (channel.balanceUsdc < price.amountUsdc) {
+      if (channel.balanceEth < price.amountEth) {
         return jsonError(`Insufficient MPP balance: need ${agent.price}`, "PAYMENT_REQUIRED", 402);
       }
       fromAddress = channel.ownerAddress;
@@ -158,8 +158,8 @@ export function POST(req: NextRequest, { params }: Params) {
     }
   } else {
     const from = body.from ?? "anonymous";
-    if (from !== "anonymous" && !isValidSolanaAddress(from) && !getAgentById(from)) {
-      return jsonError("from must be a valid Solana address or agent ID", "VALIDATION_ERROR", 400);
+    if (from !== "anonymous" && !isWalletAddress(from) && !getAgentById(from)) {
+      return jsonError("from must be a valid wallet address or agent ID", "VALIDATION_ERROR", 400);
     }
     if (from !== "anonymous") {
       const auth = requireApiKey(req);
@@ -172,7 +172,7 @@ export function POST(req: NextRequest, { params }: Params) {
       const freeRl = checkRateLimit(`free-demo:${ip}`, 3, 365 * 24 * 60 * 60 * 1000);
       if (!freeRl.allowed) {
         return jsonError(
-          "You've used your 3 free demo calls. Connect your Phantom wallet at axon-agents.com/onboarding to get an API key and continue.",
+          "You've used your 3 free demo calls. Connect your MetaMask wallet at axon-agents.com/onboarding to get an API key and continue.",
           "FREE_LIMIT_REACHED",
           429
         );
@@ -197,12 +197,12 @@ export function POST(req: NextRequest, { params }: Params) {
   if (agent.price) {
     const mppChannelId = req.headers.get("x-mpp-channel");
     if (mppChannelId) {
-      const price = parseMppUsdcPrice(agent.price);
+      const price = parseMppPrice(agent.price);
       if (!price) {
         const { getDb } = await import("@/lib/db");
         getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
         void syncToTurso();
-        return jsonError("Agent price is not in USDC, MPP not supported for this agent", "VALIDATION_ERROR", 400);
+        return jsonError("Agent price is not in ETH, MPP not supported for this agent", "VALIDATION_ERROR", 400);
       }
       const debit = debitChannel(mppChannelId, agentId, price, task.taskId);
       if (!debit.success) {
@@ -223,14 +223,14 @@ export function POST(req: NextRequest, { params }: Params) {
     } else {
       const rawPayment = req.headers.get("x-payment")!;
       const paymentHeader = decodePaymentHeader(rawPayment)!;
-      const amountSol = parsePriceToSol(agent.price);
-      if (amountSol !== null) {
+      const amountEth = parsePriceToEth(agent.price);
+      if (amountEth !== null) {
         try {
           await createPayment({
             taskId: task.taskId,
             fromAgent: fromAddress,
             toAgent: agentId,
-            amountSol,
+            amountEth,
             paymentSignature: paymentHeader.payload.signature,
             priceString: agent.price,
           });

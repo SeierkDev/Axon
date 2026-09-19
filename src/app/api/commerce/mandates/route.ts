@@ -7,6 +7,7 @@ import { getAgentById } from "@/lib/agents";
 import { createSpendMandate, listSpendMandates, revokeSpendMandate, getSpendMandate, spentInPeriod } from "@/lib/commerce";
 import { spendMandateSchema, parseBody } from "@/lib/schemas";
 import { recordAuditEvent } from "@/lib/audit";
+import { sameAddress } from "@/lib/address";
 
 export const runtime = "nodejs";
 
@@ -87,7 +88,7 @@ export async function DELETE(req: NextRequest) {
 
     const mandate = getSpendMandate(mandateId);
     if (!mandate) return apiError("NOT_FOUND", "Mandate not found", 404);
-    if (mandate.ownerWallet !== auth.user.walletAddress) {
+    if (!sameAddress(mandate.ownerWallet, auth.user.walletAddress)) {
       return apiError("FORBIDDEN", "You do not own this mandate", 403);
     }
 

@@ -3,6 +3,7 @@ import { createReview, getReviewsByAgent, getAgentRating } from "@/lib/reviews";
 import { createAgent } from "@/lib/agents";
 import { createTask, startTask, completeTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
+import { evmAddress } from "./support/wallet";
 
 let counter = 0;
 
@@ -13,7 +14,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
     name: `Review Agent ${counter}`,
     capabilities: ["research"],
     publicKey: `pk${counter}`,
-    walletAddress: `wallet-${counter}`, // unique per agent (distinct owners)
+    walletAddress: evmAddress(`wallet-${counter}`), // unique per agent (distinct owners)
     provider: "anthropic",
     reputation: 0,
     createdAt: new Date().toISOString(),

@@ -92,7 +92,7 @@ interface TraceRow {
 // ── Canonical hashing ─────────────────────────────────────────────────────────
 
 // Deterministic JSON: keys sorted recursively, undefined dropped. Matches the
-// intent of AgenC's json-stable-v1 scheme so event hashing is order-independent.
+// keys are sorted recursively so event hashing is order-independent.
 /**
  * Key-sorted, undefined-dropping JSON. Two callers building the same logical
  * object must produce byte-identical output, or a hash chain can't be recomputed

@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 import { getAgentById } from "./agents";
-import { debitChannel, parseMppUsdcPrice, refundDebitForTask } from "./mpp";
+import { debitChannel, parseMppPrice, refundDebitForTask } from "./mpp";
 import { createTask, markTaskPaymentConfirmed } from "./tasks";
 import { logger } from "./logger";
 
@@ -136,9 +136,9 @@ function createWorkflowStepTask(opts: {
   const agent = getAgentById(opts.toAgent);
   if (!agent) throw new Error(`Agent '${opts.toAgent}' not found`);
 
-  const paidPrice = agent.price ? parseMppUsdcPrice(agent.price) : null;
+  const paidPrice = agent.price ? parseMppPrice(agent.price) : null;
   if (agent.price && !paidPrice) {
-    throw new Error(`Workflow paid step '${opts.toAgent}' must be priced in USDC for MPP delegation`);
+    throw new Error(`Workflow paid step '${opts.toAgent}' must be priced in ETH for MPP delegation`);
   }
 
   const task = createTask({

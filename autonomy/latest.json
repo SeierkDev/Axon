@@ -1,30 +1,62 @@
 {
-  "startedAt": "2026-09-19T11:05:53.683Z",
-  "finishedAt": "2026-09-19T11:05:59.260Z",
-  "commit": "de3ea15",
+  "startedAt": "2026-09-19T13:18:30.209Z",
+  "finishedAt": "2026-09-19T13:18:35.899Z",
+  "commit": "0b0cc4d",
   "checks": [
     {
       "id": "install-commands",
       "title": "Install commands resolve",
       "ok": true,
-      "checked": 12,
+      "checked": 9,
       "findings": [],
-      "ms": 5330
+      "ms": 5429
     },
     {
       "id": "links",
       "title": "Internal links point at real pages",
       "ok": true,
-      "checked": 173,
+      "checked": 166,
       "findings": [],
-      "ms": 25
+      "ms": 32
     },
     {
       "id": "dead-exports",
       "title": "Exports are used",
       "ok": true,
-      "checked": 487,
+      "checked": 475,
       "findings": [
+        {
+          "severity": "warn",
+          "what": "displayAddress() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/address.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "splitterAddress() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/burn.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "burnPotAddress() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/burn.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "callDistribute() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/burn.ts"
+          ]
+        },
         {
           "severity": "warn",
           "what": "abandonPurchase() is exported and never used",
@@ -35,18 +67,42 @@
         },
         {
           "severity": "warn",
+          "what": "balanceOf() is exported and never used",
+          "why": "dead code reads exactly like live code",
+          "where": [
+            "src/lib/evm.ts"
+          ]
+        },
+        {
+          "severity": "warn",
           "what": "listGrowRuns() is exported and never used",
           "why": "dead code reads exactly like live code",
           "where": [
             "src/lib/grow.ts"
           ]
+        },
+        {
+          "severity": "warn",
+          "what": "buildSignInMessage() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/identity.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "publicOrigin() is exported and never used",
+          "why": "dead code reads exactly like live code",
+          "where": [
+            "src/lib/publicOrigin.ts"
+          ]
         }
       ],
-      "ms": 218
+      "ms": 225
     }
   ],
   "errors": 0,
-  "warnings": 2,
+  "warnings": 9,
   "changed": false,
   "changes": []
 }

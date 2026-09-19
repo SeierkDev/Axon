@@ -2,6 +2,8 @@
 // verifyX402Payment is not tested here (requires on-chain Solana calls).
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { toWei } from "@/lib/money";
+import { CHAIN_ID } from "@/lib/chain";
 import {
   buildX402Requirements,
   encodeRequirements,
@@ -13,24 +15,22 @@ import {
 } from "@/lib/x402";
 
 const TEST_RESOURCE = "https://api.example.com/task";
-const TEST_PRICE = "0.10 USDC";
+const TEST_PRICE = "0.0001 ETH";
 const TEST_DESCRIPTION = "Access to research task";
 
 // PAYMENT_RECEIVER_WALLET_ADDRESS must be set for buildX402Requirements to work
 beforeEach(() => {
-  process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "11111111111111111111111111111111";
-  process.env.SOLANA_NETWORK = "devnet";
+  process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 });
 
 afterEach(() => {
   delete process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS;
-  delete process.env.SOLANA_NETWORK;
 });
 
 // ── buildX402Requirements ─────────────────────────────────────────────────────
 
 describe("buildX402Requirements", () => {
-  it("builds a valid requirements object for a USDC price", () => {
+  it("builds a valid requirements object for a price", () => {
     const req = buildX402Requirements({
       resource: TEST_RESOURCE,
       price: TEST_PRICE,
@@ -43,15 +43,16 @@ describe("buildX402Requirements", () => {
     expect(opt.scheme).toBe(X402_SCHEME);
     expect(opt.resource).toBe(TEST_RESOURCE);
     expect(opt.description).toBe(TEST_DESCRIPTION);
-    expect(opt.payToAddress).toBe("11111111111111111111111111111111");
-    expect(opt.asset).toBe("USDC");
-    expect(opt.maxAmountRequired).toBe("100000"); // 0.10 USDC = 100_000 micro-USDC
+    expect(opt.payToAddress).toBe("0x70997970c51812dc3a010c7d01b50e0d17dc79c8");
+    expect(opt.asset).toBe("ETH");
+    // Quoted in wei, as a string: the amount reaches the client without passing through a float.
+    expect(opt.maxAmountRequired).toBe(String(toWei(TEST_PRICE.split(" ")[0])));
     expect(opt.requiredDeadlineSeconds).toBe(300);
   });
 
-  it("returns null for a SOL-priced agent (only USDC is supported)", () => {
-    const req = buildX402Requirements({ resource: TEST_RESOURCE, price: "0.05 SOL", description: "x" });
-    expect(req).toBeNull();
+  it("returns null for a currency this chain does not settle in", () => {
+    expect(buildX402Requirements({ resource: TEST_RESOURCE, price: "0.05 SOL", description: "x" })).toBeNull();
+    expect(buildX402Requirements({ resource: TEST_RESOURCE, price: "5 USDC", description: "x" })).toBeNull();
   });
 
   it("returns null for an unrecognised price format", () => {
@@ -59,15 +60,10 @@ describe("buildX402Requirements", () => {
     expect(req).toBeNull();
   });
 
-  it("uses solana-mainnet when SOLANA_NETWORK is not 'devnet'", () => {
-    delete process.env.SOLANA_NETWORK;
+  // x402 names a network with a CAIP-2 identifier; for an EVM chain that is eip155 plus its id.
+  it("names the chain the way x402 expects", () => {
     const req = buildX402Requirements({ resource: TEST_RESOURCE, price: TEST_PRICE, description: "x" });
-    expect(req!.accepts[0].network).toBe("solana-mainnet");
-  });
-
-  it("uses solana-devnet when SOLANA_NETWORK=devnet", () => {
-    const req = buildX402Requirements({ resource: TEST_RESOURCE, price: TEST_PRICE, description: "x" });
-    expect(req!.accepts[0].network).toBe("solana-devnet");
+    expect(req!.accepts[0].network).toBe(`eip155:${CHAIN_ID}`);
   });
 });
 
@@ -112,7 +108,7 @@ describe("encodeRequirements / decodeRequirements", () => {
 
 describe("buildPaymentHeader / decodePaymentHeader", () => {
   const SIG = "5LzS5nJqKP4K5y5B5n6jF1a2b3c4d5e6f7g8h9i0jklmnopqrstuvwxyz1234";
-  const FROM = "11111111111111111111111111111111";
+  const FROM = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
   const NETWORK = "solana-devnet";
 
   it("round-trips a payment header through base64", () => {

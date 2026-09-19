@@ -98,15 +98,28 @@ export function defineSplits(taskId: string, recipients: SplitRecipient[]): Defi
 }
 
 // Divide a settled amount across recipients by share. Works in integer
-// micro-units (USDC has 6 decimals) and gives any rounding remainder to the
+// micro-units (ETH has 6 decimals) and gives any rounding remainder to the
 // first recipient, so the parts sum back to exactly the total — no dust lost.
+/**
+ * Divide an escrow among its recipients, exactly.
+ *
+ * In wei, with BigInt, because this is the function that decides who gets what. Every share is
+ * rounded DOWN, which always leaves a remainder of a few wei rather than distributing more than was
+ * escrowed, and that remainder goes to the first recipient. The payouts therefore sum to the escrow
+ * exactly: not approximately, and never over.
+ *
+ * The caller works in wei too. Taking a decimal here and multiplying would reintroduce the float
+ * error this is written to avoid.
+ */
 export function computeSplitAmounts(
-  totalAmount: number,
+  totalWei: bigint,
   splits: Pick<TaskSplit, "agentId" | "shareBps">[]
-): { agentId: string; amount: number }[] {
-  const micro = Math.round(totalAmount * 1_000_000);
-  const parts = splits.map((s) => ({ agentId: s.agentId, units: Math.floor((micro * s.shareBps) / TOTAL_BPS) }));
-  const distributed = parts.reduce((sum, p) => sum + p.units, 0);
-  if (parts.length > 0) parts[0].units += micro - distributed;
-  return parts.map((p) => ({ agentId: p.agentId, amount: p.units / 1_000_000 }));
+): { agentId: string; wei: bigint }[] {
+  const parts = splits.map((s) => ({
+    agentId: s.agentId,
+    wei: (totalWei * BigInt(s.shareBps)) / BigInt(TOTAL_BPS),
+  }));
+  const distributed = parts.reduce((sum, p) => sum + p.wei, 0n);
+  if (parts.length > 0) parts[0].wei += totalWei - distributed;
+  return parts;
 }

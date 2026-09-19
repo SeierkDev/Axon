@@ -1,8 +1,8 @@
 //! Axon → Rig tool crate.
 //!
-//! Arc is one of the biggest names in Solana agents, built on [Rig](https://github.com/0xPlaygrounds/rig)
+//! Arc is one of the biggest names in agent frameworks, built on [Rig](https://github.com/0xPlaygrounds/rig)
 //! — a Rust-native agent framework. This crate exposes the Axon marketplace as Rig tools, so an
-//! agent you build with Rig can discover a proven specialist, hire it, pay in USDC, and get an
+//! agent you build with Rig can discover a proven specialist, hire it, pay in ETH, and get an
 //! on-chain-verifiable receipt — all from inside the framework you already build in.
 //!
 //! Nothing in this crate depends on Axon's internals — it talks to the public HTTP API, so it is a
@@ -54,7 +54,7 @@ impl Axon {
         Discover(self.clone())
     }
 
-    /// The hire tool — hire an agent for a task (free lane, or paid via USDC).
+    /// The hire tool — hire an agent for a task (free lane, or paid in ETH).
     pub fn hire(&self) -> Hire {
         Hire(self.clone())
     }
@@ -94,7 +94,7 @@ async fn parse(resp: reqwest::Response) -> Result<Value, AxonError> {
     let status = resp.status();
     let text = resp.text().await?;
     // 402 Payment Required is a normal, actionable response in Axon's x402 flow — its body
-    // carries the USDC requirement (amount + address) the agent needs to pay and retry, so
+    // carries the payment requirement (amount + address) the agent needs to pay and retry, so
     // pass it through rather than treating it as a failure. Other non-2xx statuses are errors.
     if !status.is_success() && status.as_u16() != 402 {
         return Err(AxonError::Api {
@@ -153,7 +153,7 @@ impl Tool for Discover {
 }
 
 /// Hire an agent for a task. Free-lane agents run immediately; a paid agent returns the
-/// USDC payment requirement — pay it from your wallet, then call again with the signature.
+/// payment requirement — pay it from your wallet, then call again with the signature.
 pub struct Hire(Axon);
 
 #[derive(Deserialize)]
@@ -162,7 +162,7 @@ pub struct HireArgs {
     pub agent_id: String,
     /// The task for the agent to perform.
     pub task: String,
-    /// USDC payment signature — supply on a second call, after paying a paid agent.
+    /// payment signature — supply on a second call, after paying a paid agent.
     pub payment_signature: Option<String>,
     /// The wallet that paid — optional, but if given it's verified on-chain as the
     /// payment's signer, tying the payment to you.
@@ -177,7 +177,7 @@ impl Tool for Hire {
 
     fn description(&self) -> String {
         "Hire an agent on the Axon marketplace for a task. A free agent runs immediately; a paid \
-         agent returns a USDC payment requirement — pay it from your wallet, then call again with \
+         agent returns a payment requirement — pay it from your wallet, then call again with \
          payment_signature to run it. Returns a taskId and a claimToken — keep the claimToken and \
          use axon_result to read the output. Every hire produces an on-chain-verifiable receipt."
             .to_string()
@@ -189,7 +189,7 @@ impl Tool for Hire {
             "properties": {
                 "agent_id": { "type": "string", "description": "the agent to hire (from axon_discover)" },
                 "task": { "type": "string", "description": "the task for the agent to perform" },
-                "payment_signature": { "type": "string", "description": "USDC payment signature, when re-calling after paying a paid agent" },
+                "payment_signature": { "type": "string", "description": "payment signature, when re-calling after paying a paid agent" },
                 "payer_wallet": { "type": "string", "description": "the wallet that paid (optional; verified as the payment's on-chain signer)" }
             },
             "required": ["agent_id", "task"]

@@ -4,10 +4,11 @@
 // The test proves the check correctly enforces the limit under rapid sequential fire.
 
 import { describe, it, expect } from "vitest";
-import { createChannel, debitChannel, recordDeposit, type MppUsdcAmount } from "@/lib/mpp";
+import { createChannel, debitChannel, recordDeposit, type MppAmount } from "@/lib/mpp";
+import { ethAmount } from "./support/money";
 
-const ONE_USDC: MppUsdcAmount = { amountUsdc: 1.0, microUsdc: 1_000_000 };
-const TWENTY_CENTS: MppUsdcAmount = { amountUsdc: 0.2, microUsdc: 200_000 };
+const ONE_USDC: MppAmount = ethAmount(1.0);
+const TWENTY_CENTS: MppAmount = ethAmount(0.2);
 
 describe("MPP debit: race condition protection", () => {
   it("allows exactly N debits before exhausting balance", () => {
@@ -34,10 +35,10 @@ describe("MPP debit: race condition protection", () => {
 
   it("never goes negative even under burst fire", () => {
     const { channel } = createChannel("wallet_concurrent_test_2");
-    recordDeposit(channel.channelId, { amountUsdc: 0.5, microUsdc: 500_000 }, `sig-burst-${Date.now()}`);
+    recordDeposit(channel.channelId, ethAmount(0.5), `sig-burst-${Date.now()}`);
 
     // Fire 20 debits of 0.10 USDC — only 5 should succeed ($0.50 / $0.10)
-    const TEN_CENTS: MppUsdcAmount = { amountUsdc: 0.1, microUsdc: 100_000 };
+    const TEN_CENTS: MppAmount = ethAmount(0.1);
     const results = Array.from({ length: 20 }, (_, i) =>
       debitChannel(channel.channelId, "test-agent", TEN_CENTS, `task-burst-${i}`)
     );

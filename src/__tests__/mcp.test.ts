@@ -91,13 +91,13 @@ function makeServer(
 
 describe("normalizeMcpPrice", () => {
   it("returns the provided price when set", () => {
-    expect(normalizeMcpPrice("0.05 USDC")).toBe("0.05 USDC");
+    expect(normalizeMcpPrice("0.00005 ETH")).toBe("0.00005 ETH");
   });
 
   it("returns the default when undefined, empty, or whitespace", () => {
-    expect(normalizeMcpPrice(undefined)).toBe("0.10 USDC");
-    expect(normalizeMcpPrice("")).toBe("0.10 USDC");
-    expect(normalizeMcpPrice("   ")).toBe("0.10 USDC");
+    expect(normalizeMcpPrice(undefined)).toBe("0.0001 ETH");
+    expect(normalizeMcpPrice("")).toBe("0.0001 ETH");
+    expect(normalizeMcpPrice("   ")).toBe("0.0001 ETH");
   });
 });
 
@@ -110,13 +110,13 @@ describe("createMcpServer", () => {
     expect(s.name).toBe("My Server");
     expect(s.description).toBe("does stuff");
     expect(s.status).toBe("active");
-    expect(s.pricePerCall).toBe("0.10 USDC");
+    expect(s.pricePerCall).toBe("0.0001 ETH");
     expect(s.createdAt).toBeTruthy();
   });
 
   it("stores a custom pricePerCall", () => {
-    const s = makeServer({ pricePerCall: "0.02 USDC" });
-    expect(s.pricePerCall).toBe("0.02 USDC");
+    const s = makeServer({ pricePerCall: "0.00002 ETH" });
+    expect(s.pricePerCall).toBe("0.00002 ETH");
   });
 
   it("stores ownerAgentId when provided", () => {

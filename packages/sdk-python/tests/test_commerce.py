@@ -329,36 +329,47 @@ def test_watch_hands_over_each_purchase_once_and_retries_a_failed_handler():
 
 
 def test_mandate_signer_matches_what_axon_verifies():
-    # Axon verifies with Ed25519 against the buyer's wallet bytes. If this
+    # Axon recovers the signer from this signature and matches the buyer's address. If this
     # round-trip fails, every approval made from Python fails.
-    crypto = pytest.importorskip("cryptography")
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-    from cryptography.exceptions import InvalidSignature
+    pytest.importorskip("eth_account")
+    from eth_account import Account
+    from eth_account.messages import encode_defunct
 
-    private = Ed25519PrivateKey.generate()
-    from cryptography.hazmat.primitives import serialization
-
-    seed = private.private_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PrivateFormat.Raw,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-    public = private.public_key().public_bytes(
-        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
-    )
-    secret_key = seed + public  # a Solana secret key is seed || public
+    key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+    expected = Account.from_key(key).address
 
     msg = message()
-    signature = base64.b64decode(mandate_signer(secret_key)(msg))
-    private.public_key().verify(signature, msg.encode("utf-8"))  # raises if wrong
+    signature = mandate_signer(key)(msg)
+    recovered = Account.recover_message(encode_defunct(text=msg), signature=signature)
+    assert recovered.lower() == expected.lower()
 
-    with pytest.raises(InvalidSignature):
-        private.public_key().verify(signature, message(amount="900.00 USD").encode("utf-8"))
+    # and it does not vouch for a message it did not sign
+    other = Account.recover_message(
+        encode_defunct(text=message(amount="900.00 USD")), signature=signature
+    )
+    assert other.lower() != expected.lower()
+
+
+def test_mandate_signer_accepts_a_key_with_or_without_the_prefix():
+    pytest.importorskip("eth_account")
+    from eth_account import Account
+    from eth_account.messages import encode_defunct
+
+    key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+    msg = message()
+    bare = mandate_signer(key[2:])(msg)
+    prefixed = mandate_signer(key)(msg)
+    assert bare == prefixed
+    assert Account.recover_message(encode_defunct(text=msg), signature=bare).lower() == (
+        Account.from_key(key).address.lower()
+    )
 
 
 def test_mandate_signer_refuses_a_key_it_cannot_use():
-    with pytest.raises(TypeError, match="64-byte"):
-        mandate_signer(bytes(32))
+    with pytest.raises(TypeError, match="32-byte"):
+        mandate_signer(bytes(16))
+    with pytest.raises(TypeError, match="32 bytes of hex"):
+        mandate_signer("not-a-key")
 
 
 # ── What the fifth pass found ────────────────────────────────────────────────

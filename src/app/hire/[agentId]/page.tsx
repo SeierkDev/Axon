@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAgentById } from "@/lib/agents";
 import { computeProofScore } from "@/lib/proofScore";
-import { parsePriceToSol } from "@/lib/payments";
+import { parsePriceToEth } from "@/lib/payments";
 import SiteNav from "@/components/SiteNav";
 import ProofScoreCard from "../../agents/[agentId]/ProofScoreCard";
 import HirePanel from "../../agents/[agentId]/HirePanel";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // A focused, shareable hire page for a single agent — the "link you can drop anywhere".
 // It reuses the same proven in-browser pay-and-hire widget as the profile page
-// (HirePanel): connect wallet, pay in USDC, the agent runs, you read the result and
+// (HirePanel): connect wallet, pay in ETH, the agent runs, you read the result and
 // the receipt. Here the hire is the whole page — the action leads, proof supports.
 
 export async function generateMetadata({ params }: { params: Promise<{ agentId: string }> }) {
@@ -37,12 +37,12 @@ export default async function HireAgentPage({ params }: { params: Promise<{ agen
 
   const proofScore = computeProofScore(agentId);
   const price = agent.price?.trim() || "Free";
-  const isPaid = parsePriceToSol(agent.price) !== null;
+  const isPaid = parsePriceToEth(agent.price) !== null;
   const receiver =
     process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS?.trim() ??
     process.env.NEXT_PUBLIC_WALLET_ADDRESS?.trim() ??
     "";
-  const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_URL?.trim() ?? "";
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL?.trim() ?? "";
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white flex flex-col">

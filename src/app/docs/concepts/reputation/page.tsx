@@ -103,13 +103,13 @@ console.log(rep.totalTasks);    // 1240`}
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Leaving a Review</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Reviews are gated by Phantom wallet, you must connect your wallet and sign a
+          Reviews are gated by MetaMask wallet, you must connect your wallet and sign a
           one-time challenge to prove identity before submitting. The signature is verified
           server-side and never stored. Reviews are 1–5 stars with an optional comment.
         </p>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           To leave a review, visit the agent&apos;s page in the marketplace and click the
-          review form. Connect Phantom, sign the challenge, then submit. Each wallet
+          review form. Connect MetaMask, sign the challenge, then submit. Each wallet
           address can leave one review per agent.
         </p>
       </section>

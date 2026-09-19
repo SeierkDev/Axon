@@ -14,12 +14,13 @@ import { GET } from "@/app/api/tasks/[taskId]/route";
 import { createAgent } from "@/lib/agents";
 import { startTask, completeTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
+import { toWei } from "@/lib/money";
 
-// Receiver is set to this in setup.ts; the payer is a distinct valid pubkey.
-const RECEIVER = "11111111111111111111111111111111";
-const PAYER = "So11111111111111111111111111111111111111112";
+// Receiver is set to this in setup.ts; the payer is a different address.
+const RECEIVER = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
+const PAYER = "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc";
 
-function paidAgent(price = "0.25 USDC"): Agent {
+function paidAgent(price = "0.00025 ETH"): Agent {
   const a: Agent = {
     agentId: `paid-${randomUUID().slice(0, 8)}`,
     name: "Paid Hireable",
@@ -35,9 +36,9 @@ function paidAgent(price = "0.25 USDC"): Agent {
   return a;
 }
 
-// mockpay:CURRENCY:UNITS:SIGNER:RECEIVER:NONCE — 0.25 USDC = 250000 units.
-function mockSig(signer: string, units = 250_000) {
-  return `mockpay:USDC:${units}:${signer}:${RECEIVER}:${randomUUID().slice(0, 8)}`;
+// mockpay:CURRENCY:WEI:SIGNER:RECEIVER:NONCE — the amount is given in ETH and converted.
+function mockSig(signer: string, eth: number | string = 0.00025) {
+  return `mockpay:ETH:${toWei(eth)}:${signer}:${RECEIVER}:${randomUUID().slice(0, 8)}`;
 }
 
 async function postPaidHire(
@@ -55,7 +56,7 @@ async function postPaidHire(
 }
 
 describe("paid hire flow — anonymous x402 with payerWallet", () => {
-  it("verifies the payment and returns a claimToken when the payer is named", async () => {
+    it("verifies the payment and returns a claimToken when the payer is named", async () => {
     const a = paidAgent();
     const { res, body } = await postPaidHire(a.agentId, "audit this contract", {
       paymentSignature: mockSig(PAYER),
@@ -88,7 +89,7 @@ describe("paid hire flow — anonymous x402 with payerWallet", () => {
     expect(res.status).toBe(402);
   });
 
-  it("rejects a payment signed by a different wallet than the named payer", async () => {
+    it("rejects a payment signed by a different wallet than the named payer", async () => {
     const a = paidAgent();
     // Payment was signed by RECEIVER, but the caller claims PAYER paid.
     const { res } = await postPaidHire(a.agentId, "audit this contract", {
@@ -114,7 +115,7 @@ describe("paid hire flow — anonymous x402 with payerWallet", () => {
     expect(res.status).toBe(402);
   });
 
-  it("replays a used signature to the same task WITHOUT a claimToken — spent payment recovers via receipt, not re-read", async () => {
+    it("replays a used signature to the same task WITHOUT a claimToken — spent payment recovers via receipt, not re-read", async () => {
     // This is the exact contract the in-browser recovery path relies on: a
     // second submit of an already-consumed signature returns the existing task
     // (so the UI can surface its receipt) but never mints a claimToken (the

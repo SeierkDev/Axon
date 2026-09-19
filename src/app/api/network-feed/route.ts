@@ -13,7 +13,7 @@ export async function GET() {
       totalAgents: stats.agents.total,
       activeAgents: stats.agents.active,
       tasksCompleted: stats.tasks.completed,
-      usdcTransacted: stats.payments.totalUsdcTransacted,
+      ethTransacted: stats.payments.totalEthTransacted,
     },
   });
 }

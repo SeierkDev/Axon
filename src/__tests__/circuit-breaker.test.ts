@@ -1,33 +1,31 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
-  withHelius,
-  getHeliusCircuitState,
-  resetHeliusCircuit,
+  withRpc,
+  getRpcCircuitState,
+  resetRpcCircuit,
   CircuitOpenError,
-  isTransientHeliusError,
-} from "@/lib/solana";
+  isTransientRpcError,
+} from "@/lib/evm";
 
-// getConnection() calls getHeliusUrl() which throws if HELIUS_API_KEY is absent.
-// A fake key lets Connection be constructed without making real network calls —
-// the actual RPC only fires when fn() uses the connection, which our test fns don't.
+// The test functions below never use the request function they are handed, so nothing here reaches
+// a node: what is under test is the breaker's own bookkeeping, not the transport.
 beforeEach(() => {
-  resetHeliusCircuit();
-  process.env.HELIUS_API_KEY = "test-key-for-circuit-breaker-tests";
+  resetRpcCircuit();
 });
 
 // ── Closed state ──────────────────────────────────────────────────────────────
 
 describe("circuit breaker: closed state", () => {
   it("starts in closed state with 0 failures", () => {
-    const { state, consecutiveFailures } = getHeliusCircuitState();
+    const { state, consecutiveFailures } = getRpcCircuitState();
     expect(state).toBe("closed");
     expect(consecutiveFailures).toBe(0);
   });
 
   it("passes through a successful call and stays closed", async () => {
-    const result = await withHelius(async () => "ok");
+    const result = await withRpc(async () => "ok");
     expect(result).toBe("ok");
-    const { state, consecutiveFailures } = getHeliusCircuitState();
+    const { state, consecutiveFailures } = getRpcCircuitState();
     expect(state).toBe("closed");
     expect(consecutiveFailures).toBe(0);
   });
@@ -35,19 +33,19 @@ describe("circuit breaker: closed state", () => {
   it("increments failure count below threshold without opening", async () => {
     for (let i = 0; i < 4; i++) {
       await expect(
-        withHelius(async () => { throw new Error("rpc error"); })
+        withRpc(async () => { throw new Error("rpc error"); })
       ).rejects.toThrow("rpc error");
     }
-    const { state, consecutiveFailures } = getHeliusCircuitState();
+    const { state, consecutiveFailures } = getRpcCircuitState();
     expect(state).toBe("closed");
     expect(consecutiveFailures).toBe(4);
   });
 
   it("resets failure count to 0 after a success", async () => {
-    await expect(withHelius(async () => { throw new Error("fail"); })).rejects.toThrow();
-    await expect(withHelius(async () => { throw new Error("fail"); })).rejects.toThrow();
-    await withHelius(async () => "recovered");
-    expect(getHeliusCircuitState().consecutiveFailures).toBe(0);
+    await expect(withRpc(async () => { throw new Error("fail"); })).rejects.toThrow();
+    await expect(withRpc(async () => { throw new Error("fail"); })).rejects.toThrow();
+    await withRpc(async () => "recovered");
+    expect(getRpcCircuitState().consecutiveFailures).toBe(0);
   });
 });
 
@@ -57,22 +55,22 @@ describe("circuit breaker: opening after threshold", () => {
   it("opens after 5 consecutive failures", async () => {
     for (let i = 0; i < 5; i++) {
       await expect(
-        withHelius(async () => { throw new Error("rpc error"); })
+        withRpc(async () => { throw new Error("rpc error"); })
       ).rejects.toThrow("rpc error");
     }
-    expect(getHeliusCircuitState().state).toBe("open");
+    expect(getRpcCircuitState().state).toBe("open");
   });
 
   it("fails fast with CircuitOpenError when open — fn is never called", async () => {
     for (let i = 0; i < 5; i++) {
       await expect(
-        withHelius(async () => { throw new Error("rpc error"); })
+        withRpc(async () => { throw new Error("rpc error"); })
       ).rejects.toThrow();
     }
 
     const called = { value: false };
     await expect(
-      withHelius(async () => { called.value = true; return "x"; })
+      withRpc(async () => { called.value = true; return "x"; })
     ).rejects.toBeInstanceOf(CircuitOpenError);
     expect(called.value).toBe(false);
   });
@@ -80,12 +78,12 @@ describe("circuit breaker: opening after threshold", () => {
   it("CircuitOpenError carries a positive retryAfterMs", async () => {
     for (let i = 0; i < 5; i++) {
       await expect(
-        withHelius(async () => { throw new Error("x"); })
+        withRpc(async () => { throw new Error("x"); })
       ).rejects.toThrow();
     }
 
     try {
-      await withHelius(async () => "x");
+      await withRpc(async () => "x");
       expect.fail("should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(CircuitOpenError);
@@ -102,15 +100,15 @@ describe("circuit breaker: half-open after recovery window", () => {
     try {
       for (let i = 0; i < 5; i++) {
         await expect(
-          withHelius(async () => { throw new Error("x"); })
+          withRpc(async () => { throw new Error("x"); })
         ).rejects.toThrow();
       }
-      expect(getHeliusCircuitState().state).toBe("open");
+      expect(getRpcCircuitState().state).toBe("open");
 
       // Advance past the 60-second recovery window
       vi.advanceTimersByTime(61_000);
 
-      expect(getHeliusCircuitState().state).toBe("half-open");
+      expect(getRpcCircuitState().state).toBe("half-open");
     } finally {
       vi.useRealTimers();
     }
@@ -121,15 +119,15 @@ describe("circuit breaker: half-open after recovery window", () => {
     try {
       for (let i = 0; i < 5; i++) {
         await expect(
-          withHelius(async () => { throw new Error("x"); })
+          withRpc(async () => { throw new Error("x"); })
         ).rejects.toThrow();
       }
       vi.advanceTimersByTime(61_000);
-      expect(getHeliusCircuitState().state).toBe("half-open");
+      expect(getRpcCircuitState().state).toBe("half-open");
 
-      const result = await withHelius(async () => "probe success");
+      const result = await withRpc(async () => "probe success");
       expect(result).toBe("probe success");
-      const { state, consecutiveFailures } = getHeliusCircuitState();
+      const { state, consecutiveFailures } = getRpcCircuitState();
       expect(state).toBe("closed");
       expect(consecutiveFailures).toBe(0);
     } finally {
@@ -142,17 +140,17 @@ describe("circuit breaker: half-open after recovery window", () => {
     try {
       for (let i = 0; i < 5; i++) {
         await expect(
-          withHelius(async () => { throw new Error("x"); })
+          withRpc(async () => { throw new Error("x"); })
         ).rejects.toThrow();
       }
       vi.advanceTimersByTime(61_000);
-      expect(getHeliusCircuitState().state).toBe("half-open");
+      expect(getRpcCircuitState().state).toBe("half-open");
 
       await expect(
-        withHelius(async () => { throw new Error("still failing"); })
+        withRpc(async () => { throw new Error("still failing"); })
       ).rejects.toThrow("still failing");
 
-      expect(getHeliusCircuitState().state).toBe("open");
+      expect(getRpcCircuitState().state).toBe("open");
     } finally {
       vi.useRealTimers();
     }
@@ -161,21 +159,21 @@ describe("circuit breaker: half-open after recovery window", () => {
 
 // ── Retry with exponential backoff ───────────────────────────────────────────
 
-describe("withHelius: retry on transient errors", () => {
+describe("withRpc: retry on transient errors", () => {
   it("does not retry non-transient errors — exactly 1 attempt", async () => {
     let callCount = 0;
     await expect(
-      withHelius(async () => { callCount++; throw new Error("unknown RPC error"); })
+      withRpc(async () => { callCount++; throw new Error("unknown RPC error"); })
     ).rejects.toThrow("unknown RPC error");
     expect(callCount).toBe(1);
-    expect(getHeliusCircuitState().consecutiveFailures).toBe(1);
+    expect(getRpcCircuitState().consecutiveFailures).toBe(1);
   });
 
   it("retries transient errors up to 3 times, success on retry clears failures", async () => {
     vi.useFakeTimers();
     try {
       let callCount = 0;
-      const p = withHelius(async () => {
+      const p = withRpc(async () => {
         callCount++;
         if (callCount < 3) throw new Error("503 Service Unavailable");
         return "recovered";
@@ -184,7 +182,7 @@ describe("withHelius: retry on transient errors", () => {
       const result = await p;
       expect(result).toBe("recovered");
       expect(callCount).toBe(3);
-      expect(getHeliusCircuitState().consecutiveFailures).toBe(0);
+      expect(getRpcCircuitState().consecutiveFailures).toBe(0);
     } finally {
       vi.useRealTimers();
     }
@@ -194,7 +192,7 @@ describe("withHelius: retry on transient errors", () => {
     vi.useFakeTimers();
     try {
       let callCount = 0;
-      const p = withHelius(async () => {
+      const p = withRpc(async () => {
         callCount++;
         throw new Error("502 Bad Gateway");
       });
@@ -202,7 +200,7 @@ describe("withHelius: retry on transient errors", () => {
       await vi.runAllTimersAsync();
       await expect(p).rejects.toThrow("502 Bad Gateway");
       expect(callCount).toBe(3);
-      expect(getHeliusCircuitState().consecutiveFailures).toBe(1);
+      expect(getRpcCircuitState().consecutiveFailures).toBe(1);
     } finally {
       vi.useRealTimers();
     }
@@ -212,16 +210,16 @@ describe("withHelius: retry on transient errors", () => {
     vi.useFakeTimers();
     try {
       for (let i = 0; i < 5; i++) {
-        const p = withHelius(async () => { throw new Error("x"); });
+        const p = withRpc(async () => { throw new Error("x"); });
         void p.catch(() => {});
         await vi.runAllTimersAsync();
         await expect(p).rejects.toThrow();
       }
       vi.advanceTimersByTime(61_000);
-      expect(getHeliusCircuitState().state).toBe("half-open");
+      expect(getRpcCircuitState().state).toBe("half-open");
 
       let callCount = 0;
-      const probeP = withHelius(async () => {
+      const probeP = withRpc(async () => {
         callCount++;
         throw new Error("502 Bad Gateway"); // transient but half-open = no retry
       });
@@ -229,49 +227,49 @@ describe("withHelius: retry on transient errors", () => {
       await vi.runAllTimersAsync();
       await expect(probeP).rejects.toThrow("502 Bad Gateway");
       expect(callCount).toBe(1);
-      expect(getHeliusCircuitState().state).toBe("open");
+      expect(getRpcCircuitState().state).toBe("open");
     } finally {
       vi.useRealTimers();
     }
   });
 });
 
-// ── isTransientHeliusError ────────────────────────────────────────────────────
+// ── isTransientRpcError ────────────────────────────────────────────────────
 
-describe("isTransientHeliusError", () => {
+describe("isTransientRpcError", () => {
   it("flags ECONNRESET as transient", () => {
-    expect(isTransientHeliusError(new Error("read ECONNRESET"))).toBe(true);
+    expect(isTransientRpcError(new Error("read ECONNRESET"))).toBe(true);
   });
   it("flags ETIMEDOUT as transient", () => {
-    expect(isTransientHeliusError(new Error("connect ETIMEDOUT 1.2.3.4"))).toBe(true);
+    expect(isTransientRpcError(new Error("connect ETIMEDOUT 1.2.3.4"))).toBe(true);
   });
   it("flags 429 / 502 / 503 / 504 as transient", () => {
-    expect(isTransientHeliusError(new Error("HTTP 429 Too Many Requests"))).toBe(true);
-    expect(isTransientHeliusError(new Error("502 Bad Gateway"))).toBe(true);
-    expect(isTransientHeliusError(new Error("503 Service Unavailable"))).toBe(true);
-    expect(isTransientHeliusError(new Error("504 Gateway Timeout"))).toBe(true);
+    expect(isTransientRpcError(new Error("HTTP 429 Too Many Requests"))).toBe(true);
+    expect(isTransientRpcError(new Error("502 Bad Gateway"))).toBe(true);
+    expect(isTransientRpcError(new Error("503 Service Unavailable"))).toBe(true);
+    expect(isTransientRpcError(new Error("504 Gateway Timeout"))).toBe(true);
   });
   it("does not flag non-transient errors", () => {
-    expect(isTransientHeliusError(new Error("invalid pubkey"))).toBe(false);
-    expect(isTransientHeliusError(new Error("Account not found"))).toBe(false);
-    expect(isTransientHeliusError("string error")).toBe(false);
-    expect(isTransientHeliusError(null)).toBe(false);
+    expect(isTransientRpcError(new Error("invalid pubkey"))).toBe(false);
+    expect(isTransientRpcError(new Error("Account not found"))).toBe(false);
+    expect(isTransientRpcError("string error")).toBe(false);
+    expect(isTransientRpcError(null)).toBe(false);
   });
 });
 
-// ── resetHeliusCircuit ────────────────────────────────────────────────────────
+// ── resetRpcCircuit ────────────────────────────────────────────────────────
 
-describe("resetHeliusCircuit", () => {
+describe("resetRpcCircuit", () => {
   it("clears open state and failure count", async () => {
     for (let i = 0; i < 5; i++) {
       await expect(
-        withHelius(async () => { throw new Error("x"); })
+        withRpc(async () => { throw new Error("x"); })
       ).rejects.toThrow();
     }
-    expect(getHeliusCircuitState().state).toBe("open");
+    expect(getRpcCircuitState().state).toBe("open");
 
-    resetHeliusCircuit();
-    const { state, consecutiveFailures } = getHeliusCircuitState();
+    resetRpcCircuit();
+    const { state, consecutiveFailures } = getRpcCircuitState();
     expect(state).toBe("closed");
     expect(consecutiveFailures).toBe(0);
   });
@@ -279,13 +277,51 @@ describe("resetHeliusCircuit", () => {
   it("allows successful calls again after reset from open", async () => {
     for (let i = 0; i < 5; i++) {
       await expect(
-        withHelius(async () => { throw new Error("x"); })
+        withRpc(async () => { throw new Error("x"); })
       ).rejects.toThrow();
     }
-    resetHeliusCircuit();
+    resetRpcCircuit();
 
-    const result = await withHelius(async () => 42);
+    const result = await withRpc(async () => 42);
     expect(result).toBe(42);
-    expect(getHeliusCircuitState().state).toBe("closed");
+    expect(getRpcCircuitState().state).toBe("closed");
+  });
+});
+
+// ── errors the caller expects ─────────────────────────────────────────────────
+
+describe("withRpc: expected errors are not the node's fault", () => {
+  // Measured on the live node: a getLogs range over the result cap is REFUSED, not truncated. Each
+  // refusal used to count as a failure, so a sweep that was splitting exactly as designed would
+  // open the circuit on its fifth split and abandon the rest.
+  it("does not count an expected error toward the circuit", async () => {
+    const overLimit = (e: unknown) => e instanceof Error && /exceeds limit/.test(e.message);
+    for (let i = 0; i < 10; i++) {
+      await expect(
+        withRpc(async () => { throw new Error("logs matched by query exceeds limit of 10000"); }, { expected: overLimit }),
+      ).rejects.toThrow(/exceeds limit/);
+    }
+    const { state, consecutiveFailures } = getRpcCircuitState();
+    expect(state).toBe("closed");
+    expect(consecutiveFailures).toBe(0);
+  });
+
+  it("still counts an error the caller did not expect", async () => {
+    const overLimit = (e: unknown) => e instanceof Error && /exceeds limit/.test(e.message);
+    for (let i = 0; i < 5; i++) {
+      await expect(
+        withRpc(async () => { throw new Error("node exploded"); }, { expected: overLimit }),
+      ).rejects.toThrow("node exploded");
+    }
+    expect(getRpcCircuitState().state).toBe("open");
+  });
+
+  it("hands the expected error back without retrying it", async () => {
+    let calls = 0;
+    await expect(
+      withRpc(async () => { calls++; throw new Error("ECONNRESET, exceeds limit of 10000"); },
+        { expected: (e) => e instanceof Error && /exceeds limit/.test(e.message) }),
+    ).rejects.toThrow(/exceeds limit/);
+    expect(calls).toBe(1); // transient-looking, but the caller claimed it
   });
 });

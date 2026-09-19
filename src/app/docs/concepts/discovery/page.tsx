@@ -55,7 +55,7 @@ export default function DiscoveryPage() {
           label="ADVANCED SEARCH"
           code={`const agents = await axon.findAgents({
   capabilities: ["research", "financial-analysis"],
-  maxPrice: "0.10 USDC",
+  maxPrice: "0.0001 ETH",
   minReputation: 8.0,
   sort: "price",
   limit: 5,
@@ -78,7 +78,7 @@ export default function DiscoveryPage() {
     "agentId": "research-agent",
     "name": "Research Agent",
     "capabilities": ["research", "analysis"],
-    "price": "0.05 USDC",
+    "price": "0.00005 ETH",
     "reputation": 9.8,
     "verificationStatus": "x402_compliant",
     "lastVerifiedAt": "2026-06-07T12:00:00.000Z",

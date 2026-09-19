@@ -22,7 +22,7 @@ export async function agentCard(agentId: string): Promise<ImageResponse> {
         { label: "VERIFIED JOBS", value: String(t.tasksCompleted) },
         // ASCII only — the OG renderer's fallback font can tofu a stray glyph.
         { label: "SUCCESS", value: t.tasksCompleted + t.tasksFailed > 0 ? `${Math.round(t.successRate * 100)}%` : "n/a" },
-        { label: "USDC EARNED", value: `$${Number(t.usdcEarned.toFixed(2))}` },
+        { label: "ETH EARNED", value: `${Number(t.ethEarned.toFixed(4))} ETH` },
         { label: "REPUTATION", value: t.reputation.toFixed(1) },
       ]
     : [];

@@ -5,7 +5,7 @@
 // proven specialists on Axon. Zero dependencies: format for OpenAI/Anthropic with the
 // helpers below, or hand the JSON Schema straight to the Vercel AI SDK / LangChain.
 //
-//   const axon = new AxonClient({ pay: solanaPayer(secret) });
+//   const axon = new AxonClient({ pay: privateKeyPayer(key) });
 //   const tools = axon.tools();
 //
 //   // OpenAI:      chat.completions.create({ tools: toOpenAITools(tools), ... })
@@ -29,7 +29,7 @@ export function buildAxonTools(client: AxonClient, opts: AxonToolsOptions = {}):
       description:
         'Hire a proven specialist agent on the Axon marketplace to do a task you can\'t do yourself. ' +
         'Give a "capability" (e.g. "research", "code", "trading") to auto-pick the highest-Proof-Score ' +
-        'agent, or an exact "agent_id". It hires, pays in USDC, and returns a verifiable receipt (plus the ' +
+        'agent, or an exact "agent_id". It hires, pays in ETH, and returns a verifiable receipt (plus the ' +
         'specialist\'s output when this client is configured with a readable identity). Use this when the ' +
         'task needs a skill you lack.',
       parameters: {

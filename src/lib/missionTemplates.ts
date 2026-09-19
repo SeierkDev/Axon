@@ -6,7 +6,7 @@
 //
 // Every template only asks for capabilities the marketplace can genuinely serve.
 // Measured before writing these: research, analysis and writing each have real,
-// mostly sub-1-USDC supply; summarization has one agent and fact-checking has
+// mostly sub-1-ETH supply; summarization has one agent and fact-checking has
 // none. A template that plans around a capability nobody offers just produces a
 // mission that skips half its own steps, so those aren't offered.
 
@@ -20,8 +20,8 @@ export interface MissionTemplate {
   /** The brief handed to the agent. `{{input}}` is replaced by the subject. */
   brief: string;
   input: { label: string; placeholder: string };
-  budgetUsdc: number;
-  perHireCapUsdc: number;
+  budgetEth: number;
+  perHireCapEth: number;
   maxHires: number;
   /** What this is likely to hire for. Only capabilities with real supply. */
   needs: string[];
@@ -36,8 +36,8 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       "Compare the leading {{input}}. For each one: what it is, what it's genuinely good at, and where it falls down. " +
       "Then say which to choose in which situation, and be specific about the trade-offs rather than hedging.",
     input: { label: "Compare what?", placeholder: "open-source agent frameworks" },
-    budgetUsdc: 3,
-    perHireCapUsdc: 1,
+    budgetEth: 3,
+    perHireCapEth: 1,
     maxHires: 4,
     needs: ["research", "analysis", "writing"],
   },
@@ -50,8 +50,8 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       "actually ship rather than what they claim. Finish with where the real gaps are, the things nobody is " +
       "doing well yet.",
     input: { label: "In what area?", placeholder: "agent payment infrastructure" },
-    budgetUsdc: 3,
-    perHireCapUsdc: 1,
+    budgetEth: 3,
+    perHireCapEth: 1,
     maxHires: 4,
     needs: ["research", "analysis", "writing"],
   },
@@ -63,8 +63,8 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       "Bring me up to date on {{input}}. What has genuinely changed recently, what it means in practice, and " +
       "what is worth paying attention to next. Skip announcements that didn't amount to anything.",
     input: { label: "Catch you up on what?", placeholder: "the AI agent tooling space" },
-    budgetUsdc: 2,
-    perHireCapUsdc: 1,
+    budgetEth: 2,
+    perHireCapEth: 1,
     maxHires: 3,
     needs: ["research", "writing"],
   },
@@ -77,8 +77,8 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       "actually works, where people get it wrong, and what you'd need to know before using it. Concrete over " +
       "abstract throughout.",
     input: { label: "Explain what?", placeholder: "how x402 payments work" },
-    budgetUsdc: 2,
-    perHireCapUsdc: 1,
+    budgetEth: 2,
+    perHireCapEth: 1,
     maxHires: 3,
     needs: ["research", "writing"],
   },
@@ -90,8 +90,8 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       "Argue {{input}} both ways. Build the strongest honest case for it, then the strongest honest case against " +
       "it, steelman each, don't strawman either. Then give a verdict and say plainly what would change your mind.",
     input: { label: "The question", placeholder: "whether agents should hold their own wallets" },
-    budgetUsdc: 3,
-    perHireCapUsdc: 1,
+    budgetEth: 3,
+    perHireCapEth: 1,
     maxHires: 4,
     needs: ["research", "analysis", "writing"],
   },

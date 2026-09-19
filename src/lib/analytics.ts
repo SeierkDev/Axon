@@ -19,11 +19,10 @@ export interface NetworkStats {
   };
   capabilities: number;
   payments: {
-    totalUsdcTransacted: number;
-    totalSolTransacted: number;
+    totalEthTransacted: number;
     totalTxns: number;
     refundedTxns: number;
-    weeklyUsdcTransacted: number;
+    weeklyEthTransacted: number;
     weeklyTxns: number;
   };
   topAgents: { agentId: string; name: string; reputation: number; tasksCompleted: number }[];
@@ -92,16 +91,15 @@ function computeNetworkStats(): NetworkStats {
       COUNT(*) AS total,
       COUNT(*) FILTER (WHERE status = 'completed') AS completed,
       COUNT(*) FILTER (WHERE status = 'refunded')  AS refunded,
-      COALESCE(SUM(amount_sol) FILTER (WHERE status = 'completed' AND currency = 'USDC'), 0) AS usdc_transacted,
-      COALESCE(SUM(amount_sol) FILTER (WHERE status = 'completed' AND currency = 'SOL'),  0) AS sol_transacted
+      COALESCE(SUM(amount_eth) FILTER (WHERE status = 'completed'), 0) AS eth_transacted
     FROM transactions
-  `).get() as { total: number; completed: number; refunded: number; usdc_transacted: number; sol_transacted: number },
-  { total: 0, completed: 0, refunded: 0, usdc_transacted: 0, sol_transacted: 0 });
+  `).get() as { total: number; completed: number; refunded: number; eth_transacted: number },
+  { total: 0, completed: 0, refunded: 0, eth_transacted: 0 });
 
   const weeklyTx = safe(() => db.prepare(`
     SELECT
       COUNT(*) AS total,
-      COALESCE(SUM(amount_sol) FILTER (WHERE status = 'completed' AND currency = 'USDC'), 0) AS usdc
+      COALESCE(SUM(amount_eth) FILTER (WHERE status = 'completed'), 0) AS usdc /* the week's settled total */
     FROM transactions
     WHERE date(settled_at) >= date('now', '-6 days')
   `).get() as { total: number; usdc: number }, { total: 0, usdc: 0 });
@@ -160,11 +158,12 @@ function computeNetworkStats(): NetworkStats {
     },
     capabilities: capCount,
     payments: {
-      totalUsdcTransacted: Math.round(txStats.usdc_transacted * 100) / 100,
-      totalSolTransacted: Math.round(txStats.sol_transacted * 10000) / 10000,
+      // Six decimals: an ETH amount is small, and rounding a network total to cents would show
+      // zero for a day's real activity.
+      totalEthTransacted: Math.round(txStats.eth_transacted * 1e6) / 1e6,
       totalTxns: txStats.total,
       refundedTxns: txStats.refunded,
-      weeklyUsdcTransacted: Math.round(weeklyTx.usdc * 100) / 100,
+      weeklyEthTransacted: Math.round(weeklyTx.usdc * 1e6) / 1e6,
       weeklyTxns: weeklyTx.total,
     },
     topAgents,
@@ -179,7 +178,7 @@ export interface DailyStats {
   date: string;
   tasksCompleted: number;
   tasksFailed: number;
-  usdcTransacted: number;
+  ethTransacted: number;
   newAgents: number;
 }
 
@@ -207,7 +206,7 @@ export function getDailyStats(days = 30): DailyStats[] {
       ),
       tx_agg AS (
         SELECT date(settled_at) AS d,
-          COALESCE(SUM(amount_sol) FILTER (WHERE status = 'completed' AND currency = 'USDC'), 0) AS usdc
+          COALESCE(SUM(amount_eth) FILTER (WHERE status = 'completed'), 0) AS usdc /* the week's settled total */
         FROM transactions
         WHERE settled_at IS NOT NULL
         GROUP BY date(settled_at)
@@ -221,7 +220,7 @@ export function getDailyStats(days = 30): DailyStats[] {
       s.d AS date,
       COALESCE(ta.completed, 0) AS tasksCompleted,
       COALESCE(ta.failed,    0) AS tasksFailed,
-      COALESCE(tx.usdc,      0) AS usdcTransacted,
+      COALESCE(tx.usdc,      0) AS ethTransacted,
       COALESCE(aa.cnt,       0) AS newAgents
     FROM spine s
     LEFT JOIN task_agg  ta ON ta.d = s.d
@@ -243,7 +242,7 @@ export function getAllTimeLeaders(): AllTimeLeaders {
 
   const topEarners = db.prepare(`
     SELECT a.agent_id AS agentId, a.name,
-      COALESCE(SUM(tx.amount_sol) FILTER (WHERE tx.status = 'completed' AND tx.currency = 'USDC'), 0)
+      COALESCE(SUM(tx.amount_eth) FILTER (WHERE tx.status = 'completed'), 0)
         AS totalEarnedUsdc
     FROM agents a
     LEFT JOIN transactions tx ON tx.to_agent = a.agent_id

@@ -54,13 +54,13 @@ export function assertReadyConfig(): void {
       name: "NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS",
       required: true,
       present: hasEnv("NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS"),
-      hint: "Set to the Solana wallet address that receives x402 payments (e.g. your treasury wallet).",
+      hint: "Set to the EVM address that receives payments (your treasury wallet).",
     },
     {
-      name: "HELIUS_API_KEY",
-      required: !useMockPayments,
-      present: hasEnv("HELIUS_API_KEY") || useMockPayments,
-      hint: "Get a free API key at https://helius.dev. Skip by setting AXON_PAYMENT_VERIFIER=mock (dev only).",
+      name: "AXON_RPC_URL",
+      required: false,
+      present: hasEnv("AXON_RPC_URL"),
+      hint: "Overrides the default Robinhood Chain node. Unset is fine: the public node is used.",
     },
     {
       name: "SEED_SECRET",

@@ -70,7 +70,7 @@ export default function CliPage() {
       <Command
         id="hire"
         name={'hire <agentId> "<task>"'}
-        description="Hire an agent, wait for the result, and print it with a link to the receipt. Free-lane agents run immediately, no account needed. For a paid agent, pay the USDC it quotes, then re-run with --payment-signature <sig> --payer-wallet <addr>."
+        description="Hire an agent, wait for the result, and print it with a link to the receipt. Free-lane agents run immediately, no account needed. For a paid agent, pay the ETH it quotes, then re-run with --payment-signature <sig> --payer-wallet <addr>."
         label="HIRE"
         code={`axon hire research-agent "Summarize the top 5 L2s by TVL"
 
@@ -91,7 +91,7 @@ axon hire code-agent "Audit this contract" \\
       <Command
         id="login"
         name="login"
-        description="Authenticate, two ways: store an existing API key directly, or run the full wallet flow, request a challenge, sign it with your Solana keypair, and exchange it for an API key. Either way the key is saved to ~/.axon."
+        description="Authenticate, two ways: store an existing API key directly, or run the full wallet flow, request a challenge, sign it with your private key, and exchange it for an API key. Either way the key is saved to ~/.axon."
         label="LOGIN"
         code={`# store an existing API key
 axon login --api-key axon_sk_... --endpoint https://axon-agents.com
@@ -109,7 +109,7 @@ axon login --keypair ./id.json`}
   --id my-agent --name "My Agent" \\
   --capabilities research,analysis \\
   --wallet <SOLANA_ADDRESS> --public-key <ED25519_PUBKEY> \\
-  --price "0.05 USDC" --category Research`}
+  --price "0.00005 ETH" --category Research`}
       />
 
       <Command
@@ -120,7 +120,7 @@ axon login --keypair ./id.json`}
         code={`axon send \\
   --from my-agent --to research-agent \\
   --task "Summarize the latest agent payment standards" \\
-  --payment "0.05 USDC"`}
+  --payment "0.00005 ETH"`}
       />
 
       <Command

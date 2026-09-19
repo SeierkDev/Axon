@@ -17,7 +17,7 @@ import { createHash } from "crypto";
 // recompute the score without trusting Axon.
 //
 // Un-gameable by construction: the proven-work component is driven only by tasks
-// that ACTUALLY settled USDC on-chain (contract-test automation excluded) — an
+// that ACTUALLY settled ETH on-chain (contract-test automation excluded) — an
 // agent can't self-assign these, and self-dealing them only burns the protocol
 // fee. Free completed work still feeds quality/reputation but never the proven-
 // work booster. The whole bundle hashes to `contentHash`, so a score can be cited
@@ -27,7 +27,7 @@ const METHOD_VERSION = "proof-score-v2";
 const SCALE = 1000;
 // Calibrated so proven, settled work meaningfully moves the score (it's the
 // un-gameable moat) rather than quality dominating: 60/40, with anchors set for a
-// young network so ~30 settled tasks / ~200 USDC reads as strong proven work and
+// young network so ~30 settled tasks / ~200 ETH reads as strong proven work and
 // higher tiers are reachable as an agent builds a real settled track record.
 const QUALITY_WEIGHT = 0.6; // how WELL it works: success, latency, payment reliability, reviews (+ staleness decay)
 const VOLUME_WEIGHT = 0.4; // how MUCH proven, settled work stands behind it (native + cross-network)
@@ -38,16 +38,16 @@ const VOLUME_WEIGHT = 0.4; // how MUCH proven, settled work stands behind it (na
 const BUYER_KEPT_WEIGHT = 0.15;
 const MIN_RESOLVED_ORDERS = 3;
 const TASKS_ANCHOR = 30; // ~full task-volume credit near this many settled tasks (log curve, diminishing returns)
-const USDC_ANCHOR = 200; // ~full settled-value credit near this much settled USDC
+const USDC_ANCHOR = 200; // ~full settled-value credit near this much settled ETH
 const MAX_EVIDENCE = 25; // most-recent settled tasks embedded inline; evidenceCount carries the true total
 
 export interface ProofScoreEvidence {
   taskId: string; // Axon task id, or the external settlement ref for cross-network work
-  network: string; // "axon" for native work, else the originating network (e.g. "agenc")
+  network: string; // "axon" for native work, else the originating network
   receipt: string; // human page: /r/<taskId> for Axon, else the other network's receipt URL
   verify: string | null; // machine receipt for Axon; null for cross-network (verify via `receipt` on that network)
   completedAt: string;
-  settledUsdc: number;
+  settledEth: number;
 }
 
 export interface ProofScore {
@@ -63,7 +63,7 @@ export interface ProofScore {
     successRate: number; // 0..1
     paymentReliability: number; // 0..1
     avgResponseSec: number;
-    settledUsdc: number;
+    settledEth: number;
     staleDays: number | null;
     decayFactor: number; // 0..1
     // Real-world purchases this agent made on a buyer's behalf. keepRate is null
@@ -86,7 +86,7 @@ export interface ProofScore {
     version: string;
     scale: number;
     weights: { quality: number; provenWork: number; buyerKept: number };
-    anchors: { tasks: number; usdc: number };
+    anchors: { tasks: number; amountEth: number };
     formula: string;
     howToVerify: string;
   };
@@ -100,8 +100,8 @@ const round = (n: number, dp = 3): number => { const f = 10 ** dp; return Math.r
 const curve = (value: number, anchor: number): number =>
   Math.min(1, Math.log10(1 + Math.max(0, value)) / Math.log10(1 + anchor));
 
-function provenWorkFactor(completed: number, settledUsdc: number): number {
-  return Math.min(1, 0.6 * curve(completed, TASKS_ANCHOR) + 0.4 * curve(settledUsdc, USDC_ANCHOR));
+function provenWorkFactor(completed: number, settledEth: number): number {
+  return Math.min(1, 0.6 * curve(completed, TASKS_ANCHOR) + 0.4 * curve(settledEth, USDC_ANCHOR));
 }
 
 function tierFor(score: number): string {
@@ -123,41 +123,41 @@ const sha256hex = (s: string): string => createHash("sha256").update(s, "utf8").
 
 interface WorkItem {
   taskId: string; // Axon task id, or the external ref for cross-network work
-  network: string; // "axon" or the originating network (e.g. "agenc")
+  network: string; // "axon" or the originating network
   receipt: string;
   verify: string | null;
   completedAt: string;
-  settledUsdc: number;
+  settledEth: number;
 }
 
 // All settled work backing the score — native Axon settlements PLUS settlements
 // the agent earned on other networks (portability). This is the un-gameable core:
-// only work that ACTUALLY settled USDC counts. Free completed tasks are excluded
+// only work that ACTUALLY settled ETH counts. Free completed tasks are excluded
 // (they still feed quality/reputation) so an attacker can't inflate volume with
-// self-dealt free tasks — a settled task costs the buyer real USDC, and
+// self-dealt free tasks — a settled task costs the buyer real ETH, and
 // self-dealing only burns the protocol fee. Cross-network items carry the other
 // network's receipt so they stay independently verifiable.
 function settledWork(agentId: string): WorkItem[] {
   const rows = getDb()
     .prepare(
       `SELECT t.task_id, t.completed_at, t.from_agent,
-              (SELECT x.amount_sol FROM transactions x
+              (SELECT x.amount_eth FROM transactions x
                  WHERE x.task_id = t.task_id AND x.to_agent = t.to_agent
-                   AND x.status = 'completed' AND x.currency = 'USDC' LIMIT 1) AS settled_usdc
+                   AND x.status = 'completed' LIMIT 1) AS settled_eth
          FROM tasks t
         WHERE t.to_agent = ? AND t.status = 'completed' AND t.completed_at IS NOT NULL`,
     )
-    .all(agentId) as { task_id: string; completed_at: string; from_agent: string; settled_usdc: number | null }[];
+    .all(agentId) as { task_id: string; completed_at: string; from_agent: string; settled_eth: number | null }[];
 
   const native: WorkItem[] = rows
-    .filter((r) => !isContractTestAgent(r.from_agent) && (r.settled_usdc ?? 0) > 0)
+    .filter((r) => !isContractTestAgent(r.from_agent) && (r.settled_eth ?? 0) > 0)
     .map((r) => ({
       taskId: r.task_id,
       network: "axon",
       receipt: `/r/${r.task_id}`,
       verify: `/api/receipts/${r.task_id}/public`,
       completedAt: r.completed_at,
-      settledUsdc: r.settled_usdc as number,
+      settledEth: r.settled_eth as number,
     }));
 
   const cross: WorkItem[] = getCrossNetworkSettlements(agentId).map((s) => ({
@@ -166,7 +166,7 @@ function settledWork(agentId: string): WorkItem[] {
     receipt: s.receiptUrl,
     verify: null,
     completedAt: s.settledAt,
-    settledUsdc: s.usdc,
+    settledEth: s.amountEth,
   }));
 
   // Deterministic total order (newest first, then id) across both sources, so the
@@ -189,7 +189,7 @@ export function getProofScoreEvidence(agentId: string): ProofScoreEvidence[] | n
     receipt: w.receipt,
     verify: w.verify,
     completedAt: w.completedAt,
-    settledUsdc: round(w.settledUsdc, 6),
+    settledEth: round(w.settledEth, 6),
   }));
 }
 
@@ -199,11 +199,11 @@ export function computeProofScore(agentId: string): ProofScore | null {
 
   const rep = computeReputation(agentId); // canonical network quality signal (staleness-decayed)
   const work = settledWork(agentId);
-  const settledUsdc = round(work.reduce((s, w) => s + w.settledUsdc, 0), 6);
+  const settledEth = round(work.reduce((s, w) => s + w.settledEth, 0), 6);
   const settledCount = work.length;
 
   const qualityFactor = round(rep.reputation / 10); // 0..1
-  const volumeFactor = round(provenWorkFactor(settledCount, settledUsdc)); // 0..1
+  const volumeFactor = round(provenWorkFactor(settledCount, settledEth)); // 0..1
 
   // The commerce signal, if this agent has one. Weights are renormalised over
   // the components that APPLY, so an agent that has never bought anything scores
@@ -225,7 +225,7 @@ export function computeProofScore(agentId: string): ProofScore | null {
     receipt: w.receipt,
     verify: w.verify,
     completedAt: w.completedAt,
-    settledUsdc: round(w.settledUsdc, 6),
+    settledEth: round(w.settledEth, 6),
   }));
 
   // `body` is everything the contentHash commits to — deterministic for the same
@@ -243,7 +243,7 @@ export function computeProofScore(agentId: string): ProofScore | null {
       successRate: round(rep.successRate),
       paymentReliability: round(rep.paymentReliability),
       avgResponseSec: rep.avgResponseTimeSec,
-      settledUsdc,
+      settledEth,
       staleDays: rep.staleDays,
       decayFactor: rep.decayFactor,
       purchasesResolved: resolved,
@@ -261,12 +261,12 @@ export function computeProofScore(agentId: string): ProofScore | null {
       version: METHOD_VERSION,
       scale: SCALE,
       weights: { quality: QUALITY_WEIGHT, provenWork: VOLUME_WEIGHT, buyerKept: BUYER_KEPT_WEIGHT },
-      anchors: { tasks: TASKS_ANCHOR, usdc: USDC_ANCHOR },
+      anchors: { tasks: TASKS_ANCHOR, amountEth: USDC_ANCHOR },
       formula:
         "score = round(scale * (quality.weight*quality.factor + provenWork.weight*provenWork.factor)); " +
         "quality.factor = reputation/10 (staleness-decayed blend of success, latency, payment reliability, reviews); " +
-        "provenWork.factor = min(1, 0.6*log10(1+evidenceCount)/log10(1+tasksAnchor) + 0.4*log10(1+settledUsdc)/log10(1+usdcAnchor)), " +
-        "where evidenceCount = the number of SETTLED tasks backing the score (native + cross-network, NOT inputs.tasksCompleted) and settledUsdc = their summed USDC. " +
+        "provenWork.factor = min(1, 0.6*log10(1+evidenceCount)/log10(1+tasksAnchor) + 0.4*log10(1+settledEth)/log10(1+usdcAnchor)), " +
+        "where evidenceCount = the number of SETTLED tasks backing the score (native + cross-network, NOT inputs.tasksCompleted) and settledEth = their summed ETH. " +
         `buyerKept.factor = inputs.keepRate (kept / (kept + returned) across the agent's real-world purchases), included ONLY when at least ${MIN_RESOLVED_ORDERS} orders have resolved; ` +
         "when it is absent its weight is dropped and the remaining weights are renormalised, so an agent that has never bought anything scores exactly as it would without this component. " +
         "All weights are divided by the sum of the weights that applied.",
@@ -318,7 +318,7 @@ export interface ProofScoreVerification {
   receiptsChecked: number; // native Axon settlements re-fetched from public receipts
   receiptsSettled: number; // of those, confirmed completed with an on-chain settlement
   crossNetworkSettlements: number; // cross-network settlements counted (verify externally via each evidence receipt)
-  confirmedUsdc: number; // USDC summed only from confirmed settlements (native + cross-network)
+  confirmedUsdc: number; // ETH summed only from confirmed settlements (native + cross-network)
   recomputedScore: number; // score re-derived from what was confirmed
   scoreMatches: boolean;
   checkedAt: string;
@@ -344,11 +344,11 @@ export function verifyProofScore(agentId: string): ProofScoreVerification | null
       const r = getPublicReceipt(w.taskId);
       if (r && r.status === "completed" && r.settlement) {
         receiptsSettled++;
-        confirmedUsdc += w.settledUsdc;
+        confirmedUsdc += w.settledEth;
       }
     } else {
       crossNetwork++; // externally verifiable via w.receipt on the originating network
-      confirmedUsdc += w.settledUsdc;
+      confirmedUsdc += w.settledEth;
     }
   }
   confirmedUsdc = round(confirmedUsdc, 6);

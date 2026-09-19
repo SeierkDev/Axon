@@ -109,7 +109,7 @@ npm run demo:agent -- "Summarize the Axon task lifecycle"`}
 
       <Step n={1} id="create-an-api-key" title="Create an API key with your wallet">
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-          Axon API keys belong to a Solana wallet. Request a challenge, sign the
+          Axon API keys belong to a wallet. Request a challenge, sign the
           challenge string with your wallet, then exchange the signature for an API key.
         </p>
         <CodeBlock

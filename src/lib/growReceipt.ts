@@ -28,7 +28,7 @@ export interface MissionManifestEntry {
   /** The task, when there was one — this is what makes the step independently checkable. */
   taskId?: string;
   receiptUrl?: string;
-  costUsdc: number;
+  costEth: number;
   /** sha256 of what the step returned. */
   outputHash: string | null;
   /** sha256 over this entry's fields plus the previous entry's hash. */
@@ -42,7 +42,7 @@ export interface MissionManifest {
   agentId: string;
   /** The brief, hashed. The text itself stays private unless the owner shares it. */
   missionHash: string | null;
-  budgetUsdc: number;
+  budgetEth: number;
   startedAt: string;
   completedAt: string | null;
   status: GrowRun["status"];
@@ -51,7 +51,7 @@ export interface MissionManifest {
     hires: number;
     /** Steps with no specialist behind them — no payment, no receipt. */
     inHouse: number;
-    spentUsdc: number;
+    spentEth: number;
   };
   /** sha256 of the deliverable, so the result can be pinned without publishing it. */
   deliverableHash: string | null;
@@ -64,7 +64,7 @@ function paidFor(events: GrowEvent[], taskId: string | undefined): number {
   if (!taskId) return 0;
   return events
     .filter((e) => e.kind === "payment" && e.taskId === taskId)
-    .reduce((sum, e) => sum + (e.amountUsdc ?? 0), 0);
+    .reduce((sum, e) => sum + (e.amountEth ?? 0), 0);
 }
 
 /**
@@ -103,7 +103,7 @@ export function buildMissionManifest(
       capability: (ev.data as { capability?: string } | undefined)?.capability ?? ev.summary,
       agentId: isHire ? ev.toAgent ?? undefined : undefined,
       taskId: isHire ? ev.taskId ?? undefined : undefined,
-      costUsdc: isHire ? paidFor(events, ev.taskId) : 0,
+      costEth: isHire ? paidFor(events, ev.taskId) : 0,
       outputHash: full ? hashContent(full) : null,
       prevHash,
     };
@@ -119,7 +119,7 @@ export function buildMissionManifest(
   const totals = {
     hires: entries.filter((e) => e.source === "hire").length,
     inHouse: entries.filter((e) => e.source === "in-house").length,
-    spentUsdc: Math.round(entries.reduce((s, e) => s + e.costUsdc, 0) * 10000) / 10000,
+    spentEth: Math.round(entries.reduce((s, e) => s + e.costEth, 0) * 10000) / 10000,
   };
 
   const body = {
@@ -127,7 +127,7 @@ export function buildMissionManifest(
     runId: run.runId,
     agentId: run.agentId,
     missionHash: hashContent(run.mission),
-    budgetUsdc: run.budgetUsdc,
+    budgetEth: run.budgetEth,
     startedAt: run.startedAt,
     completedAt: run.completedAt ?? null,
     status: run.status,
@@ -174,7 +174,7 @@ export function verifyMissionManifest(
         capability: e.capability,
         agentId: e.agentId,
         taskId: e.taskId,
-        costUsdc: e.costUsdc,
+        costEth: e.costEth,
         outputHash: e.outputHash,
         prevHash: e.prevHash,
       }),

@@ -62,11 +62,11 @@ describe("axon cli", () => {
         wallet: "W",
         "public-key": "PK",
         provider: "openai",
-        price: "0.05 USDC",
+        price: "0.00005 ETH",
         category: "Research",
       });
       expect(body.provider).toBe("openai");
-      expect(body.price).toBe("0.05 USDC");
+      expect(body.price).toBe("0.00005 ETH");
       expect(body.category).toBe("Research");
     });
 
@@ -77,8 +77,8 @@ describe("axon cli", () => {
 
   describe("buildTaskBody", () => {
     it("maps from/to/task plus optional payment", () => {
-      const body = buildTaskBody({ from: "a", to: "b", task: "do x", payment: "0.05 USDC" });
-      expect(body).toMatchObject({ from: "a", to: "b", task: "do x", payment: "0.05 USDC" });
+      const body = buildTaskBody({ from: "a", to: "b", task: "do x", payment: "0.00005 ETH" });
+      expect(body).toMatchObject({ from: "a", to: "b", task: "do x", payment: "0.00005 ETH" });
     });
 
     it("throws on missing required flags", () => {

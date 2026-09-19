@@ -30,22 +30,22 @@ export async function PUT(
   if (!auth.ok) return auth.response;
 
   const body = await req.json().catch(() => null) as {
-    thresholdUsdc?: number;
+    thresholdEth?: number;
     windowHours?: number;
     enabled?: boolean;
   } | null;
   if (!body) return apiError("VALIDATION_ERROR", "Request body required", 400);
 
-  const { thresholdUsdc, windowHours = 24, enabled = true } = body;
+  const { thresholdEth, windowHours = 24, enabled = true } = body;
 
-  if (thresholdUsdc == null || typeof thresholdUsdc !== "number" || thresholdUsdc <= 0) {
-    return apiError("VALIDATION_ERROR", "thresholdUsdc must be a positive number", 400);
+  if (thresholdEth == null || typeof thresholdEth !== "number" || thresholdEth <= 0) {
+    return apiError("VALIDATION_ERROR", "thresholdEth must be a positive number", 400);
   }
   if (typeof windowHours !== "number" || windowHours < 1 || windowHours > 720) {
     return apiError("VALIDATION_ERROR", "windowHours must be between 1 and 720", 400);
   }
 
-  const threshold = setThreshold(agentId, thresholdUsdc, windowHours, Boolean(enabled));
+  const threshold = setThreshold(agentId, thresholdEth, windowHours, Boolean(enabled));
   return NextResponse.json({ threshold });
 }
 

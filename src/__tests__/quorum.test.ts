@@ -10,7 +10,7 @@ import { createAgent } from "@/lib/agents";
 import { createTask, completeTask, failTask } from "@/lib/tasks";
 import { getDb } from "@/lib/db";
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let seq = 0;
 function uid() { return `qt-${++seq}`; }
 

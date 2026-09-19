@@ -14,10 +14,12 @@ import { createChannel, recordDeposit } from "@/lib/mpp";
 import * as tasksModule from "@/lib/tasks";
 import { getDb } from "@/lib/db";
 import type { Agent } from "@/sdk/types";
+import { ethAmount } from "./support/money";
+import { toWei } from "@/lib/money";
 
 afterEach(() => { vi.restoreAllMocks(); });
 
-const WALLET = "11111111111111111111111111111111";
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
 let seq = 0;
 function uid() { return `wfl-${++seq}`; }
 
@@ -106,17 +108,16 @@ describe("createWorkflow: missing agent", () => {
 describe("createWorkflow: paid MPP agents", () => {
   it("creates step 0 in payment_pending state and debits the MPP channel", () => {
     const sender = makeAgent();
-    const paid = makeAgent({ price: "0.001 USDC" });
+    const paid = makeAgent({ price: "0.001 ETH" });
     const free = makeAgent();
     createAgent(sender);
     createAgent(paid);
     createAgent(free);
 
     const { channel } = createChannel(WALLET);
-    // Fund the channel with 1 USDC (1_000_000 micro-USDC)
-    getDb()
-      .prepare("UPDATE mpp_channels SET balance_usdc = 1, balance_micro_usdc = 1000000 WHERE channel_id = ?")
-      .run(channel.channelId);
+    // Fund it through the same path production uses, so the decimal and the exact wei cannot
+    // disagree the way two hand-written literals can.
+    recordDeposit(channel.channelId, ethAmount(1), `sig-wf-${uid()}`);
 
     const wf = createWorkflow({
       fromAgent: sender.agentId,
@@ -134,14 +135,15 @@ describe("createWorkflow: paid MPP agents", () => {
 
     // Channel balance should have been debited by 0.001 USDC = 1000 micro-USDC
     const updatedChannel = getDb()
-      .prepare("SELECT balance_micro_usdc FROM mpp_channels WHERE channel_id = ?")
-      .get(channel.channelId) as { balance_micro_usdc: number };
-    expect(updatedChannel.balance_micro_usdc).toBe(1000000 - 1000);
+      .prepare("SELECT balance_wei FROM mpp_channels WHERE channel_id = ?")
+      .get(channel.channelId) as { balance_wei: string };
+    // Wei, exactly: 1 ETH deposited less the 0.001 ETH step price.
+    expect(BigInt(updatedChannel.balance_wei)).toBe(toWei(1)! - toWei(0.001)!);
   });
 
   it("throws when an MPP channel is required but not provided", () => {
     const sender = makeAgent();
-    const paid = makeAgent({ price: "0.001 USDC" });
+    const paid = makeAgent({ price: "0.001 ETH" });
     const free = makeAgent();
     createAgent(sender);
     createAgent(paid);
@@ -376,7 +378,7 @@ describe("getWorkflow: malformed agents JSON falls back to empty array", () => {
 describe("createWorkflow: MPP debit failure", () => {
   it("throws when the channel has insufficient balance for a paid step", () => {
     const sender = makeAgent();
-    const paid = makeAgent({ price: "1 USDC" });
+    const paid = makeAgent({ price: "0.001 ETH" });
     createAgent(sender);
     createAgent(paid);
 
@@ -399,13 +401,13 @@ describe("createWorkflow: MPP debit failure", () => {
 describe("createWorkflow: payment confirmation failure", () => {
   it("throws when markTaskPaymentConfirmed returns null after a successful debit", () => {
     const sender = makeAgent();
-    const paid = makeAgent({ price: "1 USDC" });
+    const paid = makeAgent({ price: "0.001 ETH" });
     createAgent(sender);
     createAgent(paid);
 
     // Fund the channel so the debit succeeds
     const { channel } = createChannel(WALLET);
-    recordDeposit(channel.channelId, { amountUsdc: 5, microUsdc: 5_000_000 }, `sig-confirm-${uid()}`);
+    recordDeposit(channel.channelId, ethAmount(5), `sig-confirm-${uid()}`);
 
     vi.spyOn(tasksModule, "markTaskPaymentConfirmed").mockImplementationOnce(() => null);
 

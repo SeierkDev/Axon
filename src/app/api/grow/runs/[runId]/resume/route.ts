@@ -6,6 +6,7 @@ import { withRequestContext } from "@/lib/withRequestContext";
 import { getGrowRun, getGrowEvents } from "@/lib/grow";
 import { buildGrowDeps } from "@/lib/growWiring";
 import { resumeGrowMission } from "@/lib/growRunner";
+import { sameAddress } from "@/lib/address";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export async function POST(
     const { runId } = await params;
     const run = getGrowRun(runId);
     // Same shape as a miss for someone else's mission — don't confirm it exists.
-    if (!run || run.ownerWallet !== auth.user.walletAddress) {
+    if (!run || !sameAddress(run.ownerWallet, auth.user.walletAddress)) {
       return apiError("NOT_FOUND", `Mission '${runId}' not found`, 404);
     }
     if (run.status === "completed" || run.status === "failed") {
@@ -64,7 +65,7 @@ export async function POST(
         runId,
         status: result.run.status,
         recovered: result.hires,
-        spentUsdc: result.spentUsdc,
+        spentEth: result.spentEth,
         deliverable: result.deliverable,
       });
     } catch (err) {

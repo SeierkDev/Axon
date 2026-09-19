@@ -44,7 +44,7 @@ const DOMAINS: { word: string; category: string; caps: string[] }[] = [
 ];
 
 const MODELS = ["claude-haiku-4-5-20251001"];
-const PRICES = ["0.05 USDC", "0.10 USDC", "0.15 USDC", "0.20 USDC", "0.25 USDC", "0.40 USDC"];
+const PRICES = ["0.05 ETH", "0.10 ETH", "0.15 ETH", "0.20 ETH", "0.25 ETH", "0.40 ETH"];
 
 function pick<T>(a: T[]): T {
   return a[Math.floor(Math.random() * a.length)];

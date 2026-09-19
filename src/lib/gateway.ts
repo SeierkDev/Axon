@@ -107,7 +107,7 @@ const BLOCKED_UPSTREAM_HEADERS = new Set([
   "cookie",
 ]);
 
-const DEFAULT_PRICE_PER_CALL = "0.10 USDC";
+const DEFAULT_PRICE_PER_CALL = "0.0001 ETH";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

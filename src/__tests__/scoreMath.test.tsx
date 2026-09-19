@@ -20,7 +20,7 @@ function proof(over?: Partial<ProofScore>): ProofScore {
       successRate: 0.95,
       paymentReliability: 1,
       avgResponseSec: 3,
-      settledUsdc: 120,
+      settledEth: 0.12,
       staleDays: null,
       decayFactor: 1,
     purchasesResolved: 0,
@@ -33,15 +33,15 @@ function proof(over?: Partial<ProofScore>): ProofScore {
       provenWork: { factor: 0.959, weight: 0.4, points: 383.6 },
     },
     evidence: [
-      { taskId: "t1", network: "axon", receipt: "/r/t1", verify: "/api/receipts/t1/trace", completedAt: "2026-07-10T00:00:00.000Z", settledUsdc: 0.15 },
-      { taskId: "x1", network: "agenc", receipt: "https://agenc.example/x1", verify: null, completedAt: "2026-07-09T00:00:00.000Z", settledUsdc: 0.2 },
+      { taskId: "t1", network: "axon", receipt: "/r/t1", verify: "/api/receipts/t1/trace", completedAt: "2026-07-10T00:00:00.000Z", settledEth: 0.15 },
+      { taskId: "x1", network: "peernet", receipt: "https://peernet.example/x1", verify: null, completedAt: "2026-07-09T00:00:00.000Z", settledEth: 0.2 },
     ],
     evidenceCount: 40,
     method: {
       version: "proof-score-v1",
       scale: 1000,
       weights: { quality: 0.6, provenWork: 0.4, buyerKept: 0.15 },
-      anchors: { tasks: 30, usdc: 200 },
+      anchors: { tasks: 30, amountEth: 200 },
       formula: "score = …",
       howToVerify: "refetch receipts …",
     },
@@ -79,7 +79,7 @@ describe("ScoreMath — the recompute-it-yourself breakdown", () => {
   it("shows the recomputable inputs", () => {
     const html = renderToStaticMarkup(<ScoreMath proof={proof()} />);
     expect(html).toContain("8.2 / 10"); // reputation
-    expect(html).toContain("120 USDC"); // settled value
+    expect(html).toContain("0.12 ETH"); // settled value
     expect(html).toContain("95%"); // success rate
     expect(html).toContain("100%"); // payment reliability
   });
@@ -87,7 +87,7 @@ describe("ScoreMath — the recompute-it-yourself breakdown", () => {
   it("lists only the NATIVE settled receipts, each linking to its /r/ page", () => {
     const html = renderToStaticMarkup(<ScoreMath proof={proof()} />);
     expect(html).toContain('href="/r/t1"'); // native, shown
-    expect(html).not.toContain("agenc.example"); // cross-network belongs to the other section, not here
+    expect(html).not.toContain("peernet.example"); // cross-network belongs to the other section, not here
     expect(html).toContain("1 of 40"); // 1 native shown of 40 total settled
   });
 });

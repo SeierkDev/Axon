@@ -33,7 +33,7 @@ _SCALE = 1000
 _QUALITY_WEIGHT = 0.6
 _VOLUME_WEIGHT = 0.4
 _TASKS_ANCHOR = 30
-_USDC_ANCHOR = 200
+_ETH_ANCHOR = 200
 
 
 def _js_math_round(x: float) -> float:
@@ -60,8 +60,8 @@ def _curve(v: float, anchor: float) -> float:
     return min(1.0, math.log10(1 + max(0.0, v)) / math.log10(1 + anchor))
 
 
-def _proven_work_factor(count: float, usdc: float) -> float:
-    return min(1.0, 0.6 * _curve(count, _TASKS_ANCHOR) + 0.4 * _curve(usdc, _USDC_ANCHOR))
+def _proven_work_factor(count: float, eth: float) -> float:
+    return min(1.0, 0.6 * _curve(count, _TASKS_ANCHOR) + 0.4 * _curve(eth, _ETH_ANCHOR))
 
 
 @dataclass
@@ -109,11 +109,11 @@ def verify_proof_score(
 
     confirmed: Optional[int] = None
     count = len(evidence)
-    usdc = _js_round(sum(e.get("settledUsdc", 0) for e in evidence), 6)
+    eth = _js_round(sum(e.get("settledEth", 0) for e in evidence), 6)
 
     if confirm_receipts:
         ok = 0
-        confirmed_usdc = 0.0
+        confirmed_eth = 0.0
         for e in native:
             if not e.get("verify"):
                 continue
@@ -124,14 +124,14 @@ def verify_proof_score(
                 receipt = rr.json()
                 if receipt.get("status") == "completed" and receipt.get("settlement"):
                     ok += 1
-                    confirmed_usdc += e.get("settledUsdc", 0)
+                    confirmed_eth += e.get("settledEth", 0)
             except Exception:  # noqa: BLE001
                 pass
         confirmed = ok
         count = ok + len(cross)
-        usdc = _js_round(confirmed_usdc + sum(e.get("settledUsdc", 0) for e in cross), 6)
+        eth = _js_round(confirmed_eth + sum(e.get("settledEth", 0) for e in cross), 6)
 
-    volume_factor = _js_round(_proven_work_factor(count, usdc))
+    volume_factor = _js_round(_proven_work_factor(count, eth))
     recomputed = int(_js_math_round(
         _js_round(_SCALE * _QUALITY_WEIGHT * quality_factor, 2)
         + _js_round(_SCALE * _VOLUME_WEIGHT * volume_factor, 2)

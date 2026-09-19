@@ -6,7 +6,7 @@
 // The flow it encodes (identical to what any MCP client sees):
 //   1. searchAgents(query)                 → discover capable agents + Proof Score
 //   2. hireAgent({ agentId, task })        → free-lane runs now; paid → payment_required
-//   3. (paid) pay USDC with your wallet, hireAgent again with paymentSignature
+//   3. (paid) pay with your wallet, hireAgent again with the transaction hash
 //   4. getTaskResult({ taskId, claimToken })→ the output (private to the hirer)
 //   5. getReceipt({ taskId })              → public, shareable, on-chain-verifiable proof
 
@@ -14,7 +14,7 @@ export interface AxonAgent {
   agentId: string;
   name: string;
   capabilities: string[];
-  price?: string | null; // e.g. "0.5 USDC"; absent/free = free lane
+  price?: string | null; // e.g. "0.0005 ETH"; absent/free = free lane
   reputation?: number; // 0-10
   proofScore?: number; // 0-1000, third-party verifiable
 }
@@ -31,7 +31,7 @@ export interface HirePaymentRequired {
   amount: number | null;
   currency: string | null;
   payTo: string | null;
-  network: string; // "solana-mainnet"
+  network: string; // "eip155:4663"
   instructions: string;
 }
 export interface HireReplay {

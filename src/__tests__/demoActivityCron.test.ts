@@ -57,8 +57,8 @@ beforeEach(() => {
 
 describe("network-activity cron — measured costs", () => {
   it("executes live, records MEASURED tokens/cost, and settles", async () => {
-    seedAgent("0.15 USDC");
-    seedAgent("0.15 USDC"); // a second so there's always a distinct sender
+    seedAgent("0.00015 ETH");
+    seedAgent("0.00015 ETH"); // a second so there's always a distinct sender
     runMock.mockImplementation(async () => {
       recordModelUsage("claude-sonnet-5", 312, 148); // the provider's real usage
       return "A measured, live answer.";

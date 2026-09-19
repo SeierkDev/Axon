@@ -46,7 +46,7 @@ beforeAll(() => {
     fromAgent: buyer.agentId,
     toAgent: worker.agentId,
     task: "research the thing",
-    payment: "750 USDC",
+    payment: "0.75 ETH",
   });
   settledTaskId = t.taskId;
   startTask(settledTaskId);
@@ -57,10 +57,10 @@ beforeAll(() => {
     .run("a".repeat(64), "b".repeat(64), settledTaskId);
   getDb()
     .prepare(
-      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_sol, currency, status, signature, created_at, settled_at)
-       VALUES (?, ?, ?, ?, ?, 'USDC', 'settled', ?, ?, ?)`,
+      `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, currency, status, signature, created_at, settled_at)
+       VALUES (?, ?, ?, ?, ?, 'ETH', 'settled', ?, ?, ?)`,
     )
-    .run(randomUUID(), settledTaskId, buyer.agentId, worker.agentId, 750, "sig-" + randomUUID().slice(0, 8), new Date().toISOString(), new Date().toISOString());
+    .run(randomUUID(), settledTaskId, buyer.agentId, worker.agentId, 0.75, "sig-" + randomUUID().slice(0, 8), new Date().toISOString(), new Date().toISOString());
 });
 
 describe("commitment", () => {
@@ -71,7 +71,7 @@ describe("commitment", () => {
     expect(c1.root).toBe(c2.root);
     expect(c1.root).toMatch(/^[0-9a-f]{64}$/);
     expect(c1.disclosable.some((d) => d.field === "delivered_and_accepted" && d.predicate)).toBe(true);
-    expect(c1.disclosable.some((d) => d.field === "earned_at_least_500_usdc" && d.predicate)).toBe(true);
+    expect(c1.disclosable.some((d) => d.field === "earned_at_least_0_5_eth" && d.predicate)).toBe(true);
   });
 
   it("returns null for a task with no receipt", () => {
@@ -81,8 +81,8 @@ describe("commitment", () => {
   it("facts lists only the TRUE predicates (never false ones)", () => {
     const c = buildReceiptCommitment(settledTaskId)!;
     expect(c.facts).toContain("delivered_and_accepted");
-    expect(c.facts).toContain("earned_at_least_500_usdc");
-    expect(c.facts).not.toContain("earned_at_least_1000_usdc"); // 750 < 1000
+    expect(c.facts).toContain("earned_at_least_0_5_eth");
+    expect(c.facts).not.toContain("earned_at_least_1_eth"); // 0.75 is under 1
     // every listed fact really is a predicate that's true
     for (const f of c.facts) expect(c.disclosable.find((d) => d.field === f)?.predicate).toBe(true);
   });
@@ -91,12 +91,12 @@ describe("commitment", () => {
 describe("disclosure + verification", () => {
   it("any subset folds to the receipt's root and verifies", () => {
     const root = buildReceiptCommitment(settledTaskId)!.root;
-    const bundle = discloseFields(settledTaskId, ["delivered_and_accepted", "earned_at_least_500_usdc"]);
+    const bundle = discloseFields(settledTaskId, ["delivered_and_accepted", "earned_at_least_0_5_eth"]);
     expect(bundle.root).toBe(root);
     const res = verifyBundle(bundle);
     expect(res.valid).toBe(true);
     expect(res.errors).toEqual([]);
-    expect(res.verified.map((v) => v.field).sort()).toEqual(["delivered_and_accepted", "earned_at_least_500_usdc"]);
+    expect(res.verified.map((v) => v.field).sort()).toEqual(["delivered_and_accepted", "earned_at_least_0_5_eth"]);
     // the true predicates carry value true
     for (const v of res.verified) expect(v.value).toBe(true);
   });
@@ -106,8 +106,8 @@ describe("disclosure + verification", () => {
     expect(verifyBundle(b).valid).toBe(true);
   });
 
-  it("proves 'earned ≥ $500' without the amount leaf traveling in the bundle", () => {
-    const b = discloseFields(settledTaskId, ["earned_at_least_500_usdc"]);
+  it("proves 'earned >= 0.5 ETH' without the amount leaf traveling in the bundle", () => {
+    const b = discloseFields(settledTaskId, ["earned_at_least_0_5_eth"]);
     // the exact amount is NOT in the disclosed set
     expect(b.disclosures.some((d) => d.field === "settlement_amount")).toBe(false);
     const res = verifyBundle(b);
@@ -116,7 +116,7 @@ describe("disclosure + verification", () => {
   });
 
   it("thresholds are honest: below the bar is committed false", () => {
-    const b = discloseFields(settledTaskId, ["earned_at_least_1000_usdc"]);
+    const b = discloseFields(settledTaskId, ["earned_at_least_1_eth"]);
     const res = verifyBundle(b);
     expect(res.valid).toBe(true); // it still verifies…
     expect(res.verified[0].value).toBe(false); // …as false
@@ -129,7 +129,7 @@ describe("disclosure + verification", () => {
 
 describe("tamper resistance", () => {
   it("flipping a disclosed value breaks the fold", () => {
-    const b = discloseFields(settledTaskId, ["earned_at_least_1000_usdc"]);
+    const b = discloseFields(settledTaskId, ["earned_at_least_1_eth"]);
     b.disclosures[0].value = true; // claim you cleared $1,000 when you didn't
     const res = verifyBundle(b);
     expect(res.valid).toBe(false);
@@ -149,7 +149,7 @@ describe("tamper resistance", () => {
   });
 
   it("a spoofed label/predicate on a GENUINE leaf can't mislead — verify uses the canonical registry", () => {
-    const b = discloseFields(settledTaskId, ["earned_at_least_100_usdc"]);
+    const b = discloseFields(settledTaskId, ["earned_at_least_0_1_eth"]);
     // the leaf is genuine (folds fine), but the bundle lies about what it means
     b.disclosures[0].label = "Earned at least $1,000,000";
     b.disclosures[0].predicate = false;
@@ -157,7 +157,7 @@ describe("tamper resistance", () => {
     expect(res.valid).toBe(true); // the crypto still checks out…
     // …but the reported meaning comes from the registry, not the bundle
     expect(res.verified[0].label).not.toContain("1,000,000");
-    expect(res.verified[0].label).toContain("$100");
+    expect(res.verified[0].label).toContain("0.1 ETH");
     expect(res.verified[0].predicate).toBe(true);
   });
 

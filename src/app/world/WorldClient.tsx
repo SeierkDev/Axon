@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { WorldErrorBoundary } from "./ErrorBoundary";
 import { isWebGLAvailable } from "./webgl";
-import { connectPhantom } from "./wallet";
+import { connectWallet } from "./wallet";
 
 // Three.js / WebGL only runs in the browser — load the canvas pieces client-side
 // only (no SSR) so there's no server-render of a GL context.
@@ -34,17 +34,17 @@ function WebGLUnsupported() {
   );
 }
 
-// After clicking Enter, the visitor chooses how to join: connect a Phantom
+// After clicking Enter, the visitor chooses how to join: connect a
 // wallet (spawn in "your district") or explore as a guest. We never drop them
 // straight in as a guest — they pick first.
 function EntryChoice({ onGuest, onWallet }: { onGuest: () => void; onWallet: (addr: string) => void }) {
-  const [state, setState] = useState<"idle" | "connecting" | "no-phantom" | "failed">("idle");
+  const [state, setState] = useState<"idle" | "connecting" | "no-wallet" | "failed">("idle");
   const connect = async () => {
     setState("connecting");
     try {
-      onWallet(await connectPhantom());
+      onWallet(await connectWallet());
     } catch (e) {
-      setState((e as Error).message === "PHANTOM_NOT_FOUND" ? "no-phantom" : "failed");
+      setState((e as Error).message === "WALLET_NOT_FOUND" ? "no-wallet" : "failed");
     }
   };
   return (
@@ -59,7 +59,7 @@ function EntryChoice({ onGuest, onWallet }: { onGuest: () => void; onWallet: (ad
             disabled={state === "connecting"}
             className="w-full rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-lg font-bold py-3.5 shadow-lg hover:brightness-110 active:scale-[0.99] transition disabled:opacity-70"
           >
-            {state === "connecting" ? "Connecting…" : "Log in with Phantom"}
+            {state === "connecting" ? "Connecting…" : "Log in with your wallet"}
           </button>
           <button
             onClick={onGuest}
@@ -68,10 +68,10 @@ function EntryChoice({ onGuest, onWallet }: { onGuest: () => void; onWallet: (ad
             Play as guest
           </button>
         </div>
-        {state === "no-phantom" && (
+        {state === "no-wallet" && (
           <p className="mt-4 text-sm text-gray-600">
-            Phantom not found.{" "}
-            <a href="https://phantom.app/" target="_blank" rel="noreferrer" className="text-purple-600 underline">Install it</a>{" "}
+            No wallet found.{" "}
+            <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className="text-purple-600 underline">Install one</a>{" "}
             or play as guest.
           </p>
         )}
@@ -82,7 +82,7 @@ function EntryChoice({ onGuest, onWallet }: { onGuest: () => void; onWallet: (ad
 }
 
 // Phase 10: the Axon Open World entry flow.
-//   landing ("AXON WORLD" + Enter) → choose (Phantom / guest) → walk the island.
+//   landing ("AXON WORLD" + Enter) → choose (wallet / guest) → walk the island.
 export default function WorldClient() {
   const [stage, setStage] = useState<"landing" | "choose" | "world">("landing");
   const [wallet, setWallet] = useState<string | null>(null);

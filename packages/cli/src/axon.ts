@@ -13,10 +13,10 @@
 //   axon hire    research-agent "summarize the top 5 L2s"   # hire + wait + receipt
 //   axon verify  <taskId>                              # recompute the receipt's proof locally
 //   axon login   --api-key axon_sk_... [--endpoint https://axon-agents.com]
-//   axon login   --keypair ./id.json                   # full wallet challenge/response
+//   axon login   --key ./key.txt                       # full wallet challenge/response
 //   axon register --id my-agent --name "My Agent" --capabilities research,analysis \
-//                 --wallet <SOLANA_ADDR> --public-key <ED25519_PUB> [--price "0.05 USDC"]
-//   axon send    --from a --to research-agent --task "summarize x" [--payment "0.05 USDC"]
+//                 --wallet <0xADDR> --public-key <0xADDR> [--price "0.0005 ETH"]
+//   axon send    --from a --to research-agent --task "summarize x" [--payment "0.0005 ETH"]
 //   axon receipt <taskId>
 //   axon cleanup                                       # revoke the stored key + clear config
 
@@ -24,33 +24,38 @@ import { createHash } from "crypto";
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
-import nacl from "tweetnacl";
-import bs58 from "bs58";
+import { privateKeyToAccount } from "viem/accounts";
 
-// A Solana keypair file is 64 bytes: the ed25519 seed followed by the public
-// key. tweetnacl reads exactly that, so `@solana/web3.js` — 11 MB, pulled in for
-// one `Keypair.fromSecretKey` call — is not worth carrying in something people
-// run with `npx`. Verified against web3.js over 200 random keypairs: identical
-// addresses and identical signatures.
-const SOLANA_SECRET_KEY_BYTES = 64;
+/**
+ * Read a private key from a file.
+ *
+ * Accepts the two shapes people actually have: 32 bytes of hex (with or without the 0x, which is
+ * what every EVM tool prints) or a JSON array of 32 bytes. Anything else is refused by name rather
+ * than being half-read into a key that signs as somebody else.
+ */
+function walletFromKeyFile(path: string): ReturnType<typeof privateKeyToAccount> {
+  const contents = readFileSync(path, "utf8").trim();
+  let hex: string | null = null;
 
-function walletFromKeypairFile(path: string): { address: string; secretKey: Uint8Array } {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(readFileSync(path, "utf8"));
-  } catch {
-    throw new Error(`Could not read a keypair from ${path} — expected a JSON array of bytes, like a Solana id.json.`);
+  if (/^(0x)?[0-9a-fA-F]{64}$/.test(contents)) {
+    hex = contents.startsWith("0x") ? contents : `0x${contents}`;
+  } else {
+    try {
+      const raw = JSON.parse(contents) as unknown;
+      if (Array.isArray(raw) && raw.length === 32) {
+        hex = `0x${Buffer.from(raw as number[]).toString("hex")}`;
+      }
+    } catch {
+      /* fall through to the error below */
+    }
   }
-  if (!Array.isArray(raw) || raw.length !== SOLANA_SECRET_KEY_BYTES) {
+
+  if (!hex) {
     throw new Error(
-      `${path} does not look like a Solana keypair: expected ${SOLANA_SECRET_KEY_BYTES} bytes, got ${
-        Array.isArray(raw) ? raw.length : typeof raw
-      }.`,
+      `Could not read a private key from ${path} — expected 32 bytes of hex, or a JSON array of 32 bytes.`,
     );
   }
-  const secretKey = Uint8Array.from(raw as number[]);
-  const pair = nacl.sign.keyPair.fromSecretKey(secretKey);
-  return { address: bs58.encode(Buffer.from(pair.publicKey)), secretKey: pair.secretKey };
+  return privateKeyToAccount(hex as `0x${string}`);
 }
 
 const CONFIG_DIR = join(homedir(), ".axon");
@@ -99,7 +104,7 @@ export interface ParsedArgs {
  * command, not quietly change which network it talks to.
  */
 export const COMMAND_FLAGS: Record<string, string[]> = {
-  login: ["api-key", "keypair"],
+  login: ["api-key", "key"],
   search: ["capability", "limit"],
   hire: ["to", "task", "pay-from-balance", "from", "payment-signature", "payer-wallet"],
   verify: [],
@@ -260,13 +265,13 @@ Commands:
               axon search <capability> [--limit N]
   hire      Hire an agent, wait for the result, and print its receipt:
               axon hire <agentId> "<task>"
-            Paid agents: pay the USDC, then re-run with
+            Paid agents: pay, then re-run with
               --payment-signature <sig> --payer-wallet <addr>
             Or spend a registered agent's earned balance (needs an API key):
               axon hire <agentId> "<task>" --pay-from-balance --from <your-agent>
   verify    Recompute a receipt's proof locally — public, no login needed:
               axon verify <taskId>
-  login     Authenticate. --api-key <key> to store a key, or --keypair <file>
+  login     Authenticate. --api-key <key> to store a key, or --key <file>
             for the full wallet challenge/response. --endpoint <url> optional.
   register  Register an agent. Required: --id --name --capabilities (comma list)
             --wallet --public-key. Optional: --provider --price --category --agent-endpoint.
@@ -289,16 +294,17 @@ async function cmdLogin(flags: Record<string, string | boolean>): Promise<string
     return `Saved API key for ${endpoint}`;
   }
 
-  const keypairPath = str(flags, "keypair");
-  if (keypairPath) {
-    const { address: wallet, secretKey } = walletFromKeypairFile(keypairPath);
+  const keyPath = str(flags, "key");
+  if (keyPath) {
+    const account = walletFromKeyFile(keyPath);
+    const wallet = account.address;
     const { challenge } = (await api(endpoint, "POST", "/api/auth/challenge", undefined, {
       walletAddress: wallet,
     })) as { challenge: string };
-    const signature = Buffer.from(
-      nacl.sign.detached(new TextEncoder().encode(challenge), secretKey),
-    ).toString("base64");
-    const result = (await api(endpoint, "POST", "/api/auth/login", undefined, {
+    // The challenge is the exact text the server checks, signed verbatim. It recovers the signer
+    // from this signature, so anything but EIP-191 over this string recovers to nobody.
+    const signature = await account.signMessage({ message: challenge });
+    const result = (await api(endpoint, "POST", "/api/auth/verify", undefined, {
       walletAddress: wallet,
       challenge,
       signature,
@@ -307,7 +313,7 @@ async function cmdLogin(flags: Record<string, string | boolean>): Promise<string
     return `Logged in as ${wallet} on ${endpoint}`;
   }
 
-  throw new Error("login needs --api-key <key> or --keypair <file>");
+  throw new Error("login needs --api-key <key> or --key <file>");
 }
 
 // ── Trustless receipt verification (recompute the hash chain locally) ─────────
@@ -407,7 +413,7 @@ async function cmdHire(endpoint: string, positional: string[], flags: Record<str
     if (terms && !sig) {
       const opt = terms.accepts?.[0];
       const amt = opt?.maxAmountRequired ? Number(opt.maxAmountRequired) / 1_000_000 : "?";
-      return `"${to}" is a paid agent (${amt} USDC). Pay ${amt} USDC to ${opt?.payToAddress} on Solana, then re-run with --payment-signature <sig> --payer-wallet <addr> — or, if you're a registered agent with earnings, --pay-from-balance --from <your-agent>.`;
+      return `"${to}" is a paid agent (${amt} ETH). Pay ${amt} ETH to ${opt?.payToAddress}, then re-run with --payment-signature <sig> --payer-wallet <addr> — or, if you're a registered agent with earnings, --pay-from-balance --from <your-agent>.`;
     }
 
     const body: Record<string, unknown> = { from: "anonymous", to, task };

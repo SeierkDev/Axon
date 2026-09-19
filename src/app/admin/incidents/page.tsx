@@ -36,12 +36,12 @@ function getIncidents(): Incident[] {
   `).all() as { task_id: string; from_agent: string; to_agent: string; error: string | null; completed_at: string }[];
 
   const refunds = db.prepare(`
-    SELECT tx_id, task_id, from_agent, to_agent, amount_sol, currency, settled_at
+    SELECT tx_id, task_id, from_agent, to_agent, amount_eth, currency, settled_at
     FROM transactions
     WHERE status = 'refunded' AND settled_at IS NOT NULL
     ORDER BY settled_at DESC
     LIMIT 200
-  `).all() as { tx_id: string; task_id: string | null; from_agent: string; to_agent: string; amount_sol: number; currency: string; settled_at: string }[];
+  `).all() as { tx_id: string; task_id: string | null; from_agent: string; to_agent: string; amount_eth: number; currency: string; settled_at: string }[];
 
   const incidents: Incident[] = [
     ...failedTasks.map((t): Incident => ({
@@ -59,7 +59,7 @@ function getIncidents(): Incident[] {
       taskId: r.task_id,
       fromAgent: r.from_agent,
       toAgent: r.to_agent,
-      amount: r.amount_sol,
+      amount: r.amount_eth,
       currency: r.currency,
     })),
   ];

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createWorkflow } from "@/lib/workflows";
 import { getAgentById } from "@/lib/agents";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
-import { getChannelById, parseMppUsdcPrice, verifyChannelKey } from "@/lib/mpp";
+import { getChannelById, parseMppPrice, verifyChannelKey } from "@/lib/mpp";
 import { apiError } from "@/lib/apiError";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { withRequestContext } from "@/lib/withRequestContext";
@@ -59,15 +59,15 @@ async function handlePost(req: NextRequest) {
       return apiError("NOT_FOUND", `Agent '${agentId}' not found`, 404);
     }
     if (agent.price) {
-      const price = parseMppUsdcPrice(agent.price);
+      const price = parseMppPrice(agent.price);
       if (!price) {
         return apiError(
           "VALIDATION_ERROR",
-          `Paid delegation only supports USDC-priced agents. '${agentId}' is priced at ${agent.price}.`,
+          `Paid delegation only supports ETH-priced agents. '${agentId}' is priced at ${agent.price}.`,
           400
         );
       }
-      totalPaidUsdc += price.amountUsdc;
+      totalPaidUsdc += price.amountEth;
     }
   }
 
@@ -95,10 +95,10 @@ async function handlePost(req: NextRequest) {
     if (channel.ownerAddress !== auth.user.walletAddress) {
       return apiError("FORBIDDEN", "MPP channel owner must match the authenticated API key owner", 403);
     }
-    if (channel.balanceUsdc < totalPaidUsdc) {
+    if (channel.balanceEth < totalPaidUsdc) {
       return apiError(
         "PAYMENT_REQUIRED",
-        `Insufficient MPP balance for paid delegation: need ${totalPaidUsdc.toFixed(6)} USDC`,
+        `Insufficient MPP balance for paid delegation: need ${totalPaidUsdc.toFixed(6)} ETH`,
         402
       );
     }

@@ -10,12 +10,12 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Axon" }]
-keywords = ["axon", "ai", "agents", "sdk", "solana", "x402", "verifiable"]
+keywords = ["axon", "ai", "agents", "sdk", "ethereum", "x402", "verifiable"]
 dependencies = ["requests>=2.28"]
 
 [project.optional-dependencies]
-# Only needed for mandate_signer(); signing is Ed25519 over the authorisation.
-signing = ["cryptography>=41.0"]
+# Only needed for mandate_signer(); signing is EIP-191 over the authorisation.
+signing = ["eth-account>=0.13"]
 
 [project.urls]
 Homepage = "https://axon-agents.com"

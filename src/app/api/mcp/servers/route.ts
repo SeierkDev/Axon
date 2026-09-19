@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { syncToTurso } from "@/lib/db-turso";
 import { requireAgentOwner } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
-import { parsePaymentAmount } from "@/lib/solana";
+import { parsePaymentAmount } from "@/lib/money";
 import { apiError } from "@/lib/apiError";
 import { recordAuditEvent } from "@/lib/audit";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
@@ -66,7 +66,7 @@ async function handlePost(req: NextRequest) {
   if (pricePerCall && (!parsedPrice || parsedPrice.amount <= 0)) {
     return apiError(
       "VALIDATION_ERROR",
-      "pricePerCall must look like '0.10 USDC' or '0.05 SOL'",
+      "pricePerCall must look like '0.10 ETH' or '0.05 SOL'",
       400
     );
   }
