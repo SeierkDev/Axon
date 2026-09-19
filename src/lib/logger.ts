@@ -14,8 +14,9 @@ const LEVEL_WEIGHT: Record<LogLevel, number> = {
 };
 
 const REDACTED = "[redacted]";
-// Solana base58 addresses: 32-44 chars, no 0/O/I/l
-const BASE58_WALLET_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+// A wallet address to truncate in a log line. Both spellings: the 0x address this chain uses,
+// and the base58 one older records still carry.
+const WALLET_RE = /^(?:0x[0-9a-fA-F]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})$/;
 const AXON_KEY_PREFIX = "axon_sk";
 
 function configuredLevel(): LogLevel {
@@ -45,7 +46,7 @@ function scrubStringValue(value: string): string {
   if (value.startsWith(`${AXON_KEY_PREFIX}_`) || value.startsWith(`${AXON_KEY_PREFIX}-`)) {
     return `${value.slice(0, 12)}[redacted]`;
   }
-  if (BASE58_WALLET_RE.test(value)) {
+  if (WALLET_RE.test(value)) {
     return `${value.slice(0, 8)}…`;
   }
   return value;
