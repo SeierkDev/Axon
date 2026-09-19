@@ -17,14 +17,17 @@ export interface WorldAvatar {
   name: string | null;
 }
 
+import { isWalletAddress } from "./address";
+
 const HEX = /^#[0-9a-fA-F]{6}$/;
-// Solana base58 addresses are 32–44 chars.
-const WALLET = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const HAIR_STYLES = new Set(["none", "short", "ponytail", "bun", "spiky"]);
 const HAT_STYLES = new Set(["none", "cowboy", "cap", "beanie", "bucket"]);
 
+// This gates saving an avatar and an inventory. It used to test for a base58 address, which
+// no 0x-prefixed address can satisfy — so on this chain it refused every real wallet, and the
+// World quietly stopped keeping anybody's character.
 export function isValidWallet(wallet: string): boolean {
-  return WALLET.test(wallet);
+  return isWalletAddress(wallet);
 }
 
 // Coerce arbitrary input into a valid avatar, or null if anything is off.

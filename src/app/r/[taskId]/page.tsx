@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPublicReceipt, type PublicReceipt } from "@/lib/receipts";
+import { explorerTxUrl, isOnChainTxHash } from "@/lib/chain";
 import TimelineClient from "./TimelineClient";
 import ReproClient from "./ReproClient";
 import DiscloseClient from "./DiscloseClient";
@@ -24,12 +25,6 @@ export async function generateMetadata({ params }: { params: Promise<{ taskId: s
     openGraph: { title, description, type: "website" },
     twitter: { card: "summary_large_image", title, description },
   };
-}
-
-// Real on-chain signatures are base58, 64+ chars — demo settlements carry
-// synthetic ids that would just 404 on Solscan.
-function isOnChainSig(sig: string): boolean {
-  return /^[1-9A-HJ-NP-Za-km-z]{64,}$/.test(sig);
 }
 
 function fmt(iso: string | null): string {
@@ -137,14 +132,14 @@ export default async function ReceiptPage({ params }: { params: Promise<{ taskId
                       {Number(r.settlement.amount.toFixed(6))} <span className="text-teal-400 text-base">{r.settlement.currency}</span>
                       <span className="text-xs text-gray-500 font-normal ml-2">{r.settlement.status}</span>
                     </p>
-                    {r.settlement.signature && isOnChainSig(r.settlement.signature) ? (
+                    {r.settlement.signature && isOnChainTxHash(r.settlement.signature) ? (
                       <a
-                        href={`https://solscan.io/tx/${r.settlement.signature}`}
+                        href={explorerTxUrl(r.settlement.signature)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs font-semibold text-teal-400 hover:text-teal-300 border border-teal-500/40 rounded-full px-3 py-1.5"
                       >
-                        View on Solscan →
+                        View on explorer →
                       </a>
                     ) : r.settlement.signature ? (
                       <span className="font-mono text-[10px] text-gray-500 max-w-[10rem] truncate" title={r.settlement.signature}>

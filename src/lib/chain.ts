@@ -10,6 +10,18 @@ export const RPC_URL = "https://rpc.mainnet.chain.robinhood.com";
 export const EXPLORER = "https://robinhoodchain.blockscout.com";
 export const CHAIN_NAME = "Robinhood Chain";
 
+/** An on-chain transaction, on the chain's explorer. */
+export const explorerTxUrl = (hash: string): string => `${EXPLORER}/tx/${hash}`;
+
+/**
+ * Is this a real transaction hash, rather than one of the synthetic ids demo settlements carry?
+ *
+ * A hash here is 32 bytes of hex behind an 0x. The old test asked for base58 instead, which is
+ * the one encoding that cannot contain a zero — so it called every genuine settlement on this
+ * chain synthetic, and the receipt for a real payment lost its link to the proof of it.
+ */
+export const isOnChainTxHash = (hash: string): boolean => /^0x[0-9a-fA-F]{64}$/.test(hash.trim());
+
 export const CHAIN_PARAMS = {
   chainId: CHAIN_ID_HEX,
   chainName: CHAIN_NAME,
