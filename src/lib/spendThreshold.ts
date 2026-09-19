@@ -3,6 +3,7 @@ import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 import { logger } from "./logger";
 import { queueWebhookEvent } from "./webhooks";
+import { IS_REPORTING_CURRENCY } from "./money";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ function getWindowSpend(agentId: string, windowHours: number): number {
     .prepare(`
       SELECT COALESCE(SUM(amount_eth), 0) AS spent
       FROM transactions
-      WHERE from_agent = ? AND status = 'completed'
+      WHERE from_agent = ? AND status = 'completed' AND ${IS_REPORTING_CURRENCY}
         AND settled_at >= datetime('now', '-' || ? || ' hours')
     `)
     .get(agentId, windowHours) as { spent: number };

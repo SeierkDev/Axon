@@ -8,6 +8,7 @@
 
 import { getDb } from "./db";
 import { getNetworkStats } from "./analytics";
+import { IS_REPORTING_CURRENCY } from "./money";
 
 export interface ExplorerTask {
   taskId: string;
@@ -89,9 +90,12 @@ export function getRecentSettlements(limit?: number): ExplorerSettlement[] {
       // parent after distribution — the actual value movements are the child
       // 'completed'/'refunded' payout rows, so showing the parent too would
       // double up one settlement and scatter it across the time-ordered feed.
+      //
+      // Exclude anything not in the current denomination too. The totals above the feed already
+      // leave those out, and a row in the feed that no total counts reads as a bug in the feed.
       `SELECT tx_id, task_id, from_agent, to_agent, amount_eth, currency, status, created_at, settled_at
          FROM transactions
-        WHERE status != 'split'
+        WHERE status != 'split' AND ${IS_REPORTING_CURRENCY}
         ORDER BY created_at DESC
         LIMIT ?`
     )

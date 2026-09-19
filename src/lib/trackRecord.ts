@@ -4,7 +4,7 @@ import { computeProofScore } from "./proofScore";
 import { getAttestationsForAgent } from "./attestations";
 import { getAgentById, isContractTestAgent } from "./agents";
 import { isOwnerVerified } from "./ownerVerification";
-import { formatEth } from "./money";
+import { formatEth, IS_REPORTING_CURRENCY } from "./money";
 
 // Agent Track Records — a proof-backed public profile.
 //
@@ -73,12 +73,12 @@ function liveStatus(agentId: string): { running: number; queued: number; lastCom
 function ethEarned(agentId: string): number {
   const row = getDb()
     .prepare(
-      `SELECT COALESCE(SUM(amount_eth), 0) AS usdc
+      `SELECT COALESCE(SUM(amount_eth), 0) AS eth
        FROM transactions
-       WHERE to_agent = ? AND status = 'completed'`,
+       WHERE to_agent = ? AND status = 'completed' AND ${IS_REPORTING_CURRENCY}`,
     )
-    .get(agentId) as { usdc: number };
-  return Math.round(row.usdc * 1_000_000) / 1_000_000;
+    .get(agentId) as { eth: number };
+  return Math.round(row.eth * 1_000_000) / 1_000_000;
 }
 
 // Friendly labels for the network's system requesters — a raw
@@ -100,7 +100,7 @@ function recentJobs(agentId: string): TrackRecordJob[] {
               COALESCE(a.name, t.from_agent) AS counterparty,
               (SELECT x.amount_eth FROM transactions x
                  WHERE x.task_id = t.task_id AND x.to_agent = t.to_agent
-                   AND x.status = 'completed'
+                   AND x.status = 'completed' AND x.${IS_REPORTING_CURRENCY}
                  LIMIT 1) AS settled_eth
        FROM tasks t LEFT JOIN agents a ON a.agent_id = t.from_agent
        WHERE t.to_agent = ? AND t.status = 'completed'

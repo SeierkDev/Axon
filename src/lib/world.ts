@@ -13,6 +13,7 @@
 
 import { getDb } from "./db";
 import { isContractTestAgent } from "./agents";
+import { IS_REPORTING_CURRENCY } from "./money";
 
 export interface WorldPlot {
   agentId: string;
@@ -90,8 +91,8 @@ interface AgentRow {
 
 // Map a metric to a building dimension on a gentle log curve so a few whales
 // don't dwarf everyone — the city stays readable.
-function scaleSize(usdc: number): number {
-  return Math.min(4, 1 + Math.log10(1 + Math.max(0, usdc)) / 2);
+function scaleSize(eth: number): number {
+  return Math.min(4, 1 + Math.log10(1 + Math.max(0, eth)) / 2);
 }
 function scaleHeight(tasks: number): number {
   return Math.min(24, 3 + Math.log10(1 + Math.max(0, tasks)) * 4);
@@ -110,7 +111,7 @@ function computeSnapshot(): WorldSnapshot {
          a.agent_id, a.name, a.category, a.reputation, a.wallet_address, a.verification_status, a.proof_score,
          COALESCE(t.completed, 0) AS tasks_completed,
          COALESCE(t.recent, 0)    AS tasks_recent,
-         COALESCE(x.usdc, 0)      AS eth_earned
+         COALESCE(x.eth, 0)       AS eth_earned
        FROM agents a
        LEFT JOIN (
          SELECT to_agent,
@@ -120,7 +121,7 @@ function computeSnapshot(): WorldSnapshot {
        ) t ON t.to_agent = a.agent_id
        LEFT JOIN (
          SELECT to_agent,
-                SUM(amount_eth) FILTER (WHERE status = 'completed') AS usdc
+                SUM(amount_eth) FILTER (WHERE status = 'completed' AND ${IS_REPORTING_CURRENCY}) AS eth
          FROM transactions GROUP BY to_agent
        ) x ON x.to_agent = a.agent_id
        ORDER BY a.category ASC, a.created_at ASC, a.agent_id ASC`

@@ -44,7 +44,10 @@ const DOMAINS: { word: string; category: string; caps: string[] }[] = [
 ];
 
 const MODELS = ["claude-haiku-4-5-20251001"];
-const PRICES = ["0.05 ETH", "0.10 ETH", "0.15 ETH", "0.20 ETH", "0.25 ETH", "0.40 ETH"];
+// The band the listed agents are actually priced in. These were carried across at their old
+// denomination, which put every generated agent three orders of magnitude above the ones it
+// was sitting next to in the marketplace.
+const PRICES = ["0.0001 ETH", "0.00015 ETH", "0.0002 ETH", "0.00025 ETH", "0.0003 ETH", "0.0005 ETH"];
 
 function pick<T>(a: T[]): T {
   return a[Math.floor(Math.random() * a.length)];

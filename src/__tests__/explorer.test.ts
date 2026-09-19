@@ -27,7 +27,7 @@ function settlement(from: string, to: string, amount: number): string {
   getDb()
     .prepare(
       `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at)
-       VALUES (?, NULL, ?, ?, ?, 'completed', NULL, 0, 'USDC', ?, ?)`
+       VALUES (?, NULL, ?, ?, ?, 'completed', NULL, 0, 'ETH', ?, ?)`
     )
     .run(txId, from, to, amount, new Date().toISOString(), new Date().toISOString());
   return txId;
@@ -58,7 +58,7 @@ describe("network explorer", () => {
     const found = recent.find((s) => s.txId === txId);
     expect(found).toBeTruthy();
     expect(found!.amount).toBe(0.25);
-    expect(found!.currency).toBe("USDC");
+    expect(found!.currency).toBe("ETH");
     expect(found!.status).toBe("completed");
   });
 
@@ -70,7 +70,7 @@ describe("network explorer", () => {
     getDb()
       .prepare(
         `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at)
-         VALUES (?, ?, ?, ?, 1.0, 'split', 'sig-x', 0, 'USDC', ?, ?)`
+         VALUES (?, ?, ?, ?, 1.0, 'split', 'sig-x', 0, 'ETH', ?, ?)`
       )
       .run(randomUUID(), taskId, a.agentId, b.agentId, new Date().toISOString(), new Date().toISOString());
     const childTx = settlement(a.agentId, b.agentId, 1.0);

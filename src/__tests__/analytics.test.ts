@@ -4,6 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { getNetworkStats, getDailyStats, getAllTimeLeaders } from "@/lib/analytics";
 import { createAgent } from "@/lib/agents";
+import { getDb } from "@/lib/db";
 import { createTask, startTask, completeTask, failTask } from "@/lib/tasks";
 import type { Agent } from "@/sdk/types";
 
@@ -92,5 +93,63 @@ describe("getAllTimeLeaders", () => {
     const leaders = getAllTimeLeaders();
     expect(Array.isArray(leaders.topEarners)).toBe(true);
     expect(Array.isArray(leaders.topWorkers)).toBe(true);
+  });
+});
+
+// ── Reporting denomination ────────────────────────────────────────────────────
+//
+// The ledger reaches back past the move to this chain, and the rows from before it sit in the
+// same amount column as everything since. Summed without a currency filter, an old amount is
+// restated as ETH: at the time this test was written that turned a handful of pre-move rows into
+// a headline "21 ETH transacted" on the public homepage. Nothing about that number was true.
+//
+// So: a row in another denomination is left out of the ETH figures entirely. Not converted —
+// there is no honest rate to convert it at.
+
+describe("ETH totals only count ETH", () => {
+  const settled = (currency: string, amount: number) => {
+    const id = `cur-${++seq}`;
+    getDb()
+      .prepare(
+        `INSERT INTO transactions
+           (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature,
+            fee_amount, currency, created_at, settled_at)
+         VALUES (?, NULL, ?, ?, ?, 'completed', NULL, 0, ?, ?, ?)`,
+      )
+      .run(id, `${id}-from`, `${id}-to`, amount, currency, new Date().toISOString(), new Date().toISOString());
+  };
+
+  it("leaves a pre-move row out of the transacted total instead of restating it as ETH", () => {
+    const before = getNetworkStats().payments.totalEthTransacted;
+
+    settled("USDC", 21);
+    expect(getNetworkStats().payments.totalEthTransacted).toBeCloseTo(before, 9);
+
+    settled("ETH", 0.0002);
+    expect(getNetworkStats().payments.totalEthTransacted).toBeCloseTo(before + 0.0002, 9);
+  });
+
+  it("keeps the same rule on the all-time earnings leaderboard", () => {
+    const agent = makeAgent();
+    createAgent(agent);
+    const db = getDb();
+    const row = (currency: string, amount: number) =>
+      db
+        .prepare(
+          `INSERT INTO transactions
+             (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature,
+              fee_amount, currency, created_at, settled_at)
+           VALUES (?, NULL, 'someone', ?, ?, 'completed', NULL, 0, ?, ?, ?)`,
+        )
+        .run(`lead-${++seq}`, agent.agentId, amount, currency, new Date().toISOString(), new Date().toISOString());
+
+    row("USDC", 500);
+    row("ETH", 0.0003);
+
+    const earned = getAllTimeLeaders().topEarners.find((e) => e.agentId === agent.agentId);
+    // A 500-unit pre-move row would have put this agent at the top of the board. Either it is
+    // absent (outranked by ETH earners) or it is present at its ETH total — never at 500.
+    if (earned) expect(earned.totalEarnedEth).toBeCloseTo(0.0003, 9);
+    expect(getAllTimeLeaders().topEarners.every((e) => e.totalEarnedEth < 500)).toBe(true);
   });
 });

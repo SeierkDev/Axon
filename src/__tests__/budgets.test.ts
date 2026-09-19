@@ -107,7 +107,7 @@ describe("checkBudget: daily cap", () => {
     const today = new Date().toISOString();
     getDb().prepare(`
       INSERT INTO transactions (tx_id, from_agent, to_agent, amount_eth, fee_amount, currency, status, created_at)
-      VALUES (?, ?, ?, 4, 0, 'USDC', 'escrow', ?)
+      VALUES (?, ?, ?, 4, 0, 'ETH', 'escrow', ?)
     `).run(randomUUID(), sender.agentId, receiver.agentId, today);
 
     // 2 more would exceed the 5 USDC daily limit (4 + 2 > 5)
@@ -125,7 +125,7 @@ describe("checkBudget: daily cap", () => {
     const today = new Date().toISOString();
     getDb().prepare(`
       INSERT INTO transactions (tx_id, from_agent, to_agent, amount_eth, fee_amount, currency, status, created_at)
-      VALUES (?, ?, ?, 3, 0, 'USDC', 'completed', ?)
+      VALUES (?, ?, ?, 3, 0, 'ETH', 'completed', ?)
     `).run(randomUUID(), sender.agentId, receiver.agentId, today);
 
     // 2 more (3 + 2 = 5 <= 10) should be allowed
@@ -175,7 +175,7 @@ describe("checkBudget: malformed allowed_to_agents falls through to daily cap", 
     // Pre-spend 0.4 USDC; adding 0.2 more would exceed the 0.5 daily cap
     getDb().prepare(`
       INSERT INTO transactions (tx_id, from_agent, to_agent, amount_eth, fee_amount, currency, status, created_at)
-      VALUES (?, ?, ?, 0.4, 0, 'USDC', 'completed', ?)
+      VALUES (?, ?, ?, 0.4, 0, 'ETH', 'completed', ?)
     `).run(randomUUID(), sender.agentId, receiver.agentId, new Date().toISOString());
 
     // Must throw daily cap error — the malformed JSON must NOT cause a silent pass

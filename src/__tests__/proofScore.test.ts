@@ -39,7 +39,7 @@ function settledJob(from: string, to: string, amountEth: number, content = "OUTP
   getDb()
     .prepare(
       `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, fee_amount, currency, created_at, settled_at)
-       VALUES (?, ?, ?, ?, ?, 'completed', 0, 'USDC', ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, 'completed', 0, 'ETH', ?, ?)`,
     )
     .run(randomUUID(), t.taskId, from, to, amountEth, ts, ts);
   return t.taskId;

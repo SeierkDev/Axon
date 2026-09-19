@@ -120,7 +120,7 @@ describe("computeReputation: paymentReliability with paid tasks", () => {
     getDb().prepare(`
       INSERT INTO transactions
         (tx_id, task_id, from_agent, to_agent, amount_eth, fee_amount, currency, status, incoming_signature, created_at)
-      VALUES (?, ?, ?, ?, 1.0, 0, 'USDC', 'completed', NULL, ?)
+      VALUES (?, ?, ?, ?, 1.0, 0, 'ETH', 'completed', NULL, ?)
     `).run(randomUUID(), task.taskId, sender.agentId, worker.agentId, new Date().toISOString());
 
     const metrics = computeReputation(worker.agentId);
