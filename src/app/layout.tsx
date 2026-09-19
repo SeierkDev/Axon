@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import PageTransition from "@/components/PageTransition";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { WalletProvider } from "@/components/WalletProvider";
 
@@ -77,9 +76,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <WalletProvider>
-            <PageTransition>{children}</PageTransition>
-          </WalletProvider>
+          <WalletProvider>{children}</WalletProvider>
         </ThemeProvider>
       </body>
     </html>

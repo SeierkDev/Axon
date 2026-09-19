@@ -148,7 +148,7 @@ export default function HowItWorksPage() {
           </FadeIn>
 
           {/* Main panel */}
-          <FadeIn delay={200}>
+          <FadeIn delay={120}>
             <div
               className="rounded-2xl p-px mb-4"
               style={{ background: `linear-gradient(135deg, ${ACCENT_DIM} 0%, rgba(255,255,255,0.04) 100%)` }}
@@ -346,7 +346,7 @@ export default function HowItWorksPage() {
           </FadeIn>
 
           {/* Step selector */}
-          <FadeIn delay={350}>
+          <FadeIn delay={210}>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-16">
               {STEPS.map((s, i) => (
                 <button
@@ -368,7 +368,7 @@ export default function HowItWorksPage() {
           </FadeIn>
 
           {/* Breakdown */}
-          <FadeIn delay={450}>
+          <FadeIn delay={270}>
             <div className="grid md:grid-cols-2 gap-4 mb-16">
               {STEPS.map((s, i) => (
                 <div
@@ -391,7 +391,7 @@ export default function HowItWorksPage() {
           </FadeIn>
 
           {/* CTA */}
-          <FadeIn delay={500}>
+          <FadeIn delay={300}>
             <div className="text-center">
               <div className="inline-flex items-center gap-6">
                 <Link href="/docs" className="px-6 py-3 bg-[#0a0a0a] hover:bg-[#222] text-white rounded-lg text-sm font-medium transition-colors">
