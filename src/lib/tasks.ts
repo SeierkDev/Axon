@@ -10,6 +10,7 @@ import { onChildTaskCompleted, onChildTaskFailed } from "./quorum";
 import { logger } from "./logger";
 import { emitAxonEvent } from "./eventBus";
 import { commitOutput } from "./outputCommitment";
+import { isPermanentModelError, summarizeModelError } from "./modelHealth";
 import { hashSpec } from "./specCommitment";
 import { syncToTurso } from "./db-turso";
 import { resolveTraceId, runWithTraceId } from "./tracing";
@@ -331,6 +332,11 @@ export function completeTask(taskId: string, output: string): Task | null {
     }
     updateAgentReputation(t.toAgent);
     updateAgentProofScore(t.toAgent); // refresh cached Proof Score (list-view badge)
+
+    // Work came back, so whatever the provider said about this agent's model before, it runs.
+    db.prepare(
+      "UPDATE agents SET model_error = NULL, model_error_at = NULL WHERE agent_id = ? AND model_error_at IS NOT NULL"
+    ).run(t.toAgent);
     return t;
   })();
 
@@ -407,6 +413,14 @@ export function failTask(taskId: string, rawError: string): Task | null {
     }
     updateAgentReputation(t.toAgent);
     updateAgentProofScore(t.toAgent); // refresh cached Proof Score (list-view badge)
+
+    // A provider saying the model does not exist is a verdict about the agent's configuration,
+    // not a bad run. Record it, so generated work stops being sent to an agent that cannot
+    // possibly complete it. Cleared the moment the owner changes the provider or the model.
+    if (isPermanentModelError(error)) {
+      db.prepare("UPDATE agents SET model_error = ?, model_error_at = ? WHERE agent_id = ?")
+        .run(summarizeModelError(error), now, t.toAgent);
+    }
     return t;
   })();
 

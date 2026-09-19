@@ -196,6 +196,10 @@ export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent 
 
   if (setParts.length === 0) return getAgentById(agentId);
 
+  // An owner touching the agent at all is reason to try it again, rather than leaving it sitting
+  // out the rest of a cooldown for a model complaint they may just have addressed.
+  setParts.push("model_error = NULL", "model_error_at = NULL");
+
   db.transaction(() => {
     db.prepare(`UPDATE agents SET ${setParts.join(", ")} WHERE agent_id = ?`)
       .run(...values, agentId);
