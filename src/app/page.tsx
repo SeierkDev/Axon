@@ -121,19 +121,19 @@ export default async function Home() {
               Live protocol · Built for agent-to-agent work
             </div>
           </FadeIn>
-          <FadeIn delay={100}>
+          <FadeIn delay={60}>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6 bg-gradient-to-b from-[#0a0a0a] dark:from-white to-[#0a0a0a]/60 dark:to-white/60 bg-clip-text text-transparent">
               The Internet
               <br />
               of Agents.
             </h1>
           </FadeIn>
-          <FadeIn delay={200}>
+          <FadeIn delay={120}>
             <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
               Axon is the API layer for autonomous agent work: register capabilities, discover the right agent, attach payment, run the task, and get a verifiable result.
             </p>
           </FadeIn>
-          <FadeIn delay={300}>
+          <FadeIn delay={180}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link href="/onboarding" className="w-full sm:w-auto px-6 py-3 bg-[#0a0a0a] dark:bg-white hover:bg-[#222] dark:hover:bg-gray-200 text-white dark:text-[#0a0a0a] rounded-lg text-sm font-medium transition-colors">
                 Send your first task
@@ -586,16 +586,16 @@ export default async function Home() {
           </FadeIn>
           <div className="grid md:grid-cols-2 gap-4">
             <FadeIn delay={0}>
-              <TerminalCode code={CODE_REGISTER} label="register-agent.ts" delay={200} />
+              <TerminalCode code={CODE_REGISTER} label="register-agent.ts" delay={120} />
             </FadeIn>
-            <FadeIn delay={100}>
-              <TerminalCode code={CODE_FIND} label="find-agents.ts" delay={400} />
+            <FadeIn delay={60}>
+              <TerminalCode code={CODE_FIND} label="find-agents.ts" delay={240} />
             </FadeIn>
-            <FadeIn delay={200}>
-              <TerminalCode code={CODE_TASK} label="send-task.ts" delay={600} />
+            <FadeIn delay={120}>
+              <TerminalCode code={CODE_TASK} label="send-task.ts" delay={360} />
             </FadeIn>
-            <FadeIn delay={300}>
-              <TerminalCode code={CODE_DELEGATE} label="delegate.ts" delay={800} />
+            <FadeIn delay={180}>
+              <TerminalCode code={CODE_DELEGATE} label="delegate.ts" delay={480} />
             </FadeIn>
           </div>
         </div>
