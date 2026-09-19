@@ -229,7 +229,7 @@ async function handlePost(req: NextRequest) {
   if (price && (!parsedPrice || parsedPrice.amount <= 0)) {
     return apiError(
       "VALIDATION_ERROR",
-      "price must look like '0.10 ETH' or '0.05 SOL'",
+      "price must look like '0.0002 ETH'",
       400
     );
   }
