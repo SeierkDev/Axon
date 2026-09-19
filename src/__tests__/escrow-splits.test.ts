@@ -32,7 +32,7 @@ function escrow(taskId: string, fromAgent: string, toAgent: string, amount: numb
   getDb()
     .prepare(
       `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
-       VALUES (?, ?, ?, ?, ?, 'escrow', NULL, 0, 'USDC', ?)`
+       VALUES (?, ?, ?, ?, ?, 'escrow', NULL, 0, 'ETH', ?)`
     )
     .run(randomUUID(), taskId, fromAgent, toAgent, amount, new Date().toISOString());
 }
@@ -195,7 +195,7 @@ describe("escrow splits", () => {
     getDb()
       .prepare(
         `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
-         VALUES (?, ?, ?, ?, ?, 'escrow', ?, 0, 'USDC', ?)`
+         VALUES (?, ?, ?, ?, ?, 'escrow', ?, 0, 'ETH', ?)`
       )
       .run(randomUUID(), taskId, payer.agentId, a.agentId, 0.1, sig, new Date().toISOString());
     defineSplits(taskId, [
@@ -223,7 +223,7 @@ describe("escrow splits", () => {
     getDb()
       .prepare(
         `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
-         VALUES (?, ?, ?, ?, ?, 'escrow', ?, 0, 'USDC', ?)`
+         VALUES (?, ?, ?, ?, ?, 'escrow', ?, 0, 'ETH', ?)`
       )
       .run(randomUUID(), taskId, payer.agentId, a.agentId, 0.1, sig, new Date().toISOString());
     defineSplits(taskId, [

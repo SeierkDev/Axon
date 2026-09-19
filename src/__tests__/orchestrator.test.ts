@@ -18,7 +18,7 @@ function credit(agentId: string, amount: number): void {
   getDb()
     .prepare(
       `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at)
-       VALUES (?, NULL, ?, ?, ?, 'completed', NULL, 0, 'USDC', ?, ?)`,
+       VALUES (?, NULL, ?, ?, ?, 'completed', NULL, 0, 'ETH', ?, ?)`,
     )
     .run(randomUUID(), "external-seed", agentId, amount, new Date().toISOString(), new Date().toISOString());
 }

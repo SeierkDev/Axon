@@ -6,6 +6,7 @@ import { getAgentById, isContractTestAgent } from "./agents";
 import { getPublicReceipt } from "./receipts";
 import { getCrossNetworkSettlements } from "./crossNetwork";
 import { createHash } from "crypto";
+import { IS_REPORTING_CURRENCY } from "./money";
 
 // Proof Score — a portable, third-party-verifiable reputation credential.
 //
@@ -143,7 +144,8 @@ function settledWork(agentId: string): WorkItem[] {
       `SELECT t.task_id, t.completed_at, t.from_agent,
               (SELECT x.amount_eth FROM transactions x
                  WHERE x.task_id = t.task_id AND x.to_agent = t.to_agent
-                   AND x.status = 'completed' LIMIT 1) AS settled_eth
+                   AND x.status = 'completed' AND x.${IS_REPORTING_CURRENCY}
+                 LIMIT 1) AS settled_eth
          FROM tasks t
         WHERE t.to_agent = ? AND t.status = 'completed' AND t.completed_at IS NOT NULL`,
     )

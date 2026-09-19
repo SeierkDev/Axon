@@ -179,7 +179,7 @@ describe("traceEvents — lifecycle capture + privacy", () => {
       kind: "settlement.completed",
       fromAgent: from.agentId,
       toAgent: to.agentId,
-      meta: { amount: 5, currency: "USDC" },
+      meta: { amount: 5, currency: "ETH" },
     });
 
     const trace = getPublicTrace(task.taskId)!;

@@ -15,6 +15,19 @@ export { PAYMENT_RECEIVER_WALLET_ADDRESS };
 export const CURRENCY = "ETH" as const;
 export type Currency = typeof CURRENCY;
 
+/**
+ * SQL for "this row is denominated in the currency we report in".
+ *
+ * Every total the site shows is an ETH total, and the ledger reaches back past the move to this
+ * chain: rows written before it carry the old denomination in the same `amount_eth` column. Summed
+ * without this, an old amount is restated as ETH and the number on the page is simply untrue.
+ *
+ * So it is written once, here, and pasted into every aggregate rather than remembered at each one.
+ * Anything not in the current denomination is left out of the figure instead of converted, because
+ * there is no honest rate to convert it at.
+ */
+export const IS_REPORTING_CURRENCY = `currency = '${CURRENCY}'`;
+
 /** Wei per whole ETH. */
 export const WEI_PER_ETH = 10n ** 18n;
 export const ETH_DECIMALS = 18;

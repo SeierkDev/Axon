@@ -3,6 +3,7 @@
 
 import type { Database } from "better-sqlite3";
 import type { Agent, InferenceProvider } from "@/sdk/types";
+import { CURRENCY } from "./money";
 
 interface BuiltinAgent {
   agentId: string;
@@ -248,30 +249,44 @@ function parseUsdcAmount(price: string | null): number {
   return m ? parseFloat(m[1]) : 0;
 }
 
-// Correct synthetic demo settlements to each worker agent's real listed price.
-// The activity cron historically recorded a flat 0.10 ETH per completed task; now
-// it uses the agent's price, and this fixes the old rows so the explorer shows real
-// amounts. Only rows with NO on-chain signature (incoming or outgoing) are touched,
-// so real, signed settlements are never modified. Idempotent — a row already at the
-// correct price is left as-is.
+// Correct synthetic demo settlements to each worker agent's real listed price, in the currency
+// the network settles in today.
+//
+// Two kinds of row are synthetic: the activity cron's, which carry no signature at all, and the
+// seeded history below, which carries a `hist-sig-` placeholder this file writes itself. Neither
+// ever moved funds. Anything else is left alone — a row with a real signature is a real
+// settlement and is never rewritten.
+//
+// Both halves matter. The amount, because these were written at prices from before the move and
+// would otherwise sit in the explorer three orders of magnitude above what the same agent charges
+// now. The currency, because the column they live in is the one every ETH total sums: a row left
+// at the old denomination is either dropped from the figures or, worse, restated as ETH.
+//
+// Idempotent: a row already correct on both counts is skipped.
+const SYNTHETIC_SETTLEMENT =
+  "signature IS NULL AND (incoming_signature IS NULL OR incoming_signature LIKE 'hist-sig-%')";
+
 export function backfillDemoSettlementAmounts(db: Database): number {
   const agents = db.prepare("SELECT agent_id, price FROM agents").all() as { agent_id: string; price: string | null }[];
   const priceByAgent = new Map(agents.map((a) => [a.agent_id, parseUsdcAmount(a.price)]));
 
   const rows = db
     .prepare(
-      "SELECT tx_id, to_agent, amount_eth FROM transactions WHERE signature IS NULL AND incoming_signature IS NULL AND status = 'completed'"
+      `SELECT tx_id, to_agent, amount_eth, currency FROM transactions
+        WHERE ${SYNTHETIC_SETTLEMENT} AND status = 'completed'`
     )
-    .all() as { tx_id: string; to_agent: string; amount_eth: number }[];
+    .all() as { tx_id: string; to_agent: string; amount_eth: number; currency: string | null }[];
   if (rows.length === 0) return 0;
 
-  const update = db.prepare("UPDATE transactions SET amount_eth = ? WHERE tx_id = ?");
+  const update = db.prepare("UPDATE transactions SET amount_eth = ?, currency = ? WHERE tx_id = ?");
   let changed = 0;
   const run = db.transaction(() => {
     for (const r of rows) {
       const price = priceByAgent.get(r.to_agent) ?? 0;
-      if (price > 0 && Math.abs(price - r.amount_eth) > 1e-9) {
-        update.run(price, r.tx_id);
+      if (price <= 0) continue;
+      const priceWrong = Math.abs(price - r.amount_eth) > 1e-9;
+      if (priceWrong || r.currency !== CURRENCY) {
+        update.run(price, CURRENCY, r.tx_id);
         changed++;
       }
     }

@@ -42,7 +42,7 @@ function escrow(taskId: string, from: string, to: string, amount: number): void 
   getDb()
     .prepare(
       `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at)
-       VALUES (?, ?, ?, ?, ?, 'escrow', NULL, 0, 'USDC', ?)`
+       VALUES (?, ?, ?, ?, ?, 'escrow', NULL, 0, 'ETH', ?)`
     )
     .run(randomUUID(), taskId, from, to, amount, new Date().toISOString());
 }

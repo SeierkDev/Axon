@@ -72,11 +72,11 @@ describe("getPublicReceipt", () => {
     getDb()
       .prepare(
         `INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, fee_amount, currency, signature, created_at, settled_at)
-         VALUES (?, ?, ?, ?, 0.1, 'completed', 0, 'USDC', 'sig123abc', ?, ?)`,
+         VALUES (?, ?, ?, ?, 0.1, 'completed', 0, 'ETH', 'sig123abc', ?, ?)`,
       )
       .run(randomUUID(), task.taskId, from.agentId, to.agentId, new Date().toISOString(), new Date().toISOString());
     const r = getPublicReceipt(task.taskId);
-    expect(r!.settlement).toMatchObject({ amount: 0.1, currency: "USDC", status: "completed", signature: "sig123abc" });
+    expect(r!.settlement).toMatchObject({ amount: 0.1, currency: "ETH", status: "completed", signature: "sig123abc" });
   });
 
   it("returns null for an unknown task", () => {
