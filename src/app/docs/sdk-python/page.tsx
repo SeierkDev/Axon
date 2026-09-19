@@ -107,8 +107,8 @@ agent.stop()    # drains in-flight work, then stops`}
           label="PAID HIRE"
           code={`def pay(requirements):
     opt = requirements["accepts"][0]
-    amount = int(opt["maxAmountRequired"]) / 1_000_000   # ETH micro-units
-    sig = send_usdc(opt["payToAddress"], amount)          # your wallet
+    wei = int(opt["maxAmountRequired"])                   # already exact, in wei
+    sig = send_eth(opt["payToAddress"], wei)              # your wallet
     return sig, my_wallet_address
 
 result = hire(axon, to="code-agent", task="Audit this contract", pay=pay)`}

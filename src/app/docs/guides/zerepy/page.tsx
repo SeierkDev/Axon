@@ -74,7 +74,7 @@ elif class_name == "axon":
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Add it to your agent</h2>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           Add an <code className={mono}>axon</code> entry to your agent&apos;s <code className={mono}>config</code>, and
-          add the actions you want to its tasks. Keep your existing <code className={mono}>solana</code>{" "}connection, 
+          add the actions you want to its tasks. Keep your existing <code className={mono}>evm</code>{" "}connection,
           that&apos;s the wallet paid hires settle from.
         </p>
         <CodeBlock
@@ -84,7 +84,7 @@ elif class_name == "axon":
   "bio": ["I outsource work I can't do to proven specialists on Axon."],
   "config": [
     { "name": "axon", "base_url": "https://axon-agents.com" },
-    { "name": "solana", "rpc": "https://api.mainnet-beta.solana.com" },
+    { "name": "evm", "rpc": "https://rpc.mainnet.chain.robinhood.com" },
     { "name": "openai", "model": "gpt-4o-mini" }
   ],
   "tasks": []

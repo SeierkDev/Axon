@@ -2014,7 +2014,7 @@ function TerminalPanel({ agentId, name, plot, onClose }: { agentId: string; name
           {plot && (
             <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
               <div className="rounded-lg bg-white/5 py-2"><p className="text-white font-bold text-base">{plot.tasksCompleted}</p><p className="text-gray-500">tasks</p></div>
-              <div className="rounded-lg bg-white/5 py-2"><p className="text-white font-bold text-base">${plot.ethEarned.toFixed(2)}</p><p className="text-gray-500">earned</p></div>
+              <div className="rounded-lg bg-white/5 py-2"><p className="text-white font-bold text-base">{fmtEth(plot.ethEarned)}</p><p className="text-gray-500">earned</p></div>
               <div className="rounded-lg bg-white/5 py-2"><p className="text-white font-bold text-base">{plot.reputation.toFixed(1)}</p><p className="text-gray-500">rep</p></div>
             </div>
           )}
@@ -3049,7 +3049,7 @@ interface EpochStanding {
   name: string;
   score: number;
   tasks: number;
-  usdc: number;
+  eth: number;
   rank: number;
 }
 interface EpochSnapshot {
@@ -3057,7 +3057,7 @@ interface EpochSnapshot {
   startsAt: string;
   endsAt: string;
   msRemaining: number;
-  totals: { tasks: number; usdc: number; agents: number };
+  totals: { tasks: number; eth: number; agents: number };
   leaderboard: EpochStanding[];
 }
 
@@ -3970,7 +3970,7 @@ function AgentCard({
         <div className="grid grid-cols-2 gap-px bg-gray-100">
           <Stat label="Reputation" value={Math.round(agent.reputation).toString()} />
           <Stat label="Tasks done" value={agent.tasksCompleted.toLocaleString()} />
-          <Stat label="ETH earned" value={`${agent.ethEarned.toFixed(4)} ETH`} />
+          <Stat label="ETH earned" value={fmtEth(agent.ethEarned)} />
           <Stat label="Last 24h" value={activity ? `${activity.completed24h} job${activity.completed24h === 1 ? "" : "s"}` : "…"} />
         </div>
         {live && (
@@ -4702,6 +4702,21 @@ function CreateCharacter({
   );
 }
 
+/**
+ * An ETH amount, for reading.
+ *
+ * These used to be printed as `$` + toFixed(2), from when the figures were dollar-denominated.
+ * A listing here is a fraction of an ETH, so both halves were wrong: the wrong symbol, and a
+ * rounding that turned every real amount into "0.00". Small amounts keep enough places to stay
+ * distinguishable, large ones stop at four.
+ */
+function fmtEth(value: number): string {
+  const n = Number(value) || 0;
+  if (n === 0) return "0 ETH";
+  const places = n < 0.001 ? 6 : n < 1 ? 4 : 3;
+  return `${Number(n.toFixed(places))} ETH`;
+}
+
 function fmtRemaining(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   const d = Math.floor(s / 86400);
@@ -4743,7 +4758,7 @@ function EpochPanel({
             <button onClick={onClose} className="text-white/80 hover:text-white text-lg">✕</button>
           </div>
           <p className="text-white/90 text-sm mt-1">
-            Ends in <span className="font-semibold">{fmtRemaining(remaining)}</span> · {epoch.totals.tasks} tasks · ${epoch.totals.usdc.toFixed(0)} settled
+            Ends in <span className="font-semibold">{fmtRemaining(remaining)}</span> · {epoch.totals.tasks} tasks · {fmtEth(epoch.totals.eth)} settled
           </p>
         </div>
 
@@ -4763,7 +4778,7 @@ function EpochPanel({
                 {l.rank === 1 ? "👑" : l.rank}
               </span>
               <span className="flex-1 truncate text-sm text-gray-800">{l.name}</span>
-              <span className="text-xs text-gray-500 whitespace-nowrap">{l.tasks}✓ · ${l.usdc.toFixed(0)}</span>
+              <span className="text-xs text-gray-500 whitespace-nowrap">{l.tasks}✓ · {fmtEth(l.eth)}</span>
               <span className="text-sm font-semibold text-gray-900 w-16 text-right">{l.score.toLocaleString()}</span>
             </li>
           ))}
@@ -6117,7 +6132,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
               {myAgents.map((a) => (
                 <li key={a.agentId} className="flex items-center justify-between gap-2">
                   <span className="text-sm text-gray-800 truncate">{a.name}</span>
-                  <span className="text-xs text-gray-500 whitespace-nowrap">${a.ethEarned.toFixed(0)} · {a.tasksCompleted}✓</span>
+                  <span className="text-xs text-gray-500 whitespace-nowrap">{fmtEth(a.ethEarned)} · {a.tasksCompleted}✓</span>
                 </li>
               ))}
             </ul>
@@ -6738,7 +6753,7 @@ export default function World3D({ onExit, initialWallet = null, autoArcade = fal
       {walletState === "no-wallet" && (
         <div className="absolute top-16 right-4 w-64 rounded-lg bg-white/95 px-4 py-3 shadow-lg text-sm text-gray-700">
           MetaMask wallet not found.{" "}
-          <a href="https://phantom.app/" target="_blank" rel="noreferrer" className="text-teal-600 underline">Install it</a>{" "}
+          <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className="text-teal-600 underline">Install it</a>{" "}
           to see your agents.
         </div>
       )}

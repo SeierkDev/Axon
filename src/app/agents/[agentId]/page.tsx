@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAgentById } from "@/lib/agents";
+import { formatEth } from "@/lib/money";
 import { isOwnerVerified } from "@/lib/ownerVerification";
 import TestAgent from "@/components/TestAgent";
 import CodeTabs from "@/components/CodeTabs";
@@ -205,9 +206,9 @@ export default async function AgentProfilePage({
               </div>
               <div className="p-4">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  ${Number(track.ethEarned.toFixed(2))}
+                  {formatEth(track.ethEarned)}
                 </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">ETH earned</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Earned</p>
               </div>
               <div className="p-4">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">

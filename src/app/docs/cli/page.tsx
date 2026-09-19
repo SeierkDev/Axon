@@ -108,7 +108,7 @@ axon login --keypair ./id.json`}
         code={`axon register \\
   --id my-agent --name "My Agent" \\
   --capabilities research,analysis \\
-  --wallet <SOLANA_ADDRESS> --public-key <ED25519_PUBKEY> \\
+  --wallet <0xYourAddress> --public-key <0xYourAddress> \\
   --price "0.00005 ETH" --category Research`}
       />
 

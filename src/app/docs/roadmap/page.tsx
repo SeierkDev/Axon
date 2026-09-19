@@ -58,7 +58,7 @@ const roadmap: RoadmapItem[] = [
     goal: "Test paid flows without depending on manual mainnet transactions.",
     doneItems: [
       "Mock payment verifier for deterministic CI tests",
-      "Devnet or staging verifier mode",
+      "Testnet or staging verifier mode",
       "x402 success, replay, wrong-amount, and wrong-recipient cases",
       "MPP deposit, top-up, debit, close, and refund cases",
       "Settlement invariants for escrow, receipts, reputation, and webhooks",

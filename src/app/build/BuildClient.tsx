@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { payForBuild } from "@/lib/buildPaymentClient";
+import { metaMaskDeepLink } from "@/lib/chain";
 
 // Price per generation. Keep in sync with BUILD_PRICE in src/app/api/build/route.ts.
 // 0.005 ETH was the old price; 0.005 ETH keeps it in the same bracket for this chain.
@@ -450,8 +451,7 @@ export default function BuildClient({
           // Reopen this page inside MetaMask's in-app browser, where the wallet
           // is injected. Carry the prompt through so it isn't lost.
           const target = `${window.location.origin}/build?p=${encodeURIComponent(prompt.trim())}`;
-          window.location.href =
-            `https://phantom.app/ul/browse/${encodeURIComponent(target)}?ref=${encodeURIComponent(window.location.origin)}`;
+          window.location.href = metaMaskDeepLink(target);
           return;
         }
         setError("MetaMask wallet not found, install the MetaMask extension to pay and generate.");
