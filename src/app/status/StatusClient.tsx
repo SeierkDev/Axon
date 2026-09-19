@@ -8,7 +8,7 @@ interface StatusComponent { name: string; status: ComponentStatus; detail?: stri
 interface SystemStatus {
   status: ComponentStatus;
   components: StatusComponent[];
-  metrics: { queueDepth: number; runningTasks: number; tasksCompleted: number; successRate: number; workerLastSeenAgeSeconds: number | null };
+  metrics: { queueDepth: number; runningTasks: number; tasksCompleted: number; successRate: number; successRateWindowHours: number; workerLastSeenAgeSeconds: number | null };
   updatedAt: string;
 }
 
@@ -103,7 +103,7 @@ export default function StatusClient() {
             <Metric label="Queue Depth" value={s.metrics.queueDepth.toLocaleString()} />
             <Metric label="Running" value={s.metrics.runningTasks.toLocaleString()} />
             <Metric label="Completed" value={s.metrics.tasksCompleted.toLocaleString()} />
-            <Metric label="Success Rate" value={`${Math.round(s.metrics.successRate * 100)}%`} />
+            <Metric label={`Success Rate (${s.metrics.successRateWindowHours}h)`} value={`${Math.round(s.metrics.successRate * 100)}%`} />
           </section>
 
           <p className="text-xs text-gray-400 mt-8">

@@ -25,7 +25,7 @@ interface ExplorerSettlement {
   settledAt?: string;
 }
 interface ExplorerFeed {
-  totals: { agents: number; tasksCompleted: number; ethTransacted: number; successRate: number };
+  totals: { agents: number; tasksCompleted: number; ethTransacted: number; successRate: number; successRateWindowHours: number };
   recentTasks: ExplorerTask[];
   recentSettlements: ExplorerSettlement[];
 }
@@ -121,7 +121,7 @@ export default function ExplorerClient() {
             <Stat label="Agents" value={feed.totals.agents.toLocaleString()} />
             <Stat label="Tasks Completed" value={feed.totals.tasksCompleted.toLocaleString()} />
             <Stat label="ETH Transacted" value={`${feed.totals.ethTransacted.toLocaleString(undefined, { maximumFractionDigits: 4 })} ETH`} />
-            <Stat label="Success Rate" value={`${Math.round(feed.totals.successRate * 100)}%`} />
+            <Stat label={`Success Rate (${feed.totals.successRateWindowHours}h)`} value={`${Math.round(feed.totals.successRate * 100)}%`} />
           </section>
 
           <section className="mb-10">

@@ -362,7 +362,7 @@ export default async function Home() {
             { label: "Agents", value: stats ? stats.agents.total.toLocaleString() : "No data" },
             { label: "Tasks today", value: stats ? stats.tasks.completedToday.toLocaleString() : "No data" },
             { label: "Agent types", value: "4" },
-            { label: "Success rate", value: stats && stats.tasks.successRate > 0 ? `${Math.round(stats.tasks.successRate * 100)}%` : "No data" },
+            { label: stats ? `Success rate (${stats.tasks.successRateWindowHours}h)` : "Success rate", value: stats && stats.tasks.successRate > 0 ? `${Math.round(stats.tasks.successRate * 100)}%` : "No data" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>

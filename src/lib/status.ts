@@ -25,6 +25,7 @@ export interface SystemStatus {
     runningTasks: number;
     tasksCompleted: number;
     successRate: number;
+    successRateWindowHours: number;
     workerLastSeenAgeSeconds: number | null;
   };
   updatedAt: string;
@@ -109,6 +110,7 @@ export function getSystemStatus(): SystemStatus {
       runningTasks: stats?.tasks.running ?? 0,
       tasksCompleted: stats?.tasks.completed ?? 0,
       successRate: stats?.tasks.successRate ?? 0,
+      successRateWindowHours: stats?.tasks.successRateWindowHours ?? 24,
       workerLastSeenAgeSeconds: ageSeconds,
     },
     updatedAt: new Date().toISOString(),
