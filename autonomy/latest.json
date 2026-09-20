@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-20T15:46:30.582Z",
-  "finishedAt": "2026-09-20T15:46:35.440Z",
-  "commit": "210cc8b",
+  "startedAt": "2026-09-20T17:04:11.874Z",
+  "finishedAt": "2026-09-20T17:04:16.976Z",
+  "commit": "907b77d",
   "checks": [
     {
       "id": "install-commands",
@@ -9,7 +9,7 @@
       "ok": true,
       "checked": 9,
       "findings": [],
-      "ms": 4593
+      "ms": 4851
     },
     {
       "id": "links",
@@ -23,7 +23,7 @@
       "id": "dead-exports",
       "title": "Exports are used",
       "ok": true,
-      "checked": 480,
+      "checked": 481,
       "findings": [
         {
           "severity": "warn",
@@ -31,14 +31,6 @@
           "why": "the export widens the surface without a caller to justify it",
           "where": [
             "src/lib/address.ts"
-          ]
-        },
-        {
-          "severity": "warn",
-          "what": "splitterAddress() is exported but only used inside its own file",
-          "why": "the export widens the surface without a caller to justify it",
-          "where": [
-            "src/lib/burn.ts"
           ]
         },
         {
@@ -82,11 +74,11 @@
           ]
         }
       ],
-      "ms": 237
+      "ms": 222
     }
   ],
   "errors": 0,
-  "warnings": 7,
+  "warnings": 6,
   "changed": false,
   "changes": []
 }
