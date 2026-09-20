@@ -4,6 +4,9 @@ import FadeIn from "@/components/FadeIn";
 import TerminalCode from "@/components/TerminalCode";
 import SiteNav from "@/components/SiteNav";
 import { getNetworkStats } from "@/lib/analytics";
+import { TOKEN_ADDRESS as AXON_TOKEN } from "@/lib/money";
+import { EXPLORER } from "@/lib/chain";
+import { shortAddress } from "@/lib/address";
 import { getLatestRun } from "@/lib/autonomy";
 
 export const dynamic = "force-dynamic";
@@ -164,12 +167,25 @@ export default async function Home() {
             )}
 
             <div className="mt-4 flex items-center justify-center gap-5">
-              {/* Where the token link goes once there is one. Saying so plainly beats an absence
-                  somebody could mistake for a token that exists somewhere else. */}
-              <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
-                $AXON not launched yet
-              </span>
+              {/* Reads the configured token rather than being edited on launch day. Before there is
+                  one it says so plainly, which beats an absence somebody could mistake for a token
+                  that exists somewhere else; after, it is the address and a way to check it. */}
+              {AXON_TOKEN ? (
+                <a
+                  href={`${EXPLORER}/address/${AXON_TOKEN}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  $AXON <span className="font-mono">{shortAddress(AXON_TOKEN)}</span>
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+                  $AXON not launched yet
+                </span>
+              )}
               <span className="text-gray-200 dark:text-gray-700">·</span>
               <Link href="/how-it-works" className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
                 See how it works →
