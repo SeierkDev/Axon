@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { randomUUID } from "crypto";
-import { backfillDemoSettlementAmounts } from "@/lib/agentSeed";
+import { backfillDemoSettlementAmounts, UNPRICED_AGENT_ETH } from "@/lib/agentSeed";
 import { createAgent } from "@/lib/agents";
 import { getDb } from "@/lib/db";
 import type { Agent } from "@/sdk/types";
@@ -50,7 +50,12 @@ describe("demo settlement amount backfill", () => {
     expect(amountOf(demo)).toBe(before);
   });
 
-  it("does nothing for an agent with no valid price", () => {
+  // This used to assert the row was left alone, on the reasoning that there was no price to
+  // apply. Leaving it alone meant leaving it at the old flat fallback, which on this chain reads
+  // as 0.10 ETH: several hundred times what any listed agent charges, on most of the settlements
+  // in the table, and it was the whole of the volume the site reported. An agent with no price
+  // now gets the same standard figure the cron writes for one.
+  it("brings an unpriced agent's row to the standard fallback", () => {
     const agentId = `nopr-${randomUUID().slice(0, 8)}`;
     createAgent({
       agentId,
@@ -63,6 +68,6 @@ describe("demo settlement amount backfill", () => {
     });
     const tx = insertTx(agentId, 0.1);
     backfillDemoSettlementAmounts(getDb());
-    expect(amountOf(tx)).toBeCloseTo(0.1); // left as-is (no price to apply)
+    expect(amountOf(tx)).toBeCloseTo(UNPRICED_AGENT_ETH, 9);
   });
 });

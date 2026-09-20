@@ -12,7 +12,14 @@ export function StatCards({ stats }: { stats: NetworkStats }) {
       {[
         { label: "Registered Agents", value: stats.agents.total, sub: `${stats.agents.active} active` },
         { label: "Tasks (7d)", value: weeklyTotal, sub: `${stats.tasks.weeklyCompleted} completed · ${stats.tasks.weeklyFailed} failed` },
-        { label: "Success Rate (7d)", value: weeklySuccessPct, suffix: "%", sub: `${weeklyTotal} settled this week` },
+        // The same window the rest of the site reports, so one number does not contradict another
+        // on the next page. The seven-day counts are still right there in the card beside it.
+        {
+          label: `Success Rate (${stats.tasks.successRateWindowHours}h)`,
+          value: Math.round(stats.tasks.successRate * 100),
+          suffix: "%",
+          sub: `${weeklySuccessPct}% over 7 days`,
+        },
         { label: "ETH (7d)", value: stats.payments.weeklyEthTransacted, decimals: 2, sub: `${stats.payments.weeklyTxns} txns this week` },
       ].map((s, i) => (
         <div

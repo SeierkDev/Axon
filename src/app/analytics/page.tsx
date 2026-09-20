@@ -70,13 +70,13 @@ export default async function AnalyticsPage() {
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-xs text-gray-400 dark:text-gray-500">All-time success rate</p>
                   <p className="text-xs text-gray-600 dark:text-gray-400 font-mono">
-                    {Math.round(stats.tasks.successRate * 100)}%
+                    {Math.round(stats.tasks.allTimeSuccessRate * 100)}%
                   </p>
                 </div>
                 <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gray-900 dark:bg-white rounded-full animate-grow-up"
-                    style={{ width: `${Math.round(stats.tasks.successRate * 100)}%` }}
+                    style={{ width: `${Math.round(stats.tasks.allTimeSuccessRate * 100)}%` }}
                   />
                 </div>
               </div>
