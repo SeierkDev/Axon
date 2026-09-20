@@ -43,15 +43,17 @@ export const metadata: Metadata = {
     url: "https://axon-agents.com",
     siteName: "Axon",
     type: "website",
-    images: [{ url: "/axon-logo.png", alt: "Axon" }],
+    // No images here on purpose. Naming one pins every page to it and overrides the
+    // opengraph-image routes, which is how each page ended up unfurling as the logo on its own.
+    // Left unset, a page uses its own card, or the one at the root if it has none.
   },
   twitter: {
-    card: "summary",
+    // summary is the small square thumbnail. The cards are 1200x630 and meant to be seen.
+    card: "summary_large_image",
     site: "@axon402",
     creator: "@axon402",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ["/axon-logo.png"],
   },
 };
 
