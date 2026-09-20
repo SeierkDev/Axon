@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-20T11:30:41.522Z",
-  "finishedAt": "2026-09-20T11:30:45.924Z",
-  "commit": "467cfca",
+  "startedAt": "2026-09-20T11:49:26.906Z",
+  "finishedAt": "2026-09-20T11:49:31.638Z",
+  "commit": "8888361",
   "checks": [
     {
       "id": "install-commands",
@@ -9,7 +9,7 @@
       "ok": true,
       "checked": 9,
       "findings": [],
-      "ms": 4178
+      "ms": 4456
     },
     {
       "id": "links",
@@ -17,7 +17,7 @@
       "ok": true,
       "checked": 168,
       "findings": [],
-      "ms": 17
+      "ms": 25
     },
     {
       "id": "dead-exports",
@@ -82,11 +82,28 @@
           ]
         }
       ],
-      "ms": 205
+      "ms": 246
     }
   ],
   "errors": 0,
   "warnings": 7,
-  "changed": false,
-  "changes": []
+  "changed": true,
+  "changes": [
+    {
+      "what": "dropped the export from displayAddress()",
+      "where": "src/lib/address.ts"
+    },
+    {
+      "what": "dropped the export from splitterAddress()",
+      "where": "src/lib/burn.ts"
+    },
+    {
+      "what": "dropped the export from callDistribute()",
+      "where": "src/lib/burn.ts"
+    },
+    {
+      "what": "dropped the export from buildSignInMessage()",
+      "where": "src/lib/identity.ts"
+    }
+  ]
 }

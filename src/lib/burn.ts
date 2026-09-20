@@ -22,7 +22,7 @@ import { publicClient, walletClientFor, withRpc } from "./evm";
 /** Below this, gas is a meaningful share of the transfer, so it waits for the next run. */
 export const MIN_FORWARD_WEI = 1_000_000_000_000_000n; // 0.001 ETH, the pot's own minimum burn
 
-export function splitterAddress(): string | null {
+function splitterAddress(): string | null {
   return normalizeAddress(process.env.AXON_SPLITTER_ADDRESS);
 }
 
@@ -182,7 +182,7 @@ const DISTRIBUTE_ABI = [
 ] as const;
 
 /** Tell the Splitter to divide whatever it holds. Callable by anyone; we just happen to be here. */
-export async function callDistribute(privateKey: string, splitter: string): Promise<string> {
+async function callDistribute(privateKey: string, splitter: string): Promise<string> {
   const { client } = walletClientFor(privateKey);
   const hash = await client.sendTransaction({
     to: splitter as `0x${string}`,
