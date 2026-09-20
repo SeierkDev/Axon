@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-20T19:45:05.780Z",
-  "finishedAt": "2026-09-20T19:45:11.113Z",
-  "commit": "12c5bcb",
+  "startedAt": "2026-09-20T20:18:58.185Z",
+  "finishedAt": "2026-09-20T20:19:02.997Z",
+  "commit": "a6d9b2b",
   "checks": [
     {
       "id": "install-commands",
@@ -9,7 +9,7 @@
       "ok": true,
       "checked": 10,
       "findings": [],
-      "ms": 5078
+      "ms": 4562
     },
     {
       "id": "links",
@@ -17,13 +17,13 @@
       "ok": true,
       "checked": 168,
       "findings": [],
-      "ms": 26
+      "ms": 20
     },
     {
       "id": "dead-exports",
       "title": "Exports are used",
       "ok": true,
-      "checked": 482,
+      "checked": 483,
       "findings": [
         {
           "severity": "warn",
@@ -74,7 +74,7 @@
           ]
         }
       ],
-      "ms": 225
+      "ms": 228
     }
   ],
   "errors": 0,
