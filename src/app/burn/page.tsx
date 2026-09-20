@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SiteNav from "@/components/SiteNav";
 import { getBurnLive, BURN_RULES } from "@/lib/burnLive";
+import { recentBurns } from "@/lib/burnHistory";
 import { ponsTokenUrl } from "@/lib/chain";
 import { getBurnStats } from "@/lib/burn";
 import BurnClient, { type BurnPayload } from "./BurnClient";
@@ -13,7 +14,7 @@ export const metadata = {
 };
 
 export default async function BurnPage() {
-  const [live, ledger] = await Promise.all([getBurnLive(), getBurnStats()]);
+  const [live, ledger, burns] = await Promise.all([getBurnLive(), getBurnStats(), recentBurns(10)]);
   const data: BurnPayload = {
     ...live,
     forwarded: { totalEth: ledger.totalForwardedEth, pendingEth: ledger.pendingEth },
@@ -38,6 +39,42 @@ export default async function BurnPage() {
         </div>
 
         <BurnClient initial={data} />
+
+        {/* Every burn, with the transaction that did it. Totals prove a balance; these prove the
+            individual events somebody read about in a post. */}
+        {burns.length > 0 ? (
+          <section className="mt-14">
+            <h2 className="text-lg font-semibold mb-4">Every burn</h2>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
+              {burns.map((b) => (
+                <a
+                  key={b.txHash}
+                  href={b.explorer}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                >
+                  <span className="text-sm font-mono text-gray-400 dark:text-gray-500 shrink-0 w-10">
+                    #{b.n}
+                  </span>
+                  <span className="flex-1 text-sm text-gray-900 dark:text-white">
+                    {b.tokensOut.toLocaleString("en-US", { maximumFractionDigits: 0 })}{" "}
+                    <span className="text-gray-400 dark:text-gray-500">$AXON burned</span>
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline tabular-nums">
+                    {b.ethIn.toFixed(4)} ETH
+                  </span>
+                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500 hover:underline shrink-0">
+                    {b.txHash.slice(0, 10)}…
+                  </span>
+                </a>
+              ))}
+            </div>
+            <p className="mt-4 text-sm text-gray-400 dark:text-gray-500">
+              Each row is the transaction that did it. Open one to see the tokens arrive at the dead address.
+            </p>
+          </section>
+        ) : null}
 
         {/* Every number above is read from the chain, so every number gets a link to where it came from. */}
         <section className="mt-14">
