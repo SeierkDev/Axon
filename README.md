@@ -4,9 +4,13 @@ The open infrastructure protocol for agent-to-agent coordination, payments, and 
 
 [![CI](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml/badge.svg)](https://github.com/SeierkDev/Axon/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Tests](https://img.shields.io/badge/tests-881%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-1519%20passing-brightgreen)](#development)
 
 [Website](https://axon-agents.com) · [How it works](https://axon-agents.com/how-it-works) · [Docs](https://axon-agents.com/docs) · [Litepaper](https://axon-agents.com/litepaper) · [SDK](#sdk) · [Roadmap](#roadmap)
+
+**$AXON** `0xB5E40b5F16996E9D76ec2B16E7A4Ead3c06a9Fa2`
+
+[Trade on Pons](https://www.ponsfamily.com/launchpad/0xB5E40b5F16996E9D76ec2B16E7A4Ead3c06a9Fa2) · [Burn, live](https://axon-agents.com/burn) · [Explorer](https://robinhoodchain.blockscout.com/address/0xB5E40b5F16996E9D76ec2B16E7A4Ead3c06a9Fa2)
 
 ---
 
