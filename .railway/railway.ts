@@ -24,9 +24,11 @@ export default defineRailway(() => {
     // The secret is read from the environment rather than written here, so rotating it does not
     // mean editing this file and cannot leave a live key sitting in the repo.
     start: "sh -c 'curl -s -X POST https://axon-agents.com/api/cron/burn-engine -H \"Authorization: Bearer $CRON_SECRET\"'",
-    // Every five minutes against the pot's thirty minute interval: this does not burn more often,
-    // it only means a burn goes out soon after it is allowed instead of up to half an hour late.
-    deploy: { cronSchedule: "*/5 * * * *", restartPolicyType: "NEVER" },
+    // Every minute. The pot's own thirty minute interval decides how often a burn actually
+    // happens; this only decides how long one sits due before somebody notices. At five minutes
+    // that gap was long enough to fire two burns by hand before the cron's turn came round.
+    // A pass with nothing to do is one read and no gas.
+    deploy: { cronSchedule: "* * * * *", restartPolicyType: "NEVER" },
     env: { CRON_SECRET: preserve() },
   });
   const axonPresence = service("axon-presence", {
@@ -41,7 +43,10 @@ export default defineRailway(() => {
     domains: ["axon-agents.com"],
     networking: { privateNetworkEndpoint: "axon" },
     volumeMounts: { "/data": axonVolume },
-    env: { ANTHROPIC_API_KEY: preserve(), AXON_RPC_URL: preserve(), AXON_SUCCESS_RATE_WINDOW_HOURS: preserve(), BOT_PRIVATE_KEY: preserve(), CORS_ORIGIN: preserve(), CRON_SECRET: preserve(), DATABASE_PATH: preserve(), DEV_WALLET: preserve(), GROW_AGENT_ID: preserve(), GROW_AGENT_KEY: preserve(), GROW_AGENT_SECRET: preserve(), GROW_SECRET: preserve(), LOG_LEVEL: preserve(), NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS: preserve(), NEXT_PUBLIC_PRESENCE_URL: preserve(), NEXT_PUBLIC_RPC_URL: preserve(), NODE_ENV: preserve(), NODE_OPTIONS: preserve(), OPENAI_API_KEY: preserve(), REFUND_SIGNER_PRIVATE_KEY: preserve(), REPRODUCE_SECRET: preserve(), SEED_SECRET: preserve(), TELEGRAM_BOT_TOKEN: preserve(), TELEGRAM_CHANNEL_ID: preserve(), TRUST_PROXY_HEADERS: preserve(), UCP_AGENT_PRIVATE_KEY: preserve(), XAI_API_KEY: preserve() },
+    env: { ANTHROPIC_API_KEY: preserve(), AXON_RPC_URL: preserve(), AXON_SUCCESS_RATE_WINDOW_HOURS: preserve(), BOT_PRIVATE_KEY: preserve(), CORS_ORIGIN: preserve(), CRON_SECRET: preserve(), DATABASE_PATH: preserve(), DEV_WALLET: preserve(), GROW_AGENT_ID: preserve(), GROW_AGENT_KEY: preserve(), GROW_AGENT_SECRET: preserve(), GROW_SECRET: preserve(), LOG_LEVEL: preserve(), NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS: preserve(), NEXT_PUBLIC_PRESENCE_URL: preserve(), NEXT_PUBLIC_RPC_URL: preserve(), NODE_ENV: preserve(), NODE_OPTIONS: preserve(), OPENAI_API_KEY: preserve(), REFUND_SIGNER_PRIVATE_KEY: preserve(), REPRODUCE_SECRET: preserve(), SEED_SECRET: preserve(), TELEGRAM_BOT_TOKEN: preserve(), TELEGRAM_CHANNEL_ID: preserve(), TRUST_PROXY_HEADERS: preserve(), UCP_AGENT_PRIVATE_KEY: preserve(), XAI_API_KEY: preserve(),
+      AXON_BURN_POT_ADDRESS: preserve(),
+      AXON_SPLITTER_ADDRESS: preserve(),
+      AXON_TOKEN_ADDRESS: preserve()},
   });
   const cronRetention = service("cron-retention", {
     source: Axon,
