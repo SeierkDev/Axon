@@ -13,6 +13,8 @@ import { burnPotAddress } from "./burn";
 import { weiToEth } from "./money";
 import { EXPLORER } from "./chain";
 import { logger } from "./logger";
+import { getDb } from "./db";
+import { syncToTurso } from "./db-turso";
 
 const BURNED = parseAbiItem(
   "event Burned(uint256 indexed n, address indexed caller, uint256 ethIn, uint256 tokensOut, bool viaCurve, uint256 day)",
@@ -41,6 +43,56 @@ export interface BurnRecord {
 
 let cache: { at: number; rows: BurnRecord[] } | null = null;
 const CACHE_MS = 30_000;
+
+/** Write down any burn we have not seen before. The pot's own number is the key, so a burn read
+ *  twice is stored once and a re-read can never duplicate or reorder the history. */
+function remember(rows: BurnRecord[]): void {
+  if (rows.length === 0) return;
+  try {
+    const db = getDb();
+    const insert = db.prepare(
+      `INSERT OR IGNORE INTO burns (n, tx_hash, block_number, eth_in, tokens_out, caller, recorded_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const now = new Date().toISOString();
+    let added = 0;
+    db.transaction(() => {
+      for (const r of rows) {
+        added += insert.run(r.n, r.txHash, r.blockNumber, r.ethIn, r.tokensOut, r.caller, now).changes;
+      }
+    })();
+    if (added > 0) syncToTurso();
+  } catch (err) {
+    // Remembering is a convenience. Never let it stop the page rendering what the chain just said.
+    logger.warn("burn.history_not_stored", "Could not store burn history", { err });
+  }
+}
+
+/** Everything written down so far, newest first. */
+function stored(limit: number): BurnRecord[] {
+  try {
+    const rows = getDb()
+      .prepare(
+        `SELECT n, tx_hash, block_number, eth_in, tokens_out, caller
+           FROM burns ORDER BY n DESC LIMIT ?`,
+      )
+      .all(limit) as {
+        n: number; tx_hash: string; block_number: number;
+        eth_in: number; tokens_out: number; caller: string;
+      }[];
+    return rows.map((r) => ({
+      n: r.n,
+      ethIn: r.eth_in,
+      tokensOut: r.tokens_out,
+      txHash: r.tx_hash,
+      blockNumber: r.block_number,
+      caller: r.caller,
+      explorer: `${EXPLORER}/tx/${r.tx_hash}`,
+    }));
+  } catch {
+    return [];
+  }
+}
 
 /**
  * The most recent burns, newest first.
@@ -90,10 +142,20 @@ export async function recentBurns(limit = 10): Promise<BurnRecord[]> {
     }
 
     rows.sort((x, y) => y.n - x.n);
-    cache = { at: Date.now(), rows };
-    return rows.slice(0, limit);
+    remember(rows);
+
+    // The chain answers for the last few hours; the table answers for everything before that.
+    // Merged on the pot's own burn number, so the two can never disagree about a given burn.
+    const merged = new Map<number, BurnRecord>();
+    for (const r of stored(limit + rows.length)) merged.set(r.n, r);
+    for (const r of rows) merged.set(r.n, r);
+    const all = [...merged.values()].sort((x, y) => y.n - x.n);
+
+    cache = { at: Date.now(), rows: all };
+    return all.slice(0, limit);
   } catch (err) {
-    logger.warn("burn.history_unreadable", "Could not read burn history", { err, pot });
-    return [];
+    // A node that will not answer is not a reason to show nothing: everything seen before is here.
+    logger.warn("burn.history_unreadable", "Could not read burn history from chain", { err, pot });
+    return stored(limit);
   }
 }
