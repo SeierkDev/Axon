@@ -243,6 +243,15 @@ function pickHistoricalTask(capabilities: string[]): string {
   return "Analyze network activity and generate summary report";
 }
 
+/**
+ * What a generated settlement is worth when the agent never listed a price.
+ *
+ * In the same band as the listed agents. The old fallback was a flat 0.10, which on this chain
+ * reads as 0.10 ETH: hundreds of times what anything here charges, and applied to most agents,
+ * since most carry no price at all.
+ */
+export const UNPRICED_AGENT_ETH = 0.0002;
+
 function parseUsdcAmount(price: string | null): number {
   if (!price) return 0;
   const m = price.match(/([\d.]+)\s*ETH/i);
@@ -282,8 +291,11 @@ export function backfillDemoSettlementAmounts(db: Database): number {
   let changed = 0;
   const run = db.transaction(() => {
     for (const r of rows) {
-      const price = priceByAgent.get(r.to_agent) ?? 0;
-      if (price <= 0) continue;
+      // An agent with no listed price still had a settlement written for it, at the old flat
+      // fallback. Those rows are corrected here too, rather than left carrying a figure that
+      // no longer means anything.
+      const listed = priceByAgent.get(r.to_agent) ?? 0;
+      const price = listed > 0 ? listed : UNPRICED_AGENT_ETH;
       const priceWrong = Math.abs(price - r.amount_eth) > 1e-9;
       if (priceWrong || r.currency !== CURRENCY) {
         update.run(price, CURRENCY, r.tx_id);

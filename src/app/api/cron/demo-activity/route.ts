@@ -11,6 +11,7 @@ import { postSingleTask } from "@/lib/telegram";
 import { safeAppendTraceEvent, hashContent, estimateCostUsd, captureModelStep } from "@/lib/traceEvents";
 import type { CapturedStep } from "@/lib/traceEvents";
 import { runWithProvider } from "@/lib/providers";
+import { UNPRICED_AGENT_ETH } from "@/lib/agentSeed";
 
 export const runtime = "nodejs";
 // Each task now makes a real inference — give the batch room to run.
@@ -256,13 +257,19 @@ export async function POST(req: NextRequest) {
       // settlement for a task that wasn't completed (mirrors the worker).
       if (completeTask(task.taskId, output)) {
         const now = new Date().toISOString();
-        // Settlement amount = the worker agent's listed price (parsed from e.g.
-        // "0.15 ETH"), falling back to 0.10 ETH if the agent has no valid price.
+        // Settlement amount = the worker agent's listed price (parsed from e.g. "0.0002 ETH").
+        //
+        // The fallback used to be a flat 0.10, from when that was a plausible price. Carried over
+        // to this chain unchanged it became 0.10 ETH, several hundred times what any agent here
+        // charges, and since most registered agents carry no listed price it was almost every
+        // settlement: it alone accounted for the reported weekly volume. A generated settlement
+        // for an agent that never named a price now uses the same figure the listed agents do,
+        // so the number on the page stays in the same order of magnitude as the marketplace.
         const parsedPrice = (() => {
           const p = priceByAgent.get(item.toAgent);
           return p ? parsePaymentAmount(p) : null;
         })();
-        const amount = parsedPrice?.amount ?? 0.10;
+        const amount = parsedPrice?.amount ?? UNPRICED_AGENT_ETH;
         const currency = parsedPrice?.currency ?? "ETH";
         getDb().prepare(`
           INSERT INTO transactions (tx_id, task_id, from_agent, to_agent, amount_eth, status, incoming_signature, fee_amount, currency, created_at, settled_at)

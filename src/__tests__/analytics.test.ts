@@ -153,3 +153,34 @@ describe("ETH totals only count ETH", () => {
     expect(getAllTimeLeaders().topEarners.every((e) => e.totalEarnedEth < 500)).toBe(true);
   });
 });
+
+// ── Which rate is which ───────────────────────────────────────────────────────
+//
+// The headline rate became a rolling window, and the all-time figure stayed in the payload
+// beside it. A page that reaches for the wrong one prints a number that contradicts the counts
+// printed directly above it: the analytics page showed "all-time success rate 99%" over a table
+// reading 19,145 completed of 25,996.
+
+describe("the two success rates stay distinct", () => {
+  it("reports all-time from all of history, whatever the window says", () => {
+    const db = getDb();
+    db.prepare("DELETE FROM tasks").run();
+    const at = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+    const add = (status: string, hoursAgo: number, n: number) => {
+      const ins = db.prepare(
+        `INSERT INTO tasks (task_id, from_agent, to_agent, task, status, completed_at, created_at)
+         VALUES (?, 'a', 'b', 't', ?, ?, ?)`,
+      );
+      for (let i = 0; i < n; i++) ins.run(`rate-${++seq}`, status, at(hoursAgo), at(hoursAgo));
+    };
+
+    add("failed", 400, 700); // a bad stretch, long ago and outside any window
+    add("completed", 400, 300);
+    add("completed", 2, 40); // a good present, inside the window
+
+    const t = getNetworkStats().tasks;
+    expect(t.successRate).toBeGreaterThan(0.9); // the window: healthy
+    expect(t.allTimeSuccessRate).toBeCloseTo(340 / 1040, 2); // all of it: not
+    expect(t.allTimeSuccessRate).toBeLessThan(t.successRate);
+  });
+});
