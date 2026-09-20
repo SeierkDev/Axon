@@ -155,6 +155,22 @@ Key decisions:
 
 ---
 
+## Contracts
+
+Live on Robinhood Chain (chain id 4663). Each links to the explorer.
+
+| | address |
+|---|---|
+| $AXON | [`0xB5E40b5F16996E9D76ec2B16E7A4Ead3c06a9Fa2`](https://robinhoodchain.blockscout.com/address/0xB5E40b5F16996E9D76ec2B16E7A4Ead3c06a9Fa2) |
+| BurnPot | [`0x419fCbc1c4A7f85BB517f3C12D13068Db0D49cB9`](https://robinhoodchain.blockscout.com/address/0x419fCbc1c4A7f85BB517f3C12D13068Db0D49cB9) |
+| Splitter | [`0x35146B4ED3C680D23423b157f0ABF2aBfC9CEFb4`](https://robinhoodchain.blockscout.com/address/0x35146B4ED3C680D23423b157f0ABF2aBfC9CEFb4) |
+
+**The burn.** Trading fees feed the burn pot. Every thirty minutes anyone can call `burn()`, and
+the pot buys $AXON on the market and sends it to `0x…dEaD`. A burn spends at most 1% of the
+market's ETH depth, which is what keeps it from being sandwiched profitably, and whatever the cap
+leaves stays for the next one. The pot has no withdraw function. Source in `contracts/src`, and the
+live countdown is at [/burn](https://axon-agents.com/burn).
+
 ## Tech Stack
 
 | Layer | Technology |
