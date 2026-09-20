@@ -23,19 +23,37 @@ describe("a cutoff compares against the format we actually store", () => {
   // "2026-09-18T15:19:01.626Z". Compared as strings, the "T" beats the " " at the tenth
   // character, so on the cutoff's own date every stored time reads as later than the cutoff,
   // however early in the day it was. The window silently grew by a day.
-  it("excludes a row from earlier on the cutoff's own date", () => {
+  it("shows the two spellings disagreeing on the cutoff's own date", () => {
+    // Fixed instants, not "now": the bug only appears when the stored value and the cutoff fall
+    // on the same calendar date, so a test written against the current date demonstrates it on
+    // the day it was written and quietly stops the next morning.
     const db = getDb();
-    const bad = db
-      .prepare("SELECT ? >= datetime('now','-24 hours') AS hit")
-      .get("2026-09-18T15:19:01.626Z") as { hit: number };
-    const good = db
-      .prepare(`SELECT ? >= ${isoHoursAgo(24)} AS hit`)
-      .get("2026-09-18T15:19:01.626Z") as { hit: number };
+    const stored = "2026-09-18T15:19:01.626Z"; // 15:19, earlier in the day than the cutoff
+    const cutoff = "2026-09-18 17:19:01"; // what datetime() hands back
 
-    // Pinned so the old spelling cannot quietly come back: it says yes to a 2026 date only
-    // because of the byte comparison, and the fixed one agrees with the calendar.
-    expect(bad.hit).toBe(1);
-    expect(good.hit).toBe(0);
+    const bad = db.prepare("SELECT ? >= datetime(?) AS hit").get(stored, cutoff) as { hit: number };
+    const good = db
+      .prepare("SELECT ? >= strftime('%Y-%m-%dT%H:%M:%fZ', ?) AS hit")
+      .get(stored, cutoff) as { hit: number };
+
+    expect(bad.hit).toBe(1); // 15:19 reads as later than 17:19, because "T" > " "
+    expect(good.hit).toBe(0); // and the calendar agrees with itself again
+  });
+
+  it("excludes a row from earlier on the cutoff's own date, whatever today is", () => {
+    const db = getDb();
+    // Midnight on the cutoff's own date: same date, earlier in the day, derived from the cutoff
+    // itself so this holds on any day it runs.
+    const { ts, hour } = db
+      .prepare(
+        `SELECT strftime('%Y-%m-%dT00:00:00.000Z','now','-24 hours') AS ts,
+                CAST(strftime('%H','now','-24 hours') AS INTEGER) AS hour`,
+      )
+      .get() as { ts: string; hour: number };
+    if (hour === 0) return; // the one minute of the day where midnight is not "earlier"
+
+    const row = db.prepare(`SELECT ? >= ${isoHoursAgo(24)} AS hit`).get(ts) as { hit: number };
+    expect(row.hit).toBe(0);
   });
 
   it("keeps a row that really is inside the window", () => {

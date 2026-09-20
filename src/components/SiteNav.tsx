@@ -14,7 +14,9 @@ const LINKS = [
   { href: "/network-feed",  label: "Feed" },
   { href: "/dashboard",     label: "Dashboard" },
   { href: "/publish",       label: "Publish" },
-  { href: "/litepaper",     label: "Litepaper", desktopOnly: true },
+  // Litepaper is linked in the footer, so the header slot goes to the burn, which is the thing
+  // people come back to check rather than read once.
+  { href: "/burn",          label: "Burn", desktopOnly: true },
 ];
 
 export default function SiteNav() {
