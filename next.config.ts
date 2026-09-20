@@ -14,12 +14,17 @@ const nextConfig: NextConfig = {
   // darwin variants so a standalone build is also runnable locally. Globs that
   // match no installed package (the build host only installs its own platform's
   // binary) are simply ignored.
+  //
+  // The share cards read their font off disk. readFileSync on a path the bundler cannot see is
+  // invisible to tracing in the same way, so src/ is left out of the standalone output and every
+  // opengraph-image route answers 500 in production while working perfectly in development.
   outputFileTracingIncludes: {
     "/*": [
       "./node_modules/@libsql/linux-x64-musl/**/*",
       "./node_modules/@libsql/linux-arm64-musl/**/*",
       "./node_modules/@libsql/darwin-x64/**/*",
       "./node_modules/@libsql/darwin-arm64/**/*",
+      "./src/assets/fonts/**/*",
     ],
   },
   // litesvm is a native module (AgenC's local marketplace sandbox, dev-only) and
