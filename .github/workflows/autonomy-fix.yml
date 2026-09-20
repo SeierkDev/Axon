@@ -85,8 +85,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           BRANCH="autonomy/fixes-$(date -u +%Y-%m-%d)"
-          git config user.name  "axon-autonomy"
-          git config user.email "autonomy@axon-agents.com"
+          git config user.name  "SeierkDev"
+          git config user.email "oskarerik9@gmail.com"
           git checkout -b "$BRANCH"
           git add -A
           git commit -m "chore(autonomy): apply safe fixes"

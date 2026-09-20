@@ -47,8 +47,8 @@ jobs:
             echo "log unchanged"
             exit 0
           fi
-          git config user.name  "axon-autonomy"
-          git config user.email "autonomy@axon-agents.com"
+          git config user.name  "SeierkDev"
+          git config user.email "oskarerik9@gmail.com"
           git add autonomy/
           git commit -m "chore(autonomy): self-check pass $(date -u +%Y-%m-%d)"
           # A push race with a concurrent merge should not fail the pass; the next
