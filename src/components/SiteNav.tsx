@@ -15,8 +15,10 @@ const LINKS = [
   { href: "/dashboard",     label: "Dashboard" },
   { href: "/publish",       label: "Publish" },
   // Litepaper is linked in the footer, so the header slot goes to the burn, which is the thing
-  // people come back to check rather than read once.
-  { href: "/burn",          label: "Burn", desktopOnly: true },
+  // people come back to check rather than read once. Deliberately not desktopOnly: the mobile
+  // menu drops those entirely, and a countdown people check through the day is the last thing
+  // that should be missing on a phone.
+  { href: "/burn",          label: "Burn" },
 ];
 
 export default function SiteNav() {
