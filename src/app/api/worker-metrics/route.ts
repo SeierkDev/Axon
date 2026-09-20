@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { isoHoursAgo } from "@/lib/sqlTime";
+import { SUCCESS_RATE_WINDOW_HOURS } from "@/lib/analytics";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -83,6 +85,11 @@ export async function GET() {
       COUNT(*) FILTER (WHERE t.status = 'completed')                                       AS completedTotal,
       COUNT(*) FILTER (WHERE t.status = 'failed')                                          AS failedTotal,
       COUNT(*) FILTER (WHERE t.status = 'completed' AND date(t.completed_at) = date('now')) AS completedToday,
+      -- The same window the rest of the site reports over. An all-time error rate cannot
+      -- recover from an incident: a provider outage in September sat on every agent's row in
+      -- red for good, describing one bad afternoon rather than how the agent is running.
+      COUNT(*) FILTER (WHERE t.status = 'completed' AND t.completed_at >= ${isoHoursAgo(SUCCESS_RATE_WINDOW_HOURS)}) AS completedWindow,
+      COUNT(*) FILTER (WHERE t.status = 'failed'    AND t.completed_at >= ${isoHoursAgo(SUCCESS_RATE_WINDOW_HOURS)}) AS failedWindow,
       ROUND(AVG(CASE WHEN t.status = 'completed' AND t.started_at IS NOT NULL AND t.completed_at IS NOT NULL
         THEN (julianday(t.completed_at) - julianday(t.started_at)) * 86400000 END))        AS avgProcessingMs
     FROM tasks t
@@ -91,7 +98,8 @@ export async function GET() {
     ORDER BY completedTotal DESC
   `).all() as {
     agentId: string; name: string | null; queued: number; running: number;
-    completedTotal: number; failedTotal: number; completedToday: number; avgProcessingMs: number | null;
+    completedTotal: number; failedTotal: number; completedToday: number;
+    completedWindow: number; failedWindow: number; avgProcessingMs: number | null;
   }[];
 
   const recentTasks = db.prepare(`
@@ -117,6 +125,7 @@ export async function GET() {
       p50PickupMs: percentile(pickupRaw, 50),
     },
     perAgent,
+    errorRateWindowHours: SUCCESS_RATE_WINDOW_HOURS,
     recentTasks,
     updatedAt: new Date().toISOString(),
   });

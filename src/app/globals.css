@@ -77,3 +77,13 @@ body {
 .stagger-grid > *:nth-child(8)  { animation-delay: 420ms; }
 .stagger-grid > *:nth-child(9)  { animation-delay: 480ms; }
 .stagger-grid > *:nth-child(n+10) { animation-delay: 500ms; }
+
+
+/* One page giving way to the next. Content fades in on its own; nothing is laid over the page,
+   so the new route is never hidden while it is already there to read. */
+.route-fade {
+  animation: fade-in 180ms ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-fade { animation: none; }
+}
