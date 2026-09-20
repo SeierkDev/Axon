@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SiteNav from "@/components/SiteNav";
 import { getBurnLive, BURN_RULES } from "@/lib/burnLive";
+import { ponsTokenUrl } from "@/lib/chain";
 import { getBurnStats } from "@/lib/burn";
 import BurnClient, { type BurnPayload } from "./BurnClient";
 
@@ -73,6 +74,16 @@ export default async function BurnPage() {
           >
             Litepaper
           </Link>
+          {data.tokenAddress ? (
+            <a
+              href={ponsTokenUrl(data.tokenAddress)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium border border-gray-900 dark:border-white rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:opacity-90 transition-opacity"
+            >
+              $AXON on Pons
+            </a>
+          ) : null}
           <Link
             href="/explorer"
             className="inline-flex items-center px-4 py-2 text-sm font-medium border border-gray-200 dark:border-gray-800 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-600 transition-colors"

@@ -10,6 +10,11 @@ export const RPC_URL = "https://rpc.mainnet.chain.robinhood.com";
 export const EXPLORER = "https://robinhoodchain.blockscout.com";
 export const CHAIN_NAME = "Robinhood Chain";
 
+/** Where $AXON is traded. Pons builds its page from the token address, so this is derived
+ *  rather than stored: there is no second copy to fall out of step with the token. */
+export const PONS = "https://www.ponsfamily.com";
+export const ponsTokenUrl = (token: string): string => `${PONS}/launchpad/${token}`;
+
 /** An on-chain transaction, on the chain's explorer. */
 export const explorerTxUrl = (hash: string): string => `${EXPLORER}/tx/${hash}`;
 

@@ -5,7 +5,7 @@ import TerminalCode from "@/components/TerminalCode";
 import SiteNav from "@/components/SiteNav";
 import { getNetworkStats } from "@/lib/analytics";
 import { TOKEN_ADDRESS as AXON_TOKEN } from "@/lib/money";
-import { EXPLORER } from "@/lib/chain";
+import { ponsTokenUrl } from "@/lib/chain";
 import { shortAddress } from "@/lib/address";
 import { getLatestRun } from "@/lib/autonomy";
 
@@ -172,7 +172,7 @@ export default async function Home() {
                   that exists somewhere else; after, it is the address and a way to check it. */}
               {AXON_TOKEN ? (
                 <a
-                  href={`${EXPLORER}/address/${AXON_TOKEN}`}
+                  href={ponsTokenUrl(AXON_TOKEN)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
