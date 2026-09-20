@@ -22,14 +22,24 @@ const LINE = "#e5e7eb";
 const GREEN = "#22c55e";
 
 // Read once per process. ImageResponse wants the raw bytes.
+//
+// A missing file must not take the card down with it. Reading a path the bundler cannot see is
+// invisible to Next's file tracing, so these can be absent from a standalone build while being
+// right there in development: that is exactly how every card came to answer 500 in production and
+// render perfectly locally. next.config traces them in now, and if they ever go missing again the
+// card comes out in the default face rather than not at all.
 const fontDir = join(process.cwd(), "src/assets/fonts");
-let cached: { regular: Buffer; bold: Buffer } | null = null;
-function fonts() {
-  if (!cached) {
-    cached = {
-      regular: readFileSync(join(fontDir, "Geist-Regular.ttf")),
-      bold: readFileSync(join(fontDir, "Geist-Bold.ttf")),
-    };
+let cached: { regular: Buffer; bold: Buffer } | null | undefined;
+function fonts(): { regular: Buffer; bold: Buffer } | null {
+  if (cached === undefined) {
+    try {
+      cached = {
+        regular: readFileSync(join(fontDir, "Geist-Regular.ttf")),
+        bold: readFileSync(join(fontDir, "Geist-Bold.ttf")),
+      };
+    } catch {
+      cached = null;
+    }
   }
   return cached;
 }
@@ -61,7 +71,7 @@ export interface CardInput {
  * and a bare div with two children throws rather than stacking them.
  */
 export function ogCard(input: CardInput): ImageResponse {
-  const { regular, bold } = fonts();
+  const loaded = fonts();
   const stats = (input.stats ?? []).slice(0, 4);
 
   return new ImageResponse(
@@ -75,7 +85,7 @@ export function ogCard(input: CardInput): ImageResponse {
           height: "100%",
           padding: 72,
           backgroundColor: "#ffffff",
-          fontFamily: "Geist",
+          fontFamily: loaded ? "Geist" : "sans-serif",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -155,10 +165,14 @@ export function ogCard(input: CardInput): ImageResponse {
     ),
     {
       ...CARD_SIZE,
-      fonts: [
-        { name: "Geist", data: regular, weight: 400, style: "normal" },
-        { name: "Geist", data: bold, weight: 700, style: "normal" },
-      ],
+      ...(loaded
+        ? {
+            fonts: [
+              { name: "Geist", data: loaded.regular, weight: 400 as const, style: "normal" as const },
+              { name: "Geist", data: loaded.bold, weight: 700 as const, style: "normal" as const },
+            ],
+          }
+        : {}),
     },
   );
 }
