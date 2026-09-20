@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-19T20:53:07.811Z",
-  "finishedAt": "2026-09-19T20:53:11.768Z",
-  "commit": "84aaa03",
+  "startedAt": "2026-09-20T08:16:02.358Z",
+  "finishedAt": "2026-09-20T08:16:07.683Z",
+  "commit": "3090c49",
   "checks": [
     {
       "id": "install-commands",
@@ -9,21 +9,21 @@
       "ok": true,
       "checked": 9,
       "findings": [],
-      "ms": 3750
+      "ms": 5074
     },
     {
       "id": "links",
       "title": "Internal links point at real pages",
       "ok": true,
-      "checked": 166,
+      "checked": 168,
       "findings": [],
-      "ms": 19
+      "ms": 24
     },
     {
       "id": "dead-exports",
       "title": "Exports are used",
       "ok": true,
-      "checked": 478,
+      "checked": 479,
       "findings": [
         {
           "severity": "warn",
@@ -36,14 +36,6 @@
         {
           "severity": "warn",
           "what": "splitterAddress() is exported but only used inside its own file",
-          "why": "the export widens the surface without a caller to justify it",
-          "where": [
-            "src/lib/burn.ts"
-          ]
-        },
-        {
-          "severity": "warn",
-          "what": "burnPotAddress() is exported but only used inside its own file",
           "why": "the export widens the surface without a caller to justify it",
           "where": [
             "src/lib/burn.ts"
@@ -90,11 +82,11 @@
           ]
         }
       ],
-      "ms": 185
+      "ms": 224
     }
   ],
   "errors": 0,
-  "warnings": 8,
+  "warnings": 7,
   "changed": false,
   "changes": []
 }
