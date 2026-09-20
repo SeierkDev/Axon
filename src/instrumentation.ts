@@ -18,6 +18,16 @@ export async function register() {
       void startWorkerLoops();
     }
 
+    // The burn fires from here rather than from a cron. A cron starts a container per run, so
+    // "due" turned into "due, then some minutes later", which is how three burns in a row came to
+    // be fired by hand first. This loop is already awake and goes the second the pot allows it.
+    try {
+      const { startBurnLoop } = await import("./lib/burnLoop");
+      startBurnLoop();
+    } catch {
+      /* Never block startup on the burn loop */
+    }
+
     // Pick up paid builds a restart interrupted (deploys kill the in-flight
     // pipeline; the job rows are durable). Fire-and-forget: each resumed
     // pipeline runs in the background exactly like a fresh one.
