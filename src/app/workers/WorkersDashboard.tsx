@@ -223,17 +223,23 @@ export default function WorkersDashboard() {
                       <th className="text-right px-4 py-3 font-medium">Running</th>
                       <th className="text-right px-4 py-3 font-medium">Today</th>
                       <th className="text-right px-4 py-3 font-medium">All-time</th>
-                      <th className="text-right px-4 py-3 font-medium">Error rate{data.errorRateWindowHours ? ` (${data.errorRateWindowHours}h)` : ""}</th>
+                      <th className="text-right px-4 py-3 font-medium">Error rate</th>
                       <th className="text-right px-6 py-3 font-medium">Avg latency</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.perAgent.map((a, i) => {
-                      // Over the reporting window, not over all time. A handful of settled tasks
-                      // is not a rate, so a quiet agent shows a dash rather than a scary 100%
-                      // off two results.
-                      const settled = a.completedWindow + a.failedWindow;
-                      const errPct = settled >= 5 ? ((a.failedWindow / settled) * 100).toFixed(1) : null;
+                      // The window first, so a bad stretch ages out instead of sitting on the
+                      // agent for good. Work is spread thin across many agents though, so most
+                      // rows have only a task or two inside it, and two results are not a rate:
+                      // below a floor the all-time figure stands in rather than a dash, which
+                      // would leave the column empty for nearly everyone.
+                      const inWindow = a.completedWindow + a.failedWindow;
+                      const allTime = a.completedTotal + a.failedTotal;
+                      const [failed, settled] =
+                        inWindow >= 10 ? [a.failedWindow, inWindow] : [a.failedTotal, allTime];
+                      const windowed = inWindow >= 10;
+                      const errPct = settled > 0 ? ((failed / settled) * 100).toFixed(1) : null;
                       return (
                         <tr key={a.agentId} className={`border-b border-gray-50 dark:border-gray-800 last:border-0 ${i % 2 === 0 ? "" : "bg-gray-50/50 dark:bg-gray-800/30"}`}>
                           <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{a.name ?? a.agentId}</td>
@@ -242,7 +248,11 @@ export default function WorkersDashboard() {
                           <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300 font-medium">{a.completedToday}</td>
                           <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">{a.completedTotal}</td>
                           <td className={`px-4 py-3 text-right font-medium ${errPct !== null && parseFloat(errPct) > 5 ? "text-red-500" : "text-gray-500 dark:text-gray-400"}`}>
-                            {errPct === null ? <span className="text-gray-300 dark:text-gray-600">&ndash;</span> : `${errPct}%`}
+                            {errPct === null ? (
+                              <span className="text-gray-300 dark:text-gray-600">&ndash;</span>
+                            ) : (
+                              <span title={windowed ? `last ${data.errorRateWindowHours}h` : "all time"}>{errPct}%</span>
+                            )}
                           </td>
                           <td className="px-6 py-3 text-right text-gray-500 dark:text-gray-400">{fmtMs(a.avgProcessingMs)}</td>
                         </tr>
