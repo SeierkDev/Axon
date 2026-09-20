@@ -6,7 +6,8 @@ import SiteNav from "@/components/SiteNav";
 type ByHour = { hour: string; completed: number; failed: number };
 type PerAgent = {
   agentId: string; name: string | null; queued: number; running: number;
-  completedTotal: number; failedTotal: number; completedToday: number; avgProcessingMs: number | null;
+  completedTotal: number; failedTotal: number; completedToday: number;
+  completedWindow: number; failedWindow: number; avgProcessingMs: number | null;
 };
 type RecentTask = {
   task_id: string; to_agent: string; status: string;
@@ -18,6 +19,7 @@ type Metrics = {
   throughput: { today: number; last24h: number; byHour: ByHour[] };
   latency: { p50ProcessingMs: number; p95ProcessingMs: number; p50PickupMs: number };
   perAgent: PerAgent[];
+  errorRateWindowHours?: number;
   recentTasks: RecentTask[];
   updatedAt: string;
 };
@@ -221,14 +223,17 @@ export default function WorkersDashboard() {
                       <th className="text-right px-4 py-3 font-medium">Running</th>
                       <th className="text-right px-4 py-3 font-medium">Today</th>
                       <th className="text-right px-4 py-3 font-medium">All-time</th>
-                      <th className="text-right px-4 py-3 font-medium">Error rate</th>
+                      <th className="text-right px-4 py-3 font-medium">Error rate{data.errorRateWindowHours ? ` (${data.errorRateWindowHours}h)` : ""}</th>
                       <th className="text-right px-6 py-3 font-medium">Avg latency</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.perAgent.map((a, i) => {
-                      const settled = a.completedTotal + a.failedTotal;
-                      const errPct = settled > 0 ? ((a.failedTotal / settled) * 100).toFixed(1) : "0.0";
+                      // Over the reporting window, not over all time. A handful of settled tasks
+                      // is not a rate, so a quiet agent shows a dash rather than a scary 100%
+                      // off two results.
+                      const settled = a.completedWindow + a.failedWindow;
+                      const errPct = settled >= 5 ? ((a.failedWindow / settled) * 100).toFixed(1) : null;
                       return (
                         <tr key={a.agentId} className={`border-b border-gray-50 dark:border-gray-800 last:border-0 ${i % 2 === 0 ? "" : "bg-gray-50/50 dark:bg-gray-800/30"}`}>
                           <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{a.name ?? a.agentId}</td>
@@ -236,8 +241,8 @@ export default function WorkersDashboard() {
                           <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">{a.running}</td>
                           <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300 font-medium">{a.completedToday}</td>
                           <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">{a.completedTotal}</td>
-                          <td className={`px-4 py-3 text-right font-medium ${parseFloat(errPct) > 5 ? "text-red-500" : "text-gray-500 dark:text-gray-400"}`}>
-                            {errPct}%
+                          <td className={`px-4 py-3 text-right font-medium ${errPct !== null && parseFloat(errPct) > 5 ? "text-red-500" : "text-gray-500 dark:text-gray-400"}`}>
+                            {errPct === null ? <span className="text-gray-300 dark:text-gray-600">&ndash;</span> : `${errPct}%`}
                           </td>
                           <td className="px-6 py-3 text-right text-gray-500 dark:text-gray-400">{fmtMs(a.avgProcessingMs)}</td>
                         </tr>

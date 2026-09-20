@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { WalletProvider } from "@/components/WalletProvider";
+import RouteFade from "@/components/RouteFade";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -76,7 +77,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <WalletProvider>{children}</WalletProvider>
+          <WalletProvider>
+            <RouteFade>{children}</RouteFade>
+          </WalletProvider>
         </ThemeProvider>
       </body>
     </html>
