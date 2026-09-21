@@ -62,9 +62,9 @@ function pad(n: number) {
 /**
  * The clock, in whichever unit keeps it readable.
  *
- * Burns are thirty minutes apart, so mm:ss is the normal case. A pot below the minimum waits for
- * the 24 hour backstop instead, and mm:ss renders that as "1427:51", which reads as a broken
- * counter rather than as most of a day.
+ * Burns are thirty minutes apart, so mm:ss is the whole of the normal case. The hours branch is a
+ * guard: mm:ss past an hour renders as "1427:51", which reads as a broken counter rather than as a
+ * length of time, and no wait that long should ever reach this clock.
  */
 export function formatLeft(seconds: number): string {
   if (seconds >= 3600) {
@@ -76,12 +76,21 @@ export function formatLeft(seconds: number): string {
 function Countdown({ remaining, data }: { remaining: number | null; data: BurnPayload }) {
   const due = remaining !== null && remaining === 0;
 
-  // Below the minimum the pot is not on the 30 minute cadence at all: it is waiting out the 24
-  // hour backstop, and the ring has to wind over that window or it sits empty for a whole day.
-  const waiting = data.launched && data.nextBurnEth > 0 && data.nextBurnEth < data.rules.minBurnEth;
-  const window = waiting ? data.rules.maxWaitSeconds : data.rules.minIntervalSeconds;
+  // Below the minimum the pot is not on the thirty minute cadence at all. The contract falls back
+  // to its 24 hour backstop, and that is a ceiling rather than a wait: the burn goes the moment the
+  // pot passes the minimum, which is usually long before the day is up.
+  //
+  // So the backstop is deliberately not shown. A clock reading most of a day, next to a page that
+  // says burns are thirty minutes apart, reads as a stopped machine, and the one number it gives is
+  // the one thing that almost certainly will not happen.
+  // An empty pot is the same state, and it is the ordinary one: the pot is emptied by every burn,
+  // so for the first minutes after each one there is nothing in it and nothing scheduled.
+  const waiting = data.launched && data.nextBurnEth < data.rules.minBurnEth;
 
-  const pct = remaining === null ? 0 : Math.min(1, Math.max(0, 1 - remaining / window));
+  const pct =
+    waiting || remaining === null
+      ? 0
+      : Math.min(1, Math.max(0, 1 - remaining / data.rules.minIntervalSeconds));
   const C = 2 * Math.PI * 88;
 
   return (
@@ -100,7 +109,14 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              {remaining === null ? (
+              {waiting ? (
+                <>
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white">Filling</span>
+                  <span className="mt-1 text-[11px] font-mono uppercase tracking-widest text-gray-400 text-center px-6">
+                    to the minimum
+                  </span>
+                </>
+              ) : remaining === null ? (
                 <span className="text-2xl font-semibold text-gray-400 dark:text-gray-500">Idle</span>
               ) : due ? (
                 <>
@@ -117,7 +133,7 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
                     {formatLeft(remaining)}
                   </span>
                   <span className="mt-1 text-[11px] font-mono uppercase tracking-widest text-gray-400">
-                    {waiting ? "until the backstop" : "until next burn"}
+                    until next burn
                   </span>
                 </>
               )}
@@ -152,7 +168,7 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
                   {data.ready
                     ? "A burn is due. Anyone can fire it: the pot buys $AXON on the market and sends it to the dead address."
                     : waiting
-                      ? `The pot holds ${data.potBalanceEth.toFixed(4)} ETH, under the ${data.rules.minBurnEth} ETH a burn needs. The clock above is the backstop: the burn fires the moment the pot passes that mark, and 24 hours after the last burn either way.`
+                      ? `The pot holds ${data.potBalanceEth.toFixed(4)} ETH. A burn needs ${data.rules.minBurnEth} ETH, so the schedule picks back up as soon as the pot reaches it. Nothing is lost while it fills: every burn spends what is in the pot at the time.`
                       : `The pot holds ${data.potBalanceEth.toFixed(4)} ETH. A burn spends what the depth cap allows, and whatever is left stays for the next one.`}
                 </p>
               </>
