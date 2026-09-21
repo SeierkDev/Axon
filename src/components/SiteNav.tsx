@@ -19,6 +19,10 @@ const LINKS = [
   // menu drops those entirely, and a countdown people check through the day is the last thing
   // that should be missing on a phone.
   { href: "/burn",          label: "Burn" },
+  // Token reports are a tool people arrive at with an address in hand rather than something to
+  // browse, so it sits last. Not desktopOnly though: the mobile menu drops those entirely, and
+  // checking a contract before buying is something people do on a phone more than anywhere else.
+  { href: "/launches",      label: "Reports" },
 ];
 
 export default function SiteNav() {
