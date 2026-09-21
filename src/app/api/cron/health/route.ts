@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAllAgents } from "@/lib/agents";
 import { verifyAgentEndpoint } from "@/lib/verification";
 import { getDb } from "@/lib/db";
+import { failureReport } from "@/lib/failurePatterns";
+import { logger } from "@/lib/logger";
 
 function authorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -13,10 +15,27 @@ function authorized(req: NextRequest): boolean {
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
+/** Say something when one cause has taken over the failures, rather than waiting to be asked. */
+function reportFailurePatterns(): void {
+  try {
+    const report = failureReport();
+    if (!report.ok && report.alert) {
+      logger.error("failures.systemic", report.alert, {
+        windowHours: report.windowHours,
+        failures: report.failures,
+        top: report.patterns.slice(0, 3),
+      });
+    }
+  } catch {
+    /* never let the watchdog break the health pass it rides on */
+  }
+}
+
 export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  reportFailurePatterns();
 
   const agents = getAllAgents().filter((a) => a.endpoint && a.verificationStatus !== "modulr");
   const start = Date.now();

@@ -20,6 +20,24 @@ export async function POST(req: NextRequest) {
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Also make sure the fast loop is alive, in this process.
+  //
+  // It is started from instrumentation, which Next loads in its own module graph: the loop was
+  // running there while the code serving requests held a different copy of the module that had
+  // never started anything. Every burn so far was fired by this cron at one minute, not by the
+  // loop at five seconds, and nothing said so until there was something watching.
+  //
+  // Starting it from here puts it in the process that actually handles requests. It is
+  // idempotent, so the call after the first does nothing, and this route already runs every
+  // minute, which makes the loop self-healing across restarts.
+  try {
+    const { startBurnLoop } = await import("@/lib/burnLoop");
+    startBurnLoop();
+  } catch {
+    /* the cron pass below is the fallback, and it is about to run anyway */
+  }
+
   return NextResponse.json(await runBurnEngine());
 }
 
