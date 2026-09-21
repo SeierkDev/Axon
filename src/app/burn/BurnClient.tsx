@@ -59,14 +59,29 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+/**
+ * The clock, in whichever unit keeps it readable.
+ *
+ * Burns are thirty minutes apart, so mm:ss is the normal case. A pot below the minimum waits for
+ * the 24 hour backstop instead, and mm:ss renders that as "1427:51", which reads as a broken
+ * counter rather than as most of a day.
+ */
+export function formatLeft(seconds: number): string {
+  if (seconds >= 3600) {
+    return `${Math.floor(seconds / 3600)}h ${pad(Math.floor((seconds % 3600) / 60))}m`;
+  }
+  return `${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}`;
+}
+
 function Countdown({ remaining, data }: { remaining: number | null; data: BurnPayload }) {
-  const mins = remaining === null ? null : Math.floor(remaining / 60);
-  const secs = remaining === null ? null : remaining % 60;
   const due = remaining !== null && remaining === 0;
 
-  // Fraction of the 30 minute interval already elapsed, for the ring.
-  const pct =
-    remaining === null ? 0 : Math.min(1, Math.max(0, 1 - remaining / data.rules.minIntervalSeconds));
+  // Below the minimum the pot is not on the 30 minute cadence at all: it is waiting out the 24
+  // hour backstop, and the ring has to wind over that window or it sits empty for a whole day.
+  const waiting = data.launched && data.nextBurnEth > 0 && data.nextBurnEth < data.rules.minBurnEth;
+  const window = waiting ? data.rules.maxWaitSeconds : data.rules.minIntervalSeconds;
+
+  const pct = remaining === null ? 0 : Math.min(1, Math.max(0, 1 - remaining / window));
   const C = 2 * Math.PI * 88;
 
   return (
@@ -85,7 +100,7 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              {mins === null ? (
+              {remaining === null ? (
                 <span className="text-2xl font-semibold text-gray-400 dark:text-gray-500">Idle</span>
               ) : due ? (
                 <>
@@ -94,11 +109,15 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
                 </>
               ) : (
                 <>
-                  <span className="text-5xl font-bold tabular-nums tracking-tight text-gray-900 dark:text-white">
-                    {pad(mins)}:{pad(secs ?? 0)}
+                  <span
+                    className={`${
+                      remaining >= 3600 ? "text-4xl" : "text-5xl"
+                    } font-bold tabular-nums tracking-tight text-gray-900 dark:text-white`}
+                  >
+                    {formatLeft(remaining)}
                   </span>
                   <span className="mt-1 text-[11px] font-mono uppercase tracking-widest text-gray-400">
-                    until next burn
+                    {waiting ? "until the backstop" : "until next burn"}
                   </span>
                 </>
               )}
@@ -132,7 +151,9 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
                 <p className="text-gray-500 dark:text-gray-400 max-w-xl">
                   {data.ready
                     ? "A burn is due. Anyone can fire it: the pot buys $AXON on the market and sends it to the dead address."
-                    : `The pot holds ${data.potBalanceEth.toFixed(4)} ETH. A burn spends what the depth cap allows, and whatever is left stays for the next one.`}
+                    : waiting
+                      ? `The pot holds ${data.potBalanceEth.toFixed(4)} ETH, under the ${data.rules.minBurnEth} ETH a burn needs. The clock above is the backstop: the burn fires the moment the pot passes that mark, and 24 hours after the last burn either way.`
+                      : `The pot holds ${data.potBalanceEth.toFixed(4)} ETH. A burn spends what the depth cap allows, and whatever is left stays for the next one.`}
                 </p>
               </>
             )}
