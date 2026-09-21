@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-21T15:02:46.819Z",
-  "finishedAt": "2026-09-21T15:02:52.051Z",
-  "commit": "262c632",
+  "startedAt": "2026-09-21T19:49:07.124Z",
+  "finishedAt": "2026-09-21T19:49:12.346Z",
+  "commit": "3b47beb",
   "checks": [
     {
       "id": "install-commands",
@@ -9,21 +9,21 @@
       "ok": true,
       "checked": 10,
       "findings": [],
-      "ms": 4989
+      "ms": 4960
     },
     {
       "id": "links",
       "title": "Internal links point at real pages",
       "ok": true,
-      "checked": 168,
+      "checked": 171,
       "findings": [],
-      "ms": 20
+      "ms": 25
     },
     {
       "id": "dead-exports",
       "title": "Exports are used",
       "ok": true,
-      "checked": 487,
+      "checked": 498,
       "findings": [
         {
           "severity": "warn",
@@ -51,14 +51,6 @@
         },
         {
           "severity": "warn",
-          "what": "balanceOf() is exported and never used",
-          "why": "dead code reads exactly like live code",
-          "where": [
-            "src/lib/evm.ts"
-          ]
-        },
-        {
-          "severity": "warn",
           "what": "listGrowRuns() is exported and never used",
           "why": "dead code reads exactly like live code",
           "where": [
@@ -72,9 +64,17 @@
           "where": [
             "src/lib/identity.ts"
           ]
+        },
+        {
+          "severity": "warn",
+          "what": "detectProxy() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/tokenScan.ts"
+          ]
         }
       ],
-      "ms": 219
+      "ms": 233
     }
   ],
   "errors": 0,
