@@ -31,6 +31,7 @@ import {
 import { ArcadeFxLayer, applyCameraShake } from "./arcadeFx";
 import { overridePhase, clearPhaseOverride } from "./dayCycle";
 import { sameAddress } from "@/lib/address";
+import { agentAvailability, type AvailabilityTone } from "@/lib/availability";
 import {
   ARENAS,
   MODE_PLATS,
@@ -3874,36 +3875,29 @@ function short(addr: string | null): string {
   return addr.length > 10 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr;
 }
 
-function timeAgo(iso: string): string {
-  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 90) return "just now";
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  if (s < 86_400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86_400)}d ago`;
-}
-
 interface AgentActivity {
   running: number;
   queued: number;
   lastCompletedAt: string | null;
   completed24h: number;
+  verificationStatus?: string | null;
+  lastVerifiedAt?: string | null;
 }
 
-// One-line "what is this agent doing NOW" for the storefront panel.
+const ACTIVITY_MARK: Record<AvailabilityTone, { glyph: string; accent: string }> = {
+  working:   { glyph: "●", accent: "text-emerald-600" },
+  queued:    { glyph: "◔", accent: "text-amber-600" },
+  idle:      { glyph: "○", accent: "text-gray-500" },
+  available: { glyph: "○", accent: "text-teal-600" },
+  down:      { glyph: "◌", accent: "text-red-500" },
+};
+
+// One-line "what is this agent doing NOW" for the storefront panel. The rule itself lives in
+// lib/availability, so this and the agent page cannot drift apart on what "available" means.
 function activityLine(a: AgentActivity): { text: string; accent: string } {
-  if (a.running > 0) {
-    const q = a.queued > 0 ? ` · ${a.queued} in queue` : "";
-    return { text: `● Working on ${a.running > 1 ? `${a.running} tasks` : "a task"} right now${q}`, accent: "text-emerald-600" };
-  }
-  if (a.queued > 0) {
-    return { text: `◔ ${a.queued} task${a.queued > 1 ? "s" : ""} waiting in queue`, accent: "text-amber-600" };
-  }
-  // Fresh completions are social proof — show them. Stale silence isn't:
-  // "idle for 17 days" reads as a dead network, so it becomes availability.
-  if (a.lastCompletedAt && Date.now() - new Date(a.lastCompletedAt).getTime() < 48 * 3_600_000) {
-    return { text: `○ Idle, last job finished ${timeAgo(a.lastCompletedAt)}`, accent: "text-gray-500" };
-  }
-  return { text: "○ Available for hire now", accent: "text-teal-600" };
+  const { tone, text } = agentAvailability(a);
+  const mark = ACTIVITY_MARK[tone];
+  return { text: `${mark.glyph} ${text}`, accent: mark.accent };
 }
 
 function AgentCard({

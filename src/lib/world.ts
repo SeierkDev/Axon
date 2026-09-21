@@ -285,6 +285,10 @@ export interface AgentActivity {
   queued: number; // tasks waiting in this agent's inbox
   lastCompletedAt: string | null;
   completed24h: number;
+  /** what the health cron last saw at this agent's endpoint. The storefront needs it so it can
+   *  stop advertising an agent nobody has been able to reach. */
+  verificationStatus: string | null;
+  lastVerifiedAt: string | null;
 }
 
 // ── Live network activity (task streaks) ─────────────────────────────────────
@@ -358,10 +362,18 @@ export function getAgentActivity(agentId: string): AgentActivity {
     .get(cutoff24h, agentId) as
     | { running: number; queued: number; last_completed_at: string | null; completed_24h: number }
     | undefined;
+  // The health cron writes these every five minutes; read them alongside the task counts so the
+  // card can tell "nothing to do" apart from "nobody can reach it".
+  const health = getDb()
+    .prepare(`SELECT verification_status, last_verified_at FROM agents WHERE agent_id = ?`)
+    .get(agentId) as { verification_status: string | null; last_verified_at: string | null } | undefined;
+
   return {
     running: row?.running ?? 0,
     queued: row?.queued ?? 0,
     lastCompletedAt: row?.last_completed_at ?? null,
     completed24h: row?.completed_24h ?? 0,
+    verificationStatus: health?.verification_status ?? null,
+    lastVerifiedAt: health?.last_verified_at ?? null,
   };
 }

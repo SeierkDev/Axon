@@ -148,7 +148,17 @@ describe("Axon Open World — live agent activity (storefront panel)", () => {
   it("returns an all-idle shape for an agent with no tasks", () => {
     const a = makeAgent("Research");
     const act = getAgentActivity(a.agentId);
-    expect(act).toEqual({ running: 0, queued: 0, lastCompletedAt: null, completed24h: 0 });
+    // The health fields ride along so the storefront can tell "nothing to do" apart from
+    // "nobody can reach it". A freshly made agent has not been pinged yet.
+    expect(act).toEqual({
+      running: 0,
+      queued: 0,
+      lastCompletedAt: null,
+      completed24h: 0,
+      verificationStatus: act.verificationStatus,
+      lastVerifiedAt: null,
+    });
+    expect(act.verificationStatus).not.toBe("unreachable");
   });
 });
 

@@ -20,6 +20,7 @@ import ProofScoreCard from "./ProofScoreCard";
 import HirePanel from "./HirePanel";
 import HireLinkShare from "./HireLinkShare";
 import { ExtArrow } from "@/components/ExtArrow";
+import { agentAvailability } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
 
@@ -179,19 +180,43 @@ export default async function AgentProfilePage({
               <p className="text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-400">
                 Verified Track Record
               </p>
-              {track.running > 0 ? (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-semibold">
-                  ● Working now
-                </span>
-              ) : track.queued > 0 ? (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-semibold">
-                  ◔ {track.queued} in queue
-                </span>
-              ) : (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 font-semibold">
-                  ○ Available for hire
-                </span>
-              )}
+              {/* Same rule the world storefront asks, so the two can never disagree about
+                  whether this agent is open for work. */}
+              {(() => {
+                const { tone } = agentAvailability({
+                  running: track.running,
+                  queued: track.queued,
+                  lastCompletedAt: null,
+                  verificationStatus: agent.verificationStatus,
+                  lastVerifiedAt: agent.lastVerifiedAt ?? null,
+                });
+                if (tone === "working") {
+                  return (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-semibold">
+                      ● Working now
+                    </span>
+                  );
+                }
+                if (tone === "down") {
+                  return (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 font-semibold">
+                      ◌ Not responding
+                    </span>
+                  );
+                }
+                if (tone === "queued") {
+                  return (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-semibold">
+                      ◔ {track.queued} in queue
+                    </span>
+                  );
+                }
+                return (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 font-semibold">
+                    ○ Available for hire
+                  </span>
+                );
+              })()}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-gray-100 dark:divide-gray-800">
               <div className="p-4">
