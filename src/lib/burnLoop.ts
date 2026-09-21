@@ -65,6 +65,30 @@ function why(err: unknown): string {
   return named ? named[1] : text.replace(/\s+/g, " ").trim().slice(0, 160);
 }
 
+/** How often the loop is allowed to complain, so a stall does not fill the log every tick. */
+const COMPLAIN_EVERY_MS = 15 * 60_000;
+let lastComplaint = 0;
+
+/**
+ * Say something when the burn has stopped working.
+ *
+ * Only for the two states nobody would otherwise notice: a burn sitting due and fundable, and the
+ * gas running low. A burn waiting below MIN_BURN is the pot doing its job and is not mentioned.
+ */
+function complainIfStuck(readyForSeconds: number, amount: bigint, gasEth: number): void {
+  if (Date.now() - lastComplaint < COMPLAIN_EVERY_MS) return;
+  const problems: string[] = [];
+  if (amount > 0n && readyForSeconds > 20 * 60) {
+    problems.push(`a burn has been due and fundable for ${Math.floor(readyForSeconds / 60)} minutes`);
+  }
+  if (gasEth > 0 && gasEth < 0.0024) {
+    problems.push(`the bot wallet is down to ${gasEth.toFixed(5)} ETH of gas`);
+  }
+  if (problems.length === 0) return;
+  lastComplaint = Date.now();
+  logger.error("burn.stuck", "The burn is not running as it should", { problems });
+}
+
 async function tick(): Promise<void> {
   const pot = burnPotAddress();
   const key = process.env.BOT_PRIVATE_KEY?.trim();
@@ -95,11 +119,18 @@ async function tick(): Promise<void> {
   if (burning) return;
 
   try {
-    const [amount, , ready] = (await reader.readContract({
+    const [amount, nextAt, ready] = (await reader.readContract({
       address: pot as `0x${string}`,
       abi: POT_ABI,
       functionName: "preview",
     })) as readonly [bigint, bigint, boolean];
+
+    // Noticed here rather than only when somebody asks, so a stall reaches the log on its own.
+    if (ready && nextAt > 0n) {
+      const readyFor = Math.floor(Date.now() / 1000) - Number(nextAt);
+      const gas = await reader.getBalance({ address: account.address }).catch(() => 0n);
+      complainIfStuck(readyFor, amount, weiToEth(gas));
+    }
 
     if (!ready || amount <= 0n) return;
 
