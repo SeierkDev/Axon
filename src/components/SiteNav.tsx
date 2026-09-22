@@ -6,9 +6,10 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
 
-const LINKS = [
+/** Typed rather than inferred: with no desktopOnly entry present the inferred shape loses the field,
+ *  and the mobile filter below stops compiling the moment the last one is removed. */
+const LINKS: { href: string; label: string; desktopOnly?: boolean }[] = [
   { href: "/docs",          label: "Docs" },
-  { href: "/how-it-works",  label: "Protocol", desktopOnly: true },
   { href: "/agents",        label: "Agents" },
   { href: "/analytics",     label: "Analytics" },
   { href: "/network-feed",  label: "Feed" },
@@ -20,9 +21,12 @@ const LINKS = [
   // that should be missing on a phone.
   { href: "/burn",          label: "Burn" },
   // Token reports are a tool people arrive at with an address in hand rather than something to
-  // browse, so it sits last. Not desktopOnly though: the mobile menu drops those entirely, and
+  // browse, so it sits late. Not desktopOnly though: the mobile menu drops those entirely, and
   // checking a contract before buying is something people do on a phone more than anywhere else.
   { href: "/launches",      label: "Reports" },
+  // Launching took the Protocol slot. Protocol is a page you read once and it is already linked
+  // from the homepage and the footer; this is a thing people come back to do.
+  { href: "/launch",        label: "Launch" },
 ];
 
 export default function SiteNav() {

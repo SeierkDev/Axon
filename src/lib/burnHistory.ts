@@ -68,6 +68,142 @@ function remember(rows: BurnRecord[]): void {
   }
 }
 
+/**
+ * Walk back through older blocks for burns that were never written down.
+ *
+ * The archive only holds what was seen while the page was being looked at, so the earliest burns are
+ * missing: this pot had already fired eleven times before anything started recording them. Those rows
+ * are not lost, they are just further back in the log than a single query may reach.
+ *
+ * Each pass reads one window below whatever is already known and stores what it finds. It is meant to be
+ * called when somebody actually pages back that far, rather than on a schedule, and it stops as soon as
+ * it reaches burn number one because there is nothing before that.
+ */
+export async function backfillOlderBurns(windows = 4): Promise<{ added: number; reachedStart: boolean }> {
+  const pot = burnPotAddress();
+  if (!pot) return { added: 0, reachedStart: false };
+
+  const range = storedBurnRange();
+  if (range.lowest === 1) return { added: 0, reachedStart: true };
+
+  // Start below the oldest burn we hold, or below the head if we hold nothing at all.
+  let cursor: bigint;
+  try {
+    const oldest = range.lowest === null ? null : oldestStoredBlock();
+    cursor = oldest !== null ? BigInt(oldest) - 1n : await blockNumber();
+  } catch {
+    return { added: 0, reachedStart: false };
+  }
+
+  let added = 0;
+  for (let i = 0; i < windows && cursor > 0n; i++) {
+    const from = cursor > LOOKBACK_BLOCKS ? cursor - LOOKBACK_BLOCKS : 0n;
+    try {
+      const logs = (await getLogs(from, cursor, {
+        address: pot,
+        topics: ["0xe81ef1f1bb6c6c1fa367c0da723b5ec328ab8225dbfff726273a8fce586fe2db"],
+      })) as { topics: string[]; data: string; transactionHash: string; blockNumber: string }[];
+
+      const rows: BurnRecord[] = [];
+      for (const log of logs) {
+        try {
+          const decoded = decodeEventLog({
+            abi: [BURNED],
+            topics: log.topics as [signature: `0x${string}`, ...args: `0x${string}`[]],
+            data: log.data as `0x${string}`,
+          });
+          const a = decoded.args as unknown as { n: bigint; caller: string; ethIn: bigint; tokensOut: bigint };
+          rows.push({
+            n: Number(a.n),
+            ethIn: weiToEth(a.ethIn),
+            tokensOut: weiToEth(a.tokensOut),
+            txHash: log.transactionHash,
+            blockNumber: Number(BigInt(log.blockNumber)),
+            caller: a.caller.toLowerCase(),
+            explorer: `${EXPLORER}/tx/${log.transactionHash}`,
+          });
+        } catch { /* a log that will not decode is not worth failing the walk over */ }
+      }
+
+      const before = storedBurnRange().count;
+      remember(rows);
+      added += storedBurnRange().count - before;
+    } catch (err) {
+      logger.warn("burn.backfill_window_failed", "Could not read an older burn window", { err });
+      break;
+    }
+    cursor = from === 0n ? 0n : from - 1n;
+  }
+
+  // The cache holds a merged view that no longer matches the table.
+  cache = null;
+  return { added, reachedStart: storedBurnRange().lowest === 1 };
+}
+
+/** The block of the oldest burn we hold, which is where a walk backwards starts. */
+function oldestStoredBlock(): number | null {
+  try {
+    const r = getDb().prepare(`SELECT MIN(block_number) AS b FROM burns`).get() as { b: number | null } | undefined;
+    return r?.b ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A page of the archive, newest first, ending before burn `before`.
+ *
+ * The page used to show ten and stop. Eighty three burns had happened by then, so "every burn" was a
+ * heading over the last nine of them and there was no way to reach the rest. A burn somebody read about
+ * yesterday was already unreachable, which is the opposite of what a receipt is for.
+ */
+export function burnPage(limit = 20, before?: number): { burns: BurnRecord[]; hasMore: boolean } {
+  try {
+    const db = getDb();
+    // One extra row answers "is there more" without a second count query.
+    const rows = db
+      .prepare(
+        `SELECT n, tx_hash, block_number, eth_in, tokens_out, caller
+           FROM burns
+          WHERE (? IS NULL OR n < ?)
+          ORDER BY n DESC
+          LIMIT ?`,
+      )
+      .all(before ?? null, before ?? null, limit + 1) as {
+        n: number; tx_hash: string; block_number: number;
+        eth_in: number; tokens_out: number; caller: string;
+      }[];
+
+    const hasMore = rows.length > limit;
+    return {
+      hasMore,
+      burns: rows.slice(0, limit).map((r) => ({
+        n: r.n,
+        ethIn: r.eth_in,
+        tokensOut: r.tokens_out,
+        txHash: r.tx_hash,
+        blockNumber: r.block_number,
+        caller: r.caller,
+        explorer: `${EXPLORER}/tx/${r.tx_hash}`,
+      })),
+    };
+  } catch {
+    return { burns: [], hasMore: false };
+  }
+}
+
+/** How many burns are written down, and the lowest number among them. */
+export function storedBurnRange(): { count: number; lowest: number | null } {
+  try {
+    const r = getDb().prepare(`SELECT COUNT(*) AS c, MIN(n) AS lo FROM burns`).get() as
+      | { c: number; lo: number | null }
+      | undefined;
+    return { count: r?.c ?? 0, lowest: r?.lo ?? null };
+  } catch {
+    return { count: 0, lowest: null };
+  }
+}
+
 /** Everything written down so far, newest first. */
 function stored(limit: number): BurnRecord[] {
   try {
