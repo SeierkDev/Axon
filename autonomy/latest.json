@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-22T11:45:11.145Z",
-  "finishedAt": "2026-09-22T11:45:16.061Z",
-  "commit": "e11be77",
+  "startedAt": "2026-09-22T12:04:01.225Z",
+  "finishedAt": "2026-09-22T12:04:06.289Z",
+  "commit": "9ef7760",
   "checks": [
     {
       "id": "install-commands",
@@ -9,7 +9,7 @@
       "ok": true,
       "checked": 10,
       "findings": [],
-      "ms": 4662
+      "ms": 4791
     },
     {
       "id": "links",
@@ -17,7 +17,7 @@
       "ok": true,
       "checked": 171,
       "findings": [],
-      "ms": 20
+      "ms": 24
     },
     {
       "id": "dead-exports",
@@ -74,11 +74,28 @@
           ]
         }
       ],
-      "ms": 232
+      "ms": 243
     }
   ],
   "errors": 0,
   "warnings": 6,
-  "changed": false,
-  "changes": []
+  "changed": true,
+  "changes": [
+    {
+      "what": "dropped the export from displayAddress()",
+      "where": "src/lib/address.ts"
+    },
+    {
+      "what": "dropped the export from callDistribute()",
+      "where": "src/lib/burn.ts"
+    },
+    {
+      "what": "dropped the export from buildSignInMessage()",
+      "where": "src/lib/identity.ts"
+    },
+    {
+      "what": "dropped the export from detectProxy()",
+      "where": "src/lib/tokenScan.ts"
+    }
+  ]
 }
