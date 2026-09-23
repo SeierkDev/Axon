@@ -289,7 +289,7 @@ export function isStandardLaunchpadToken(f: TokenFacts): boolean {
 }
 
 /** Which of the known proxy patterns this contract is, if any. */
-export async function detectProxy(address: string, bytecode: string): Promise<ProxyFinding> {
+async function detectProxy(address: string, bytecode: string): Promise<ProxyFinding> {
   const minimal = MINIMAL_PROXY.exec(bytecode);
   if (minimal) {
     return { isProxy: true, kind: "eip-1167", implementation: `0x${minimal[1]}` };

@@ -182,7 +182,7 @@ const DISTRIBUTE_ABI = [
 ] as const;
 
 /** Tell the Splitter to divide whatever it holds. Callable by anyone; we just happen to be here. */
-export async function callDistribute(privateKey: string, splitter: string): Promise<string> {
+async function callDistribute(privateKey: string, splitter: string): Promise<string> {
   const { client } = walletClientFor(privateKey);
   const hash = await client.sendTransaction({
     to: splitter as `0x${string}`,

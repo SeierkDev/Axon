@@ -35,7 +35,7 @@ export function sameAddress(a: unknown, b: unknown): boolean {
 }
 
 /** The checksummed spelling, for anything a person reads. Returns null if it isn't an address. */
-export function displayAddress(value: unknown): string | null {
+function displayAddress(value: unknown): string | null {
   const normalized = normalizeAddress(value);
   return normalized ? getAddress(normalized) : null;
 }
