@@ -9,6 +9,7 @@ import { getDb } from "@/lib/db";
 import { failureReport } from "@/lib/failurePatterns";
 import { logger } from "@/lib/logger";
 import { noteCronRun } from "@/lib/cronRuns";
+import { backfillDescriptions } from "@/lib/agentDescription";
 
 function authorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -38,6 +39,9 @@ export async function POST(req: NextRequest) {
   }
   noteCronRun("health");
   reportFailurePatterns();
+  // A few descriptions per pass, for agents that predate them. Deliberately a trickle: there is no
+  // reason to spend a hundred model calls in a burst when this runs every five minutes anyway.
+  void backfillDescriptions(5).catch(() => {});
 
   const agents = getAllAgents().filter((a) => a.endpoint && a.verificationStatus !== "modulr");
   const start = Date.now();

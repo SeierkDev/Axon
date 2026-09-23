@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError } from "./apiError";
 import { MAX_TOOL_GRANTS } from "./agentToolLimits";
+import { MAX_AXON_DISCOUNT_BPS } from "./axonTerms";
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -53,6 +54,19 @@ export const updateAgentSchema = z
     orchestrator: z.boolean().optional(),
     // Full replacement of the agent's tool grants — `[]` or null revokes them all.
     tools: z.array(z.string().min(1).max(120)).max(MAX_TOOL_GRANTS).nullable().optional(),
+    // Whether this agent takes $AXON, and what it knocks off when someone pays that way.
+    //
+    // Owner-set and off by default, which is the point: an agent accepts the token because whoever
+    // owns it said so, not because the platform decided for them. Without these two fields the
+    // setting existed in the database and in the payment path with no way for anyone to reach it,
+    // so the token could never actually be offered by anybody.
+    acceptsAxon: z.boolean().optional(),
+    axonDiscountBps: z
+      .number()
+      .int("axonDiscountBps must be a whole number of basis points")
+      .min(0)
+      .max(MAX_AXON_DISCOUNT_BPS, `axonDiscountBps must be ${MAX_AXON_DISCOUNT_BPS} or fewer basis points`)
+      .optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "At least one field must be provided");
 

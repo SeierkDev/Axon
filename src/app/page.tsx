@@ -4,7 +4,8 @@ import FadeIn from "@/components/FadeIn";
 import TerminalCode from "@/components/TerminalCode";
 import SiteNav from "@/components/SiteNav";
 import { getNetworkStats } from "@/lib/analytics";
-import { TOKEN_ADDRESS as AXON_TOKEN } from "@/lib/money";
+import { homeCardFingerprint } from "./homeCard";
+import { AXON_TOKEN_ADDRESS as AXON_TOKEN } from "@/lib/money";
 import { ponsTokenUrl } from "@/lib/chain";
 import { shortAddress } from "@/lib/address";
 import { getLatestRun } from "@/lib/autonomy";
@@ -93,6 +94,26 @@ const CODE_DELEGATE = `axon.delegate({
   ],
   task: "Build trading strategy"
 })`;
+
+/**
+ * Point the unfurl card at a URL that moves with the figures on it.
+ *
+ * Next.js otherwise names the image with a hash of its own source file, which does not change when
+ * the network does, so every platform that caches a preview kept showing the numbers from whenever
+ * that file was last edited. Naming it here, with a fingerprint of the figures, means the URL is new
+ * exactly when the card is, and unchanged otherwise.
+ *
+ * Only on this page. Setting images in the root layout would pin every page to one card and override
+ * the per-page routes, which is what the comment in layout.tsx is warning about.
+ */
+export async function generateMetadata() {
+  const card = `/opengraph-image?v=${homeCardFingerprint()}`;
+  return {
+    openGraph: { images: [{ url: card, width: 1200, height: 630 }] },
+    twitter: { images: [card] },
+  };
+}
+
 
 export default async function Home() {
   // The most recent self-check, shown in the hero. Reading it here keeps the

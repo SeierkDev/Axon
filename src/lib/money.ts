@@ -32,8 +32,38 @@ export const IS_REPORTING_CURRENCY = `currency = '${CURRENCY}'`;
 export const WEI_PER_ETH = 10n ** 18n;
 export const ETH_DECIMALS = 18;
 
-/** An ERC-20 to settle in instead, if one is ever configured. Unset means native ETH only. */
-export const TOKEN_ADDRESS = process.env.AXON_TOKEN_ADDRESS?.trim() ?? "";
+/**
+ * The ERC-20 an agent may be paid in as an alternative to ETH, and the switch that turns that on.
+ *
+ * Read by the $AXON lane only: the quote, the 402 that offers it, and the check that the tokens
+ * actually arrived. The ETH lane below does not read it and must not, which is the whole point.
+ *
+ * Deliberately NOT `AXON_TOKEN_ADDRESS`. That one means "the token whose balances we check", and
+ * arcadeGate uses it to decide whether a wallet holds enough $AXON to be let in. It is set in
+ * production for that reason alone.
+ *
+ * The history is worth keeping, because the mistake has now been made twice in different shapes.
+ * First this file read `AXON_TOKEN_ADDRESS` and meant "the token a payment must arrive in", so
+ * setting it for the gate silently changed what an ETH invoice demanded. Both tokens are 18
+ * decimals, so 0.00025 ETH was satisfied by 0.00025 AXON and nothing threw. That was fixed by
+ * giving settlement its own name.
+ *
+ * Then this variable became the on-switch for paying in $AXON, while the ETH gate was still reading
+ * it to decide what an ETH payment had to arrive in. Turning the feature on would have made every
+ * ETH-priced invoice demand $AXON instead, on a site where all the prices still say ETH.
+ *
+ * So: one lane, one meaning. ETH invoices settle in ETH, always. A token invoice is a separate
+ * quote, priced and checked against this address.
+ */
+export const SETTLEMENT_TOKEN_ADDRESS = process.env.AXON_SETTLEMENT_TOKEN_ADDRESS?.trim() ?? "";
+
+/**
+ * The $AXON token itself: what to link to, and what to check a balance of.
+ *
+ * Nothing to do with settlement, and kept next to it on purpose. These two were the same constant
+ * once, which is exactly how the meanings drifted apart without anyone noticing.
+ */
+export const AXON_TOKEN_ADDRESS = process.env.AXON_TOKEN_ADDRESS?.trim() ?? "";
 
 export interface ParsedPayment {
   /** the human-readable amount, for display and for reporting. Never for arithmetic. */
@@ -184,11 +214,13 @@ export async function checkIncomingPayment(
 
   if (expected.wei <= 0n) return { ok: false, reason: "expected payment amount is invalid" };
 
+  // Native ETH, unconditionally. No `token` here: an invoice that says ETH is settled by an ETH
+  // transfer, whether or not paying in $AXON is switched on. Paying in the token goes through its
+  // own quote, which carries its own amount and is checked against the token contract there.
   return verifyTransfer({
     txHash: signature,
     to: PAYMENT_RECEIVER_WALLET_ADDRESS,
     minValue: expected.wei,
-    ...(TOKEN_ADDRESS ? { token: TOKEN_ADDRESS } : {}),
     from: expectedSigner,
   });
 }

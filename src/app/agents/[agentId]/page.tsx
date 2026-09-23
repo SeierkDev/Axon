@@ -13,6 +13,7 @@ import { getAgentTrackRecord } from "@/lib/trackRecord";
 import { computeProofScore } from "@/lib/proofScore";
 import { describeToolGrant, toolsActiveFor } from "@/lib/agentTools";
 import { parsePriceToEth } from "@/lib/payments";
+import { axonTerms } from "@/lib/axonTerms";
 import type { Review } from "@/sdk/types";
 import SiteNav from "@/components/SiteNav";
 import ReviewForm from "@/components/ReviewForm";
@@ -65,6 +66,9 @@ export default async function AgentProfilePage({
   // price like "0 ETH" or unparseable text runs on the free lane there, so the
   // page must show it as free too, not claim x402 is required.
   const isPaid = parsePriceToEth(agent.price) !== null;
+  // The same terms the marketplace card shows, from the same function, so a card and the page it
+  // opens can never quote two different discounts.
+  const axon = isPaid ? axonTerms(agent) : null;
   // For the in-browser paid hire: where ETH is sent (the treasury) + the RPC to
   // build/confirm the payment. Read at request time — NEXT_PUBLIC_* may only be
   // set at runtime on the host, not at build.
@@ -119,8 +123,25 @@ export default async function AgentProfilePage({
             <div className="shrink-0 sm:text-right">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{price}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{isPaid ? "per task" : "no payment required"}</p>
+              {/* The token's reason to exist, on the page where somebody is deciding to hire. The
+                  exact amount is quoted at payment time off the live pool, so this says the terms
+                  and not a figure that would be stale by the time anyone paid. */}
+              {axon && (
+                <p className="text-xs font-semibold text-teal-700 dark:text-teal-400 mt-1.5">
+                  {axon.discountBps > 0 ? `${axon.discount} off paid in $AXON` : "Also takes $AXON"}
+                </p>
+              )}
             </div>
           </div>
+
+          {/* What it does, above the tags rather than below them: somebody deciding whether to hire
+              reads this first, and the tags are the detail underneath it. Full text here, unlike the
+              card, because there is room and this is the page you open to find out more. */}
+          {agent.description && (
+            <p className="text-base text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl">
+              {agent.description}
+            </p>
+          )}
 
           {/* Capabilities */}
           <div className="flex flex-wrap gap-2">
@@ -456,6 +477,14 @@ export default async function AgentProfilePage({
                 <>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{price} per task · paid via x402 · settles on Robinhood Chain</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Attach a signed Robinhood Chain ETH transfer to each request. The SDK handles this automatically, or follow the manual flow below.</p>
+                  {/* Said here as well as beside the price, because this is the box somebody reads
+                      when working out how to actually pay, and the token option is otherwise only
+                      discoverable by reading a 402 response. */}
+                  {axon && (
+                    <p className="text-xs text-teal-700 dark:text-teal-400 mt-1">
+                      {axon.long} The 402 response carries the exact amount, quoted when you ask.
+                    </p>
+                  )}
                 </>
               ) : (
                 <>

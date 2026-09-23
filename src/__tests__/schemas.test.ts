@@ -75,6 +75,28 @@ describe("updateAgentSchema", () => {
     const r = updateAgentSchema.safeParse({});
     expect(r.success).toBe(false);
   });
+
+  // The $AXON terms are owner-set and reach the database through this schema. Before these two
+  // fields were accepted here, the column existed, the payment path read it, and nothing anywhere
+  // could set it: a feature switched off with no switch.
+  it("lets an owner opt in to $AXON and set a discount", () => {
+    expect(updateAgentSchema.safeParse({ acceptsAxon: true }).success).toBe(true);
+    expect(updateAgentSchema.safeParse({ acceptsAxon: false }).success).toBe(true);
+    expect(updateAgentSchema.safeParse({ acceptsAxon: true, axonDiscountBps: 2_000 }).success).toBe(true);
+    expect(updateAgentSchema.safeParse({ axonDiscountBps: 0 }).success).toBe(true);
+  });
+
+  it("refuses a discount outside the range rather than clamping it into one", () => {
+    // 50000 rather than 5000 is the mistake basis points invite. Accepting it and snapping it down
+    // would turn a typo into a real half-price offer, so the request fails and the agent keeps
+    // charging what it already said.
+    expect(updateAgentSchema.safeParse({ axonDiscountBps: 50_000 }).success).toBe(false);
+    expect(updateAgentSchema.safeParse({ axonDiscountBps: 5_001 }).success).toBe(false);
+    expect(updateAgentSchema.safeParse({ axonDiscountBps: -1 }).success).toBe(false);
+    expect(updateAgentSchema.safeParse({ axonDiscountBps: 12.5 }).success).toBe(false);
+    // The maximum itself is legal.
+    expect(updateAgentSchema.safeParse({ axonDiscountBps: 5_000 }).success).toBe(true);
+  });
 });
 
 describe("createTaskSchema", () => {

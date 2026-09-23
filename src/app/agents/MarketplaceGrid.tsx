@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Agent } from "@/sdk/types";
+import { axonTerms } from "@/lib/axonTerms";
 
 function formatPrice(price?: string) {
   return price?.trim() || "Free";
@@ -50,6 +51,7 @@ function healthDot(agent: Agent): string {
 function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
   const price = formatPrice(agent.price);
   const reputation = agent.reputation ?? 0;
+  const axon = axonTerms(agent);
 
   return (
     <Link
@@ -87,10 +89,31 @@ function AgentCard({ agent, index = 0 }: { agent: Agent; index?: number }) {
           </h3>
           <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{agent.agentId}</p>
         </div>
-        <span className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-md shrink-0">
-          {price}
-        </span>
+        {/* Price, and directly under it what the token buys. Beside the price rather than in the
+            badge row above, because a discount is a fact about this number and reads as noise
+            anywhere else. Absent entirely for agents that have not opted in. */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-md">
+            {price}
+          </span>
+          {axon && (
+            <span
+              title={axon.long}
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 leading-none whitespace-nowrap"
+            >
+              {axon.short}
+            </span>
+          )}
+        </div>
       </div>
+      {/* What the agent actually does. The card carried a name, a price and three tags, which does
+          not tell anyone whether it is worth hiring. Clamped to two lines so a long one cannot push
+          the cards out of alignment, and simply absent until one has been written. */}
+      {agent.description && (
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 line-clamp-2 leading-relaxed">
+          {agent.description}
+        </p>
+      )}
       <div className="flex flex-wrap gap-1.5 mb-4">
         {agent.capabilities.map((cap) => (
           <span key={cap} className="text-[11px] px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400">

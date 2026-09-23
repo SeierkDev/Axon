@@ -13,9 +13,10 @@ import { getAgentById } from "@/lib/agents";
 import { createTask, markTaskPaymentConfirmed } from "@/lib/tasks";
 import { syncToTurso } from "@/lib/db-turso";
 import { createPayment, parsePriceToEth, refundPayment } from "@/lib/payments";
+import { createAxonPayment } from "@/lib/axonPayment";
 import { isWalletAddress } from "@/lib/address";
 import {
-  buildX402Requirements,
+  buildX402RequirementsWithAxon,
   encodeRequirements,
   decodePaymentHeader,
 } from "@/lib/x402";
@@ -37,15 +38,16 @@ function resourceUrl(req: NextRequest, agentId: string): string {
   return publicUrl(req, `/api/agents/${agentId}/x402`);
 }
 
-function paymentRequiredResponse(
+async function paymentRequiredResponse(
   req: NextRequest,
-  agent: { name: string; price: string },
+  agent: { name: string; price: string; acceptsAxon?: boolean; axonDiscountBps?: number },
   agentId: string
 ) {
-  const requirements = buildX402Requirements({
+  const requirements = await buildX402RequirementsWithAxon({
     resource: resourceUrl(req, agentId),
     price: agent.price,
     description: `${agent.name} task execution`,
+    axon: { acceptsAxon: agent.acceptsAxon, axonDiscountBps: agent.axonDiscountBps },
   });
   if (!requirements) {
     return apiError("PAYMENT_UNAVAILABLE", "Payment processing unavailable", 503);
@@ -75,7 +77,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     );
   }
 
-  return paymentRequiredResponse(req, { name: agent.name, price: agent.price }, agentId);
+  return await paymentRequiredResponse(req, { name: agent.name, price: agent.price, acceptsAxon: agent.acceptsAxon, axonDiscountBps: agent.axonDiscountBps }, agentId);
 }
 
 // POST — submit a task with X-Payment (on-chain) or X-MPP-Channel (pre-paid channel)
@@ -183,7 +185,7 @@ export function POST(req: NextRequest, { params }: Params) {
     const rawPayment = req.headers.get("x-payment");
 
     if (!rawPayment) {
-      return paymentRequiredResponse(req, { name: agent.name, price: agent.price }, agentId);
+      return await paymentRequiredResponse(req, { name: agent.name, price: agent.price, acceptsAxon: agent.acceptsAxon, axonDiscountBps: agent.axonDiscountBps }, agentId);
     }
 
     const paymentHeader = decodePaymentHeader(rawPayment);
@@ -206,7 +208,29 @@ export function POST(req: NextRequest, { params }: Params) {
       initialStatus: "payment_pending",
     });
 
-    const amountEth = parsePriceToEth(agent.price);
+    // A client that took the token option says so by echoing the quote back. That payment is a
+    // transfer of $AXON, not of ETH, so it cannot go through createPayment: the amount owed is the
+    // one the quote pinned, in the token's own units, and checking it against the ETH price would
+    // refuse a payer who sent exactly what they were quoted.
+    const quoteId = paymentHeader.payload.quoteId;
+    if (quoteId) {
+      const paid = await createAxonPayment({
+        taskId: task.taskId,
+        fromAgent,
+        toAgent: agentId,
+        quoteId,
+        txHash: paymentHeader.payload.signature,
+        payerWallet: fromAgent,
+      });
+      if (!paid.ok) {
+        const { getDb } = await import("@/lib/db");
+        getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
+        void syncToTurso();
+        return apiError("PAYMENT_FAILED", paid.detail ?? paid.reason, 402);
+      }
+    }
+
+    const amountEth = quoteId ? null : parsePriceToEth(agent.price);
     if (amountEth !== null) {
       try {
         await createPayment({

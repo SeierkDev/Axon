@@ -2,6 +2,7 @@ import { getDb } from "./db";
 import { syncToTurso } from "./db-turso";
 import { parsePaymentAmount } from "./money";
 import { scheduleAgentEmbedding } from "./embeddings";
+import { scheduleAgentDescription, needsDescription } from "./agentDescription";
 import { normalizeToolGrants, parseToolsColumn } from "./agentTools";
 import type { Agent } from "@/sdk/types";
 
@@ -26,8 +27,24 @@ interface AgentRow {
   proof_score_tier: string | null;
   orchestrator: number;
   tools: string | null;
+  accepts_axon: number;
+  axon_discount_bps: number;
+  description: string | null;
   created_at: string;
 }
+
+/**
+ * The cap on an agent's $AXON discount, and the clamp that enforces it.
+ *
+ * Defined in axonTerms rather than here, because the marketplace card needs the same rule and cannot
+ * import this module: this one opens the database. Re-exported so existing callers are unaffected.
+ *
+ * Half is the cap. Not an economic view: a number typed one zero out in basis points is the
+ * difference between a ten percent discount and giving the work away, and a cap is cheaper than
+ * finding out which was meant.
+ */
+export { MAX_AXON_DISCOUNT_BPS, clampDiscount } from "./axonTerms";
+import { clampDiscount } from "./axonTerms";
 
 function parseCapabilitiesJson(raw: string): string[] {
   try {
@@ -62,6 +79,9 @@ function rowToAgent(row: AgentRow): Agent {
     proofScoreTier: row.proof_score_tier ?? undefined,
     orchestrator: row.orchestrator === 1,
     tools: parseToolsColumn(row.tools),
+    acceptsAxon: row.accepts_axon === 1,
+    axonDiscountBps: clampDiscount(row.axon_discount_bps),
+    description: row.description ?? undefined,
     createdAt: row.created_at,
   };
 }
@@ -130,6 +150,7 @@ export function createAgent(agent: Agent): Agent {
   })();
   void syncToTurso();
 
+  scheduleAgentDescription(agent);
   scheduleAgentEmbedding(agent);
   return agent;
 }
@@ -150,6 +171,10 @@ export function agentExists(agentId: string): boolean {
 
 export interface AgentUpdateFields {
   name?: string;
+  /** Whether this agent will take $AXON for its work. Off until its owner says otherwise. */
+  acceptsAxon?: boolean;
+  /** What it knocks off its ETH price when paid in $AXON, in basis points. */
+  axonDiscountBps?: number;
   capabilities?: string[];
   price?: string | null;
   endpoint?: string | null;
@@ -188,6 +213,14 @@ export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent 
     setParts.push("orchestrator = ?");
     values.push(updates.orchestrator ? 1 : 0);
   }
+  if (updates.acceptsAxon !== undefined) {
+    setParts.push("accepts_axon = ?");
+    values.push(updates.acceptsAxon ? 1 : 0);
+  }
+  if (updates.axonDiscountBps !== undefined) {
+    setParts.push("axon_discount_bps = ?");
+    values.push(clampDiscount(updates.axonDiscountBps));
+  }
   if ("tools" in updates) {
     const grants = updates.tools ? normalizeToolGrants(updates.tools) : [];
     setParts.push("tools = ?");
@@ -221,6 +254,12 @@ export function updateAgent(agentId: string, updates: AgentUpdateFields): Agent 
   // granting them would leave discovery describing the agent as it used to be.
   if (updated && (updates.name !== undefined || updates.capabilities !== undefined || "tools" in updates)) {
     scheduleAgentEmbedding(updated);
+  }
+  // Rewritten only when what it says about itself changed. needsDescription compares against the
+  // name and capabilities the existing description was written from, so renaming an agent redoes it
+  // and changing its price does not.
+  if (updated && needsDescription(updated)) {
+    scheduleAgentDescription(updated);
   }
   return updated;
 }

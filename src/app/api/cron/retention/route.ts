@@ -10,6 +10,7 @@ import { recomputeAllProofScores } from "@/lib/proofScore";
 import { pruneEndpointChecks } from "@/lib/endpointUptime";
 import { logger } from "@/lib/logger";
 import { noteCronRun, pruneCronRuns } from "@/lib/cronRuns";
+import { pruneQuotes } from "@/lib/axonQuote";
 
 function authorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -37,14 +38,16 @@ export async function POST(req: NextRequest) {
     // The job ledger is bounded here too, for the same reason: it is written on every cron tick, and
     // the every-five-minute jobs alone would put a hundred thousand rows a year into it.
     const cronRunsPruned = pruneCronRuns();
+    const quotesPruned = pruneQuotes();
     logger.info("cron.retention_complete", "Retention cleanup complete", {
       ...deleted,
       reputationsRecomputed,
       proofScoresRecomputed,
       endpointChecksPruned,
       cronRunsPruned,
+      quotesPruned,
     });
-    return NextResponse.json({ ok: true, deleted, reputationsRecomputed, proofScoresRecomputed, endpointChecksPruned, cronRunsPruned, durationMs: Date.now() - start });
+    return NextResponse.json({ ok: true, deleted, reputationsRecomputed, proofScoresRecomputed, endpointChecksPruned, cronRunsPruned, quotesPruned, durationMs: Date.now() - start });
   } catch (err) {
     logger.error("cron.retention_failed", "Retention cleanup failed", {
       err: err instanceof Error ? err.message : String(err),

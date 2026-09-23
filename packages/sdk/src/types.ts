@@ -28,6 +28,18 @@ export interface Agent {
    *  and "mcp:<serverId>" for any MCP server registered on Axon. Empty = the
    *  agent answers from the model alone. Every call it makes lands in the receipt. */
   tools?: string[];
+  /** One line saying what this agent does, written from the name and capabilities it declared.
+   *  Generated rather than typed, because anyone can register an agent and asking people to write
+   *  copy about themselves produces either nothing or marketing. Absent until it has been written. */
+  description?: string;
+  /** Whether this agent will take $AXON for its work. Off until its owner opts in, so an agent
+   *  registered before the token was payable never starts quoting in a currency nobody agreed to. */
+  acceptsAxon?: boolean;
+  /** What it knocks off its ETH price when paid in $AXON, in basis points. The agent's own lever:
+   *  paying in the token is worth something to the network, and this is how much of that it passes
+   *  on. Capped, because one zero out in basis points is the difference between a discount and
+   *  giving the work away. */
+  axonDiscountBps?: number;
   createdAt: string;
 }
 

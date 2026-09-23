@@ -75,6 +75,18 @@ export function getBuiltinAgent(agentId: string): Agent | null {
   };
 }
 
+/**
+ * What the agents we run ourselves take off for paying in $AXON.
+ *
+ * Ten percent to start, and the number is here rather than in a migration because it is a standing
+ * decision rather than a one-off edit: the seed reconciles these agents on every deploy, so changing
+ * this line changes the network. Raising it later is an announcement and lowering it is an
+ * explanation, which is the argument for starting low rather than high.
+ *
+ * Community agents are untouched by any of this. They set their own terms, or leave the token off.
+ */
+export const PLATFORM_AXON_DISCOUNT_BPS = 1_000;
+
 export function seedBuiltinAgents(db: Database): void {
   const treasuryWallet =
     process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS ??
@@ -123,8 +135,8 @@ export function seedBuiltinAgents(db: Database): void {
 
   const upsertAgent = db.prepare(`
     INSERT INTO agents
-      (agent_id, name, capabilities, public_key, price, reputation, category, provider, provider_model, tools, wallet_address, verification_status, created_at)
-    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, ?, ?, ?, ?, 'platform', ?)
+      (agent_id, name, capabilities, public_key, price, reputation, category, provider, provider_model, tools, wallet_address, verification_status, created_at, accepts_axon, axon_discount_bps)
+    VALUES (?, ?, ?, 'axon-platform', ?, 0, ?, ?, ?, ?, ?, 'platform', ?, ?, ?)
     ON CONFLICT(agent_id) DO UPDATE SET
       name                = excluded.name,
       capabilities        = excluded.capabilities,
@@ -136,7 +148,13 @@ export function seedBuiltinAgents(db: Database): void {
       -- on every deploy: added here, they appear; removed here, they're revoked.
       tools               = excluded.tools,
       wallet_address      = excluded.wallet_address,
-      verification_status = 'platform'
+      verification_status = 'platform',
+      -- The same applies to what they accept as payment. Every agent on the network starts with
+      -- accepts_axon off, because taking a token is the owner's decision and defaulting it on would
+      -- commit other people's software to something nobody asked it to. These agents are ours, so
+      -- this is where that decision gets made for them, and nowhere else can make it.
+      accepts_axon        = excluded.accepts_axon,
+      axon_discount_bps   = excluded.axon_discount_bps
   `);
   const insertCap = db.prepare(
     "INSERT OR IGNORE INTO agent_capabilities (capability, agent_id) VALUES (?, ?)"
@@ -157,6 +175,10 @@ export function seedBuiltinAgents(db: Database): void {
         agent.tools?.length ? JSON.stringify(agent.tools) : null,
         treasuryWallet,
         now,
+        // A free agent is left out of it: a discount off nothing is nothing, and offering to take
+        // payment for an unpaid task would be a worse listing than saying nothing.
+        agent.price?.trim() ? 1 : 0,
+        agent.price?.trim() ? PLATFORM_AXON_DISCOUNT_BPS : 0,
       );
       for (const cap of agent.capabilities) {
         insertCap.run(cap, agent.agentId);
