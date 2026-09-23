@@ -6,9 +6,10 @@ export default defineRailway(() => {
   const axonVolume = volume("axon-volume", { alerts: { usage: { "100": {}, "80": {}, "95": {} } }, allowOnlineResize: true, region: "europe-west4-drams3a", sizeMB: 5000 });
   const cronReproducibility = service("cron-reproducibility", {
     source: Axon,
-    start: "curl -s -f -X POST https://axon-agents.com/api/cron/reproducibility -H \"Authorization: Bearer 3a8a9e5ecee1cd7ae79767940b6a11c3ed8c21809a61b36d9b3a414db4766152\"",
+    start: "sh -c 'curl -s -f -X POST https://axon-agents.com/api/cron/reproducibility -H \"Authorization: Bearer $CRON_SECRET\"'",
     replicas: { "europe-west4-drams3a": 1 },
     deploy: { cronSchedule: "0 9,21 * * *", restartPolicyType: "NEVER" },
+    env: { CRON_SECRET: preserve() },
   });
   const cronBurn = service("cron-burn", {
     source: Axon,
@@ -50,21 +51,25 @@ export default defineRailway(() => {
   });
   const cronRetention = service("cron-retention", {
     source: Axon,
-    start: "curl -s -X POST https://axon-agents.com/api/cron/retention -H \"Authorization: Bearer 3a8a9e5ecee1cd7ae79767940b6a11c3ed8c21809a61b36d9b3a414db4766152\"",
+    start: "sh -c 'curl -s -X POST https://axon-agents.com/api/cron/retention -H \"Authorization: Bearer $CRON_SECRET\"'",
     replicas: { "europe-west4-drams3a": 1 },
     deploy: { cronSchedule: "0 2 * * *", restartPolicyType: "NEVER" },
     env: { CRON_SECRET: preserve() },
   });
   const cronAutonomy = service("cron-autonomy", {
     source: Axon,
-    start: "curl -fsS -X POST -H \"Authorization: Bearer $CRON_SECRET\" https://axon-agents.com/api/cron/autonomy",
+    // sh -c, because without a shell the start command is exec'd directly and $CRON_SECRET is never
+    // expanded: curl then sends the literal text "Bearer $CRON_SECRET" and the endpoint answers 401.
+    // The retries are for the other failure, a deploy window or a cold start, which -f turns into a
+    // crashed service that never tries again under restartPolicyType NEVER.
+    start: "sh -c 'curl -fsS --retry 5 --retry-all-errors --retry-delay 15 -X POST -H \"Authorization: Bearer $CRON_SECRET\" https://axon-agents.com/api/cron/autonomy'",
     replicas: { "europe-west4-drams3a": 1 },
     deploy: { cronSchedule: "0 7 * * *", restartPolicyType: "NEVER" },
     env: { CRON_SECRET: preserve() },
   });
   const cronAgents = service("cron-agents", {
     source: Axon,
-    start: "curl -s -X POST https://axon-agents.com/api/cron/demo-agents -H \"Authorization: Bearer $CRON_SECRET\"",
+    start: "sh -c 'curl -s -X POST https://axon-agents.com/api/cron/demo-agents -H \"Authorization: Bearer $CRON_SECRET\"'",
     replicas: { "europe-west4-drams3a": 1 },
     deploy: { cronSchedule: "0 6 * * *", restartPolicyType: "NEVER" },
     networking: { privateNetworkEndpoint: "demo-agents" },
@@ -86,7 +91,7 @@ export default defineRailway(() => {
   });
   const cronTelegram = service("cron-telegram", {
     source: Axon,
-    start: "curl -X POST https://axon-agents.com/api/cron/telegram-feed -H \"Authorization: Bearer 3a8a9e5ecee1cd7ae79767940b6a11c3ed8c21809a61b36d9b3a414db4766152\"",
+    start: "sh -c 'curl -s -X POST https://axon-agents.com/api/cron/telegram-feed -H \"Authorization: Bearer $CRON_SECRET\"'",
     replicas: { "europe-west4-drams3a": 1 },
     deploy: { cronSchedule: "5 * * * *", restartPolicyType: "NEVER" },
     env: { CRON_SECRET: preserve() },
