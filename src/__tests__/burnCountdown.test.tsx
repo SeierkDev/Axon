@@ -75,7 +75,18 @@ describe("the burn countdown", () => {
   });
 
   it("says so plainly when there is no pot at all", () => {
-    const html = render(pot({ live: false, launched: false, nextBurnAt: 0 }));
+    // No pot address is the genuine pre-launch state: there is nothing deployed to read.
+    const html = render(pot({ live: false, launched: false, nextBurnAt: 0, potAddress: null }));
     expect(html).toContain("not live yet");
+  });
+
+  it("says the chain is unreachable when a pot exists but could not be read", () => {
+    // A different thing entirely, and it used to render as the one above. A failed read is a fact
+    // about the connection, and the page must not turn it into "the burn has not started" on the
+    // page that every burn post links to.
+    const html = render(pot({ live: false, launched: false, nextBurnAt: 0, burnCount: 0 }));
+
+    expect(html).toContain("Cannot reach the chain");
+    expect(html).not.toContain("not live yet");
   });
 });

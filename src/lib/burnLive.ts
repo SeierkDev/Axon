@@ -98,32 +98,53 @@ export async function getBurnLive(): Promise<BurnLive> {
     const read = <T>(functionName: PotFn) =>
       client.readContract({ address, abi: POT_ABI, functionName }) as Promise<T>;
 
-    const [preview, lastBurnAt, burnCount, ethBurned, tokensBurned, token, balance] = await Promise.all([
-      read<readonly [bigint, bigint, boolean]>("preview"),
-      read<bigint>("lastBurnAt"),
-      read<bigint>("burnCount"),
-      read<bigint>("totalEthBurned"),
-      read<bigint>("totalTokensBurned"),
-      read<string>("token"),
-      client.getBalance({ address }),
-    ]);
+    // Settled rather than all or nothing. These are seven independent reads of one contract, and a
+    // single failure used to discard the other six: one hiccup on preview() left the page saying the
+    // pot was not live, showing four zeros, while the burns it had already done sat on chain in
+    // plain sight. A page that loses its countdown is degraded. A page that says the burn does not
+    // exist is wrong, on the page every burn post links to.
+    const [preview, lastBurnAt, burnCount, ethBurned, tokensBurned, token, balance] =
+      await Promise.allSettled([
+        read<readonly [bigint, bigint, boolean]>("preview"),
+        read<bigint>("lastBurnAt"),
+        read<bigint>("burnCount"),
+        read<bigint>("totalEthBurned"),
+        read<bigint>("totalTokensBurned"),
+        read<string>("token"),
+        client.getBalance({ address }),
+      ]);
 
-    const [amount, nextAt, ready] = preview;
-    const tokenAddress = token && token !== ZERO ? token.toLowerCase() : null;
+    const settled = [preview, lastBurnAt, burnCount, ethBurned, tokensBurned, token, balance];
+    const got = <T>(r: PromiseSettledResult<T>, fallback: T): T =>
+      r.status === "fulfilled" ? r.value : fallback;
+
+    // Every read failing means the node is unreachable, and nothing here would be a fact. That case
+    // still shows nothing, but it says why rather than making a claim about the pot.
+    if (!settled.some((r) => r.status === "fulfilled")) {
+      logger.warn("burn.live_unreadable", "Every burn pot read failed", { pot });
+      return empty(pot);
+    }
+
+    const [amount, nextAt, ready] = got<readonly [bigint, bigint, boolean]>(preview, [0n, 0n, false]);
+    const tokenRaw = got<string>(token, "");
+    const tokenAddress = tokenRaw && tokenRaw !== ZERO ? tokenRaw.toLowerCase() : null;
+    const burns = Number(got<bigint>(burnCount, 0n));
 
     return {
       live: true,
-      launched: tokenAddress !== null,
+      // Unknown is not the same as no. If the token read is the one that failed, a pot that has
+      // already burned is plainly launched, and the counter can say so by itself.
+      launched: tokenAddress !== null || burns > 0,
       potAddress: pot,
       tokenAddress,
-      potBalanceEth: weiToEth(balance),
+      potBalanceEth: weiToEth(got<bigint>(balance, 0n)),
       nextBurnEth: weiToEth(amount),
       nextBurnAt: Number(nextAt),
-      lastBurnAt: Number(lastBurnAt),
+      lastBurnAt: Number(got<bigint>(lastBurnAt, 0n)),
       ready,
-      burnCount: Number(burnCount),
-      totalEthBurned: weiToEth(ethBurned),
-      totalTokensBurned: weiToEth(tokensBurned),
+      burnCount: burns,
+      totalEthBurned: weiToEth(got<bigint>(ethBurned, 0n)),
+      totalTokensBurned: weiToEth(got<bigint>(tokensBurned, 0n)),
       explorer: {
         pot: `${EXPLORER}/address/${pot}`,
         token: tokenAddress ? `${EXPLORER}/address/${tokenAddress}` : null,

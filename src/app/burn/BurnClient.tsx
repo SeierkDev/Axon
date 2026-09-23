@@ -144,7 +144,19 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
             <p className="text-xs font-mono uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
               Next burn
             </p>
-            {!data.live ? (
+            {!data.live && data.potAddress ? (
+              // A pot is configured and the chain could not be read. Saying the burn has not started
+              // would be a claim about the pot that a failed read cannot support, and it is exactly
+              // the claim a visitor arriving from a burn post would read as "there is no burn".
+              <>
+                <h2 className="text-2xl sm:text-3xl font-bold mb-3">Cannot reach the chain</h2>
+                <p className="text-gray-500 dark:text-gray-400 max-w-xl">
+                  Every figure here is read live from the pot on Robinhood Chain, and that read is
+                  failing right now. The burns already done are on chain either way, and the history
+                  below is unaffected.
+                </p>
+              </>
+            ) : !data.live ? (
               <>
                 <h2 className="text-2xl sm:text-3xl font-bold mb-3">The pot is not live yet</h2>
                 <p className="text-gray-500 dark:text-gray-400 max-w-xl">
