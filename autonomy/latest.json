@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-23T11:44:21.509Z",
-  "finishedAt": "2026-09-23T11:44:26.671Z",
-  "commit": "dcfba54",
+  "startedAt": "2026-09-23T17:25:53.843Z",
+  "finishedAt": "2026-09-23T17:25:58.451Z",
+  "commit": "e19036e",
   "checks": [
     {
       "id": "install-commands",
@@ -9,7 +9,7 @@
       "ok": true,
       "checked": 10,
       "findings": [],
-      "ms": 4887
+      "ms": 4303
     },
     {
       "id": "links",
@@ -23,7 +23,7 @@
       "id": "dead-exports",
       "title": "Exports are used",
       "ok": true,
-      "checked": 516,
+      "checked": 547,
       "findings": [
         {
           "severity": "warn",
@@ -31,6 +31,54 @@
           "why": "the export widens the surface without a caller to justify it",
           "where": [
             "src/lib/address.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "storeDescription() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/agentDescription.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "noteAttempt() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/agentDescription.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "generateDescription() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/agentDescription.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "quoteForPayment() is exported and never used",
+          "why": "dead code reads exactly like live code",
+          "where": [
+            "src/lib/axonPayment.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "clampDiscountBps() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/axonQuote.ts"
+          ]
+        },
+        {
+          "severity": "warn",
+          "what": "lastQuote() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/axonQuote.ts"
           ]
         },
         {
@@ -74,11 +122,11 @@
           ]
         }
       ],
-      "ms": 247
+      "ms": 275
     }
   ],
   "errors": 0,
-  "warnings": 6,
+  "warnings": 12,
   "changed": false,
   "changes": []
 }
