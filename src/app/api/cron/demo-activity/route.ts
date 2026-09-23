@@ -12,6 +12,7 @@ import { safeAppendTraceEvent, hashContent, estimateCostUsd, captureModelStep } 
 import type { CapturedStep } from "@/lib/traceEvents";
 import { runWithProvider } from "@/lib/providers";
 import { UNPRICED_AGENT_ETH } from "@/lib/agentSeed";
+import { noteCronRun } from "@/lib/cronRuns";
 
 export const runtime = "nodejs";
 // Each task now makes a real inference — give the batch room to run.
@@ -132,6 +133,7 @@ export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  noteCronRun("demo-activity");
 
   const registeredIds = new Set(getAllAgents().map((a) => a.agentId));
   const gatewayIds = new Set(

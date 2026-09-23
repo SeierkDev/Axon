@@ -69,7 +69,9 @@ export default defineRailway(() => {
   });
   const cronAgents = service("cron-agents", {
     source: Axon,
-    start: "sh -c 'curl -s -X POST https://axon-agents.com/api/cron/demo-agents -H \"Authorization: Bearer $CRON_SECRET\"'",
+    // /api/cron/agents. The old path was demo-agents, which has no route and answered 404 into a
+    // curl without -f, so this job exited 0 and reported success while doing nothing at all.
+    start: "sh -c 'curl -sf -X POST https://axon-agents.com/api/cron/agents -H \"Authorization: Bearer $CRON_SECRET\"'",
     replicas: { "europe-west4-drams3a": 1 },
     deploy: { cronSchedule: "0 6 * * *", restartPolicyType: "NEVER" },
     networking: { privateNetworkEndpoint: "demo-agents" },

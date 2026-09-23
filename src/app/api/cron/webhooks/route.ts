@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { deliverPendingWebhooks } from "@/lib/webhooks";
+import { noteCronRun } from "@/lib/cronRuns";
 
 function authorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  noteCronRun("webhooks");
   const start = Date.now();
   await deliverPendingWebhooks();
   return NextResponse.json({ ok: true, durationMs: Date.now() - start });

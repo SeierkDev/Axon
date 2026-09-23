@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sampleReproducibility } from "@/lib/reproducibility";
 import { logger } from "@/lib/logger";
+import { noteCronRun } from "@/lib/cronRuns";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  noteCronRun("reproducibility");
 
   const samples = await sampleReproducibility(SAMPLE_LIMIT);
   if (samples.length > 0) {

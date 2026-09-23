@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAllAgents, createAgent } from "@/lib/agents";
 import { logger } from "@/lib/logger";
 import type { Agent } from "@/sdk/types";
+import { noteCronRun } from "@/lib/cronRuns";
 
 export const runtime = "nodejs";
 
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  noteCronRun("agents");
 
   const all = getAllAgents();
   const existingNames = new Set(all.map((a) => a.name.toLowerCase()));

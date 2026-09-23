@@ -14,11 +14,42 @@ describe("system status", () => {
   it("reports components, overall status, and live metrics", () => {
     setWorkerHeartbeat(5_000); // fresh
     const s = getSystemStatus();
-    expect(s.components.map((c) => c.name)).toEqual(["API", "Database", "Background worker"]);
+    expect(s.components.map((c) => c.name)).toEqual([
+      "API",
+      "Database",
+      "Background worker",
+      "Scheduled jobs",
+    ]);
     expect(s.components.find((c) => c.name === "Database")?.status).toBe("operational");
     expect(s.metrics).toHaveProperty("queueDepth");
     expect(s.metrics).toHaveProperty("successRate");
     expect(typeof s.updatedAt).toBe("string");
+  });
+
+  it("shows a job that has gone quiet, and stays calm about one that never ran", () => {
+    const db = getDb();
+    db.prepare("DELETE FROM cron_runs").run();
+    setWorkerHeartbeat(5_000);
+
+    // Nothing has ever reported. That is also how a fresh deployment looks, so it must not be an alarm.
+    let s = getSystemStatus();
+    expect(s.components.find((c) => c.name === "Scheduled jobs")?.status).toBe("operational");
+    expect(s.jobs.every((j) => j.neverRun)).toBe(true);
+
+    // Now the daily autonomy pass has been silent for three days, which is the incident this exists for.
+    const threeDaysAgo = new Date(Date.now() - 3 * 86400_000).toISOString();
+    db.prepare(
+      "INSERT INTO cron_runs (id, job, started_at, finished_at, ok) VALUES ('t1','autonomy',?,?,1)",
+    ).run(threeDaysAgo, threeDaysAgo);
+
+    s = getSystemStatus();
+    const jobs = s.components.find((c) => c.name === "Scheduled jobs")!;
+    expect(jobs.status).toBe("degraded");
+    expect(jobs.detail).toContain("autonomy");
+    // One missing job degrades the platform without declaring it down: the site works without it.
+    expect(s.status).toBe("degraded");
+
+    db.prepare("DELETE FROM cron_runs").run();
   });
 
   it("reports the database operational when Turso sync is not configured", () => {

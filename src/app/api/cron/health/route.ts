@@ -8,6 +8,7 @@ import { verifyAgentEndpoint } from "@/lib/verification";
 import { getDb } from "@/lib/db";
 import { failureReport } from "@/lib/failurePatterns";
 import { logger } from "@/lib/logger";
+import { noteCronRun } from "@/lib/cronRuns";
 
 function authorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  noteCronRun("health");
   reportFailurePatterns();
 
   const agents = getAllAgents().filter((a) => a.endpoint && a.verificationStatus !== "modulr");

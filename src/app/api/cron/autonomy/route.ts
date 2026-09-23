@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { runNetworkPass, getLatestNetworkRun } from "@/lib/autonomyNetwork";
+import { noteCronRun } from "@/lib/cronRuns";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  noteCronRun("autonomy");
   const run = runNetworkPass({ apply: true });
   return NextResponse.json({
     runId: run.runId,

@@ -8,6 +8,7 @@
 import { getDb } from "./db";
 import { getNetworkStats } from "./analytics";
 import { getSyncHealth } from "./db-turso";
+import { jobHealth, type JobHealth } from "./cronRuns";
 
 export type ComponentStatus = "operational" | "degraded" | "down";
 
@@ -20,6 +21,8 @@ export interface StatusComponent {
 export interface SystemStatus {
   status: ComponentStatus;
   components: StatusComponent[];
+  /** one line per scheduled job, so a job that quietly stopped is visible rather than inferred */
+  jobs: JobHealth[];
   metrics: {
     queueDepth: number;
     runningTasks: number;
@@ -74,11 +77,48 @@ function checkWorker(ageSeconds: number | null): ComponentStatus {
 
 const SEVERITY: ComponentStatus[] = ["operational", "degraded", "down"];
 
+/** The status page must render even if the ledger table is missing on an older database. */
+function safeJobHealth(): JobHealth[] {
+  try {
+    return jobHealth();
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The scheduled jobs, as one component.
+ *
+ * Silence is the signal. A job that errors and a job that was never scheduled both leave nothing
+ * behind, which is how the autonomy pass managed to be dead for three days while every dashboard
+ * showed green. One overdue job is degraded rather than down, because the site keeps working without
+ * any single one of them; several at once means something common to them all has broken, which is
+ * worth shouting about.
+ */
+function checkJobs(jobs: JobHealth[]): { status: ComponentStatus; detail: string } {
+  const overdue = jobs.filter((j) => j.overdue);
+  if (overdue.length === 0) {
+    const reporting = jobs.filter((j) => !j.neverRun).length;
+    return {
+      status: "operational",
+      detail: reporting === 0 ? "No runs recorded yet" : `${reporting} of ${jobs.length} reporting on time`,
+    };
+  }
+  const names = overdue.map((j) => j.job).join(", ");
+  return {
+    status: overdue.length >= 3 ? "down" : "degraded",
+    detail: `Overdue: ${names}`,
+  };
+}
+
 export function getSystemStatus(): SystemStatus {
   const db = checkDatabase();
   const dbReadable = db.status !== "down";
   const ageSeconds = dbReadable ? workerAgeSeconds() : null;
   const workerStatus = dbReadable ? checkWorker(ageSeconds) : "down";
+
+  const jobs = dbReadable ? safeJobHealth() : [];
+  const jobsComponent = checkJobs(jobs);
 
   const components: StatusComponent[] = [
     { name: "API", status: "operational", detail: "Responding" },
@@ -88,6 +128,7 @@ export function getSystemStatus(): SystemStatus {
       status: workerStatus,
       detail: ageSeconds === null ? "No heartbeat reported yet" : `Last heartbeat ${ageSeconds}s ago`,
     },
+    { name: "Scheduled jobs", status: jobsComponent.status, detail: jobsComponent.detail },
   ];
 
   const overall = components.reduce<ComponentStatus>(
@@ -105,6 +146,7 @@ export function getSystemStatus(): SystemStatus {
   return {
     status: overall,
     components,
+    jobs,
     metrics: {
       queueDepth: stats?.tasks.queued ?? 0,
       runningTasks: stats?.tasks.running ?? 0,

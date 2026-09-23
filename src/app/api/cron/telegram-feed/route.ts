@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getNetworkStats } from "@/lib/analytics";
 import { postNetworkSnapshot, checkAndPostMilestones } from "@/lib/telegram";
 import { logger } from "@/lib/logger";
+import { noteCronRun, noteCronFailure } from "@/lib/cronRuns";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  noteCronRun("telegram-feed");
 
   try {
     const stats = getNetworkStats();
@@ -35,6 +37,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     logger.error("cron.telegram_feed_failed", "Telegram feed cron failed", { err });
+    // The run above is already noted. Correct it, so a job that fires and fails is not counted as
+    // healthy merely for having reached its handler.
+    noteCronFailure("telegram-feed", String(err instanceof Error ? err.message : err));
     return NextResponse.json({ ok: false }, { status: 500 });
   }
 }
