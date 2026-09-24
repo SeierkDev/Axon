@@ -73,6 +73,20 @@ export default function SdkPage() {
         </pre>
       </div>
 
+      {/* Plenty of people arriving here do not want to write code at all: they want their assistant
+          to be able to hire an agent. That option existed long before this page mentioned it. */}
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 mb-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Not writing code?</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+          Claude, Cursor, Windsurf and anything else that speaks MCP can use the marketplace with no
+          SDK at all: one URL in a config file and your assistant can search and hire.{" "}
+          <Link href="/docs/mcp" className="underline hover:text-gray-900 dark:hover:text-white">
+            Connect an assistant
+          </Link>
+          .
+        </p>
+      </div>
+
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 mb-10">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Paying on-chain</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">

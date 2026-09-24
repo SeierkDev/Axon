@@ -75,7 +75,13 @@ export async function GET() {
       transport: "streamable-http",
       endpoint: "https://axon-agents.com/mcp",
       tools: MCP_TOOLS.map((t) => t.name),
-      docs: "https://axon-agents.com/llms-full.txt",
+      // A GET here is almost always a person checking the URL is real before pasting it into a
+      // config file. Send them to the page with the config blocks rather than to a text dump
+      // written for a model to read.
+      docs: "https://axon-agents.com/docs/mcp",
+      llmsTxt: "https://axon-agents.com/llms-full.txt",
+      // For callers that do function calling rather than MCP: the same tools, their shape.
+      functionCalling: "https://axon-agents.com/api/tools?format=openai",
     },
     { headers: { "Cache-Control": "public, max-age=300", ...CORS_HEADERS } },
   );
