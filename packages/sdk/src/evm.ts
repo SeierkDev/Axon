@@ -25,7 +25,12 @@ import {
   type Address,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { SignMandate, X402PayFunction, X402Requirements } from "./types";
+import type {
+  SignMandate,
+  X402PayFunction,
+  X402PaymentOption,
+  X402Requirements,
+} from "./types";
 
 /** Robinhood Chain, which is what Axon settles on. */
 export const CHAIN_ID = 4663;
@@ -76,9 +81,42 @@ function assertWithinCap(amountWei: bigint, opts: EvmPayerOptions): void {
 }
 
 /** The amount a listing is asking for, in wei. */
-function requestedWei(requirements: X402Requirements): { wei: bigint; to: Address } {
-  const option = requirements.accepts[0];
+/** transfer(address,uint256), the only token call a payer ever needs. */
+const ERC20_TRANSFER = [
+  {
+    type: "function",
+    name: "transfer",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }],
+    outputs: [{ type: "bool" }],
+  },
+] as const;
+
+const ERC20_BALANCE = [
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ type: "uint256" }],
+  },
+] as const;
+
+/**
+ * The amount and recipient for one option.
+ *
+ * Takes the option it was handed rather than reaching for accepts[0], because a 402 can offer both
+ * ETH and a token and the caller has already chosen. Reading the first entry regardless is how the
+ * token option stayed invisible no matter what anyone asked for.
+ */
+function requestedWei(
+  requirements: X402Requirements,
+  chosen?: X402PaymentOption,
+): { wei: bigint; to: Address; token: Address | null } {
+  const option = chosen ?? requirements.accepts[0];
   if (!option) throw new Error("x402 requirements carried no payment option");
+  const contract = option.extra?.contractAddress;
+  const token = contract && /^0x[0-9a-fA-F]{40}$/.test(contract) ? (contract as Address) : null;
   const to = option.payToAddress as Address;
   if (!/^0x[0-9a-fA-F]{40}$/.test(to)) {
     throw new Error(`x402 requirements named '${option.payToAddress}', which is not an EVM address`);
@@ -91,7 +129,7 @@ function requestedWei(requirements: X402Requirements): { wei: bigint; to: Addres
     throw new Error(`x402 requirements carried an unreadable amount: ${option.maxAmountRequired}`);
   }
   if (wei <= 0n) throw new Error("x402 requirements asked for a non-positive amount");
-  return { wei, to };
+  return { wei, to, token };
 }
 
 /** Accepts a 0x-prefixed private key, with or without the prefix. */
@@ -114,12 +152,30 @@ export function privateKeyPayer(signer: EvmSigner, opts: EvmPayerOptions = {}): 
   const wallet = createWalletClient({ account, chain, transport: http(rpcUrl) });
   const reader = createPublicClient({ chain, transport: http(rpcUrl) });
 
-  return async (requirements: X402Requirements) => {
-    const { wei, to } = requestedWei(requirements);
-    assertWithinCap(wei, opts);
+  return async (requirements: X402Requirements, option?: X402PaymentOption) => {
+    const { wei, to, token } = requestedWei(requirements, option);
+    // The cap is an ETH ceiling and cannot speak for an arbitrary token, so it applies to the
+    // native lane only. A token payment is bounded by the quote the server issued instead.
+    if (!token) assertWithinCap(wei, opts);
 
     // Check the balance before asking anyone to sign, so a short wallet fails here rather than
     // after the fact with a vague "payment not confirmed".
+    if (token) {
+      const held = (await reader.readContract({
+        address: token, abi: ERC20_BALANCE, functionName: "balanceOf", args: [account.address],
+      })) as bigint;
+      if (held < wei) {
+        throw new Error(
+          `wallet holds ${held} units of ${token}, less than the ${wei} requested — no funds moved`,
+        );
+      }
+      const signature = await wallet.writeContract({
+        address: token, abi: ERC20_TRANSFER, functionName: "transfer", args: [to, wei],
+      });
+      await settle(reader, signature, opts);
+      return { signature, from: account.address.toLowerCase() };
+    }
+
     const balance = await reader.getBalance({ address: account.address });
     if (balance < wei) {
       throw new Error(
@@ -143,13 +199,28 @@ export function walletPayer(wallet: WalletLike, opts: EvmPayerOptions = {}): X40
   const rpcUrl = opts.rpcUrl ?? DEFAULT_RPC_URL;
   const reader = createPublicClient({ chain: chainDef(rpcUrl), transport: custom(wallet) });
 
-  return async (requirements: X402Requirements) => {
-    const { wei, to } = requestedWei(requirements);
-    assertWithinCap(wei, opts);
+  return async (requirements: X402Requirements, option?: X402PaymentOption) => {
+    const { wei, to, token } = requestedWei(requirements, option);
+    if (!token) assertWithinCap(wei, opts);
 
     const accounts = (await wallet.request({ method: "eth_requestAccounts" })) as string[];
     const from = accounts?.[0];
     if (!from) throw new Error("the wallet shared no account");
+
+    if (token) {
+      // transfer(address,uint256), encoded by hand so the browser lane stays as thin as the rest of
+      // this file: a selector, the recipient padded to a word, then the amount.
+      const data =
+        "0xa9059cbb" +
+        to.toLowerCase().replace(/^0x/, "").padStart(64, "0") +
+        wei.toString(16).padStart(64, "0");
+      const signature = (await wallet.request({
+        method: "eth_sendTransaction",
+        params: [{ from, to: token, data }],
+      })) as string;
+      await settle(reader, signature, opts);
+      return { signature, from: from.toLowerCase() };
+    }
 
     const balance = BigInt((await wallet.request({ method: "eth_getBalance", params: [from, "latest"] })) as string);
     if (balance < wei) {

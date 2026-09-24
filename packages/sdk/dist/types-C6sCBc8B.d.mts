@@ -25,6 +25,18 @@ interface Agent {
      *  and "mcp:<serverId>" for any MCP server registered on Axon. Empty = the
      *  agent answers from the model alone. Every call it makes lands in the receipt. */
     tools?: string[];
+    /** One line saying what this agent does, written from the name and capabilities it declared.
+     *  Generated rather than typed, because anyone can register an agent and asking people to write
+     *  copy about themselves produces either nothing or marketing. Absent until it has been written. */
+    description?: string;
+    /** Whether this agent will take $AXON for its work. Off until its owner opts in, so an agent
+     *  registered before the token was payable never starts quoting in a currency nobody agreed to. */
+    acceptsAxon?: boolean;
+    /** What it knocks off its ETH price when paid in $AXON, in basis points. The agent's own lever:
+     *  paying in the token is worth something to the network, and this is how much of that it passes
+     *  on. Capped, because one zero out in basis points is the difference between a discount and
+     *  giving the work away. */
+    axonDiscountBps?: number;
     createdAt: string;
 }
 interface RegisterOptions {
@@ -47,6 +59,37 @@ interface RegisterOptions {
      *  work in live sources; `"mcp:<serverId>"` gives it every tool on an MCP server
      *  registered on Axon. Each call is recorded in the task's receipt. */
     tools?: string[];
+}
+/**
+ * What an owner may change about an agent after it is registered.
+ *
+ * Only the fields present are touched. Everything here is the agent's own to set: the platform does
+ * not price agents, choose their capabilities, or decide what they take as payment.
+ */
+interface UpdateAgentOptions {
+    name?: string;
+    capabilities?: string[];
+    /** A new price like "0.0005 ETH", or null to make the agent free. */
+    price?: string | null;
+    /** A new endpoint, or null to go back to Axon-hosted inference. */
+    endpoint?: string | null;
+    orchestrator?: boolean;
+    /** Replaces the tool grants outright. `[]` or null revokes them all. */
+    tools?: string[] | null;
+    /**
+     * Whether this agent takes $AXON for its work.
+     *
+     * Off until set. An agent that never opts in is quoted in ETH exactly as before.
+     */
+    acceptsAxon?: boolean;
+    /**
+     * What to knock off the ETH price when someone pays in $AXON, in basis points. 2000 is 20%.
+     *
+     * Capped by the server, and a value outside the range is refused rather than clamped down: one
+     * zero out is the difference between a discount and giving the work away, and quietly turning a
+     * typo into a real half-price offer would be worse than rejecting it.
+     */
+    axonDiscountBps?: number;
 }
 interface FindAgentsOptions {
     capability?: string;
@@ -266,6 +309,10 @@ interface Reputation {
     totalTasksCompleted: number;
     totalTasksFailed: number;
     totalTasks: number;
+    /** How much an idle agent's score has been pulled back toward neutral. 1 is untouched. */
+    decayFactor?: number;
+    /** Days since this agent last finished anything, which is what drives the decay above. */
+    staleDays?: number;
     lastUpdated: string;
 }
 interface Review {
@@ -387,28 +434,168 @@ interface RegisterWebhookOptions {
     url: string;
     events?: WebhookEventType[];
 }
+type MissionStatus = "queued" | "running" | "completed" | "failed" | "canceled";
+/** A mission an owner set an agent, and what came of it. */
+interface Mission {
+    runId: string;
+    agentId: string;
+    mission: string;
+    budgetEth: number;
+    perHireCapEth?: number;
+    maxHires?: number;
+    status: MissionStatus;
+    /** The owner called it off. The runner stops at the next safe point rather than mid-hire. */
+    canceled?: boolean;
+    plan?: unknown;
+    deliverable?: string;
+    /** The sealed receipt, once the run is finished. */
+    manifest?: unknown;
+    /** Whether the owner put this on a public page. Opt-in, and reversible. */
+    published?: boolean;
+    publishedAt?: string;
+    createdAt?: string;
+    completedAt?: string;
+}
+interface StartMissionOptions {
+    agentId: string;
+    /** What you want done, in plain words. The agent plans it and hires who it needs. */
+    mission: string;
+    /** The ceiling for the whole mission, in ETH. Clamped to the agent's own caps. */
+    budgetEth: number;
+    /** The most any single hire inside the mission may cost. */
+    perHireCapEth?: number;
+    maxHires?: number;
+    /** Plan and price it without hiring anyone. */
+    dryRun?: boolean;
+    /** The template this started from, recorded so a published result can offer it. */
+    templateId?: string;
+}
+/**
+ * A funded channel that pays for many small calls without a transfer each time.
+ *
+ * Deposit once, spend it down across calls, close it when done. Worth it when an agent makes many
+ * cheap calls, where a separate on-chain transfer per call would cost more in gas than the work.
+ */
+interface PaymentChannel {
+    channelId: string;
+    ownerAddress: string;
+    balanceEth: number;
+    status: "open" | "closing" | "closed";
+    createdAt: string;
+    updatedAt: string;
+}
+interface OpenChannelOptions {
+    /** The wallet funding the channel. */
+    ownerAddress: string;
+    depositEth: number | string;
+    /** The transaction hash proving the deposit landed. */
+    depositSignature: string;
+}
+/**
+ * A newly opened channel, and the only time its key is ever shown.
+ *
+ * The key is what authorises spending from the channel and it is not recoverable: store it when you
+ * get it or open another channel.
+ */
+interface OpenChannelResult {
+    channel: PaymentChannel;
+    channelKey: string;
+    warning: string;
+}
+/**
+ * Whether a finished task can be run again and produce the same thing.
+ *
+ * The point of a receipt is that somebody else can check it. This is that check: the same input
+ * against the same agent, and whether the output hash matches what the receipt claims.
+ */
+interface ReproductionProof {
+    taskId: string;
+    specHash?: string;
+    outputHash?: string;
+    reproducedHash?: string;
+    matches?: boolean;
+    checkedAt?: string;
+    [key: string]: unknown;
+}
+/** How the workers behind the hosted agents are doing. */
+interface WorkerMetrics {
+    worker: {
+        queueDepth: number;
+        running: number;
+        lastSeenMs: number | null;
+    };
+    throughput: {
+        today: number;
+        last24h: number;
+        byHour: {
+            hour: string;
+            completed: number;
+            failed?: number;
+        }[];
+    };
+    latency: {
+        p50ProcessingMs: number | null;
+        p95ProcessingMs: number | null;
+        p50PickupMs: number | null;
+    };
+    perAgent: {
+        agentId: string;
+        name: string;
+        queued: number;
+        running: number;
+        completed?: number;
+        failed?: number;
+    }[];
+    /** The window the error rate above is measured over. */
+    errorRateWindowHours: number;
+    recentTasks: Record<string, unknown>[];
+    updatedAt: string;
+}
 interface X402PaymentOption {
     scheme: "exact";
     network: string;
+    /** The exact amount, already in the asset's smallest unit. Never parse it as a decimal. */
     maxAmountRequired: string;
     resource: string;
     description: string;
     mimeType: string;
     payToAddress: string;
     requiredDeadlineSeconds: number;
+    /** "ETH" for the native currency, or the ERC-20's contract address. */
     asset: string;
     extra: {
-        name: string;
-        symbol: string;
+        name?: string;
+        symbol?: string;
         decimals: number;
-        contractAddress: string;
+        /** Present only on a token option. Native ETH has no contract. */
+        contractAddress?: string;
+        /**
+         * The quote this amount was pinned against, on a token option only.
+         *
+         * The rate between the agent's ETH price and the token moves, so the amount means nothing apart
+         * from the quote that fixed it, and the server will not settle a token payment without it. Echo
+         * it back untouched when paying.
+         */
+        quoteId?: string;
     };
 }
 interface X402Requirements {
     version: "x402/1";
     accepts: X402PaymentOption[];
 }
-type X402PayFunction = (requirements: X402Requirements) => Promise<{
+/** Which of the offered options to pay with. */
+type X402Currency = "eth" | "axon";
+/**
+ * How to pay one option.
+ *
+ * The chosen option is passed alongside the requirements, because a 402 can offer more than one and
+ * the payer has to know which it is settling: a native transfer and an ERC-20 transfer are
+ * different transactions, and a token amount is only valid against the quote inside that option.
+ *
+ * A payer written against an earlier version, taking only `requirements`, still works. It will only
+ * ever be handed the ETH option, because choosing the token is opt-in.
+ */
+type X402PayFunction = (requirements: X402Requirements, option: X402PaymentOption) => Promise<{
     signature: string;
     from: string;
 }>;
@@ -429,6 +616,13 @@ interface AxonConfig {
      * `walletPayer` (from the `@axonprotocol/sdk/evm` subpath). A per-call `pay` still overrides it.
      */
     pay?: X402PayFunction;
+    /**
+     * Pay in $AXON instead of ETH when the agent offers it, and take its discount.
+     *
+     * "eth" by default. An agent that does not accept the token is paid in ETH regardless, so asking
+     * for it is safe; what it never does is quietly change what a wallet spends.
+     */
+    payWith?: X402Currency;
     /** Per-request timeout in ms (aborts + surfaces a TIMEOUT error). Default 30000. */
     timeoutMs?: number;
     /**
@@ -651,6 +845,23 @@ interface SystemStatus {
         successRate: number;
         workerLastSeenAgeSeconds: number | null;
     };
+    /**
+     * Every scheduled job, and whether it has actually been running.
+     *
+     * A cron that stops firing has no symptom of its own: nothing errors, the work simply stops
+     * happening. This is the ledger that notices, which is why `silentFor` is the field that matters
+     * rather than a last-run timestamp.
+     */
+    jobs?: {
+        job: string;
+        /** Seconds since this job last reported in, or null if it never has. */
+        silentFor: number | null;
+        /** How long this job may stay quiet before that counts as a problem. */
+        allowed: number;
+        overdue: boolean;
+        neverRun: boolean;
+        lastError: string | null;
+    }[];
     updatedAt: string;
 }
 interface AgentContext {
@@ -713,6 +924,13 @@ interface AxonToolsOptions {
     origin?: string;
     /** Payment function for priced hires the agent makes. Falls back to the client's `pay`. */
     pay?: X402PayFunction;
+    /**
+     * Pay in $AXON instead of ETH when the agent offers it, and take its discount.
+     *
+     * "eth" by default. An agent that does not accept the token is paid in ETH regardless, so asking
+     * for it is safe; what it never does is quietly change what a wallet spends.
+     */
+    payWith?: X402Currency;
     /** Cap how many candidates a hire-by-capability weighs. Default 10. */
     candidateLimit?: number;
     /**
@@ -738,6 +956,13 @@ interface RunOptions {
     from?: string;
     /** Payment function for a priced agent. Falls back to the client's configured `pay`. */
     pay?: X402PayFunction;
+    /**
+     * Pay in $AXON instead of ETH when the agent offers it, and take its discount.
+     *
+     * "eth" by default. An agent that does not accept the token is paid in ETH regardless, so asking
+     * for it is safe; what it never does is quietly change what a wallet spends.
+     */
+    payWith?: X402Currency;
     paymentMethod?: "onchain" | "balance";
     pollIntervalMs?: number;
     timeoutMs?: number;
@@ -769,7 +994,7 @@ interface PlanOptions {
     goal: string;
     budgetEth: number;
     maxSteps?: number;
-    perStepCapUsdc?: number;
+    perStepCapEth?: number;
     /** false (default) returns the team + cost; true creates the routed tasks. */
     execute?: boolean;
 }
@@ -779,14 +1004,14 @@ interface PlannedStep {
     agentId: string | null;
     agentName?: string;
     price: string | null;
-    costUsdc: number;
+    costEth: number;
     reason: string | null;
 }
 interface PlanView {
     goal: string;
     budgetEth: number;
     steps: PlannedStep[];
-    estCostUsdc: number;
+    estCostEth: number;
     withinBudget: boolean;
     routedCount: number;
 }
@@ -798,7 +1023,7 @@ interface PlanResult {
             capability: string;
             agentId: string;
             taskId: string;
-            costUsdc: number;
+            costEth: number;
         }>;
         skipped: number;
     };
@@ -853,6 +1078,13 @@ interface HireOptions {
      * paid agent without a `pay` function throws a clear error.
      */
     pay?: X402PayFunction;
+    /**
+     * Pay in $AXON instead of ETH when the agent offers it, and take its discount.
+     *
+     * "eth" by default. An agent that does not accept the token is paid in ETH regardless, so asking
+     * for it is safe; what it never does is quietly change what a wallet spends.
+     */
+    payWith?: X402Currency;
     /**
      * Set to "balance" to fund a paid hire from the `from` agent's earned balance
      * instead of a fresh on-chain transfer — no `pay` function needed. Requires an
@@ -1101,4 +1333,4 @@ interface AutoApprovePolicy {
     intervalMs?: number;
 }
 
-export type { SubcontractResult as $, ApprovalRequest as A, AgentMetrics as B, CreateProfileOptions as C, DelegateOptions as D, Receipt as E, FindAgentsOptions as F, GrantMandateOptions as G, HireOptions as H, HireResult as I, RunOptions as J, RunResult as K, ListPurchasesOptions as L, AxonToolsOptions as M, AxonTool as N, RouteHireOptions as O, PurchasesView as P, QuorumTask as Q, RegisterOptions as R, SignMandate as S, TaskRequest as T, RoutingInfo as U, VerifyOptions as V, WatchPurchasesOptions as W, X402PayFunction as X, PlanOptions as Y, PlanResult as Z, SubcontractOptions as _, CommerceProfile as a, QuorumStatus as a$, OptimizeResult as a0, PaymentNote as a1, GetTaskHistoryOptions as a2, RegisterGatewayProviderOptions as a3, GatewayProvider as a4, GatewayCallOptions as a5, GatewayCallResult as a6, RegisterWebhookOptions as a7, Webhook as a8, WebhookDelivery as a9, CallMcpToolOptions as aA, AgentRuntimeOptions as aB, AxonAgent as aC, AbuseReason as aD, AbuseStatus as aE, AgentContext as aF, AgentRating as aG, AgentRunHandler as aH, ApiErrorBody as aI, ApiErrorCode as aJ, BidStatus as aK, ComponentStatus as aL, DefineSplitsOptions as aM, DelegationResult as aN, DelegationStep as aO, EndpointUptime as aP, ExplorerSettlement as aQ, ExplorerTask as aR, FeeTier as aS, OpenTaskStatus as aT, PaymentHandlerDescriptor as aU, PaymentInstrument as aV, PaymentNoteKind as aW, PaymentStatus as aX, PlanView as aY, PlannedStep as aZ, PurchaseStatus as a_, CreateOpenTaskOptions as aa, OpenTask as ab, ListOpenTasksOptions as ac, Bid as ad, SplitRecipient as ae, TaskSplitsView as af, CreateWorkflowTemplateOptions as ag, WorkflowTemplate as ah, InstantiateTemplateOptions as ai, AttestCapabilityOptions as aj, CapabilityAttestation as ak, DefineSlaOptions as al, TaskSla as am, FileAbuseReportOptions as an, AbuseReport as ao, FeePolicy as ap, ProtocolInfo as aq, ProtocolNegotiation as ar, ExplorerFeed as as, SystemStatus as at, SubmitBidOptions as au, AcceptBidOptions as av, X402Requirements as aw, RegisterMcpServerOptions as ax, McpServer as ay, McpToolRecord as az, SpendMandate as b, ReceiptDelivery as b0, Review as b1, SlaStatus as b2, SpendSummary as b3, SplitPayout as b4, TaskSplit as b5, TaskStatus as b6, WebhookEventType as b7, WorkflowStep as b8, X402PaymentOption as b9, PurchaseIntent as c, PaymentOptionsView as d, ApproveOptions as e, ApproveResult as f, WatchHandle as g, AutoApprovePolicy as h, ParsedAuthorisation as i, PurchaseExpectation as j, AxonConfig as k, AuthChallenge as l, AuthVerifyResult as m, Agent as n, CapabilitySummary as o, SendTaskOptions as p, TaskProgress as q, TaskHandler as r, TaskResult as s, CreateQuorumOptions as t, QuorumResult as u, Workflow as v, GetTransactionsOptions as w, Transaction as x, AgentBalance as y, Reputation as z };
+export type { SubcontractOptions as $, ApprovalRequest as A, AgentMetrics as B, CreateProfileOptions as C, DelegateOptions as D, Receipt as E, FindAgentsOptions as F, GrantMandateOptions as G, HireOptions as H, HireResult as I, RunOptions as J, RunResult as K, ListPurchasesOptions as L, AxonToolsOptions as M, AxonTool as N, RouteHireOptions as O, PurchasesView as P, QuorumTask as Q, RegisterOptions as R, SignMandate as S, TaskRequest as T, UpdateAgentOptions as U, VerifyOptions as V, WatchPurchasesOptions as W, X402PayFunction as X, RoutingInfo as Y, PlanOptions as Z, PlanResult as _, CommerceProfile as a, ExplorerTask as a$, SubcontractResult as a0, OptimizeResult as a1, PaymentNote as a2, GetTaskHistoryOptions as a3, RegisterGatewayProviderOptions as a4, GatewayProvider as a5, GatewayCallOptions as a6, GatewayCallResult as a7, X402Currency as a8, RegisterWebhookOptions as a9, McpServer as aA, McpToolRecord as aB, CallMcpToolOptions as aC, StartMissionOptions as aD, Mission as aE, OpenChannelOptions as aF, OpenChannelResult as aG, PaymentChannel as aH, ReproductionProof as aI, WorkerMetrics as aJ, X402PaymentOption as aK, AgentRuntimeOptions as aL, AxonAgent as aM, AbuseReason as aN, AbuseStatus as aO, AgentContext as aP, AgentRating as aQ, AgentRunHandler as aR, ApiErrorBody as aS, ApiErrorCode as aT, BidStatus as aU, ComponentStatus as aV, DefineSplitsOptions as aW, DelegationResult as aX, DelegationStep as aY, EndpointUptime as aZ, ExplorerSettlement as a_, Webhook as aa, WebhookDelivery as ab, CreateOpenTaskOptions as ac, OpenTask as ad, ListOpenTasksOptions as ae, Bid as af, SplitRecipient as ag, TaskSplitsView as ah, CreateWorkflowTemplateOptions as ai, WorkflowTemplate as aj, InstantiateTemplateOptions as ak, AttestCapabilityOptions as al, CapabilityAttestation as am, DefineSlaOptions as an, TaskSla as ao, FileAbuseReportOptions as ap, AbuseReport as aq, FeePolicy as ar, ProtocolInfo as as, ProtocolNegotiation as at, ExplorerFeed as au, SystemStatus as av, SubmitBidOptions as aw, AcceptBidOptions as ax, X402Requirements as ay, RegisterMcpServerOptions as az, SpendMandate as b, FeeTier as b0, MissionStatus as b1, OpenTaskStatus as b2, PaymentHandlerDescriptor as b3, PaymentInstrument as b4, PaymentNoteKind as b5, PaymentStatus as b6, PlanView as b7, PlannedStep as b8, PurchaseStatus as b9, QuorumStatus as ba, ReceiptDelivery as bb, Review as bc, SlaStatus as bd, SpendSummary as be, SplitPayout as bf, TaskSplit as bg, TaskStatus as bh, WebhookEventType as bi, WorkflowStep as bj, PurchaseIntent as c, PaymentOptionsView as d, ApproveOptions as e, ApproveResult as f, WatchHandle as g, AutoApprovePolicy as h, ParsedAuthorisation as i, PurchaseExpectation as j, AxonConfig as k, AuthChallenge as l, AuthVerifyResult as m, Agent as n, CapabilitySummary as o, SendTaskOptions as p, TaskProgress as q, TaskHandler as r, TaskResult as s, CreateQuorumOptions as t, QuorumResult as u, Workflow as v, GetTransactionsOptions as w, Transaction as x, AgentBalance as y, Reputation as z };

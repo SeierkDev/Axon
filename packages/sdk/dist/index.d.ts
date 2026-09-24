@@ -1,5 +1,5 @@
-import { C as CreateProfileOptions, a as CommerceProfile, G as GrantMandateOptions, b as SpendMandate, L as ListPurchasesOptions, P as PurchasesView, c as PurchaseIntent, A as ApprovalRequest, d as PaymentOptionsView, e as ApproveOptions, f as ApproveResult, W as WatchPurchasesOptions, g as WatchHandle, h as AutoApprovePolicy, i as ParsedAuthorisation, j as PurchaseExpectation, k as AxonConfig, l as AuthChallenge, m as AuthVerifyResult, R as RegisterOptions, n as Agent, V as VerifyOptions, F as FindAgentsOptions, o as CapabilitySummary, p as SendTaskOptions, T as TaskRequest, q as TaskProgress, r as TaskHandler, s as TaskResult, t as CreateQuorumOptions, Q as QuorumTask, u as QuorumResult, D as DelegateOptions, v as Workflow, w as GetTransactionsOptions, x as Transaction, y as AgentBalance, z as Reputation, B as AgentMetrics, E as Receipt, H as HireOptions, I as HireResult, J as RunOptions, K as RunResult, M as AxonToolsOptions, N as AxonTool, O as RouteHireOptions, U as RoutingInfo, Y as PlanOptions, Z as PlanResult, _ as SubcontractOptions, $ as SubcontractResult, a0 as OptimizeResult, a1 as PaymentNote, a2 as GetTaskHistoryOptions, a3 as RegisterGatewayProviderOptions, a4 as GatewayProvider, a5 as GatewayCallOptions, a6 as GatewayCallResult, X as X402PayFunction, a7 as RegisterWebhookOptions, a8 as Webhook, a9 as WebhookDelivery, aa as CreateOpenTaskOptions, ab as OpenTask, ac as ListOpenTasksOptions, ad as Bid, ae as SplitRecipient, af as TaskSplitsView, ag as CreateWorkflowTemplateOptions, ah as WorkflowTemplate, ai as InstantiateTemplateOptions, aj as AttestCapabilityOptions, ak as CapabilityAttestation, al as DefineSlaOptions, am as TaskSla, an as FileAbuseReportOptions, ao as AbuseReport, ap as FeePolicy, aq as ProtocolInfo, ar as ProtocolNegotiation, as as ExplorerFeed, at as SystemStatus, au as SubmitBidOptions, av as AcceptBidOptions, aw as X402Requirements, ax as RegisterMcpServerOptions, ay as McpServer, az as McpToolRecord, aA as CallMcpToolOptions, aB as AgentRuntimeOptions, aC as AxonAgent } from './types-Bnr2a4TW.js';
-export { aD as AbuseReason, aE as AbuseStatus, aF as AgentContext, aG as AgentRating, aH as AgentRunHandler, aI as ApiErrorBody, aJ as ApiErrorCode, aK as BidStatus, aL as ComponentStatus, aM as DefineSplitsOptions, aN as DelegationResult, aO as DelegationStep, aP as EndpointUptime, aQ as ExplorerSettlement, aR as ExplorerTask, aS as FeeTier, aT as OpenTaskStatus, aU as PaymentHandlerDescriptor, aV as PaymentInstrument, aW as PaymentNoteKind, aX as PaymentStatus, aY as PlanView, aZ as PlannedStep, a_ as PurchaseStatus, a$ as QuorumStatus, b0 as ReceiptDelivery, b1 as Review, S as SignMandate, b2 as SlaStatus, b3 as SpendSummary, b4 as SplitPayout, b5 as TaskSplit, b6 as TaskStatus, b7 as WebhookEventType, b8 as WorkflowStep, b9 as X402PaymentOption } from './types-Bnr2a4TW.js';
+import { C as CreateProfileOptions, a as CommerceProfile, G as GrantMandateOptions, b as SpendMandate, L as ListPurchasesOptions, P as PurchasesView, c as PurchaseIntent, A as ApprovalRequest, d as PaymentOptionsView, e as ApproveOptions, f as ApproveResult, W as WatchPurchasesOptions, g as WatchHandle, h as AutoApprovePolicy, i as ParsedAuthorisation, j as PurchaseExpectation, k as AxonConfig, l as AuthChallenge, m as AuthVerifyResult, R as RegisterOptions, n as Agent, U as UpdateAgentOptions, V as VerifyOptions, F as FindAgentsOptions, o as CapabilitySummary, p as SendTaskOptions, T as TaskRequest, q as TaskProgress, r as TaskHandler, s as TaskResult, t as CreateQuorumOptions, Q as QuorumTask, u as QuorumResult, D as DelegateOptions, v as Workflow, w as GetTransactionsOptions, x as Transaction, y as AgentBalance, z as Reputation, B as AgentMetrics, E as Receipt, H as HireOptions, I as HireResult, J as RunOptions, K as RunResult, M as AxonToolsOptions, N as AxonTool, O as RouteHireOptions, Y as RoutingInfo, Z as PlanOptions, _ as PlanResult, $ as SubcontractOptions, a0 as SubcontractResult, a1 as OptimizeResult, a2 as PaymentNote, a3 as GetTaskHistoryOptions, a4 as RegisterGatewayProviderOptions, a5 as GatewayProvider, a6 as GatewayCallOptions, a7 as GatewayCallResult, X as X402PayFunction, a8 as X402Currency, a9 as RegisterWebhookOptions, aa as Webhook, ab as WebhookDelivery, ac as CreateOpenTaskOptions, ad as OpenTask, ae as ListOpenTasksOptions, af as Bid, ag as SplitRecipient, ah as TaskSplitsView, ai as CreateWorkflowTemplateOptions, aj as WorkflowTemplate, ak as InstantiateTemplateOptions, al as AttestCapabilityOptions, am as CapabilityAttestation, an as DefineSlaOptions, ao as TaskSla, ap as FileAbuseReportOptions, aq as AbuseReport, ar as FeePolicy, as as ProtocolInfo, at as ProtocolNegotiation, au as ExplorerFeed, av as SystemStatus, aw as SubmitBidOptions, ax as AcceptBidOptions, ay as X402Requirements, az as RegisterMcpServerOptions, aA as McpServer, aB as McpToolRecord, aC as CallMcpToolOptions, aD as StartMissionOptions, aE as Mission, aF as OpenChannelOptions, aG as OpenChannelResult, aH as PaymentChannel, aI as ReproductionProof, aJ as WorkerMetrics, aK as X402PaymentOption, aL as AgentRuntimeOptions, aM as AxonAgent } from './types-C6sCBc8B.js';
+export { aN as AbuseReason, aO as AbuseStatus, aP as AgentContext, aQ as AgentRating, aR as AgentRunHandler, aS as ApiErrorBody, aT as ApiErrorCode, aU as BidStatus, aV as ComponentStatus, aW as DefineSplitsOptions, aX as DelegationResult, aY as DelegationStep, aZ as EndpointUptime, a_ as ExplorerSettlement, a$ as ExplorerTask, b0 as FeeTier, b1 as MissionStatus, b2 as OpenTaskStatus, b3 as PaymentHandlerDescriptor, b4 as PaymentInstrument, b5 as PaymentNoteKind, b6 as PaymentStatus, b7 as PlanView, b8 as PlannedStep, b9 as PurchaseStatus, ba as QuorumStatus, bb as ReceiptDelivery, bc as Review, S as SignMandate, bd as SlaStatus, be as SpendSummary, bf as SplitPayout, bg as TaskSplit, bh as TaskStatus, bi as WebhookEventType, bj as WorkflowStep } from './types-C6sCBc8B.js';
 
 type RequestFn = (method: string, path: string, opts?: {
     body?: unknown;
@@ -103,6 +103,25 @@ declare class CommerceApi {
     autoApprove(policy: AutoApprovePolicy): WatchHandle;
 }
 
+/**
+ * Choose which offered option to pay.
+ *
+ * ETH is the default and the fallback, because every priced agent offers it and any payer can
+ * settle it. The token comes back only when it was asked for and the agent actually offers it, so
+ * asking for $AXON from an agent that does not take it pays in ETH rather than failing.
+ */
+declare function selectPaymentOption(requirements: X402Requirements | null, prefer?: X402Currency): X402PaymentOption;
+/**
+ * A token quote holds for minutes, not hours, because it pins a moving exchange rate.
+ *
+ * When one lapses the server refuses the payment, and the remedy is always the same: ask for the
+ * price again and pay the new quote. Saying that plainly beats a bare "payment failed", which reads
+ * like money went missing when in most cases nothing was sent at all.
+ */
+declare class AxonQuoteExpiredError extends Error {
+    readonly quoteId?: string;
+    constructor(detail: string, quoteId?: string);
+}
 declare class AxonApiError extends Error {
     readonly status: number;
     readonly method: string;
@@ -122,6 +141,13 @@ declare class AxonApiError extends Error {
 }
 declare class AxonClient {
     private config;
+    /**
+     * Which currency this client pays in when an agent offers a choice.
+     *
+     * ETH unless asked otherwise. Paying in the token means sending an ERC-20 rather than native
+     * value, and silently switching what somebody's wallet spends is not a default to take.
+     */
+    private get payWith();
     private taskHandler;
     /**
      * Agent checkout (v0.6): profiles, spend mandates, and approving what your
@@ -143,6 +169,18 @@ declare class AxonClient {
         revoked: true;
     }>;
     register(options: RegisterOptions): Promise<Agent>;
+    /**
+     * Change an agent you own.
+     *
+     * Every field is optional and only what is passed changes, so this is how an agent's terms move
+     * after registration: a new price, different capabilities, a moved endpoint, and whether it takes
+     * $AXON and at what discount.
+     *
+     * That last pair is the reason this exists. The setting lived in the database and in the payment
+     * path with no way for an owner to reach it, which meant an agent could be offered the token and
+     * never able to say yes. Requires an authenticated client that owns the agent.
+     */
+    updateAgent(agentId: string, updates: UpdateAgentOptions): Promise<Agent>;
     verify(options: VerifyOptions): Promise<boolean>;
     findAgents(query: FindAgentsOptions): Promise<Agent[]>;
     getAgent(agentId: string): Promise<Agent>;
@@ -256,6 +294,7 @@ declare class AxonClient {
     callGatewayProvider(options: GatewayCallOptions): Promise<GatewayCallResult>;
     callGatewayProviderX402(providerId: string, body: Record<string, unknown>, pay: X402PayFunction, opts?: {
         from?: string;
+        payWith?: X402Currency;
     }): Promise<GatewayCallResult>;
     registerWebhook(options: RegisterWebhookOptions): Promise<{
         webhook: Webhook;
@@ -349,6 +388,7 @@ declare class AxonClient {
     submitTaskX402(agentId: string, task: string, pay: X402PayFunction, opts?: {
         from?: string;
         context?: Record<string, unknown>;
+        payWith?: X402Currency;
     }): Promise<TaskRequest>;
     registerMcpServer(options: RegisterMcpServerOptions): Promise<{
         server: McpServer;
@@ -380,6 +420,69 @@ declare class AxonClient {
     private headers;
     private get;
     private post;
+    /**
+     * Set an agent a goal and a budget, and let it work out who to hire.
+     *
+     * The opposite of `hire`, which names the agent and the task. Here you say what you want and what
+     * you will spend, and the agent plans it, hires specialists from the marketplace inside that
+     * budget, and assembles the result. `dryRun` prices the plan without hiring anybody.
+     */
+    startMission(options: StartMissionOptions): Promise<Mission>;
+    /** Every mission on agents this key owns, newest first. */
+    listMissions(): Promise<Mission[]>;
+    getMission(runId: string): Promise<Mission>;
+    /**
+     * Call a mission off.
+     *
+     * It stops at the next safe point rather than mid-hire, so an agent already paid to do something
+     * is left to finish it. Nothing half-bought.
+     */
+    cancelMission(runId: string): Promise<Mission>;
+    /** Pick a stopped mission back up where it left off. */
+    resumeMission(runId: string): Promise<Mission>;
+    /** Put a finished mission on a public page. Opt-in, and reversible. */
+    publishMission(runId: string): Promise<Mission>;
+    /** The sealed receipt: what was hired, what it cost, and what came back. */
+    getMissionReceipt(runId: string): Promise<unknown>;
+    /**
+     * Open a funded channel, for agents that make many small calls.
+     *
+     * Deposit once and spend it down, rather than a separate on-chain transfer for every call, which
+     * on cheap work can cost more in gas than the work itself.
+     *
+     * The returned `channelKey` is shown exactly once and cannot be recovered. Store it before you do
+     * anything else with the result.
+     */
+    openPaymentChannel(options: OpenChannelOptions): Promise<OpenChannelResult>;
+    /** Every channel funded by one wallet. The API key must belong to that wallet. */
+    listPaymentChannels(ownerAddress: string): Promise<PaymentChannel[]>;
+    /**
+     * Read one channel, which takes the channel key rather than the API key.
+     *
+     * The key is the channel's own authority: whoever holds it can spend the balance, so it is what
+     * proves the right to look at it, and it is never the account key.
+     */
+    getPaymentChannel(channelId: string, channelKey: string): Promise<PaymentChannel>;
+    /** Add to a channel that is running low, with the hash of the deposit that funded it. */
+    topUpPaymentChannel(channelId: string, options: {
+        depositEth: number | string;
+        depositSignature: string;
+        channelKey?: string;
+    }): Promise<PaymentChannel>;
+    /** Close a channel and settle what is left. Takes the channel key, as reading one does. */
+    closePaymentChannel(channelId: string, channelKey: string): Promise<PaymentChannel>;
+    /**
+     * What is already known about whether a task reproduces.
+     *
+     * A receipt claims an output hash. This is the check of that claim, and reading it costs nothing
+     * because the work was done when the task was checked.
+     */
+    getReproduction(taskId: string): Promise<ReproductionProof>;
+    /** Run the task again now and compare the result against what its receipt claims. */
+    reproduce(taskId: string): Promise<ReproductionProof>;
+    /** How the workers behind the hosted agents are doing: throughput, backlog, failures. */
+    getWorkerMetrics(): Promise<WorkerMetrics>;
+    private patch;
     private delete;
     private request;
     private apiErrorFromResponse;
@@ -534,4 +637,4 @@ declare function runAxonTool(tools: AxonTool[], name: string, args: Record<strin
 
 declare const axon: AxonClient;
 
-export { AbuseReport, AcceptBidOptions, Agent, AgentBalance, AgentMetrics, AgentRuntimeOptions, ApprovalRequest, ApproveOptions, ApproveResult, AttestCapabilityOptions, AuthChallenge, AuthVerifyResult, AutoApprovePolicy, AxonAgent, AxonApiError, AxonClient, AxonConfig, AxonTool, AxonToolsOptions, Bid, CallMcpToolOptions, CapabilityAttestation, CapabilitySummary, CommerceApi, CommerceProfile, CommerceRefusedError, CreateOpenTaskOptions, CreateProfileOptions, CreateQuorumOptions, CreateWorkflowTemplateOptions, DefineSlaOptions, DelegateOptions, ExplorerFeed, FeePolicy, FileAbuseReportOptions, FindAgentsOptions, GatewayCallOptions, GatewayCallResult, GatewayProvider, GetTaskHistoryOptions, GetTransactionsOptions, GrantMandateOptions, HireOptions, HireResult, InstantiateTemplateOptions, ListOpenTasksOptions, ListPurchasesOptions, McpServer, McpToolRecord, OpenTask, OptimizeResult, ParsedAuthorisation, PaymentNote, PaymentOptionsView, PlanOptions, PlanResult, ProtocolInfo, ProtocolNegotiation, PurchaseExpectation, PurchaseIntent, PurchasesView, QuorumResult, QuorumTask, Receipt, RegisterGatewayProviderOptions, RegisterMcpServerOptions, RegisterOptions, RegisterWebhookOptions, Reputation, RouteHireOptions, RoutingInfo, RunOptions, RunResult, SendTaskOptions, SpendMandate, SplitRecipient, SubcontractOptions, SubcontractResult, SubmitBidOptions, SystemStatus, TaskHandler, TaskProgress, TaskRequest, TaskResult, TaskSla, TaskSplitsView, Transaction, VerifyOptions, type VerifyProofScoreOptions, type VerifyProofScoreResult, type VerifyReceiptOptions, type VerifyReceiptResult, type VerifyWebhookOptions, WatchHandle, WatchPurchasesOptions, Webhook, WebhookDelivery, Workflow, WorkflowTemplate, X402PayFunction, X402Requirements, assertAuthorisationMatches, axon, buildAxonTools, defineAgent, hire, parseAuthorisation, runAxonTool, toAnthropicTools, toOpenAITools, verifyProofScore, verifyReceipt, verifyWebhookSignature };
+export { AbuseReport, AcceptBidOptions, Agent, AgentBalance, AgentMetrics, AgentRuntimeOptions, ApprovalRequest, ApproveOptions, ApproveResult, AttestCapabilityOptions, AuthChallenge, AuthVerifyResult, AutoApprovePolicy, AxonAgent, AxonApiError, AxonClient, AxonConfig, AxonQuoteExpiredError, AxonTool, AxonToolsOptions, Bid, CallMcpToolOptions, CapabilityAttestation, CapabilitySummary, CommerceApi, CommerceProfile, CommerceRefusedError, CreateOpenTaskOptions, CreateProfileOptions, CreateQuorumOptions, CreateWorkflowTemplateOptions, DefineSlaOptions, DelegateOptions, ExplorerFeed, FeePolicy, FileAbuseReportOptions, FindAgentsOptions, GatewayCallOptions, GatewayCallResult, GatewayProvider, GetTaskHistoryOptions, GetTransactionsOptions, GrantMandateOptions, HireOptions, HireResult, InstantiateTemplateOptions, ListOpenTasksOptions, ListPurchasesOptions, McpServer, McpToolRecord, Mission, OpenChannelOptions, OpenChannelResult, OpenTask, OptimizeResult, ParsedAuthorisation, PaymentChannel, PaymentNote, PaymentOptionsView, PlanOptions, PlanResult, ProtocolInfo, ProtocolNegotiation, PurchaseExpectation, PurchaseIntent, PurchasesView, QuorumResult, QuorumTask, Receipt, RegisterGatewayProviderOptions, RegisterMcpServerOptions, RegisterOptions, RegisterWebhookOptions, ReproductionProof, Reputation, RouteHireOptions, RoutingInfo, RunOptions, RunResult, SendTaskOptions, SpendMandate, SplitRecipient, StartMissionOptions, SubcontractOptions, SubcontractResult, SubmitBidOptions, SystemStatus, TaskHandler, TaskProgress, TaskRequest, TaskResult, TaskSla, TaskSplitsView, Transaction, UpdateAgentOptions, VerifyOptions, type VerifyProofScoreOptions, type VerifyProofScoreResult, type VerifyReceiptOptions, type VerifyReceiptResult, type VerifyWebhookOptions, WatchHandle, WatchPurchasesOptions, Webhook, WebhookDelivery, WorkerMetrics, Workflow, WorkflowTemplate, X402Currency, X402PayFunction, X402PaymentOption, X402Requirements, assertAuthorisationMatches, axon, buildAxonTools, defineAgent, hire, parseAuthorisation, runAxonTool, selectPaymentOption, toAnthropicTools, toOpenAITools, verifyProofScore, verifyReceipt, verifyWebhookSignature };

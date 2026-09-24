@@ -34,6 +34,21 @@ export const MIN_QUOTE_WEI = 10_000_000_000_000n; // 0.00001 ETH
  */
 export const MAX_DEVIATION_BPS = 2_000; // 20%
 
+/**
+ * How old the quote being compared against may be before it stops counting.
+ *
+ * Without this the guard eats itself. The reference is the last quote ever issued, and a refused
+ * quote is never written, so once the live price sits further than the deviation from that last
+ * quote, nothing can be quoted, which means the reference can never move, which means nothing can
+ * ever be quoted again. The token option does not pause, it disappears, and only a hand-written row
+ * brings it back. Busy hours hide this, because each quote nudges the reference along in small
+ * steps. A quiet night and one real move is all it takes.
+ *
+ * An hour leaves the guard doing its actual job, refusing to quote through a sudden move, while
+ * letting a move that genuinely happened over hours become the new normal. A flash lasts seconds.
+ */
+export const REFERENCE_MAX_AGE_SECONDS = 60 * 60;
+
 export interface AxonQuote {
   quoteId: string;
   reference: string | null;
@@ -141,7 +156,9 @@ export async function createQuote(opts: {
   // A sudden move is refused rather than quoted through. Compared on the sqrt price, which is what the
   // chain stores, so the comparison needs no arithmetic that could itself drift.
   const previous = lastQuote();
-  if (previous && previous.sqrtPriceX96 > 0n) {
+  const referenceAgeMs = previous ? Date.now() - Date.parse(previous.createdAt) : Infinity;
+  const referenceIsCurrent = referenceAgeMs <= REFERENCE_MAX_AGE_SECONDS * 1_000;
+  if (previous && previous.sqrtPriceX96 > 0n && referenceIsCurrent) {
     const a = price.sqrtPriceX96;
     const b = previous.sqrtPriceX96;
     const diff = a > b ? a - b : b - a;

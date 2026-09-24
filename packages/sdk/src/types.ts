@@ -65,6 +65,38 @@ export interface RegisterOptions {
   tools?: string[];
 }
 
+/**
+ * What an owner may change about an agent after it is registered.
+ *
+ * Only the fields present are touched. Everything here is the agent's own to set: the platform does
+ * not price agents, choose their capabilities, or decide what they take as payment.
+ */
+export interface UpdateAgentOptions {
+  name?: string;
+  capabilities?: string[];
+  /** A new price like "0.0005 ETH", or null to make the agent free. */
+  price?: string | null;
+  /** A new endpoint, or null to go back to Axon-hosted inference. */
+  endpoint?: string | null;
+  orchestrator?: boolean;
+  /** Replaces the tool grants outright. `[]` or null revokes them all. */
+  tools?: string[] | null;
+  /**
+   * Whether this agent takes $AXON for its work.
+   *
+   * Off until set. An agent that never opts in is quoted in ETH exactly as before.
+   */
+  acceptsAxon?: boolean;
+  /**
+   * What to knock off the ETH price when someone pays in $AXON, in basis points. 2000 is 20%.
+   *
+   * Capped by the server, and a value outside the range is refused rather than clamped down: one
+   * zero out is the difference between a discount and giving the work away, and quietly turning a
+   * typo into a real half-price offer would be worse than rejecting it.
+   */
+  axonDiscountBps?: number;
+}
+
 // ─── Discovery ────────────────────────────────────────────────────────────────
 
 export interface FindAgentsOptions {
@@ -327,6 +359,10 @@ export interface Reputation {
   totalTasksCompleted: number;
   totalTasksFailed: number;
   totalTasks: number;
+  /** How much an idle agent's score has been pulled back toward neutral. 1 is untouched. */
+  decayFactor?: number;
+  /** Days since this agent last finished anything, which is what drives the decay above. */
+  staleDays?: number;
   lastUpdated: string;
 }
 
@@ -486,23 +522,158 @@ export interface RegisterWebhookOptions {
   events?: WebhookEventType[];
 }
 
+// ─── Missions ─────────────────────────────────────────────────────────────────
+
+export type MissionStatus = "queued" | "running" | "completed" | "failed" | "canceled";
+
+/** A mission an owner set an agent, and what came of it. */
+export interface Mission {
+  runId: string;
+  agentId: string;
+  mission: string;
+  budgetEth: number;
+  perHireCapEth?: number;
+  maxHires?: number;
+  status: MissionStatus;
+  /** The owner called it off. The runner stops at the next safe point rather than mid-hire. */
+  canceled?: boolean;
+  plan?: unknown;
+  deliverable?: string;
+  /** The sealed receipt, once the run is finished. */
+  manifest?: unknown;
+  /** Whether the owner put this on a public page. Opt-in, and reversible. */
+  published?: boolean;
+  publishedAt?: string;
+  createdAt?: string;
+  completedAt?: string;
+}
+
+export interface StartMissionOptions {
+  agentId: string;
+  /** What you want done, in plain words. The agent plans it and hires who it needs. */
+  mission: string;
+  /** The ceiling for the whole mission, in ETH. Clamped to the agent's own caps. */
+  budgetEth: number;
+  /** The most any single hire inside the mission may cost. */
+  perHireCapEth?: number;
+  maxHires?: number;
+  /** Plan and price it without hiring anyone. */
+  dryRun?: boolean;
+  /** The template this started from, recorded so a published result can offer it. */
+  templateId?: string;
+}
+
+// ─── Payment channels (MPP) ───────────────────────────────────────────────────
+
+/**
+ * A funded channel that pays for many small calls without a transfer each time.
+ *
+ * Deposit once, spend it down across calls, close it when done. Worth it when an agent makes many
+ * cheap calls, where a separate on-chain transfer per call would cost more in gas than the work.
+ */
+export interface PaymentChannel {
+  channelId: string;
+  ownerAddress: string;
+  balanceEth: number;
+  status: "open" | "closing" | "closed";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OpenChannelOptions {
+  /** The wallet funding the channel. */
+  ownerAddress: string;
+  depositEth: number | string;
+  /** The transaction hash proving the deposit landed. */
+  depositSignature: string;
+}
+
+/**
+ * A newly opened channel, and the only time its key is ever shown.
+ *
+ * The key is what authorises spending from the channel and it is not recoverable: store it when you
+ * get it or open another channel.
+ */
+export interface OpenChannelResult {
+  channel: PaymentChannel;
+  channelKey: string;
+  warning: string;
+}
+
+// ─── Reproducibility ──────────────────────────────────────────────────────────
+
+/**
+ * Whether a finished task can be run again and produce the same thing.
+ *
+ * The point of a receipt is that somebody else can check it. This is that check: the same input
+ * against the same agent, and whether the output hash matches what the receipt claims.
+ */
+export interface ReproductionProof {
+  taskId: string;
+  specHash?: string;
+  outputHash?: string;
+  reproducedHash?: string;
+  matches?: boolean;
+  checkedAt?: string;
+  [key: string]: unknown;
+}
+
+// ─── Worker metrics ───────────────────────────────────────────────────────────
+
+/** How the workers behind the hosted agents are doing. */
+export interface WorkerMetrics {
+  worker: { queueDepth: number; running: number; lastSeenMs: number | null };
+  throughput: {
+    today: number;
+    last24h: number;
+    byHour: { hour: string; completed: number; failed?: number }[];
+  };
+  latency: { p50ProcessingMs: number | null; p95ProcessingMs: number | null; p50PickupMs: number | null };
+  perAgent: {
+    agentId: string;
+    name: string;
+    queued: number;
+    running: number;
+    completed?: number;
+    failed?: number;
+  }[];
+  /** The window the error rate above is measured over. */
+  errorRateWindowHours: number;
+  recentTasks: Record<string, unknown>[];
+  updatedAt: string;
+}
+
 // ─── x402 ─────────────────────────────────────────────────────────────────────
 
 export interface X402PaymentOption {
   scheme: "exact";
   network: string;
+  /** The exact amount, already in the asset's smallest unit. Never parse it as a decimal. */
   maxAmountRequired: string;
   resource: string;
   description: string;
   mimeType: string;
   payToAddress: string;
   requiredDeadlineSeconds: number;
+  /** "ETH" for the native currency, or the ERC-20's contract address. */
   asset: string;
   extra: {
-    name: string;
-    symbol: string;
+    // Optional, because an arbitrary ERC-20's name and symbol live on the token rather than in the
+    // server's configuration. They were declared required here, which made this type a claim the
+    // server does not honour: a token option arrives without them.
+    name?: string;
+    symbol?: string;
     decimals: number;
-    contractAddress: string;
+    /** Present only on a token option. Native ETH has no contract. */
+    contractAddress?: string;
+    /**
+     * The quote this amount was pinned against, on a token option only.
+     *
+     * The rate between the agent's ETH price and the token moves, so the amount means nothing apart
+     * from the quote that fixed it, and the server will not settle a token payment without it. Echo
+     * it back untouched when paying.
+     */
+    quoteId?: string;
   };
 }
 
@@ -511,8 +682,22 @@ export interface X402Requirements {
   accepts: X402PaymentOption[];
 }
 
+/** Which of the offered options to pay with. */
+export type X402Currency = "eth" | "axon";
+
+/**
+ * How to pay one option.
+ *
+ * The chosen option is passed alongside the requirements, because a 402 can offer more than one and
+ * the payer has to know which it is settling: a native transfer and an ERC-20 transfer are
+ * different transactions, and a token amount is only valid against the quote inside that option.
+ *
+ * A payer written against an earlier version, taking only `requirements`, still works. It will only
+ * ever be handed the ETH option, because choosing the token is opt-in.
+ */
 export type X402PayFunction = (
-  requirements: X402Requirements
+  requirements: X402Requirements,
+  option: X402PaymentOption
 ) => Promise<{ signature: string; from: string }>;
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -549,6 +734,13 @@ export interface AxonConfig {
    * `walletPayer` (from the `@axonprotocol/sdk/evm` subpath). A per-call `pay` still overrides it.
    */
   pay?: X402PayFunction;
+  /**
+   * Pay in $AXON instead of ETH when the agent offers it, and take its discount.
+   *
+   * "eth" by default. An agent that does not accept the token is paid in ETH regardless, so asking
+   * for it is safe; what it never does is quietly change what a wallet spends.
+   */
+  payWith?: X402Currency;
   /** Per-request timeout in ms (aborts + surfaces a TIMEOUT error). Default 30000. */
   timeoutMs?: number;
   /**
@@ -812,6 +1004,23 @@ export interface SystemStatus {
     successRate: number;
     workerLastSeenAgeSeconds: number | null;
   };
+  /**
+   * Every scheduled job, and whether it has actually been running.
+   *
+   * A cron that stops firing has no symptom of its own: nothing errors, the work simply stops
+   * happening. This is the ledger that notices, which is why `silentFor` is the field that matters
+   * rather than a last-run timestamp.
+   */
+  jobs?: {
+    job: string;
+    /** Seconds since this job last reported in, or null if it never has. */
+    silentFor: number | null;
+    /** How long this job may stay quiet before that counts as a problem. */
+    allowed: number;
+    overdue: boolean;
+    neverRun: boolean;
+    lastError: string | null;
+  }[];
   updatedAt: string;
 }
 
@@ -887,6 +1096,13 @@ export interface AxonToolsOptions {
   origin?: string;
   /** Payment function for priced hires the agent makes. Falls back to the client's `pay`. */
   pay?: X402PayFunction;
+  /**
+   * Pay in $AXON instead of ETH when the agent offers it, and take its discount.
+   *
+   * "eth" by default. An agent that does not accept the token is paid in ETH regardless, so asking
+   * for it is safe; what it never does is quietly change what a wallet spends.
+   */
+  payWith?: X402Currency;
   /** Cap how many candidates a hire-by-capability weighs. Default 10. */
   candidateLimit?: number;
   /**
@@ -913,6 +1129,13 @@ export interface RunOptions {
   from?: string;
   /** Payment function for a priced agent. Falls back to the client's configured `pay`. */
   pay?: X402PayFunction;
+  /**
+   * Pay in $AXON instead of ETH when the agent offers it, and take its discount.
+   *
+   * "eth" by default. An agent that does not accept the token is paid in ETH regardless, so asking
+   * for it is safe; what it never does is quietly change what a wallet spends.
+   */
+  payWith?: X402Currency;
   paymentMethod?: "onchain" | "balance";
   pollIntervalMs?: number;
   timeoutMs?: number;
@@ -1030,6 +1253,13 @@ export interface HireOptions {
    * paid agent without a `pay` function throws a clear error.
    */
   pay?: X402PayFunction;
+  /**
+   * Pay in $AXON instead of ETH when the agent offers it, and take its discount.
+   *
+   * "eth" by default. An agent that does not accept the token is paid in ETH regardless, so asking
+   * for it is safe; what it never does is quietly change what a wallet spends.
+   */
+  payWith?: X402Currency;
   /**
    * Set to "balance" to fund a paid hire from the `from` agent's earned balance
    * instead of a fresh on-chain transfer — no `pay` function needed. Requires an

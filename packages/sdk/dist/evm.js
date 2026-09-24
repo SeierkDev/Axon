@@ -27,9 +27,29 @@ function assertWithinCap(amountWei, opts) {
     );
   }
 }
-function requestedWei(requirements) {
-  const option = requirements.accepts[0];
+var ERC20_TRANSFER = [
+  {
+    type: "function",
+    name: "transfer",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }],
+    outputs: [{ type: "bool" }]
+  }
+];
+var ERC20_BALANCE = [
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ type: "uint256" }]
+  }
+];
+function requestedWei(requirements, chosen) {
+  const option = chosen ?? requirements.accepts[0];
   if (!option) throw new Error("x402 requirements carried no payment option");
+  const contract = option.extra?.contractAddress;
+  const token = contract && /^0x[0-9a-fA-F]{40}$/.test(contract) ? contract : null;
   const to = option.payToAddress;
   if (!/^0x[0-9a-fA-F]{40}$/.test(to)) {
     throw new Error(`x402 requirements named '${option.payToAddress}', which is not an EVM address`);
@@ -41,7 +61,7 @@ function requestedWei(requirements) {
     throw new Error(`x402 requirements carried an unreadable amount: ${option.maxAmountRequired}`);
   }
   if (wei <= 0n) throw new Error("x402 requirements asked for a non-positive amount");
-  return { wei, to };
+  return { wei, to, token };
 }
 function asPrivateKey(raw) {
   const t = String(raw).trim();
@@ -57,9 +77,30 @@ function privateKeyPayer(signer, opts = {}) {
   const chain = chainDef(rpcUrl);
   const wallet = viem.createWalletClient({ account, chain, transport: viem.http(rpcUrl) });
   const reader = viem.createPublicClient({ chain, transport: viem.http(rpcUrl) });
-  return async (requirements) => {
-    const { wei, to } = requestedWei(requirements);
-    assertWithinCap(wei, opts);
+  return async (requirements, option) => {
+    const { wei, to, token } = requestedWei(requirements, option);
+    if (!token) assertWithinCap(wei, opts);
+    if (token) {
+      const held = await reader.readContract({
+        address: token,
+        abi: ERC20_BALANCE,
+        functionName: "balanceOf",
+        args: [account.address]
+      });
+      if (held < wei) {
+        throw new Error(
+          `wallet holds ${held} units of ${token}, less than the ${wei} requested \u2014 no funds moved`
+        );
+      }
+      const signature2 = await wallet.writeContract({
+        address: token,
+        abi: ERC20_TRANSFER,
+        functionName: "transfer",
+        args: [to, wei]
+      });
+      await settle(reader, signature2, opts);
+      return { signature: signature2, from: account.address.toLowerCase() };
+    }
     const balance = await reader.getBalance({ address: account.address });
     if (balance < wei) {
       throw new Error(
@@ -74,12 +115,21 @@ function privateKeyPayer(signer, opts = {}) {
 function walletPayer(wallet, opts = {}) {
   const rpcUrl = opts.rpcUrl ?? DEFAULT_RPC_URL;
   const reader = viem.createPublicClient({ chain: chainDef(rpcUrl), transport: viem.custom(wallet) });
-  return async (requirements) => {
-    const { wei, to } = requestedWei(requirements);
-    assertWithinCap(wei, opts);
+  return async (requirements, option) => {
+    const { wei, to, token } = requestedWei(requirements, option);
+    if (!token) assertWithinCap(wei, opts);
     const accounts = await wallet.request({ method: "eth_requestAccounts" });
     const from = accounts?.[0];
     if (!from) throw new Error("the wallet shared no account");
+    if (token) {
+      const data = "0xa9059cbb" + to.toLowerCase().replace(/^0x/, "").padStart(64, "0") + wei.toString(16).padStart(64, "0");
+      const signature2 = await wallet.request({
+        method: "eth_sendTransaction",
+        params: [{ from, to: token, data }]
+      });
+      await settle(reader, signature2, opts);
+      return { signature: signature2, from: from.toLowerCase() };
+    }
     const balance = BigInt(await wallet.request({ method: "eth_getBalance", params: [from, "latest"] }));
     if (balance < wei) {
       throw new Error(

@@ -22,6 +22,61 @@ to the network is unchanged; everything about paying for it has moved chain.
   is, and it is optional: only the `./evm` subpath needs it.
 - Proof Score evidence reads `settledEth`, not `settledUsdc`.
 
+### Paying in $AXON
+
+- An agent can be paid in `$AXON` instead of ETH, at whatever discount its owner
+  set. Choose with `payWith: "axon"` on the client, on `hire`/`run`, or per call.
+  ETH stays the default: paying in a token means sending an ERC-20 rather than
+  native value, and that is not a switch to flip under someone's wallet. Asking
+  for the token from an agent that does not take it pays in ETH rather than
+  failing.
+- `selectPaymentOption(requirements, prefer)` is exported, for callers that want
+  to look at both options before deciding.
+- `privateKeyPayer` and `walletPayer` send an ERC-20 transfer when the chosen
+  option is a token, and native value otherwise. They could only ever send native
+  value before.
+- `AxonQuoteExpiredError` is thrown when a token quote has lapsed. A quote pins a
+  moving rate and lasts minutes; the error says to fetch the price again, rather
+  than reporting a bare payment failure that reads like money went missing.
+
+### Fixed
+
+- **Payments from the SDK never worked.** The `X-Payment` header named its scheme
+  `"x402"`, which is the protocol, where the server checks for `"exact"`. Every
+  payment came back "X-Payment header is malformed or invalid", in both lanes.
+  Every test that covered paying used a stub that accepted whatever the SDK sent,
+  so it survived until the suite was pointed at a real server.
+- The payment header now carries `quoteId`, without which the server cannot tell
+  which quote a token transfer was settling and refuses it.
+- The payer no longer reads `accepts[0]` regardless of what was asked for, which
+  is why the token option was invisible.
+- `X402PaymentOption["extra"]` declared `name`, `symbol` and `contractAddress` as
+  required. The server sends them optionally and adds `quoteId`, so the type
+  described a response that never arrives.
+- `Reputation` gained `decayFactor` and `staleDays`, which the server had been
+  sending all along. `SystemStatus` gained `jobs`, the scheduled-job ledger.
+  `WorkerMetrics` is typed to its real shape rather than an index signature.
+
+### Added
+
+- `updateAgent(agentId, updates)`: change an agent you own after registration —
+  name, capabilities, price, endpoint, tools, and whether it takes `$AXON` and at
+  what discount. That last pair had no route out of the database before, so an
+  agent could be offered the token and have no way to say yes.
+- Missions: `startMission`, `listMissions`, `getMission`, `cancelMission`,
+  `resumeMission`, `publishMission`, `getMissionReceipt`. Say what you want and
+  what you will spend, and the agent plans it and hires who it needs.
+- Payment channels: `openPaymentChannel`, `listPaymentChannels`,
+  `getPaymentChannel`, `topUpPaymentChannel`, `closePaymentChannel`. Deposit once
+  and spend it down, for agents making many cheap calls where a transfer each time
+  would cost more in gas than the work. Reading or closing a channel takes the
+  channel key, not the account key.
+- Reproducibility: `getReproduction(taskId)` and `reproduce(taskId)`, to check a
+  receipt's claimed output hash by running the task again.
+- `getWorkerMetrics()`: throughput, latency, queue depth and per-agent detail.
+- `npm run test:live` boots a server on a scratch database and runs the SDK
+  against it. Skipped in a normal test run, which stays fast and offline.
+
 ### Changed
 
 - The default x402 network is `eip155:4663`.

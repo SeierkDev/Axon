@@ -2,6 +2,14 @@ import { CommerceApi } from "./commerce";
 import type {
   Agent,
   RegisterOptions,
+  UpdateAgentOptions,
+  Mission,
+  StartMissionOptions,
+  PaymentChannel,
+  OpenChannelOptions,
+  OpenChannelResult,
+  ReproductionProof,
+  WorkerMetrics,
   FindAgentsOptions,
   VerifyOptions,
   AgentMetrics,
@@ -26,6 +34,8 @@ import type {
   CallMcpToolOptions,
   X402Requirements,
   X402PayFunction,
+  X402PaymentOption,
+  X402Currency,
   HireOptions,
   HireResult,
   RunOptions,
@@ -98,8 +108,85 @@ function fromBase64(b64: string): string {
   return atob(b64);
 }
 
-function buildPaymentHeader(signature: string, from: string, network: string): string {
-  return toBase64(JSON.stringify({ scheme: "x402", network, payload: { signature, from } }));
+/**
+ * Choose which offered option to pay.
+ *
+ * ETH is the default and the fallback, because every priced agent offers it and any payer can
+ * settle it. The token comes back only when it was asked for and the agent actually offers it, so
+ * asking for $AXON from an agent that does not take it pays in ETH rather than failing.
+ */
+export function selectPaymentOption(
+  requirements: X402Requirements | null,
+  prefer: X402Currency = "eth",
+): X402PaymentOption {
+  // Null is what getX402Requirements returns for a free agent, so it arrives here whenever somebody
+  // writes the obvious two lines. Taking it and saying what it means beats making every caller
+  // null-check before they are allowed to look at a price, and beats a type error that does not
+  // explain itself.
+  if (!requirements) {
+    throw new Error("this agent is free, there is no payment to make");
+  }
+  const options = requirements.accepts ?? [];
+  if (!options.length) throw new Error("x402 requirements carried no payment option");
+
+  const isToken = (o: X402PaymentOption) => Boolean(o.extra?.contractAddress);
+  if (prefer === "axon") {
+    const token = options.find(isToken);
+    if (token) return token;
+  }
+  return options.find((o) => !isToken(o)) ?? options[0];
+}
+
+/**
+ * The X-Payment header.
+ *
+ * `quoteId` rides along whenever the option carries one. Without it the server cannot tell which
+ * quote a token transfer was settling and refuses the payment, which is why paying in $AXON was
+ * impossible from here no matter how the tokens were sent.
+ *
+ * `scheme` said "x402" for as long as this header has existed. That is the name of the protocol,
+ * not the name of the scheme, and the server checks for "exact", so every payment the SDK sent came
+ * back "X-Payment header is malformed or invalid" — both lanes, not only the token one. It survived
+ * because every test that covered paying answered with a stub that accepted whatever was sent. It
+ * took running against a real server to see it.
+ */
+function buildPaymentHeader(signature: string, from: string, option: X402PaymentOption): string {
+  const quoteId = option.extra?.quoteId;
+  return toBase64(
+    JSON.stringify({
+      scheme: "exact",
+      network: option.network ?? "eip155:4663",
+      payload: { signature, from, ...(quoteId ? { quoteId } : {}) },
+    }),
+  );
+}
+
+/** The reasons a token quote can no longer be settled, and a fresh one has to be fetched. */
+const STALE_QUOTE = /\b(expired|unknown-quote|already-settled|tx-already-used)\b/i;
+
+/**
+ * A token quote holds for minutes, not hours, because it pins a moving exchange rate.
+ *
+ * When one lapses the server refuses the payment, and the remedy is always the same: ask for the
+ * price again and pay the new quote. Saying that plainly beats a bare "payment failed", which reads
+ * like money went missing when in most cases nothing was sent at all.
+ */
+export class AxonQuoteExpiredError extends Error {
+  readonly quoteId?: string;
+  constructor(detail: string, quoteId?: string) {
+    super(
+      `the $AXON quote is no longer valid (${detail}). Quotes pin a moving rate and last minutes, so ` +
+        `fetch the payment requirements again and pay the fresh quote.`,
+    );
+    this.name = "AxonQuoteExpiredError";
+    this.quoteId = quoteId;
+  }
+}
+
+/** Turn the server's refusal into the specific error when it is a stale quote. */
+function throwIfStaleQuote(body: string, option: X402PaymentOption): void {
+  if (!option.extra?.quoteId) return;
+  if (STALE_QUOTE.test(body)) throw new AxonQuoteExpiredError(body.slice(0, 120), option.extra.quoteId);
 }
 
 function decodeRequirements(raw: string): X402Requirements | null {
@@ -144,6 +231,16 @@ export class AxonApiError extends Error {
 
 export class AxonClient {
   private config: AxonConfig = {};
+
+  /**
+   * Which currency this client pays in when an agent offers a choice.
+   *
+   * ETH unless asked otherwise. Paying in the token means sending an ERC-20 rather than native
+   * value, and silently switching what somebody's wallet spends is not a default to take.
+   */
+  private get payWith(): X402Currency {
+    return this.config.payWith ?? "eth";
+  }
   private taskHandler: TaskHandler | null = null;
 
   /**
@@ -184,6 +281,21 @@ export class AxonClient {
 
   async register(options: RegisterOptions): Promise<Agent> {
     return this.post("/api/agents", options) as Promise<Agent>;
+  }
+
+  /**
+   * Change an agent you own.
+   *
+   * Every field is optional and only what is passed changes, so this is how an agent's terms move
+   * after registration: a new price, different capabilities, a moved endpoint, and whether it takes
+   * $AXON and at what discount.
+   *
+   * That last pair is the reason this exists. The setting lived in the database and in the payment
+   * path with no way for an owner to reach it, which meant an agent could be offered the token and
+   * never able to say yes. Requires an authenticated client that owns the agent.
+   */
+  async updateAgent(agentId: string, updates: UpdateAgentOptions): Promise<Agent> {
+    return this.patch(`/api/agents/${pathPart(agentId)}`, updates) as Promise<Agent>;
   }
 
   async verify(options: VerifyOptions): Promise<boolean> {
@@ -558,7 +670,7 @@ export class AxonClient {
     providerId: string,
     body: Record<string, unknown>,
     pay: X402PayFunction,
-    opts?: { from?: string }
+    opts?: { from?: string; payWith?: X402Currency }
   ): Promise<GatewayCallResult> {
     const probeRes = await fetch(`${this.baseUrl()}/api/gateway/${pathPart(providerId)}/call`, {
       method: "POST",
@@ -584,9 +696,9 @@ export class AxonClient {
     const requirements = decodeRequirements(rawReq);
     if (!requirements) throw new Error("Axon gateway x402: could not decode X-Payment-Required header");
 
-    const { signature, from } = await pay(requirements);
-    const network = requirements.accepts[0]?.network ?? "eip155:4663";
-    const paymentHeader = buildPaymentHeader(signature, from, network);
+    const option = selectPaymentOption(requirements, opts?.payWith ?? this.payWith);
+    const { signature, from } = await pay(requirements, option);
+    const paymentHeader = buildPaymentHeader(signature, from, option);
 
     const paidRes = await fetch(`${this.baseUrl()}/api/gateway/${pathPart(providerId)}/call`, {
       method: "POST",
@@ -595,6 +707,7 @@ export class AxonClient {
     });
 
     const responseBody = await paidRes.text();
+    if (!paidRes.ok) throwIfStaleQuote(responseBody, option);
     const responseHeaders: Record<string, string> = {};
     paidRes.headers.forEach((v, k) => { responseHeaders[k] = v; });
 
@@ -826,7 +939,7 @@ export class AxonClient {
     agentId: string,
     task: string,
     pay: X402PayFunction,
-    opts?: { from?: string; context?: Record<string, unknown> }
+    opts?: { from?: string; context?: Record<string, unknown>; payWith?: X402Currency }
   ): Promise<TaskRequest> {
     const probeRes = await fetch(`${this.baseUrl()}/api/agents/${pathPart(agentId)}/x402`, { method: "GET" });
 
@@ -844,9 +957,9 @@ export class AxonClient {
     const requirements = decodeRequirements(rawReq);
     if (!requirements) throw new Error("Axon x402 error: could not decode X-Payment-Required header");
 
-    const { signature, from } = await pay(requirements);
-    const network = requirements.accepts[0]?.network ?? "eip155:4663";
-    const paymentHeader = buildPaymentHeader(signature, from, network);
+    const option = selectPaymentOption(requirements, opts?.payWith ?? this.payWith);
+    const { signature, from } = await pay(requirements, option);
+    const paymentHeader = buildPaymentHeader(signature, from, option);
 
     const submitRes = await fetch(`${this.baseUrl()}/api/agents/${pathPart(agentId)}/x402`, {
       method: "POST",
@@ -855,6 +968,7 @@ export class AxonClient {
     });
 
     if (!submitRes.ok) {
+      throwIfStaleQuote(await submitRes.clone().text(), option);
       throw await this.apiErrorFromResponse(submitRes, "POST", `/api/agents/${pathPart(agentId)}/x402`);
     }
 
@@ -925,6 +1039,136 @@ export class AxonClient {
 
   private post(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<unknown> {
     return this.request("POST", path, { body, headers: extraHeaders });
+  }
+
+  // Missions
+
+  /**
+   * Set an agent a goal and a budget, and let it work out who to hire.
+   *
+   * The opposite of `hire`, which names the agent and the task. Here you say what you want and what
+   * you will spend, and the agent plans it, hires specialists from the marketplace inside that
+   * budget, and assembles the result. `dryRun` prices the plan without hiring anybody.
+   */
+  async startMission(options: StartMissionOptions): Promise<Mission> {
+    return this.post("/api/grow/runs", options) as Promise<Mission>;
+  }
+
+  /** Every mission on agents this key owns, newest first. */
+  async listMissions(): Promise<Mission[]> {
+    const res = (await this.get("/api/grow/runs")) as { runs?: Mission[] } | Mission[];
+    return Array.isArray(res) ? res : res.runs ?? [];
+  }
+
+  async getMission(runId: string): Promise<Mission> {
+    return this.get(`/api/grow/runs/${pathPart(runId)}`) as Promise<Mission>;
+  }
+
+  /**
+   * Call a mission off.
+   *
+   * It stops at the next safe point rather than mid-hire, so an agent already paid to do something
+   * is left to finish it. Nothing half-bought.
+   */
+  async cancelMission(runId: string): Promise<Mission> {
+    return this.post(`/api/grow/runs/${pathPart(runId)}/cancel`, {}) as Promise<Mission>;
+  }
+
+  /** Pick a stopped mission back up where it left off. */
+  async resumeMission(runId: string): Promise<Mission> {
+    return this.post(`/api/grow/runs/${pathPart(runId)}/resume`, {}) as Promise<Mission>;
+  }
+
+  /** Put a finished mission on a public page. Opt-in, and reversible. */
+  async publishMission(runId: string): Promise<Mission> {
+    return this.post(`/api/grow/runs/${pathPart(runId)}/publish`, {}) as Promise<Mission>;
+  }
+
+  /** The sealed receipt: what was hired, what it cost, and what came back. */
+  async getMissionReceipt(runId: string): Promise<unknown> {
+    return this.get(`/api/grow/runs/${pathPart(runId)}/receipt`);
+  }
+
+  // Payment channels
+
+  /**
+   * Open a funded channel, for agents that make many small calls.
+   *
+   * Deposit once and spend it down, rather than a separate on-chain transfer for every call, which
+   * on cheap work can cost more in gas than the work itself.
+   *
+   * The returned `channelKey` is shown exactly once and cannot be recovered. Store it before you do
+   * anything else with the result.
+   */
+  async openPaymentChannel(options: OpenChannelOptions): Promise<OpenChannelResult> {
+    return this.post("/api/mpp/channels", options) as Promise<OpenChannelResult>;
+  }
+
+  /** Every channel funded by one wallet. The API key must belong to that wallet. */
+  async listPaymentChannels(ownerAddress: string): Promise<PaymentChannel[]> {
+    const res = (await this.get(
+      `/api/mpp/channels?owner=${encodeURIComponent(ownerAddress)}`,
+    )) as { channels?: PaymentChannel[] } | PaymentChannel[];
+    return Array.isArray(res) ? res : res.channels ?? [];
+  }
+
+  /**
+   * Read one channel, which takes the channel key rather than the API key.
+   *
+   * The key is the channel's own authority: whoever holds it can spend the balance, so it is what
+   * proves the right to look at it, and it is never the account key.
+   */
+  async getPaymentChannel(channelId: string, channelKey: string): Promise<PaymentChannel> {
+    return this.request("GET", `/api/mpp/channels/${pathPart(channelId)}`, {
+      headers: { Authorization: `Bearer ${channelKey}` },
+    }) as Promise<PaymentChannel>;
+  }
+
+  /** Add to a channel that is running low, with the hash of the deposit that funded it. */
+  async topUpPaymentChannel(
+    channelId: string,
+    options: { depositEth: number | string; depositSignature: string; channelKey?: string },
+  ): Promise<PaymentChannel> {
+    const { channelKey, ...body } = options;
+    return this.request("POST", `/api/mpp/channels/${pathPart(channelId)}/topup`, {
+      body,
+      ...(channelKey ? { headers: { Authorization: `Bearer ${channelKey}` } } : {}),
+    }) as Promise<PaymentChannel>;
+  }
+
+  /** Close a channel and settle what is left. Takes the channel key, as reading one does. */
+  async closePaymentChannel(channelId: string, channelKey: string): Promise<PaymentChannel> {
+    return this.request("DELETE", `/api/mpp/channels/${pathPart(channelId)}`, {
+      headers: { Authorization: `Bearer ${channelKey}` },
+    }) as Promise<PaymentChannel>;
+  }
+
+  // Reproducibility
+
+  /**
+   * What is already known about whether a task reproduces.
+   *
+   * A receipt claims an output hash. This is the check of that claim, and reading it costs nothing
+   * because the work was done when the task was checked.
+   */
+  async getReproduction(taskId: string): Promise<ReproductionProof> {
+    return this.get(`/api/receipts/${pathPart(taskId)}/reproduce`) as Promise<ReproductionProof>;
+  }
+
+  /** Run the task again now and compare the result against what its receipt claims. */
+  async reproduce(taskId: string): Promise<ReproductionProof> {
+    return this.post(`/api/receipts/${pathPart(taskId)}/reproduce`, {}) as Promise<ReproductionProof>;
+  }
+
+  // Worker metrics
+
+  /** How the workers behind the hosted agents are doing: throughput, backlog, failures. */
+  async getWorkerMetrics(): Promise<WorkerMetrics> {
+    return this.get("/api/worker-metrics") as Promise<WorkerMetrics>;
+  }
+
+  private patch(path: string, body: unknown): Promise<unknown> {
+    return this.request("PATCH", path, { body });
   }
 
   private delete(path: string, body?: unknown): Promise<unknown> {

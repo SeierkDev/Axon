@@ -1,4 +1,4 @@
-export { AxonApiError, AxonClient } from "./client";
+export { AxonApiError, AxonClient, AxonQuoteExpiredError, selectPaymentOption } from "./client";
 export { verifyWebhookSignature } from "./webhooks";
 export type { VerifyWebhookOptions } from "./webhooks";
 export { verifyProofScore, verifyReceipt } from "./verify";
@@ -21,6 +21,15 @@ export { buildAxonTools, toOpenAITools, toAnthropicTools, runAxonTool } from "./
 export type {
   Agent,
   RegisterOptions,
+  UpdateAgentOptions,
+  Mission,
+  MissionStatus,
+  StartMissionOptions,
+  PaymentChannel,
+  OpenChannelOptions,
+  OpenChannelResult,
+  ReproductionProof,
+  WorkerMetrics,
   FindAgentsOptions,
   VerifyOptions,
   SendTaskOptions,
@@ -51,6 +60,7 @@ export type {
   X402Requirements,
   X402PaymentOption,
   X402PayFunction,
+  X402Currency,
   Webhook,
   WebhookDelivery,
   WebhookEventType,

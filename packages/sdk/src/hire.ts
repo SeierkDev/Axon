@@ -76,7 +76,7 @@ export async function hire(client: AxonClient, opts: HireOptions): Promise<HireR
 
     // Create the task — paid via x402, or free/anonymous.
     if (paid && pay) {
-      created = await client.submitTaskX402(to, task, pay, { from, context });
+      created = await client.submitTaskX402(to, task, pay, { from, context, payWith: opts.payWith });
     } else {
       created = await client.sendTask({ from, to, task, context });
     }

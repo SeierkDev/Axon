@@ -171,6 +171,34 @@ describe("quoting a job in $AXON", () => {
     expect(mod.getQuote(issued.quote.quoteId)?.consumedAt).toBeNull();
   });
 
+  it("does not lock the token out forever once the price has moved", async () => {
+    // The guard used to eat itself. Its reference is the last quote ever issued, and a refused
+    // quote is never written, so once the price sat beyond the deviation nothing could be quoted,
+    // the reference could never move, and nothing could be quoted again. The $AXON option did not
+    // pause, it disappeared until somebody wrote a row by hand.
+    const mod = await load();
+    const first = await mod.createQuote({ ethWei: 250_000_000_000_000n });
+    expect(first.ok).toBe(true);
+
+    // The price moves far, and the only quote on record is now old enough to be history.
+    sqrtNow = (SQRT_P * 3n) / 2n;
+    // The database has to be the one the module under test is holding. vi.resetModules() hands the
+    // module a fresh registry, so the getDb imported at the top of this file is a different
+    // instance writing somewhere else entirely, and the update would land nowhere useful.
+    const db = (await import("@/lib/db")).getDb();
+    db.prepare("UPDATE axon_quotes SET created_at = ?")
+      .run(new Date(Date.now() - (mod.REFERENCE_MAX_AGE_SECONDS + 60) * 1000).toISOString());
+
+    const later = await mod.createQuote({ ethWei: 250_000_000_000_000n });
+    expect(later.ok).toBe(true);
+
+    // And the new quote becomes the reference, so the guard is armed again straight away.
+    sqrtNow = (SQRT_P * 3n) / 2n * 3n / 2n;
+    const flash = await mod.createQuote({ ethWei: 250_000_000_000_000n });
+    expect(flash.ok).toBe(false);
+    if (!flash.ok) expect(flash.reason).toBe("rate-moved");
+  });
+
   it("refuses to quote through a sudden move in a thin pool", async () => {
     const mod = await load();
     const first = await mod.createQuote({ ethWei: 250_000_000_000_000n });

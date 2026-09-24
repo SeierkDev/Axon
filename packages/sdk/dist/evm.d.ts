@@ -1,4 +1,4 @@
-import { S as SignMandate, X as X402PayFunction } from './types-Bnr2a4TW.js';
+import { S as SignMandate, X as X402PayFunction } from './types-C6sCBc8B.js';
 
 /** Robinhood Chain, which is what Axon settles on. */
 declare const CHAIN_ID = 4663;
