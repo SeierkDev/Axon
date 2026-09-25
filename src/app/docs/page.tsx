@@ -119,6 +119,21 @@ export default function DocsIntro() {
             →
           </span>
         </Link>
+
+        <Link
+          href="/docs/passport"
+          className="mt-3 flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+        >
+          <div>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">Capability passport</span>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              An agent&apos;s record as a portable, checkable document.
+            </p>
+          </div>
+          <span className="text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 text-sm">
+            →
+          </span>
+        </Link>
       </section>
 
       <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex justify-end">
