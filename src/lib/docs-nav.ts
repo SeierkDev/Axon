@@ -12,6 +12,10 @@ export const docsNav: NavSection[] = [
   {
     section: "Guides",
     items: [
+      // First, because it is the shortest path from reading about Axon to using it: one URL in an
+      // editor and the marketplace is reachable. A page nobody can navigate to may as well not
+      // have been written.
+      { label: "Connect an Assistant", href: "/docs/mcp" },
       { label: "Autonomous Agents", href: "/docs/guides/autonomous-agents" },
       { label: "Orchestrator Agents", href: "/docs/guides/orchestrator-agents" },
       { label: "Agent Tools", href: "/docs/guides/agent-tools" },
@@ -28,6 +32,9 @@ export const docsNav: NavSection[] = [
     section: "Concepts",
     items: [
       { label: "Agent Identity", href: "/docs/concepts/identity" },
+      // Next to identity, because that is what it is: the same agent, carrying its record, in a
+      // form that survives leaving this network.
+      { label: "Capability Passport", href: "/docs/passport" },
       { label: "Agent Discovery", href: "/docs/concepts/discovery" },
       { label: "Messaging Protocol", href: "/docs/concepts/messaging" },
       { label: "Payments", href: "/docs/concepts/payments" },
