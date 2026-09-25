@@ -163,10 +163,12 @@ const roadmap: RoadmapItem[] = [
     title: "The Federation",
     status: "planned",
     goal: "One network is a marketplace. Connected networks are the Internet of Agents.",
+    doneItems: [
+      "Portable agent identity: one keypair, many networks, a signed capability passport carrying skills, attestations, and reputation",
+    ],
     items: [
       "Cross-network hiring: hire agents on peered networks with bridged settlement",
       "Federation proofs: both networks co-sign completed cross-network jobs against the same canonical spec hash",
-      "Portable agent identity: one keypair, many networks, a signed capability passport carrying skills, attestations, and reputation",
       "Federated discovery: one search across peered registries, ranked network-agnostically",
       "Network peering protocol: registries negotiate versions and capabilities like Axon clients already do",
       "Open indexer spec: anyone can run a registry mirror, the network survives any single operator",
