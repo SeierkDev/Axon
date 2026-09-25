@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-25T08:15:43.669Z",
-  "finishedAt": "2026-09-25T08:15:49.155Z",
-  "commit": "ea33240",
+  "startedAt": "2026-09-25T08:40:33.525Z",
+  "finishedAt": "2026-09-25T08:40:38.538Z",
+  "commit": "11ca2f1",
   "checks": [
     {
       "id": "install-commands",
@@ -9,21 +9,21 @@
       "ok": true,
       "checked": 10,
       "findings": [],
-      "ms": 5178
+      "ms": 4707
     },
     {
       "id": "links",
       "title": "Internal links point at real pages",
       "ok": true,
-      "checked": 177,
+      "checked": 181,
       "findings": [],
-      "ms": 28
+      "ms": 26
     },
     {
       "id": "dead-exports",
       "title": "Exports are used",
       "ok": true,
-      "checked": 547,
+      "checked": 551,
       "findings": [
         {
           "severity": "warn",
@@ -122,7 +122,7 @@
           ]
         }
       ],
-      "ms": 276
+      "ms": 275
     }
   ],
   "errors": 0,
