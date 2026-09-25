@@ -112,6 +112,11 @@ function Countdown({ remaining, data, now }: { remaining: number | null; data: B
   const inbound = typeof data.pendingEth === "number" && data.pendingEth > 0 ? data.pendingEth : null;
   const cadence = data.cadence ?? { medianGapSeconds: null, sample: 0, boundBy: "unknown" as const, nextDeliveryEstimate: null };
   const untilFees = secondsUntilFees(cadence.nextDeliveryEstimate, now);
+  // How long since fees last reached the pot. When deliveries are the constraint the last burn
+  // followed its delivery within seconds, so this is that moment. Shown once the estimate runs out:
+  // a clock counting up is honest about waiting, where "any moment" held for an hour is not.
+  const sinceFees = data.lastBurnAt > 0 ? Math.max(0, now - data.lastBurnAt) : null;
+  const overdue = untilFees === 0 && sinceFees !== null;
 
   const pct =
     waiting || remaining === null
@@ -149,13 +154,11 @@ function Countdown({ remaining, data, now }: { remaining: number | null; data: B
                   {/* The estimate is a median, so fees land either side of it. Once it runs out,
                       saying "any moment" is honest; a clock frozen at 00:00 is the stopped-looking
                       thing this replaced. */}
-                  <span
-                    className={`${untilFees === 0 ? "text-2xl" : "text-4xl"} font-bold tabular-nums tracking-tight text-gray-900 dark:text-white`}
-                  >
-                    {untilFees === 0 ? "Any moment" : formatLeft(untilFees)}
+                  <span className="text-4xl font-bold tabular-nums tracking-tight text-gray-900 dark:text-white">
+                    {overdue ? formatLeft(sinceFees!) : formatLeft(untilFees)}
                   </span>
                   <span className="mt-1 text-[11px] font-mono uppercase tracking-widest text-gray-400 text-center px-6">
-                    {untilFees === 0 ? "fees due" : "until fees expected"}
+                    {overdue ? "since last fees" : "until fees expected"}
                   </span>
                 </>
               ) : waiting ? (
@@ -237,6 +240,17 @@ function Countdown({ remaining, data, now }: { remaining: number | null; data: B
                 {/* Measured from the burns that actually happened, so it tracks reality instead of
                     asserting a schedule. Trading fees are released to the pot by Pons, on their
                     cadence, and this says what that has been rather than what it ought to be. */}
+                {cadence.boundBy === "delivery" && (
+                  <p className="mt-3 text-sm text-gray-400 dark:text-gray-500 max-w-xl">
+                    $AXON trades in a Uniswap pool, and the fees from it are held by the launchpad
+                    until it releases them. That release is not ours to schedule. The moment it
+                    lands the pot is funded and burns, usually within a minute, which is why the pot
+                    reads empty almost all of the time.
+                    {overdue && sinceFees !== null && cadence.medianGapSeconds !== null &&
+                      sinceFees > cadence.medianGapSeconds &&
+                      ` This one is past the usual gap. Nothing is stuck: fees keep accruing either way, and the whole amount arrives whenever it is released.`}
+                  </p>
+                )}
                 {cadence.medianGapSeconds !== null && (
                   <p className="mt-3 text-sm text-gray-400 dark:text-gray-500 max-w-xl">
                     {cadence.boundBy === "delivery"

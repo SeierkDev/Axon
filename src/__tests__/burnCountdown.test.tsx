@@ -136,13 +136,45 @@ describe("when fees, not the cooldown, are the wait", () => {
     expect(secondsUntilFees(null, now)).toBeNull();
   });
 
-  it("says fees are due rather than freezing at zero when the estimate runs out", () => {
-    // The estimate is a median, so fees arrive either side of it. A clock stuck on 00:00 is exactly
-    // the stopped-looking thing this replaced.
-    const html = render(waitingOnFees({ cadence: { medianGapSeconds: 69 * 60, sample: 8, boundBy: "delivery", nextDeliveryEstimate: now - 60 } }));
+  it("counts up from the last fees rather than freezing when the estimate runs out", () => {
+    // The estimate is a median, so fees arrive either side of it. Holding "any moment" for an hour
+    // is the same stopped-looking thing this set out to replace, so once the estimate is spent the
+    // clock turns around and counts how long the wait has actually been.
+    const html = render(
+      waitingOnFees({
+        lastBurnAt: now - 78 * 60,
+        cadence: { medianGapSeconds: 64 * 60, sample: 8, boundBy: "delivery", nextDeliveryEstimate: now - 14 * 60 },
+      }),
+    );
 
-    expect(html).toContain("Any moment");
+    expect(html).toContain("since last fees");
     expect(html).not.toContain("00:00");
+    expect(html).not.toContain("Any moment");
+  });
+
+  it("says plainly that a long wait is not a stuck burn", () => {
+    const html = render(
+      waitingOnFees({
+        lastBurnAt: now - 78 * 60,
+        cadence: { medianGapSeconds: 64 * 60, sample: 8, boundBy: "delivery", nextDeliveryEstimate: now - 14 * 60 },
+      }),
+    );
+
+    // The thing somebody staring at an empty pot actually needs told.
+    expect(html).toContain("past the usual gap");
+    expect(html).toContain("Nothing is stuck");
+  });
+
+  it("explains where the fees come from when they are what is being waited on", () => {
+    const html = render(waitingOnFees());
+    expect(html).toContain("held by the launchpad");
+    expect(html).toContain("not ours to schedule");
+  });
+
+  it("does not explain fee releases when the cooldown is the wait", () => {
+    // Irrelevant then, and a page that explains everything all the time explains nothing.
+    const html = render(pot({ cadence: { medianGapSeconds: 29 * 60, sample: 8, boundBy: "cooldown", nextDeliveryEstimate: null } }));
+    expect(html).not.toContain("held by the launchpad");
   });
 
   it("shows fees already released and on their way in", () => {
