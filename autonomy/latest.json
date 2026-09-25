@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-25T11:55:57.789Z",
-  "finishedAt": "2026-09-25T11:56:02.768Z",
-  "commit": "c96c0da",
+  "startedAt": "2026-09-25T12:13:20.018Z",
+  "finishedAt": "2026-09-25T12:13:24.676Z",
+  "commit": "9abb9af",
   "checks": [
     {
       "id": "install-commands",
@@ -9,7 +9,7 @@
       "ok": true,
       "checked": 10,
       "findings": [],
-      "ms": 4683
+      "ms": 4352
     },
     {
       "id": "links",
@@ -17,7 +17,7 @@
       "ok": true,
       "checked": 181,
       "findings": [],
-      "ms": 23
+      "ms": 27
     },
     {
       "id": "dead-exports",
@@ -122,11 +122,48 @@
           ]
         }
       ],
-      "ms": 270
+      "ms": 273
     }
   ],
   "errors": 0,
   "warnings": 12,
-  "changed": false,
-  "changes": []
+  "changed": true,
+  "changes": [
+    {
+      "what": "dropped the export from displayAddress()",
+      "where": "src/lib/address.ts"
+    },
+    {
+      "what": "dropped the export from storeDescription()",
+      "where": "src/lib/agentDescription.ts"
+    },
+    {
+      "what": "dropped the export from noteAttempt()",
+      "where": "src/lib/agentDescription.ts"
+    },
+    {
+      "what": "dropped the export from generateDescription()",
+      "where": "src/lib/agentDescription.ts"
+    },
+    {
+      "what": "dropped the export from clampDiscountBps()",
+      "where": "src/lib/axonQuote.ts"
+    },
+    {
+      "what": "dropped the export from lastQuote()",
+      "where": "src/lib/axonQuote.ts"
+    },
+    {
+      "what": "dropped the export from callDistribute()",
+      "where": "src/lib/burn.ts"
+    },
+    {
+      "what": "dropped the export from buildSignInMessage()",
+      "where": "src/lib/identity.ts"
+    },
+    {
+      "what": "dropped the export from detectProxy()",
+      "where": "src/lib/tokenScan.ts"
+    }
+  ]
 }
