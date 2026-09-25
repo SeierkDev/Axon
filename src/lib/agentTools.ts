@@ -70,9 +70,12 @@ export function usesServerTools(grants: string[]): boolean {
 // ── Grant parsing / validation ────────────────────────────────────────────────
 
 /** Human-readable reason a grant list is invalid, or null when it's fine. */
-export function validateToolGrants(grants: string[]): string | null {
-  if (grants.length > MAX_TOOL_GRANTS) {
-    return `tools must contain ${MAX_TOOL_GRANTS} or fewer grants`;
+export function validateToolGrants(grants: string[], max: number = MAX_TOOL_GRANTS): string | null {
+  // `max` is the owner's allowance, which their $AXON holdings can raise above the default. Never
+  // below it: the floor is what every agent has always been allowed.
+  const cap = Math.max(MAX_TOOL_GRANTS, Math.floor(max));
+  if (grants.length > cap) {
+    return `tools must contain ${cap} or fewer grants`;
   }
   for (const raw of grants) {
     const g = raw.trim();

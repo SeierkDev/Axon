@@ -14,7 +14,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { MCP_TOOLS } from "@/lib/mcpServer";
-import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
+import { tooManyRequests } from "@/lib/rateLimit";
+import { checkTieredRateLimit } from "@/lib/tieredRateLimit";
 
 export const runtime = "nodejs";
 
@@ -84,8 +85,9 @@ export function OPTIONS() {
  * unusable is worse than returning the common case.
  */
 export async function GET(req: NextRequest) {
-  const ip = getClientIp(req);
-  const rl = checkRateLimit(`tools:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
+  // Widened by what the caller holds. Anonymous callers — most traffic here — get the
+  // same limit they always had.
+  const { result: rl } = await checkTieredRateLimit(req, "tools", RATE_LIMIT, RATE_WINDOW_MS);
   if (!rl.allowed) return tooManyRequests(rl);
 
   const asked = (req.nextUrl.searchParams.get("format") ?? "openai").toLowerCase();

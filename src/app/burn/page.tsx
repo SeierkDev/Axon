@@ -37,6 +37,14 @@ export default async function BurnPage() {
             Trading fees feed the burn pot. Anyone can fire it. The ETH inside has one exit: buy
             $AXON on the market and send it to the dead address. There is no withdraw function.
           </p>
+          {/* Somebody reading the burn page is already thinking about the token, which makes this
+              the second place the other half of it belongs. */}
+          <Link
+            href="/tier"
+            className="inline-block mt-4 text-sm text-gray-500 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            What holding $AXON is worth →
+          </Link>
         </div>
 
         <BurnClient initial={data} />

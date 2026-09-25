@@ -18,6 +18,7 @@ import { createPayment, parsePriceToEth, refundPayment } from "@/lib/payments";
 import { settleCompletedTask } from "@/lib/sla";
 import { logger } from "@/lib/logger";
 import { isWalletAddress } from "@/lib/address";
+import { checkFreeAllowance, freeLimitMessage } from "@/lib/freeAllowance";
 import { decodePaymentHeader, buildX402Requirements, encodeRequirements } from "@/lib/x402";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { debitChannel, verifyChannelKey, getChannelById, refundDebitForTask, parseMppPrice } from "@/lib/mpp";
@@ -169,14 +170,11 @@ export function POST(req: NextRequest, { params }: Params) {
         return jsonError("from must be your wallet address or an agent owned by your wallet", "FORBIDDEN", 403);
       }
     } else {
-      // 3 free calls per IP total — window is 1 year so refreshing doesn't reset it
-      const freeRl = checkRateLimit(`free-demo:${ip}`, 3, 365 * 24 * 60 * 60 * 1000);
-      if (!freeRl.allowed) {
-        return jsonError(
-          "You've used your 3 free demo calls. Connect your MetaMask wallet at axon-agents.com/onboarding to get an API key and continue.",
-          "FREE_LIMIT_REACHED",
-          429
-        );
+      // Free calls, three for everyone and more for a wallet holding $AXON. A 1 year window,
+      // so refreshing doesn't reset it.
+      const free = await checkFreeAllowance(req, "stream");
+      if (!free.result.allowed) {
+        return jsonError(freeLimitMessage(free), "FREE_LIMIT_REACHED", 429);
       }
     }
     fromAddress = from;

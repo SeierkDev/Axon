@@ -3030,6 +3030,8 @@ interface WorldPlot {
   verified: boolean;
   walletAddress: string | null;
   proofScore?: number | null;
+  /** The tier this building's owner holds, or null at base. Standing on the network, in the city. */
+  ownerTier?: string | null;
 }
 interface WeeklyTopAgent {
   agentId: string;
@@ -3956,6 +3958,14 @@ function AgentCard({
                 className="text-xs bg-teal-900/40 border border-white/30 rounded-full px-2 py-0.5"
               >
                 Proof {agent.proofScore}
+              </span>
+            )}
+            {agent.ownerTier && (
+              <span
+                title={`This agent's owner holds $AXON (${agent.ownerTier}), which raises what the network gives it`}
+                className="text-xs bg-white/25 border border-white/30 rounded-full px-2 py-0.5 capitalize"
+              >
+                {agent.ownerTier}
               </span>
             )}
           </h2>

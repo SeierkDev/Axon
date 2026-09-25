@@ -12,6 +12,7 @@ import { deliverPendingWebhooks } from "../lib/webhooks";
 import { recordTaskLatency } from "../lib/metrics";
 import { formatContext } from "../lib/formatContext";
 import { runWithProvider, runWithProviderTools, getAgentMaxTokens } from "../lib/providers";
+import { limitsForAgent } from "../lib/agentTierLimits";
 import type { ToolCallEvent } from "../lib/providers";
 import { resolveAgentTools, hasTools } from "../lib/agentTools";
 import { safeAppendTraceEvent, hashContent, estimateCostUsd, captureModelStep } from "../lib/traceEvents";
@@ -280,6 +281,11 @@ async function processTasks() {
             });
           };
 
+          // How deep this agent may go, from what its owner holds. Free-lane work stays at base
+          // depth whatever they hold: every extra step is a model call the project would be paying
+          // for, and the free lane is already the one benefit that costs money.
+          const depth = await limitsForAgent(agent.agentId, task.payment !== null);
+
           const step = await captureModelStep(() =>
             Promise.race([
               mcpHandler
@@ -288,6 +294,8 @@ async function processTasks() {
                   ? runWithProviderTools(agent, fullMessage, getAgentMaxTokens(agent.agentId), tools, {
                       onToolCall,
                       signal: abort.signal,
+                      maxSteps: depth.toolSteps,
+                      maxToolResultChars: depth.toolResultChars,
                     })
                   : runWithProvider(agent, fullMessage, getAgentMaxTokens(agent.agentId)),
               taskTimeout,

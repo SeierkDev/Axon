@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAgentById } from "@/lib/agents";
 import { formatEth } from "@/lib/money";
+import { getTier } from "@/lib/holderTier";
 import { isOwnerVerified } from "@/lib/ownerVerification";
 import TestAgent from "@/components/TestAgent";
 import CodeTabs from "@/components/CodeTabs";
@@ -54,6 +55,9 @@ export default async function AgentProfilePage({
   if (!agent) notFound();
 
   const ownerVerified = isOwnerVerified(agentId);
+  // Never throws and never blocks the page: an unreadable chain is base, which shows no badge at
+  // all. A directory page must not depend on an RPC being up.
+  const { tier: ownerTier } = await getTier(agent.walletAddress);
   const reviews = getReviewsByAgent(agentId, 10);
   const rating = getAgentRating(agentId);
   const metrics = getAgentMetrics(agentId, 30);
@@ -115,6 +119,16 @@ export default async function AgentProfilePage({
                 {ownerVerified && (
                   <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 mt-1">
                     Verified owner
+                  </span>
+                )}
+                {/* What the owner holds, which is what this agent's depth is drawn from. Absent for
+                    base, because a badge everyone has says nothing. */}
+                {ownerTier.rank > 0 && (
+                  <span
+                    title={`This agent's owner holds $AXON (${ownerTier.name}), which raises how many tools it may use and how far it may go on a paid task`}
+                    className="text-xs font-medium px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-900/50 text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30 mt-1 capitalize"
+                  >
+                    {ownerTier.name}
                   </span>
                 )}
               </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAgentById, updateAgent, toPublicAgent } from "@/lib/agents";
 import { isOwnerVerified } from "@/lib/ownerVerification";
 import { apiError } from "@/lib/apiError";
+import { toolGrantsForOwner } from "@/lib/agentTierLimits";
 import { requireApiKey, canAccessIdentity } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
 import { updateAgentSchema, parseBody } from "@/lib/schemas";
@@ -75,7 +76,7 @@ export async function PATCH(
           400,
         );
       }
-      const toolsError = validateToolGrants(nextTools);
+      const toolsError = validateToolGrants(nextTools, await toolGrantsForOwner(agent.walletAddress));
       if (toolsError) return apiError("VALIDATION_ERROR", toolsError, 400);
     }
 

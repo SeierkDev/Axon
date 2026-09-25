@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleMcpMessage, type JsonRpcRequest, MCP_TOOLS } from "@/lib/mcpServer";
-import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
+import { getClientIp, tooManyRequests } from "@/lib/rateLimit";
+import { checkTieredRateLimit } from "@/lib/tieredRateLimit";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,9 @@ export function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
-  const rl = checkRateLimit(`mcp:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
+  // Widened by what the caller holds. Anonymous callers — most traffic here — get the
+  // same limit they always had.
+  const { result: rl } = await checkTieredRateLimit(req, "mcp", RATE_LIMIT, RATE_WINDOW_MS);
   if (!rl.allowed) {
     const res = tooManyRequests(rl);
     for (const [k, v] of Object.entries(CORS_HEADERS)) res.headers.set(k, v);

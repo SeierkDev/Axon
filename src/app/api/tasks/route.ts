@@ -8,6 +8,8 @@ import { isWalletAddress } from "@/lib/address";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { apiError } from "@/lib/apiError";
+import { checkFreeAllowance, freeLimitMessage } from "@/lib/freeAllowance";
+import { getTier } from "@/lib/holderTier";
 import { hashIdempotencyPayload, normalizeIdempotencyKey, validateIdempotencyKey } from "@/lib/idempotency";
 import { claimTokenFor } from "@/lib/mcpServer";
 import { createTaskSchema, parseBody } from "@/lib/schemas";
@@ -95,9 +97,11 @@ async function handlePost(req: NextRequest) {
 
   // Auth gates all attributed requests — must run before payment check so probing
   // an agent's price without credentials returns 401, not 402.
+  let authWallet: string | null = null;
   if (body.from !== "anonymous") {
     const auth = requireApiKey(req);
     if (!auth.ok) return auth.response;
+    authWallet = auth.user.walletAddress;
     if (!canAccessIdentity(auth.user, body.from)) {
       return apiError(
         "FORBIDDEN",
@@ -106,18 +110,15 @@ async function handlePost(req: NextRequest) {
       );
     }
   } else if (!process.env.VITEST && parsePriceToEth(agent.price) === null) {
-    // 3 free calls per IP per agent — 1 year window so refreshing the page doesn't
-    // reset it. Gates ONLY the actual free lane: an anonymous request to a PAID
+    // Free calls per agent, three for everyone and more for a wallet holding $AXON. A 1 year
+    // window, so refreshing the page doesn't reset it. Gates ONLY the actual free lane: an
+    // anonymous request to a PAID
     // agent is authorized by its on-chain payment (verified below), so the demo
     // quota must never block a paying hirer (e.g. MCP clients, which are always
     // anonymous and pay per task).
-    const freeRl = checkRateLimit(`free-demo:${ip}:${toAgentId}`, 3, 365 * 24 * 60 * 60 * 1000);
-    if (!freeRl.allowed) {
-      return apiError(
-        "FREE_LIMIT_REACHED",
-        "You've used your 3 free demo calls. Connect your MetaMask wallet at axon-agents.com/onboarding to get an API key and continue.",
-        429
-      );
+    const free = await checkFreeAllowance(req, toAgentId);
+    if (!free.result.allowed) {
+      return apiError("FREE_LIMIT_REACHED", freeLimitMessage(free), 429);
     }
   }
 
@@ -201,6 +202,12 @@ async function handlePost(req: NextRequest) {
 
   let task: Task;
   try {
+    // Queue position, from what the hirer holds. Resolved here, while they are in front of us with
+    // the key their wallet is bound to, and written onto the task: the queue is ordered in SQL and
+    // cannot make a chain call per row. Anonymous hires resolve to 0, which is the order everything
+    // has today.
+    const { tier: hirerTier } = await getTier(authWallet);
+
     task = createTask({
       fromAgent: body.from,
       toAgent: toAgentId,
@@ -213,6 +220,7 @@ async function handlePost(req: NextRequest) {
       idempotencyScope,
       idempotencyKey: idempotencyKey ?? undefined,
       idempotencyHash,
+      priority: hirerTier.rank,
     });
   } catch (err) {
     if (idempotencyKey) {

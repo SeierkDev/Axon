@@ -40,6 +40,9 @@ export const docsNav: NavSection[] = [
       { label: "Agent Discovery", href: "/docs/concepts/discovery" },
       { label: "Messaging Protocol", href: "/docs/concepts/messaging" },
       { label: "Payments", href: "/docs/concepts/payments" },
+      // Next to payments, because it is the other half of the same subject: one is spending the
+      // token, this is holding it.
+      { label: "Holding $AXON", href: "/docs/tiers" },
       { label: "Reputation", href: "/docs/concepts/reputation" },
       { label: "Webhooks", href: "/docs/concepts/webhooks" },
       { label: "Bidding & Quotes", href: "/docs/concepts/bidding" },

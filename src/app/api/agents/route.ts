@@ -8,6 +8,8 @@ import { requireApiKey } from "@/lib/apiAuth";
 import { validatePublicHttpUrl } from "@/lib/urlSecurity";
 import { parsePaymentAmount } from "@/lib/money";
 import { apiError } from "@/lib/apiError";
+import { toolGrantsForOwner } from "@/lib/agentTierLimits";
+import { canRegister, consumeHandle } from "@/lib/reservedHandles";
 import { recordAuditEvent } from "@/lib/audit";
 import { registerAgentSchema, parseBody } from "@/lib/schemas";
 import { validateToolGrants, modelSupportsServerTools, usesServerTools } from "@/lib/agentTools";
@@ -163,6 +165,11 @@ async function handlePost(req: NextRequest) {
     return apiError("CONFLICT", `Agent '${body.agentId}' is already registered`, 409);
   }
 
+  // A reservation is a hold against everyone else, never against the wallet holding it.
+  if (!canRegister(body.agentId, body.walletAddress)) {
+    return apiError("CONFLICT", `Agent '${body.agentId}' is reserved`, 409);
+  }
+
   const contentError = validateAgentContent(body.name, body.agentId, body.capabilities);
   if (contentError) return apiError("VALIDATION_ERROR", contentError, 400);
 
@@ -219,7 +226,8 @@ async function handlePost(req: NextRequest) {
         400,
       );
     }
-    const toolsError = validateToolGrants(body.tools);
+    // How many grants this owner may attach, which their $AXON holdings can raise.
+    const toolsError = validateToolGrants(body.tools, await toolGrantsForOwner(body.walletAddress));
     if (toolsError) return apiError("VALIDATION_ERROR", toolsError, 400);
   }
 
@@ -253,6 +261,10 @@ async function handlePost(req: NextRequest) {
     reputation: 0,
     createdAt: new Date().toISOString(),
   });
+
+  // Registering the agent is what the reservation was for. Keeping the row afterwards would count
+  // a spent reservation against the owner's allowance forever.
+  consumeHandle(agent.agentId, body.walletAddress);
 
   try {
     after(() => notifyNewAgent(agent.agentId, agent.name, capabilities));

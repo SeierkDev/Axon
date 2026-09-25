@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { apiError } from "./apiError";
-import { MAX_TOOL_GRANTS } from "./agentToolLimits";
+import { MAX_TOOL_GRANTS_CEILING } from "./agentToolLimits";
 import { MAX_AXON_DISCOUNT_BPS } from "./axonTerms";
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ export const registerAgentSchema = z.object({
   // Tools this agent may use before answering: "web_search", "web_fetch", or
   // "mcp:<serverId>" for an MCP server registered on Axon. Grant strings are
   // checked against the registry in the route (validateToolGrants).
-  tools: z.array(z.string().min(1).max(120)).max(MAX_TOOL_GRANTS).optional(),
+  tools: z.array(z.string().min(1).max(120)).max(MAX_TOOL_GRANTS_CEILING).optional(),
 });
 
 export const updateAgentSchema = z
@@ -53,7 +53,7 @@ export const updateAgentSchema = z
     endpoint: z.string().url("endpoint must be a valid URL").nullable().optional(),
     orchestrator: z.boolean().optional(),
     // Full replacement of the agent's tool grants — `[]` or null revokes them all.
-    tools: z.array(z.string().min(1).max(120)).max(MAX_TOOL_GRANTS).nullable().optional(),
+    tools: z.array(z.string().min(1).max(120)).max(MAX_TOOL_GRANTS_CEILING).nullable().optional(),
     // Whether this agent takes $AXON, and what it knocks off when someone pays that way.
     //
     // Owner-set and off by default, which is the point: an agent accepts the token because whoever

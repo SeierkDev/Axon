@@ -115,6 +115,12 @@ export interface CreateTaskOptions {
   initialStatus?: Extract<TaskStatus, "payment_pending" | "queued" | "running">;
   startedBy?: string;
   traceId?: string;
+  /**
+   * Where this sits in the queue: the tier rank its hirer held when they hired. Defaults to 0,
+   * which is the order every task has had until now. Resolved at creation rather than read from the
+   * queue, because ordering happens in SQL and a tier is a balance on chain.
+   */
+  priority?: number;
 }
 
 function queueTaskQueuedWebhook(task: Task): void {
@@ -148,8 +154,8 @@ export function createTask(opts: CreateTaskOptions): Task {
   });
 
   db.prepare(`
-    INSERT INTO tasks (task_id, from_agent, to_agent, task, context, payment, status, created_at, started_at, started_by, signature, idempotency_scope, idempotency_key, idempotency_hash, workflow_id, step_index, quorum_id, trace_id, spec_hash)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tasks (task_id, from_agent, to_agent, task, context, payment, status, created_at, started_at, started_by, signature, idempotency_scope, idempotency_key, idempotency_hash, workflow_id, step_index, quorum_id, trace_id, spec_hash, priority)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     taskId,
     opts.fromAgent,
@@ -170,6 +176,8 @@ export function createTask(opts: CreateTaskOptions): Task {
     opts.quorumId ?? null,
     traceId,
     specHash,
+    // Clamped, so a caller that ever reaches this with nonsense cannot jump the whole queue.
+    Math.max(0, Math.min(10, Math.floor(opts.priority ?? 0))),
   );
 
   const task = getTaskById(taskId)!;
@@ -531,7 +539,14 @@ export function getTasksByAgent(opts: GetTasksOptions): Task[] {
 
   let sql = `SELECT * FROM tasks WHERE ${whereClause}`;
 
-  sql += " ORDER BY created_at DESC LIMIT ?";
+  // Queued work is ordered by priority before recency: that is what a holder's queue priority
+  // actually means. Everything else keeps the newest-first order it has always had, since priority
+  // defaults to 0 and a column of zeroes sorts to exactly the previous behaviour.
+  // rowid breaks the tie. created_at is an ISO string to the millisecond, so two tasks created in
+  // the same millisecond compare equal and SQLite is free to return them in either order — which
+  // makes "newest first" untrue exactly when a queue is busiest. rowid is insertion order, so the
+  // ordering is total and the newer task is genuinely first.
+  sql += " ORDER BY priority DESC, created_at DESC, rowid DESC LIMIT ?";
   args.push(limit);
 
   const rows = db.prepare(sql).all(...args) as TaskRow[];

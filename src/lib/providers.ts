@@ -187,6 +187,13 @@ export interface ToolRunOptions {
    * paying for the rest of it.
    */
   signal?: AbortSignal;
+  /**
+   * How deep this run may go, when the agent's owner has earned more than the default. Absent means
+   * the base limits, which is what every agent has always had. Passed in rather than looked up:
+   * this module must not pull the DB or a chain read onto the model-call path.
+   */
+  maxSteps?: number;
+  maxToolResultChars?: number;
 }
 
 export interface ProviderClient {
@@ -308,6 +315,7 @@ async function runLocalTool(
   use: Anthropic.ToolUseBlock,
   byName: Map<string, LocalTool>,
   sink?: ToolCallSink,
+  maxResultChars: number = MAX_TOOL_RESULT_CHARS,
 ): Promise<Anthropic.ToolResultBlockParam> {
   const tool = byName.get(use.name);
   const args = (use.input ?? {}) as Record<string, unknown>;
@@ -324,7 +332,7 @@ async function runLocalTool(
   try {
     const raw = await tool.run(args);
     const output =
-      raw.length > MAX_TOOL_RESULT_CHARS ? `${raw.slice(0, MAX_TOOL_RESULT_CHARS)}\n…[truncated]` : raw;
+      raw.length > maxResultChars ? `${raw.slice(0, maxResultChars)}\n…[truncated]` : raw;
     sink?.({
       tool: tool.label,
       kind: "mcp",
@@ -427,7 +435,7 @@ class AnthropicProvider implements ProviderClient {
     message: string,
     maxTokens: number,
     tools: ResolvedTools,
-    { onToolCall, signal }: ToolRunOptions,
+    { onToolCall, signal, maxSteps: maxStepsOpt, maxToolResultChars }: ToolRunOptions,
   ): Promise<{ text: string; refused: boolean }> {
     const timeoutMs = Math.max(120_000, maxTokens * 30);
     const byName = new Map<string, LocalTool>(tools.localTools.map((t) => [t.name, t]));
@@ -445,11 +453,19 @@ class AnthropicProvider implements ProviderClient {
 
     // One extra pass past the cap, with tools switched off, so a loop that runs
     // long still ends with a real deliverable instead of a dangling tool call.
-    for (let step = 0; step <= MAX_TOOL_STEPS; step++) {
+    // Never below the default: a caller passing something odd may deepen a run, never shorten one
+    // behind the agent's back.
+    const maxSteps = Math.max(MAX_TOOL_STEPS, Math.floor(maxStepsOpt ?? MAX_TOOL_STEPS));
+    const maxResultChars = Math.max(
+      MAX_TOOL_RESULT_CHARS,
+      Math.floor(maxToolResultChars ?? MAX_TOOL_RESULT_CHARS),
+    );
+
+    for (let step = 0; step <= maxSteps; step++) {
       // Checked before every model call, so an abandoned request stops costing
       // money at the next round boundary rather than running the loop out.
       if (signal?.aborted) throw new Error("Tool loop aborted");
-      const exhausted = step === MAX_TOOL_STEPS;
+      const exhausted = step === maxSteps;
       const msg = await withRetry(
         () =>
           this.client.messages
@@ -504,7 +520,9 @@ class AnthropicProvider implements ProviderClient {
       messages.push({ role: "assistant", content: msg.content as Anthropic.ContentBlockParam[] });
       // Parallel tool calls arrive in one message and all results must go back in
       // one user message — splitting them teaches the model to stop parallelising.
-      const results = await Promise.all(toolUses.map((use) => runLocalTool(use, byName, onToolCall)));
+      const results = await Promise.all(
+        toolUses.map((use) => runLocalTool(use, byName, onToolCall, maxResultChars)),
+      );
       messages.push({ role: "user", content: results });
     }
 

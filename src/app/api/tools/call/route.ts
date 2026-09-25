@@ -12,7 +12,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { handleMcpMessage } from "@/lib/mcpServer";
-import { checkRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
+import { getClientIp, tooManyRequests } from "@/lib/rateLimit";
+import { checkTieredRateLimit } from "@/lib/tieredRateLimit";
 import { apiError } from "@/lib/apiError";
 
 export const runtime = "nodejs";
@@ -40,7 +41,9 @@ export function OPTIONS() {
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
-  const rl = checkRateLimit(`tools-call:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
+  // Widened by what the caller holds. Anonymous callers — most traffic here — get the
+  // same limit they always had.
+  const { result: rl } = await checkTieredRateLimit(req, "tools-call", RATE_LIMIT, RATE_WINDOW_MS);
   if (!rl.allowed) return tooManyRequests(rl);
 
   let body: { name?: unknown; arguments?: unknown; input?: unknown; args?: unknown } | null;
