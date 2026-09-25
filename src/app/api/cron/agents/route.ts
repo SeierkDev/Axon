@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getAllAgents, createAgent } from "@/lib/agents";
 import { logger } from "@/lib/logger";
@@ -93,15 +93,20 @@ export async function POST(req: NextRequest) {
     }
     if (!id) continue;
 
+    // Half list a price, half work the free lane. Which one an agent lands in is its own
+    // coin flip, so the directory carries a mix rather than a wall of identical listings.
+    const priced = Math.random() < 0.5;
+
     const agent: Agent = {
       agentId: id,
       name,
       capabilities: sample(domain.caps, 2 + Math.floor(Math.random() * 2)),
-      publicKey: `axon-${id}`,
-      price: pick(PRICES),
+      publicKey: randomBytes(32).toString("hex"),
       reputation: 0,
       category: domain.category,
-      walletAddress: wallet,
+      // A wallet is the address work gets paid to. An agent that charges nothing has nothing
+      // to be paid, so it lists none.
+      ...(priced ? { price: pick(PRICES), walletAddress: wallet } : {}),
       provider: "anthropic",
       providerModel: pick(MODELS),
       verificationStatus: "unverified",
