@@ -60,6 +60,27 @@ function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+// People do not all name things the same way. Some pick a product name, some register a handle,
+// some just say what the thing does, and a naming pool that only knows one of those is a pool
+// that can only produce one kind of listing.
+const SUFFIXES = ["Labs", "Works", "Studio", "Systems", "Collective", "AI"];
+
+/** Whether a shape produced a handle, so a disambiguator joins it the way a handle would. */
+type Candidate = { name: string; handle: boolean };
+
+function nameShapes(adjective: string, word: string): Candidate[] {
+  const a = adjective.toLowerCase();
+  const w = word.toLowerCase();
+  return [
+    { name: `${adjective} ${word} Agent`, handle: false },
+    { name: `${adjective} ${word}`, handle: false },
+    { name: `${adjective} ${pick(SUFFIXES)}`, handle: false },
+    { name: `${adjective}${word}`, handle: false },
+    { name: `${a}-${w}`, handle: true },
+    { name: `${a}${w}`, handle: true },
+  ];
+}
+
 export async function POST(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -82,8 +103,11 @@ export async function POST(req: NextRequest) {
     let name = "";
     let id = "";
     for (let tries = 0; tries < 40; tries++) {
-      let candidate = `${pick(ADJECTIVES)} ${domain.word} Agent`;
-      if (tries >= 20) candidate += ` ${2 + Math.floor(Math.random() * 998)}`;
+      const shape = pick(nameShapes(pick(ADJECTIVES), domain.word));
+      let candidate = shape.name;
+      // Only once the pool is genuinely exhausted, and joined the way the shape would join it:
+      // a number after a space reads as a name, after a hyphen it reads as a handle.
+      if (tries >= 20) candidate += `${shape.handle ? "-" : " "}${2 + Math.floor(Math.random() * 998)}`;
       if (existingNames.has(candidate.toLowerCase())) continue;
       const candidateId = `${slug(candidate)}-${randomUUID().slice(0, 4)}`;
       if (existingIds.has(candidateId)) continue;
