@@ -87,6 +87,20 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
   // so for the first minutes after each one there is nothing in it and nothing scheduled.
   const waiting = data.launched && data.nextBurnEth < data.rules.minBurnEth;
 
+  // What is actually being waited on, when it is not the cooldown.
+  //
+  // After the token graduated, trading fees collect at Pons and only Pons releases them to us. When
+  // they release less often than every thirty minutes, the cooldown is always spent before money
+  // lands: the pot is funded and burned within seconds, and anyone looking at any other moment sees
+  // an empty pot and concludes the burn has stopped. It has not. These two say where it really is.
+  // Read defensively. A browser holding a response cached from before these fields existed would
+  // otherwise take the whole page down over a description of the burn, which is the opposite of
+  // what this is for.
+  const inbound = typeof data.pendingEth === "number" && data.pendingEth > 0 ? data.pendingEth : null;
+  const cadence = data.cadence ?? { medianGapSeconds: null, sample: 0, boundBy: "unknown" as const, nextDeliveryEstimate: null };
+  const untilFees =
+    cadence.nextDeliveryEstimate !== null ? Math.max(0, cadence.nextDeliveryEstimate - data.readAt) : null;
+
   const pct =
     waiting || remaining === null
       ? 0
@@ -109,7 +123,25 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              {waiting ? (
+              {waiting && inbound !== null ? (
+                <>
+                  <span className="text-3xl font-bold tabular-nums tracking-tight text-gray-900 dark:text-white">
+                    {inbound.toFixed(4)}
+                  </span>
+                  <span className="mt-1 text-[11px] font-mono uppercase tracking-widest text-gray-400 text-center px-6">
+                    ETH inbound
+                  </span>
+                </>
+              ) : waiting && untilFees !== null ? (
+                <>
+                  <span className="text-4xl font-bold tabular-nums tracking-tight text-gray-900 dark:text-white">
+                    {formatLeft(untilFees)}
+                  </span>
+                  <span className="mt-1 text-[11px] font-mono uppercase tracking-widest text-gray-400 text-center px-6">
+                    until fees expected
+                  </span>
+                </>
+              ) : waiting ? (
                 <>
                   <span className="text-2xl font-bold text-gray-900 dark:text-white">Filling</span>
                   <span className="mt-1 text-[11px] font-mono uppercase tracking-widest text-gray-400 text-center px-6">
@@ -179,10 +211,22 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
                 <p className="text-gray-500 dark:text-gray-400 max-w-xl">
                   {data.ready
                     ? "A burn is due. Anyone can fire it: the pot buys $AXON on the market and sends it to the dead address."
-                    : waiting
-                      ? `The pot holds ${data.potBalanceEth.toFixed(4)} ETH. A burn needs ${data.rules.minBurnEth} ETH, so the schedule picks back up as soon as the pot reaches it. Nothing is lost while it fills: every burn spends what is in the pot at the time.`
-                      : `The pot holds ${data.potBalanceEth.toFixed(4)} ETH. A burn spends what the depth cap allows, and whatever is left stays for the next one.`}
+                    : inbound !== null
+                      ? `${inbound.toFixed(4)} ETH of trading fees has been released and is being claimed. 30% of it reaches the pot and burns; the rest goes to the dev wallet. The pot reads empty until that lands, which takes about a minute.`
+                      : waiting
+                        ? `The pot holds ${data.potBalanceEth.toFixed(4)} ETH. A burn needs ${data.rules.minBurnEth} ETH, so it fires as soon as fees bring it there. Nothing is lost while it waits: every burn spends what is in the pot at the time.`
+                        : `The pot holds ${data.potBalanceEth.toFixed(4)} ETH. A burn spends what the depth cap allows, and whatever is left stays for the next one.`}
                 </p>
+                {/* Measured from the burns that actually happened, so it tracks reality instead of
+                    asserting a schedule. Trading fees are released to the pot by Pons, on their
+                    cadence, and this says what that has been rather than what it ought to be. */}
+                {cadence.medianGapSeconds !== null && (
+                  <p className="mt-3 text-sm text-gray-400 dark:text-gray-500 max-w-xl">
+                    {cadence.boundBy === "delivery"
+                      ? `Recently burns have been about ${Math.round(cadence.medianGapSeconds / 60)} minutes apart, set by how often trading fees are released to the pot rather than by the ${Math.round(data.rules.minIntervalSeconds / 60)} minute minimum.`
+                      : `Recently burns have been about ${Math.round(cadence.medianGapSeconds / 60)} minutes apart, at the ${Math.round(data.rules.minIntervalSeconds / 60)} minute minimum the contract allows.`}
+                  </p>
+                )}
               </>
             )}
           </div>

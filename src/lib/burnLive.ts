@@ -12,6 +12,8 @@ import { burnPotAddress } from "./burn";
 import { weiToEth } from "./money";
 import { logger } from "./logger";
 import { EXPLORER } from "./chain";
+import { getPendingAtPons } from "./burnPending";
+import { getBurnCadence, UNKNOWN_CADENCE, type BurnCadence } from "./burnCadence";
 
 /** Mirrors the constants in BurnPot.sol. Shown so the page can explain the schedule. */
 export const BURN_RULES = {
@@ -57,6 +59,15 @@ export interface BurnLive {
   rules: typeof BURN_RULES;
   /** when this was read, so a cached response still counts down correctly in the browser. */
   readAt: number;
+  /**
+   * ETH released by Pons and not yet claimed into the pot, or null when it could not be read.
+   *
+   * The pot's balance alone cannot tell you whether the burn is quiet or about to fire, because
+   * after graduation the pot holds money for seconds. This is the step before it.
+   */
+  pendingEth: number | null;
+  /** Measured, so the page can say what is actually holding the next burn back. */
+  cadence: BurnCadence;
 }
 
 const empty = (pot: string | null): BurnLive => ({
@@ -79,6 +90,8 @@ const empty = (pot: string | null): BurnLive => ({
   },
   rules: BURN_RULES,
   readAt: Math.floor(Date.now() / 1000),
+  pendingEth: null,
+  cadence: UNKNOWN_CADENCE,
 });
 
 const ZERO = "0x0000000000000000000000000000000000000000";
@@ -129,6 +142,12 @@ export async function getBurnLive(): Promise<BurnLive> {
     const tokenRaw = got<string>(token, "");
     const tokenAddress = tokenRaw && tokenRaw !== ZERO ? tokenRaw.toLowerCase() : null;
     const burns = Number(got<bigint>(burnCount, 0n));
+    const lastBurn = Number(got<bigint>(lastBurnAt, 0n));
+
+    // Both of these describe the burn rather than report it, so neither is allowed to take the page
+    // down with it: settled separately, and a failure leaves the page exactly as it was before they
+    // existed.
+    const [pending, cadence] = await Promise.allSettled([getPendingAtPons(), getBurnCadence(lastBurn, BURN_RULES.minIntervalSeconds)]);
 
     return {
       live: true,
@@ -140,7 +159,7 @@ export async function getBurnLive(): Promise<BurnLive> {
       potBalanceEth: weiToEth(got<bigint>(balance, 0n)),
       nextBurnEth: weiToEth(amount),
       nextBurnAt: Number(nextAt),
-      lastBurnAt: Number(got<bigint>(lastBurnAt, 0n)),
+      lastBurnAt: lastBurn,
       ready,
       burnCount: burns,
       totalEthBurned: weiToEth(got<bigint>(ethBurned, 0n)),
@@ -152,6 +171,8 @@ export async function getBurnLive(): Promise<BurnLive> {
       },
       rules: BURN_RULES,
       readAt: Math.floor(Date.now() / 1000),
+      pendingEth: pending.status === "fulfilled" ? pending.value : null,
+      cadence: cadence.status === "fulfilled" ? cadence.value : UNKNOWN_CADENCE,
     };
   } catch (err) {
     logger.warn("burn.live_unreadable", "Could not read the burn pot", { err, pot });

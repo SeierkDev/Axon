@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Burn | Axon",
   description:
-    "Trading fees feed the burn pot. Every 30 minutes anyone can fire it, and the pot buys $AXON and sends it to the dead address.",
+    "Trading fees feed the burn pot. Anyone can fire it, and the pot buys $AXON and sends it to the dead address. It burns no more often than every 30 minutes, and never for less than 0.001 ETH.",
 };
 
 export default async function BurnPage() {
@@ -31,7 +31,7 @@ export default async function BurnPage() {
             $AXON BURN
           </p>
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Every thirty minutes, the pot buys and burns.
+            Trading fees buy $AXON and burn it.
           </h1>
           <p className="text-gray-500 dark:text-gray-400 max-w-2xl leading-relaxed">
             Trading fees feed the burn pot. Anyone can fire it. The ETH inside has one exit: buy
