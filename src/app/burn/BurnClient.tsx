@@ -48,7 +48,7 @@ export default function BurnClient({ initial }: { initial: BurnPayload }) {
 
   return (
     <>
-      <Countdown remaining={remaining} data={data} />
+      <Countdown remaining={remaining} data={data} now={now} />
       <Totals data={data} />
       <Schedule data={data} now={now} />
     </>
@@ -73,7 +73,20 @@ export function formatLeft(seconds: number): string {
   return `${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}`;
 }
 
-function Countdown({ remaining, data }: { remaining: number | null; data: BurnPayload }) {
+
+/**
+ * Seconds until fees are next expected.
+ *
+ * Exported so the case that matters is testable without a DOM: this must be driven by the ticking
+ * clock, never by the server's `readAt`, which is fixed at the moment the chain was read. Built on
+ * readAt the clock renders once and then sits there, and a countdown that only moves when you
+ * reload is not a countdown.
+ */
+export function secondsUntilFees(nextDeliveryEstimate: number | null, now: number): number | null {
+  return nextDeliveryEstimate !== null ? Math.max(0, nextDeliveryEstimate - now) : null;
+}
+
+function Countdown({ remaining, data, now }: { remaining: number | null; data: BurnPayload; now: number }) {
   const due = remaining !== null && remaining === 0;
 
   // Below the minimum the pot is not on the thirty minute cadence at all. The contract falls back
@@ -98,8 +111,7 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
   // what this is for.
   const inbound = typeof data.pendingEth === "number" && data.pendingEth > 0 ? data.pendingEth : null;
   const cadence = data.cadence ?? { medianGapSeconds: null, sample: 0, boundBy: "unknown" as const, nextDeliveryEstimate: null };
-  const untilFees =
-    cadence.nextDeliveryEstimate !== null ? Math.max(0, cadence.nextDeliveryEstimate - data.readAt) : null;
+  const untilFees = secondsUntilFees(cadence.nextDeliveryEstimate, now);
 
   const pct =
     waiting || remaining === null
@@ -134,11 +146,16 @@ function Countdown({ remaining, data }: { remaining: number | null; data: BurnPa
                 </>
               ) : waiting && untilFees !== null ? (
                 <>
-                  <span className="text-4xl font-bold tabular-nums tracking-tight text-gray-900 dark:text-white">
-                    {formatLeft(untilFees)}
+                  {/* The estimate is a median, so fees land either side of it. Once it runs out,
+                      saying "any moment" is honest; a clock frozen at 00:00 is the stopped-looking
+                      thing this replaced. */}
+                  <span
+                    className={`${untilFees === 0 ? "text-2xl" : "text-4xl"} font-bold tabular-nums tracking-tight text-gray-900 dark:text-white`}
+                  >
+                    {untilFees === 0 ? "Any moment" : formatLeft(untilFees)}
                   </span>
                   <span className="mt-1 text-[11px] font-mono uppercase tracking-widest text-gray-400 text-center px-6">
-                    until fees expected
+                    {untilFees === 0 ? "fees due" : "until fees expected"}
                   </span>
                 </>
               ) : waiting ? (

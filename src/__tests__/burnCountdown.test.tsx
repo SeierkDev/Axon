@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import BurnClient, { type BurnPayload } from "@/app/burn/BurnClient";
+import BurnClient, { secondsUntilFees, type BurnPayload } from "@/app/burn/BurnClient";
 import { BURN_RULES } from "@/lib/burnLive";
 
 const now = Math.floor(Date.now() / 1000);
@@ -88,5 +88,93 @@ describe("the burn countdown", () => {
 
     expect(html).toContain("Cannot reach the chain");
     expect(html).not.toContain("not live yet");
+  });
+});
+
+// ── waiting on fees rather than on the clock ─────────────────────────────────
+//
+// After the token graduated, trading fees are released to the pot on someone else's schedule. When
+// that is slower than the cooldown, the pot is funded and burned within seconds and its balance
+// reads zero at every other moment. The page has to say where the burn actually is, or a perfectly
+// healthy burn reads as a stopped one.
+
+const waitingOnFees = (over: Partial<BurnPayload> = {}) =>
+  pot({
+    // Nothing in the pot and nothing scheduled: the ordinary state between releases.
+    potBalanceEth: 0,
+    nextBurnEth: 0,
+    nextBurnAt: 0,
+    pendingEth: 0,
+    cadence: { medianGapSeconds: 69 * 60, sample: 8, boundBy: "delivery", nextDeliveryEstimate: now + 12 * 60 },
+    ...over,
+  });
+
+describe("when fees, not the cooldown, are the wait", () => {
+  it("counts down to when fees are expected instead of showing an empty pot", () => {
+    const html = render(waitingOnFees());
+
+    expect(html).toContain("until fees expected");
+    expect(html).toContain("12:00");
+  });
+
+  it("drives that clock off the ticking time, not the server read", () => {
+    // The bug this exists to stop: computing the countdown from `readAt`, which is fixed at the
+    // moment the server read the chain, so the clock renders once and then sits frozen until a
+    // reload. Tested on the calculation directly, because a static render cannot advance a timer.
+    const due = now + 12 * 60;
+
+    expect(secondsUntilFees(due, now)).toBe(12 * 60);
+    expect(secondsUntilFees(due, now + 60)).toBe(11 * 60);
+    expect(secondsUntilFees(due, now + 11 * 60 + 59)).toBe(1);
+  });
+
+  it("never counts past zero into a negative clock", () => {
+    expect(secondsUntilFees(now - 500, now)).toBe(0);
+  });
+
+  it("has nothing to count when there is no estimate", () => {
+    expect(secondsUntilFees(null, now)).toBeNull();
+  });
+
+  it("says fees are due rather than freezing at zero when the estimate runs out", () => {
+    // The estimate is a median, so fees arrive either side of it. A clock stuck on 00:00 is exactly
+    // the stopped-looking thing this replaced.
+    const html = render(waitingOnFees({ cadence: { medianGapSeconds: 69 * 60, sample: 8, boundBy: "delivery", nextDeliveryEstimate: now - 60 } }));
+
+    expect(html).toContain("Any moment");
+    expect(html).not.toContain("00:00");
+  });
+
+  it("shows fees already released and on their way in", () => {
+    const html = render(waitingOnFees({ pendingEth: 0.0548 }));
+
+    // The state that made this look broken: money exists, the pot is still zero.
+    expect(html).toContain("0.0548");
+    expect(html).toContain("ETH inbound");
+  });
+
+  it("states the measured cadence rather than a fixed schedule", () => {
+    const html = render(waitingOnFees());
+    expect(html).toContain("about 69 minutes apart");
+  });
+
+  it("goes back to the normal countdown when fees arrive faster than the cooldown", () => {
+    // No edit and no deploy: the same code reads a faster cadence and the page returns to counting
+    // down the contract's own interval.
+    const html = render(
+      pot({ cadence: { medianGapSeconds: 29 * 60, sample: 8, boundBy: "cooldown", nextDeliveryEstimate: null } }),
+    );
+
+    expect(html).toContain("until next burn");
+    expect(html).toContain("at the 30 minute minimum");
+  });
+
+  it("renders when a cached response predates these fields", () => {
+    // A browser holding JSON from before this shipped must not take the page down.
+    const legacy = pot();
+    delete (legacy as Partial<BurnPayload>).cadence;
+    delete (legacy as Partial<BurnPayload>).pendingEth;
+
+    expect(() => render(legacy)).not.toThrow();
   });
 });
