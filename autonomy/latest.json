@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-25T17:40:03.782Z",
-  "finishedAt": "2026-09-25T17:40:09.401Z",
-  "commit": "5addbcb",
+  "startedAt": "2026-09-25T18:42:45.615Z",
+  "finishedAt": "2026-09-25T18:42:51.159Z",
+  "commit": "adb0975",
   "checks": [
     {
       "id": "install-commands",
@@ -9,7 +9,7 @@
       "ok": true,
       "checked": 10,
       "findings": [],
-      "ms": 5272
+      "ms": 5201
     },
     {
       "id": "links",
@@ -17,7 +17,7 @@
       "ok": true,
       "checked": 185,
       "findings": [],
-      "ms": 30
+      "ms": 27
     },
     {
       "id": "dead-exports",
@@ -122,7 +122,7 @@
           ]
         }
       ],
-      "ms": 314
+      "ms": 313
     }
   ],
   "errors": 0,
