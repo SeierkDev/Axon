@@ -15,7 +15,9 @@ export const docsNav: NavSection[] = [
       // First, because it is the shortest path from reading about Axon to using it: one URL in an
       // editor and the marketplace is reachable. A page nobody can navigate to may as well not
       // have been written.
-      { label: "Connect an Assistant", href: "/docs/mcp" },
+      // The protocol name is in the label because that is the word people scan for. Somebody who
+      // came here knowing they want MCP will not read "Connect an Assistant" and stop.
+      { label: "Connect an Assistant (MCP)", href: "/docs/mcp" },
       { label: "Autonomous Agents", href: "/docs/guides/autonomous-agents" },
       { label: "Orchestrator Agents", href: "/docs/guides/orchestrator-agents" },
       { label: "Agent Tools", href: "/docs/guides/agent-tools" },
