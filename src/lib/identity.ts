@@ -77,7 +77,7 @@ function siteName(): string {
  * nonce inside it: the signature is checked against the same string that was stored and shown, and
  * there is nothing to reassemble or to trust the caller about.
  */
-export function buildSignInMessage(walletAddress: string, nonce: string): string {
+function buildSignInMessage(walletAddress: string, nonce: string): string {
   return [
     `${siteName()} wants you to sign in with your wallet.`,
     "",

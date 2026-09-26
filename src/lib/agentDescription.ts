@@ -94,7 +94,7 @@ export function needsDescription(agent: Agent): boolean {
   return row.described_from !== describedFrom(agent);
 }
 
-export function storeDescription(agentId: string, description: string, from: string): void {
+function storeDescription(agentId: string, description: string, from: string): void {
   getDb()
     .prepare("UPDATE agents SET description = ?, described_from = ?, described_at = ? WHERE agent_id = ?")
     .run(description, from, new Date().toISOString(), agentId);
@@ -111,7 +111,7 @@ export function storeDescription(agentId: string, description: string, from: str
  * So it means "when this was last attempted" now. A failure moves the agent to the back of the line
  * rather than leaving it at the front.
  */
-export function noteAttempt(agentId: string): void {
+function noteAttempt(agentId: string): void {
   getDb()
     .prepare("UPDATE agents SET described_at = ? WHERE agent_id = ?")
     .run(new Date().toISOString(), agentId);
@@ -127,7 +127,7 @@ export const RETRY_AFTER_MS = 60 * 60 * 1000;
  * answer that did not pass the checks. A missing description is a gap on a card. A wrong one is a
  * claim the directory made about somebody else's software.
  */
-export async function generateDescription(
+async function generateDescription(
   agent: Pick<Agent, "name" | "capabilities" | "category">,
 ): Promise<string | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;

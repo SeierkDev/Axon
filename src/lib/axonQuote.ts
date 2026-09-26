@@ -77,7 +77,7 @@ export const axonPaymentsEnabled = (): boolean => Boolean(SETTLEMENT_TOKEN_ADDRE
  * one, and half is already generous enough that the cap only ever catches a mistake.
  */
 export const MAX_DISCOUNT_BPS = 5_000;
-export function clampDiscountBps(raw: number | undefined): number {
+function clampDiscountBps(raw: number | undefined): number {
   if (raw === undefined) return 0;
   return Number.isInteger(raw) && raw > 0 && raw <= MAX_DISCOUNT_BPS ? raw : 0;
 }
@@ -111,7 +111,7 @@ export function getQuote(quoteId: string): AxonQuote | null {
 }
 
 /** The most recent quote, whatever became of it. Used to judge whether the rate has jumped. */
-export function lastQuote(): AxonQuote | null {
+function lastQuote(): AxonQuote | null {
   const row = getDb().prepare(`${SELECT} ORDER BY created_at DESC LIMIT 1`).get() as Row | undefined;
   return row ? hydrate(row) : null;
 }
