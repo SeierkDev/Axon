@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-09-26T11:30:08.060Z",
-  "finishedAt": "2026-09-26T11:30:13.467Z",
-  "commit": "a861ced",
+  "startedAt": "2026-09-26T16:15:18.299Z",
+  "finishedAt": "2026-09-26T16:15:23.763Z",
+  "commit": "2ab9835",
   "checks": [
     {
       "id": "install-commands",
@@ -9,21 +9,21 @@
       "ok": true,
       "checked": 10,
       "findings": [],
-      "ms": 5099
+      "ms": 5112
     },
     {
       "id": "links",
       "title": "Internal links point at real pages",
       "ok": true,
-      "checked": 185,
+      "checked": 187,
       "findings": [],
-      "ms": 25
+      "ms": 27
     },
     {
       "id": "dead-exports",
       "title": "Exports are used",
       "ok": true,
-      "checked": 573,
+      "checked": 603,
       "findings": [
         {
           "severity": "warn",
@@ -120,13 +120,21 @@
           "where": [
             "src/lib/tokenScan.ts"
           ]
+        },
+        {
+          "severity": "warn",
+          "what": "ensureRobinhoodChain() is exported but only used inside its own file",
+          "why": "the export widens the surface without a caller to justify it",
+          "where": [
+            "src/lib/walletTx.ts"
+          ]
         }
       ],
-      "ms": 280
+      "ms": 322
     }
   ],
   "errors": 0,
-  "warnings": 12,
+  "warnings": 13,
   "changed": false,
   "changes": []
 }
