@@ -36,11 +36,6 @@ const SWEEP_MS = Number(process.env.AXON_SWEEP_MS ?? 5 * 60_000);
 /** The contract's own note says 0 is what the bot should pass; the depth cap is the protection. */
 const MIN_TOKENS_OUT = 0n;
 
-let running = false;
-let lastSweep = 0;
-/** Set while a burn transaction is in flight, so a slow confirm cannot start a second one. */
-let burning = false;
-
 export interface LoopState {
   started: boolean;
   checkMs: number;
@@ -49,14 +44,37 @@ export interface LoopState {
   lastBurnHash: string | null;
   lastError: string | null;
 }
-const state: LoopState = {
-  started: false,
-  checkMs: CHECK_MS,
-  sweepMs: SWEEP_MS,
-  lastCheckAt: null,
-  lastBurnHash: null,
-  lastError: null,
-};
+
+// Everything the loop remembers lives in one object on globalThis, not in module variables.
+//
+// The server loads this module more than once: instrumentation has its own copy, and so does the
+// code serving requests (the burn-engine route starts the loop there on purpose, so /api/burn/health
+// can see it). With per-copy variables each copy ran its own loop, so every boot had two loops
+// sweeping and racing each other to burn, the loser reverting and paying gas for it. One shared
+// object means one loop, whichever copy starts it first, and every copy reading the same state.
+interface Shared {
+  running: boolean;
+  lastSweep: number;
+  /** Set while a burn transaction is in flight, so a slow confirm cannot start a second one. */
+  burning: boolean;
+  lastComplaint: number;
+  state: LoopState;
+}
+const shared: Shared = ((globalThis as typeof globalThis & { __axonBurnLoop?: Shared }).__axonBurnLoop ??= {
+  running: false,
+  lastSweep: 0,
+  burning: false,
+  lastComplaint: 0,
+  state: {
+    started: false,
+    checkMs: CHECK_MS,
+    sweepMs: SWEEP_MS,
+    lastCheckAt: null,
+    lastBurnHash: null,
+    lastError: null,
+  },
+});
+const state = shared.state;
 export const burnLoopState = (): LoopState => ({ ...state });
 
 function why(err: unknown): string {
@@ -67,7 +85,6 @@ function why(err: unknown): string {
 
 /** How often the loop is allowed to complain, so a stall does not fill the log every tick. */
 const COMPLAIN_EVERY_MS = 15 * 60_000;
-let lastComplaint = 0;
 
 /**
  * Say something when the burn has stopped working.
@@ -76,7 +93,7 @@ let lastComplaint = 0;
  * gas running low. A burn waiting below MIN_BURN is the pot doing its job and is not mentioned.
  */
 function complainIfStuck(readyForSeconds: number, amount: bigint, gasEth: number): void {
-  if (Date.now() - lastComplaint < COMPLAIN_EVERY_MS) return;
+  if (Date.now() - shared.lastComplaint < COMPLAIN_EVERY_MS) return;
   const problems: string[] = [];
   if (amount > 0n && readyForSeconds > 20 * 60) {
     problems.push(`a burn has been due and fundable for ${Math.floor(readyForSeconds / 60)} minutes`);
@@ -85,7 +102,7 @@ function complainIfStuck(readyForSeconds: number, amount: bigint, gasEth: number
     problems.push(`the bot wallet is down to ${gasEth.toFixed(5)} ETH of gas`);
   }
   if (problems.length === 0) return;
-  lastComplaint = Date.now();
+  shared.lastComplaint = Date.now();
   logger.error("burn.stuck", "The burn is not running as it should", { problems });
 }
 
@@ -100,8 +117,8 @@ async function tick(): Promise<void> {
 
   // Sweep on its own slower clock, and never in the way of a burn.
   const splitter = splitterAddress();
-  if (splitter && Date.now() - lastSweep >= SWEEP_MS) {
-    lastSweep = Date.now();
+  if (splitter && Date.now() - shared.lastSweep >= SWEEP_MS) {
+    shared.lastSweep = Date.now();
     try {
       const hash = await client.writeContract({
         address: splitter as `0x${string}`,
@@ -116,7 +133,7 @@ async function tick(): Promise<void> {
     }
   }
 
-  if (burning) return;
+  if (shared.burning) return;
 
   try {
     const [amount, nextAt, ready] = (await reader.readContract({
@@ -134,7 +151,7 @@ async function tick(): Promise<void> {
 
     if (!ready || amount <= 0n) return;
 
-    burning = true;
+    shared.burning = true;
     try {
       const hash = await client.writeContract({
         address: pot as `0x${string}`,
@@ -153,7 +170,7 @@ async function tick(): Promise<void> {
         state.lastError = `burn ${hash} reverted`;
       }
     } finally {
-      burning = false;
+      shared.burning = false;
     }
   } catch (err) {
     // TooSoon between burns is the schedule working. Recorded, never raised.
@@ -168,9 +185,9 @@ async function tick(): Promise<void> {
  * tick schedules the next after it finishes.
  */
 export function startBurnLoop(): void {
-  if (running) return;
+  if (shared.running) return;
   if (!burnPotAddress() || !process.env.BOT_PRIVATE_KEY?.trim()) return;
-  running = true;
+  shared.running = true;
   state.started = true;
 
   const schedule = () => setTimeout(loop, CHECK_MS).unref?.();
