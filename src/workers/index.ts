@@ -383,15 +383,27 @@ function runPoll(trigger: "startup" | "interval"): Promise<void> {
   return current;
 }
 
-// Verify registered agent endpoints for x402 compliance and uptime.
+// Verify registered agent endpoints for x402 compliance and uptime. This is the only sweep that
+// probes agents; /api/cron/health used to run a second one on the same five minutes.
 async function checkAgentHealth() {
   if (shutdownRequested) return;
   const agents = getAllAgents().filter((a) => a.endpoint);
+  const start = Date.now();
+  const tally: Record<string, number> = {};
+  let changed = 0;
   for (const agent of agents) {
     if (shutdownRequested) return;
-    const result = await verifyAgentEndpoint(agent.agentId, agent.endpoint!);
+    const result = await verifyAgentEndpoint(agent.agentId, agent.endpoint!, { functionalProbe: "periodic" });
     recordTaskLatency(agent.agentId, result.latencyMs ?? 5000, result.status !== "unreachable");
+    tally[result.status] = (tally[result.status] ?? 0) + 1;
+    if (result.changed) changed++;
   }
+  logger.info("agent.health_sweep", "Agent health sweep finished", {
+    checked: agents.length,
+    ...tally,
+    changed,
+    durationMs: Date.now() - start,
+  });
 }
 
 function runHealthCheck(trigger: "startup" | "interval"): Promise<void> {
@@ -500,10 +512,19 @@ async function main() {
 // worker process (main) and the web server's instrumentation hook — so a
 // single-container deployment runs the worker in-process, sharing the same DB,
 // without needing a separate worker service.
-let loopsStarted = false;
+//
+// The guard lives on globalThis, not in a module variable. The server can evaluate this module more
+// than once (each bundle that imports it gets its own copy), and a module-level flag only stops the
+// copy it lives in: production was running every loop twice, visible as each agent being probed on
+// two independent five-minute clocks.
+const workerGlobal = globalThis as typeof globalThis & { __axonWorkerLoopsPid?: number };
 export async function startWorkerLoops(): Promise<void> {
-  if (loopsStarted) return;
-  loopsStarted = true;
+  if (workerGlobal.__axonWorkerLoopsPid !== undefined) {
+    logger.info("worker.loops_duplicate_skipped", "Worker loops already running in this process", { pid: process.pid });
+    return;
+  }
+  workerGlobal.__axonWorkerLoopsPid = process.pid;
+  logger.info("worker.loops_started", "Worker loops started", { pid: process.pid });
 
   // A fresh boot means every worker-claimed 'running' task is an orphan of the
   // previous process (deploys kill inference mid-flight). Requeue them NOW —

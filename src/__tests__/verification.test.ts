@@ -15,6 +15,7 @@ vi.mock("@/lib/urlSecurity", async (importOriginal) => {
 
 import { getDb } from "@/lib/db";
 import { verifyAgentEndpoint } from "@/lib/verification";
+import { logger } from "@/lib/logger";
 import { encodeRequirements, X402_VERSION, X402_SCHEME } from "@/lib/x402";
 
 const AGENT_ID = "verify-test-agent";
@@ -159,5 +160,77 @@ describe("verifyAgentEndpoint: persists status to DB", () => {
       .prepare("SELECT verification_status FROM agents WHERE agent_id = ?")
       .get(AGENT_ID) as { verification_status: string } | undefined;
     expect(row?.verification_status).toBe("reachable");
+  });
+});
+
+// ── only a change is logged ──────────────────────────────────────────────────
+
+describe("verifyAgentEndpoint: logs a status change, not every check", () => {
+  it("reports changed=true and logs once when the status moves, then stays quiet", async () => {
+    const info = vi.spyOn(logger, "info");
+    try {
+      mockPublicHttpFetch.mockResolvedValue(new Response("ok", { status: 200 }));
+      const first = await verifyAgentEndpoint(AGENT_ID, ENDPOINT);
+      const second = await verifyAgentEndpoint(AGENT_ID, ENDPOINT);
+      expect(first.changed).toBe(true);   // unverified -> reachable
+      expect(second.changed).toBe(false); // reachable -> reachable
+      const changes = info.mock.calls.filter((c) => c[0] === "agent.verification_changed");
+      expect(changes).toHaveLength(1);
+    } finally {
+      info.mockRestore();
+    }
+  });
+
+  it("warns when an agent becomes unreachable", async () => {
+    const warn = vi.spyOn(logger, "warn");
+    try {
+      mockPublicHttpFetch.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+      const result = await verifyAgentEndpoint(AGENT_ID, ENDPOINT);
+      expect(result.changed).toBe(true);
+      expect(warn.mock.calls.some((c) => c[0] === "agent.verification_changed")).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
+// ── the functional POST probe is periodic for sweeps ──────────────────────────
+
+describe("verifyAgentEndpoint: periodic functional probe", () => {
+  // Own agent ids: the probe clock is per agent and outlives a single test.
+  function seed(id: string) {
+    getDb().prepare(`
+      INSERT OR REPLACE INTO agents
+        (agent_id, name, capabilities, public_key, wallet_address, reputation, created_at)
+      VALUES (?, 'Probe Test', '[]', 'pk', 'wallet', 0, datetime('now'))
+    `).run(id);
+  }
+
+  it("sends the POST task once, then only the GET until the interval passes", async () => {
+    const id = "probe-periodic-agent";
+    seed(id);
+    try {
+      mockPublicHttpFetch.mockImplementation(async () => new Response("{}", { status: 200 }));
+      await verifyAgentEndpoint(id, ENDPOINT, { functionalProbe: "periodic" });
+      await verifyAgentEndpoint(id, ENDPOINT, { functionalProbe: "periodic" });
+      const methods = mockPublicHttpFetch.mock.calls.map((c) => (c[1] as RequestInit).method);
+      expect(methods).toEqual(["GET", "POST", "GET"]);
+    } finally {
+      getDb().prepare("DELETE FROM agents WHERE agent_id = ?").run(id);
+    }
+  });
+
+  it("an explicit verify still sends the POST task every time", async () => {
+    const id = "probe-always-agent";
+    seed(id);
+    try {
+      mockPublicHttpFetch.mockImplementation(async () => new Response("{}", { status: 200 }));
+      await verifyAgentEndpoint(id, ENDPOINT, { functionalProbe: "periodic" });
+      await verifyAgentEndpoint(id, ENDPOINT);
+      const methods = mockPublicHttpFetch.mock.calls.map((c) => (c[1] as RequestInit).method);
+      expect(methods).toEqual(["GET", "POST", "GET", "POST"]);
+    } finally {
+      getDb().prepare("DELETE FROM agents WHERE agent_id = ?").run(id);
+    }
   });
 });

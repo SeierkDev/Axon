@@ -5,7 +5,10 @@ import {
   resetRpcCircuit,
   CircuitOpenError,
   isTransientRpcError,
+  describeRpcError,
+  rpcUrl,
 } from "@/lib/evm";
+import { logger } from "@/lib/logger";
 
 // The test functions below never use the request function they are handed, so nothing here reaches
 // a node: what is under test is the breaker's own bookkeeping, not the transport.
@@ -285,6 +288,34 @@ describe("resetRpcCircuit", () => {
     const result = await withRpc(async () => 42);
     expect(result).toBe(42);
     expect(getRpcCircuitState().state).toBe("closed");
+  });
+});
+
+// ── the breaker says why it opened ────────────────────────────────────────────
+
+describe("circuit breaker: the open log names its cause", () => {
+  it("records the last method and error when it opens", async () => {
+    const error = vi.spyOn(logger, "error");
+    // The node answers with a JSON-RPC error; nothing leaves the process.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, error: { code: -32005, message: "query returned more than 10000 results" } })),
+    );
+    try {
+      for (let i = 0; i < 5; i++) {
+        await expect(withRpc((request) => request("eth_getLogs", []))).rejects.toThrow();
+      }
+      const opened = error.mock.calls.find((c) => c[0] === "rpc.circuit_opened");
+      expect(opened?.[2]).toMatchObject({ method: "eth_getLogs", lastError: "query returned more than 10000 results" });
+    } finally {
+      error.mockRestore();
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it("keeps the node URL out of the logged error", () => {
+    const line = describeRpcError(new Error(`request to ${rpcUrl()} failed`));
+    expect(line).not.toContain(rpcUrl());
+    expect(line).toContain("<rpc>");
   });
 });
 

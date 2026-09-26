@@ -129,6 +129,11 @@ export async function withRpc<T>(
   // Half-open allows a single probe with no retries, so recovery is not delayed by a slow retry loop
   const maxAttempts = state === "half-open" ? 1 : MAX_RETRIES;
   let lastErr: unknown;
+  let lastMethod: string | null = null;
+  const request = <R,>(method: string, params: unknown[] = []) => {
+    lastMethod = method;
+    return rawRpc<R>(method, params);
+  };
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
@@ -139,7 +144,7 @@ export async function withRpc<T>(
       await sleep(Math.min(base * 2 ** (attempt - 1) * jitter, 8_000));
     }
     try {
-      const result = await fn(<R,>(method: string, params: unknown[] = []) => rawRpc<R>(method, params));
+      const result = await fn(request);
       _circuit.state = "closed";
       _circuit.failures = 0;
       _circuit.openedAt = null;
@@ -160,13 +165,24 @@ export async function withRpc<T>(
     _circuit.state = "open";
     _circuit.openedAt = Date.now();
     if (!alreadyOpen) {
+      // Name the call and the error that tipped it over. "It opened" with no cause cannot be told
+      // apart from a node outage, a rate limit, or one caller's bad query.
       logger.error("rpc.circuit_opened", `Circuit breaker opened, ${CHAIN_NAME} RPC is failing`, {
         consecutiveFailures: _circuit.failures,
         recoveryWindowMs: RECOVERY_WINDOW_MS,
+        method: lastMethod,
+        lastError: describeRpcError(lastErr),
       });
     }
   }
   throw lastErr;
+}
+
+/** An RPC error as a short loggable line, with the node URL taken out in case it carries a key. */
+export function describeRpcError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  const url = rpcUrl();
+  return (url ? msg.split(url).join("<rpc>") : msg).slice(0, 200);
 }
 
 export function getRpcCircuitState(): { state: CircuitState; consecutiveFailures: number } {

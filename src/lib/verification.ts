@@ -12,6 +12,29 @@ export interface VerificationResult {
   latencyMs: number | null;
   checkedAt: string;
   detail: string;
+  /** True when this check moved the agent to a different status than it had before. */
+  changed: boolean;
+}
+
+export interface VerifyOptions {
+  /**
+   * "always" sends the functional POST probe on every check. "periodic" sends it at most once per
+   * FUNCTIONAL_PROBE_INTERVAL_MS per agent and relies on the GET for reachability in between.
+   *
+   * The POST is a task. For an agent that runs a model per request it is work somebody else pays
+   * for, and the background sweep used to send one to every agent every few minutes. Reachability
+   * does not need that; a periodic proof that the agent still answers a task does.
+   */
+  functionalProbe?: "always" | "periodic";
+}
+
+const FUNCTIONAL_PROBE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const lastFunctionalProbeAt = new Map<string, number>();
+
+function functionalProbeDue(agentId: string, mode: VerifyOptions["functionalProbe"]): boolean {
+  if (mode !== "periodic") return true;
+  const last = lastFunctionalProbeAt.get(agentId);
+  return last === undefined || Date.now() - last >= FUNCTIONAL_PROBE_INTERVAL_MS;
 }
 
 // Probes an agent's registered endpoint and checks x402 compliance.
@@ -25,7 +48,8 @@ export interface VerificationResult {
 // the detail message records the outcome so operators can investigate.
 export async function verifyAgentEndpoint(
   agentId: string,
-  endpoint: string
+  endpoint: string,
+  opts: VerifyOptions = {},
 ): Promise<VerificationResult> {
   const checkedAt = new Date().toISOString();
   let status: VerificationStatus = "unreachable";
@@ -69,7 +93,8 @@ export async function verifyAgentEndpoint(
     // ── Step 2: functional POST probe (only if reachable, not x402) ─────────
     // Sends a standard health-check task and validates the response shape.
     // A failed probe does not downgrade the status — it adds context to detail.
-    if (status === "reachable") {
+    if (status === "reachable" && functionalProbeDue(agentId, opts.functionalProbe)) {
+      lastFunctionalProbeAt.set(agentId, Date.now());
       try {
         const probeBody = JSON.stringify({
           taskId: `axon-probe-${Date.now()}`,
@@ -119,19 +144,27 @@ export async function verifyAgentEndpoint(
   }
 
   // Persist result to agents table
-  getDb().prepare(`
+  const db = getDb();
+  const previous = (db.prepare("SELECT verification_status FROM agents WHERE agent_id = ?").get(agentId) as
+    { verification_status: string | null } | undefined)?.verification_status ?? "unverified";
+  db.prepare(`
     UPDATE agents
     SET verification_status = ?, last_verified_at = ?
     WHERE agent_id = ?
   `).run(status, checkedAt, agentId);
   void syncToTurso();
 
-  const logFields = { agentId, status, latencyMs, detail };
-  if (status === "unreachable") {
-    logger.warn("agent.verification_checked", "Agent verification failed", logFields);
-  } else {
-    logger.info("agent.verification_checked", "Agent verification checked", logFields);
+  // Only a change is news. Logging every check of every agent was most of the service's log volume
+  // and buried the lines that mattered; the sweep that runs these logs one summary instead.
+  const changed = previous !== status;
+  if (changed) {
+    const logFields = { agentId, from: previous, to: status, latencyMs, detail };
+    if (status === "unreachable") {
+      logger.warn("agent.verification_changed", "Agent became unreachable", logFields);
+    } else {
+      logger.info("agent.verification_changed", "Agent verification status changed", logFields);
+    }
   }
 
-  return { agentId, status, latencyMs, checkedAt, detail };
+  return { agentId, status, latencyMs, checkedAt, detail, changed };
 }

@@ -1,10 +1,11 @@
 // POST /api/cron/health
-// Pings all agents that have a registered endpoint and updates their verification_status.
+// The five-minute housekeeping pass: failure-pattern watchdog, description backfill, WAL checkpoint.
 // Railway cron: POST https://axon-agents.com/api/cron/health every 5 min.
+//
+// It no longer probes agent endpoints. The worker's health loop already does that on the same five
+// minutes, so this route was a second sweep hitting every agent again, concurrently, for nothing.
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAllAgents } from "@/lib/agents";
-import { verifyAgentEndpoint } from "@/lib/verification";
 import { getDb } from "@/lib/db";
 import { failureReport } from "@/lib/failurePatterns";
 import { logger } from "@/lib/logger";
@@ -42,19 +43,7 @@ export async function POST(req: NextRequest) {
   // A few descriptions per pass, for agents that predate them. Deliberately a trickle: there is no
   // reason to spend a hundred model calls in a burst when this runs every five minutes anyway.
   void backfillDescriptions(5).catch(() => {});
-
-  const agents = getAllAgents().filter((a) => a.endpoint && a.verificationStatus !== "modulr");
   const start = Date.now();
-
-  const results = await Promise.allSettled(
-    agents.map((a) => verifyAgentEndpoint(a.agentId, a.endpoint!))
-  );
-
-  const summary = results.map((r, i) => ({
-    agentId: agents[i].agentId,
-    status: r.status === "fulfilled" ? r.value.status : "error",
-    latencyMs: r.status === "fulfilled" ? r.value.latencyMs : null,
-  }));
 
   // Checkpoint the WAL file so it doesn't grow unbounded between Railway deploys.
   // TRUNCATE mode resets the WAL to zero bytes after the checkpoint completes.
@@ -70,9 +59,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    checked: agents.length,
     durationMs: Date.now() - start,
-    results: summary,
     ...(walCheckpoint !== null ? { walCheckpoint } : {}),
   });
 }
