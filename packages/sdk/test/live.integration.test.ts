@@ -189,3 +189,113 @@ live("the SDK against a running server", () => {
     await expect(axon.getMission("definitely-not-a-run")).rejects.toBeInstanceOf(AxonApiError);
   });
 });
+
+// ── Allowances, against a real allowance on a local fork of Robinhood Chain ─────
+//
+// scripts/sdk-e2e.mjs deploys the Allowance contract on an Anvil fork, funds an allowance from a
+// development wallet (0.01 ETH, 0.0005 per task, 0.005 per day) and mints that wallet a full key.
+// Skipped when Anvil is not installed. The fork's ETH is not real.
+
+const ALLOWANCE_OWNER = process.env.AXON_E2E_ALLOWANCE_OWNER;
+const ALLOWANCE_OWNER_KEY = process.env.AXON_E2E_ALLOWANCE_KEY;
+const withAllowance = URL && ALLOWANCE_OWNER_KEY ? describe : describe.skip;
+
+withAllowance("the SDK paying from a real allowance", () => {
+  let owner: AxonClient; // the wallet's full key
+  let agentOwner: AxonClient; // the hired agent's owner, playing the agent
+  const PRICE = "0.00025";
+
+  const eth = async (client: AxonClient) => {
+    const status = await client.getAllowance();
+    if (!status.enabled) throw new Error("allowances are off on this server");
+    return status.accounts.find((a) => a.token === "ETH")!;
+  };
+
+  /** The reconciler runs every minute; wait for it to close whatever the ledger decided. */
+  async function untilNothingReserved(client: AxonClient, timeoutMs = 150_000) {
+    const until = Date.now() + timeoutMs;
+    for (;;) {
+      const a = await eth(client);
+      if (a.reserved === "0") return a;
+      if (Date.now() > until) throw new Error(`still reserved after ${timeoutMs}ms: ${a.reserved}`);
+      await new Promise((r) => setTimeout(r, 3_000));
+    }
+  }
+
+  beforeAll(() => {
+    owner = new AxonClient({ endpoint: URL, apiKey: ALLOWANCE_OWNER_KEY });
+    agentOwner = new AxonClient({ endpoint: URL, apiKey: KEY });
+  });
+
+  it("reads the allowance off the chain", async () => {
+    const status = await owner.getAllowance();
+    expect(status.enabled).toBe(true);
+    if (!status.enabled) return;
+    expect(status.wallet).toBe(ALLOWANCE_OWNER);
+    expect(await eth(owner)).toMatchObject({ configured: true, available: "0.01", maxPerTask: "0.0005", maxPerDay: "0.005" });
+  });
+
+  it("mints, lists and revokes an allowance key, and a revoked key stops working", async () => {
+    const key = await owner.createAllowanceKey({ label: "sdk live", maxPerTask: "0.0003" });
+    expect(key.apiKey).toMatch(/^axon_/);
+    expect((await owner.listAllowanceKeys()).map((k) => k.keyId)).toContain(key.keyId);
+
+    const assistant = new AxonClient({ endpoint: URL, apiKey: key.apiKey });
+    const status = await assistant.getAllowance();
+    expect(status.enabled && status.key).toMatchObject({ maxPerTask: "0.0003", maxPerDay: "0.005" });
+
+    await owner.revokeAllowanceKey(key.keyId);
+    await expect(assistant.getAllowance()).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("an allowance key cannot do anything else, and says what it is", async () => {
+    const key = await owner.createAllowanceKey({ label: "locked down" });
+    const assistant = new AxonClient({ endpoint: URL, apiKey: key.apiKey });
+    const err = await assistant.listAllowanceKeys().catch((e) => e);
+    expect(err).toBeInstanceOf(AxonApiError);
+    expect((err as AxonApiError).status).toBe(403);
+    expect((err as AxonApiError).message).toMatch(/allowance key/);
+  });
+
+  it("a hire over the key's own limit is refused with the reason", async () => {
+    const key = await owner.createAllowanceKey({ maxPerTask: "0.0001" });
+    const assistant = new AxonClient({ endpoint: URL, apiKey: key.apiKey });
+    const err = await assistant.sendTask({ from: ALLOWANCE_OWNER!, to: AGENT, task: "too dear", paymentMethod: "allowance" }).catch((e) => e);
+    expect(err).toBeInstanceOf(AxonApiError);
+    expect((err as AxonApiError).status).toBe(402);
+    expect((err as AxonApiError).message).toMatch(/this key's per-task limit/);
+    expect((await eth(owner)).reserved).toBe("0");
+  });
+
+  it("completed work is paid out of the allowance, by itself", async () => {
+    const key = await owner.createAllowanceKey({ label: "completes" });
+    const assistant = new AxonClient({ endpoint: URL, apiKey: key.apiKey });
+    const before = await eth(owner);
+
+    const task = await assistant.sendTask({ from: ALLOWANCE_OWNER!, to: AGENT, task: "finish me", paymentMethod: "allowance" });
+    expect(task.status).toBe("queued");
+    expect((await eth(owner)).reserved).toBe(PRICE);
+
+    await agentOwner.startTask(task.taskId);
+    await agentOwner.completeTask(task.taskId, "done");
+    const after = await untilNothingReserved(owner);
+    expect(Number(before.available) - Number(after.available)).toBeCloseTo(Number(PRICE), 12);
+
+    // The assistant reads the task it hired.
+    expect((await assistant.getTask(task.taskId)).status).toBe("completed");
+  }, 200_000);
+
+  it("failed work comes back to the allowance, by itself", async () => {
+    const key = await owner.createAllowanceKey({ label: "fails" });
+    const assistant = new AxonClient({ endpoint: URL, apiKey: key.apiKey });
+    const before = await eth(owner);
+
+    const task = await assistant.sendTask({ from: ALLOWANCE_OWNER!, to: AGENT, task: "fail me", paymentMethod: "allowance" });
+    expect((await eth(owner)).reserved).toBe(PRICE);
+
+    await agentOwner.startTask(task.taskId);
+    await agentOwner.failTask(task.taskId, "could not do it");
+    const after = await untilNothingReserved(owner);
+    expect(after.available).toBe(before.available);
+  }, 200_000);
+});

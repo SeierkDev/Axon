@@ -157,6 +157,12 @@ export type {
   WatchPurchasesOptions,
   WatchHandle,
   AutoApprovePolicy,
+  AllowanceAccount,
+  AllowanceKeyLimitsView,
+  AllowanceStatus,
+  CreateAllowanceKeyOptions,
+  AllowanceKey,
+  CreatedAllowanceKey,
 } from "./types";
 
 import { AxonClient } from "./client";

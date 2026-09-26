@@ -4,6 +4,8 @@ import { syncToTurso } from "@/lib/db-turso";
 import { getAgentById } from "@/lib/agents";
 import { selectAgent, type RouteResult } from "@/lib/routing";
 import { createPayment, createBalancePayment, getPaymentByIncomingSignature, parsePriceToEth, refundPayment } from "@/lib/payments";
+import { payFromAllowance, freshAxonQuoteFor, AllowancePaymentError } from "@/lib/allowancePayment";
+import { noteAllowanceHire, KEY_HIRES_PER_MINUTE } from "@/lib/allowanceWatch";
 import { isWalletAddress } from "@/lib/address";
 import { checkRateLimit, getClientIp, tooManyRequests, rateLimitHeaders } from "@/lib/rateLimit";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
@@ -98,10 +100,27 @@ async function handlePost(req: NextRequest) {
   // Auth gates all attributed requests — must run before payment check so probing
   // an agent's price without credentials returns 401, not 402.
   let authWallet: string | null = null;
+  // Set when the caller holds an allowance key: it may hire, but only paid work paid from the
+  // allowance, and only within the key's own limits.
+  let allowanceKeyId: string | null = null;
   if (body.from !== "anonymous") {
-    const auth = requireApiKey(req);
+    const auth = requireApiKey(req, { allowAllowanceScope: true });
     if (!auth.ok) return auth.response;
     authWallet = auth.user.walletAddress;
+    if (auth.user.scope === "allowance") {
+      if (parsePriceToEth(agent.price) === null || body.paymentMethod !== "allowance") {
+        return apiError(
+          "FORBIDDEN",
+          "An allowance key can only hire paid agents with paymentMethod:\"allowance\"",
+          403,
+        );
+      }
+      allowanceKeyId = auth.user.keyId;
+      // A key is one assistant working, never a crowd. Ten hires a minute is room for it to work and
+      // a wall for a script trying to empty the day's limit before anyone notices.
+      const keyRl = checkRateLimit(`allowance-key:${allowanceKeyId}`, KEY_HIRES_PER_MINUTE, 60_000);
+      if (!keyRl.allowed) return tooManyRequests(keyRl);
+    }
     if (!canAccessIdentity(auth.user, body.from)) {
       return apiError(
         "FORBIDDEN",
@@ -134,8 +153,18 @@ async function handlePost(req: NextRequest) {
     return apiError("VALIDATION_ERROR", "balance payments require a registered paying agent", 400);
   }
 
-  // Paid tasks require either a payment signature (on-chain) or balance funding.
-  if (amountEth !== null && !body.paymentSignature && !useBalance) {
+  // "allowance" pays from the on-chain budget of the wallet the API key is bound to. Never a wallet
+  // taken from the request: whoever holds the key can spend that wallet's allowance and nobody else's.
+  const useAllowance = amountEth !== null && body.paymentMethod === "allowance";
+  if (useAllowance && !authWallet) {
+    return apiError("VALIDATION_ERROR", "allowance payments need an API key bound to the wallet that funded the allowance", 400);
+  }
+  if ((body.quoteId || body.payIn) && !useAllowance) {
+    return apiError("VALIDATION_ERROR", "quoteId and payIn are only used with paymentMethod:\"allowance\"", 400);
+  }
+
+  // Paid tasks require a payment signature (on-chain), balance funding, or an allowance.
+  if (amountEth !== null && !body.paymentSignature && !useBalance && !useAllowance) {
     return apiError(
       "PAYMENT_REQUIRED",
       "paymentSignature is required for paid tasks, complete the x402 payment first, or set paymentMethod:\"balance\" to spend your earned balance",
@@ -168,6 +197,8 @@ async function handlePost(req: NextRequest) {
     payment: body.to ? (payment ?? null) : null,
     paymentSignature: body.paymentSignature ?? null,
     paymentMethod: body.paymentMethod ?? null,
+    quoteId: body.quoteId ?? null,
+    payIn: body.payIn ?? null,
     signature: body.signature ?? null,
   }) : undefined;
 
@@ -235,9 +266,21 @@ async function handlePost(req: NextRequest) {
     throw err;
   }
 
-  if (amountEth !== null && (body.paymentSignature || useBalance)) {
+  if (amountEth !== null && (body.paymentSignature || useBalance || useAllowance)) {
     try {
-      if (useBalance) {
+      if (useAllowance) {
+        const quoteId = body.quoteId ?? (body.payIn === "AXON" ? await freshAxonQuoteFor(toAgentId) : undefined);
+        await payFromAllowance({
+          taskId: task.taskId,
+          fromAgent: body.from,
+          toAgent: toAgentId,
+          owner: authWallet!,
+          priceString: payment!,
+          quoteId,
+          apiKeyId: allowanceKeyId ?? undefined,
+        });
+        if (allowanceKeyId) noteAllowanceHire(allowanceKeyId);
+      } else if (useBalance) {
         createBalancePayment({
           taskId: task.taskId,
           fromAgent: body.from,
@@ -261,6 +304,10 @@ async function handlePost(req: NextRequest) {
       const { getDb } = await import("@/lib/db");
       getDb().prepare("DELETE FROM tasks WHERE task_id = ?").run(task.taskId);
       void syncToTurso();
+      // An allowance refusal is written to be shown: "over your daily limit", "agent not allowed".
+      if (err instanceof AllowancePaymentError) {
+        return apiError(err.status === 503 ? "PAYMENT_UNAVAILABLE" : "PAYMENT_FAILED", err.message, err.status);
+      }
       const msg = err instanceof Error ? err.message : "Payment verification failed";
       // Don't expose internal config details (missing env vars, etc.) to callers
       const safeMsg = /is not set|API_KEY|PRIVATE_KEY|RPC_URL/i.test(msg)

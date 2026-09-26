@@ -59,6 +59,11 @@ export function isTransientRpcError(err: unknown): boolean {
   return /\b(429|502|503|504)\b/.test(msg);
 }
 
+/** The contract refused the call. An answer from a working node, not a sign of a broken one. */
+export function isContractRevert(err: unknown): boolean {
+  return err instanceof Error && /execution reverted|reverted with|custom error 0x[0-9a-f]{8}/i.test(err.message);
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -154,6 +159,11 @@ export async function withRpc<T>(
       // An error the caller expects is its business, not the breaker's: hand it straight back
       // without retrying it or holding it against the node.
       if (opts.expected?.(err)) throw err;
+      // A revert is the node running the call and the contract saying no: the node is up and answering.
+      // Counting it as a failure let four refused hires in a row switch off every chain call in the app
+      // for a minute, the burn loop included. It is handed back like any answer, never held against the
+      // node.
+      if (isContractRevert(err)) throw err;
       if (!isTransientRpcError(err) || attempt === maxAttempts - 1) break;
     }
   }

@@ -33,7 +33,11 @@ abstract contract ForkTest is Test, ExemptHelper {
     address constant ESCROW = 0xd3AFEB2a57f70eF218Aa82451c51B2fb0416Ac9e;
     address constant HOOK = 0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044;
     address constant POOL_MANAGER = 0x8366a39CC670B4001A1121B8F6A443A643e40951;
-    address constant FEE_SWEEP_OPERATOR = 0x49BbF2b70955Fb3a106e084D4BFDa92d334573d2;
+    // Pons' keeper, the only caller besides a token's fee recipient that may sweep a curve. Pons rotates it and
+    // exposes no getter: 0x49Bb…73d2 stopped being accepted in September 2026 and the fork tests that impersonate
+    // it started failing with NotFeeSweepOperator. Check the current one with
+    // `cast call <curve> 'sweepFees(uint256)' 0 --from <address>` (the keeper returns, anyone else reverts).
+    address constant FEE_SWEEP_OPERATOR = 0xa1018c1D9655292A2dE0F7dEa9a0F848EaA8cA83;
 
     // a live, NOT graduated Pons token (GOLD, launched via Harvest) and its curve + creator fee recipient
     address constant GOLD = 0x0f1ba4424f9e7c976E3E16EcB3c3dabA6653829B;

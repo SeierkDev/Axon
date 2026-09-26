@@ -1,6 +1,12 @@
 import { type NextRequest, type NextResponse } from "next/server";
 import { apiError } from "./apiError";
-import { authenticateApiKey, isAgentOwner, type AuthenticatedUser } from "./identity";
+import {
+  authenticateApiKey,
+  isAgentOwner,
+  presentedKeyScope,
+  type AuthenticatedUser,
+  type AuthenticateOptions,
+} from "./identity";
 
 export type AuthResult =
   | { ok: true; user: AuthenticatedUser }
@@ -10,9 +16,21 @@ export type AgentOwnerResult =
   | { ok: true; user: AuthenticatedUser }
   | { ok: false; response: NextResponse };
 
-export function requireApiKey(req: NextRequest): AuthResult {
-  const user = authenticateApiKey(req);
+export function requireApiKey(req: NextRequest, opts: AuthenticateOptions = {}): AuthResult {
+  const user = authenticateApiKey(req, opts);
   if (!user) {
+    // A valid allowance key on a route that does not take one. Say so: "invalid key" would send
+    // someone hunting for a typo in a key that works fine where it is meant to.
+    if (!opts.allowAllowanceScope && presentedKeyScope(req) === "allowance") {
+      return {
+        ok: false,
+        response: apiError(
+          "FORBIDDEN",
+          "This is an allowance key. It can only pay for hires from its wallet's allowance and read what it hired.",
+          403,
+        ),
+      };
+    }
     return {
       ok: false,
       response: apiError(

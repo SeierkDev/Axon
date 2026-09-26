@@ -7,6 +7,7 @@ import {
   isTransientRpcError,
   describeRpcError,
   rpcUrl,
+  isContractRevert,
 } from "@/lib/evm";
 import { logger } from "@/lib/logger";
 
@@ -316,6 +317,30 @@ describe("circuit breaker: the open log names its cause", () => {
     const line = describeRpcError(new Error(`request to ${rpcUrl()} failed`));
     expect(line).not.toContain(rpcUrl());
     expect(line).toContain("<rpc>");
+  });
+});
+
+// ── a contract saying no is not the node failing ─────────────────────────────
+
+describe("circuit breaker: reverts do not count", () => {
+  // Found by a flood of allowance hires: four refused past the daily limit in a row opened the
+  // breaker, and every chain call in the app, the burn loop's included, failed fast for a minute.
+  it("a run of reverts leaves the circuit closed", async () => {
+    for (let i = 0; i < 10; i++) {
+      await expect(
+        withRpc(async () => { throw new Error("execution reverted: custom error 0xb51b5117"); }),
+      ).rejects.toThrow(/reverted/);
+    }
+    const { state, consecutiveFailures } = getRpcCircuitState();
+    expect(state).toBe("closed");
+    expect(consecutiveFailures).toBe(0);
+  });
+
+  it("recognises a revert however it is worded, and nothing else", () => {
+    expect(isContractRevert(new Error("execution reverted"))).toBe(true);
+    expect(isContractRevert(new Error("The contract function reverted with the following reason: X"))).toBe(true);
+    expect(isContractRevert(new Error("node returned HTTP 503"))).toBe(false);
+    expect(isContractRevert(new Error("fetch failed"))).toBe(false);
   });
 });
 

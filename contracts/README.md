@@ -24,6 +24,34 @@ Receives the burn pot's share of every sweep. **No withdraw function.** Its ETH 
 - The pot's own buys pay the Pons fee and 3% tax like anyone's, so ~2.2% of each burn comes back to the team through the Splitter.
 - If Pons ever ends the launch in its Rescued phase (graduation reserves released instead of a pool), there's nothing to buy and the pot's ETH stays there for good.
 
+## Allowance (`src/Allowance.sol`): built and tested, not deployed
+A budget a wallet funds once so an assistant or agent can hire on Axon and pay without its owner signing each time. The owner's money sits here, not with Axon. The decisions it implements are in `src/lib/allowancePolicy.ts`.
+
+Tests: `test/Allowance.t.sol` (every rule and every refusal, reentrancy, a token that taxes transfers, fuzzing), `test/AllowanceInvariant.t.sol` (random sequences from several owners and the operator; the books must always balance), `test/AllowanceFork.t.sol` (the live $AXON token and Axon's live payment address).
+
+**Who can do what**
+- **Owner** (any wallet, for its own allowance): `deposit()` (ETH) and `depositToken(token, amount)`; `setRules(token, maxPerTask, maxPerDay, expiresAt)`; `setAllowedAgents(token, add[], remove[], restrict)`; `withdraw(token, amount)` of anything not reserved, at any time; `pause(token)` / `unpause(token)`; `reclaim(taskKey)` for its own reservation once `RESERVATION_TIMEOUT` (24h) has passed unsettled; it returns to the balance, where `withdraw` takes it.
+- **Operator** (Axon's allowance key, gas only): `reserve(owner, token, taskKey, agentKey, amount)`, `settle(taskKey)`, `release(taskKey)`, plus `settleMany` / `releaseMany`. Nothing else.
+- **Admin**: `setOperator(address)` and `pauseReservations(bool)`, which stops new reservations only. It cannot touch any balance.
+
+**Where money can go.** Only two places, ever: back to the owner (`withdraw`) or to the payment receiver (`settle`). Plain ETH transfers are refused, so every wei held belongs to someone's balance. The receiver and the $AXON token address are immutable. No upgrade path, no `selfdestruct`, no admin withdrawal.
+
+**`reserve` refuses unless** the allowance is not paused and not expired, reservations are not paused, `amount <= maxPerTask`, the UTC day's reserved plus settled total stays `<= maxPerDay`, the agent is allowed (when `restrict` is on), the unreserved balance covers it, and `taskKey` has never been used. A task key is single-use forever, so no task can be paid twice.
+
+**`release`** returns the amount to the owner's balance and gives back the day's headroom: failed work does not use up a budget. **`settle`** keeps it counted.
+
+**Keys.** `taskKey = keccak256(taskId)`, `agentKey = keccak256(agentId)`. No free text on chain.
+
+**Events.** `Deposited`, `Withdrawn`, `RulesSet`, `AgentsSet`, `Reserved(owner, token, taskKey, agentKey, amount)`, `Settled(taskKey, amount)`, `Released(taskKey, amount)`, `Reclaimed(taskKey, amount)`, `OperatorSet`, `ReservationsPaused`. Receipts link to them.
+
+**Review (2026-09-26, before any deploy).** An adversarial read of every path money can take, plus Slither 0.11.6 (102 detectors). Not an external audit.
+- *Fixed, liveness:* `settleMany` / `releaseMany` reverted the whole batch if any key in it had stopped being reserved, so an owner reclaiming one at the right moment could hold up everyone's settlement. Batches now skip keys that are no longer reserved; single `settle` / `release` still refuse. The server reads back what each key became instead of assuming.
+- *Fixed, gas:* `settleMany` paid the receiver once per task. It now pays once per token for the whole batch.
+- *Slither, triaged, no change:* "arbitrary ETH send" goes only to the withdrawing owner or the immutable receiver; strict equalities are the UTC day and a zero-deposit guard; the missing zero check on the $AXON address is deliberate (zero means ETH only); timestamp use is day-scale; the low-level call is the ETH transfer.
+- *Accepted, by design:* a leaked operator key can reserve up to each owner's remaining daily limit and settle it, but only to the receiver, never to the thief; owners can pause or withdraw at once and the admin rotates the operator. If Axon fails to settle for 24 hours, owners can reclaim reservations for work that completed. The receiver is immutable, so if it ever refused ETH, settlements would revert and owners would reclaim after 24 hours. The admin is immutable too: deploy it from a hardware wallet or a multisig, since losing it means the operator can never be rotated. ETH forced in without `deposit` (selfdestruct) stays in the contract, credited to nobody.
+
+**Invariants the tests must hold:** for each token, the contract's balance equals the sum of all owners' balances (reserved included); deposits count what actually arrived (balance before and after, not the argument); nothing the operator does can move money anywhere but the receiver; a leaked operator key can at worst settle reservations early, which pays for work Axon has already agreed to do.
+
 ## Run
 ```bash
 git submodule update --init --recursive

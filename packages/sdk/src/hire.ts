@@ -44,7 +44,27 @@ export async function hire(client: AxonClient, opts: HireOptions): Promise<HireR
   let created: TaskRequest;
   let paid: boolean;
 
-  if (paymentMethod === "balance") {
+  if (paymentMethod === "allowance") {
+    // Paid from the on-chain allowance of the wallet this client's key belongs to. No x402 probe and
+    // no `pay` function: the server reserves the price inside the owner's rules and the key's limits,
+    // or refuses with the reason. The hire is made as that wallet, which is also what lets this
+    // client read the output back afterwards.
+    let payer = from;
+    if (payer === "anonymous") {
+      const status = await client.getAllowance();
+      if (!status.enabled) throw new Error("Allowance payments are not available on this network");
+      payer = status.wallet;
+    }
+    created = await client.sendTask({
+      from: payer,
+      to,
+      task,
+      context,
+      paymentMethod: "allowance",
+      ...(opts.payWith === "axon" ? { payIn: "AXON" as const } : {}),
+    });
+    paid = true;
+  } else if (paymentMethod === "balance") {
     // Fund the hire from the `from` agent's earned balance — no x402 probe, no
     // `pay` function. The value is already pooled from when it earned. Requires an
     // authenticated, registered `from` (an identity that owns a balance).

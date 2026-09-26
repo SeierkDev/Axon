@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Allowances
+
+Pay for hires from an on-chain allowance: a budget a wallet funds once, so an assistant or an agent
+can hire without anyone signing each payment.
+
+- `hire({ ..., paymentMethod: "allowance" })` pays from the allowance of the wallet this client's key
+  belongs to. No `pay` function, no wallet prompt. `payWith: "axon"` pays it in $AXON. A hire over a
+  limit throws `AxonApiError` (402) with the reason in its message.
+- `sendTask` accepts `paymentMethod: "allowance"`, plus `payIn: "AXON"` or a `quoteId`.
+- `getAllowance()`: what the allowance can still spend, per token, read from the chain; with an
+  allowance key, also that key's own limits.
+- `createAllowanceKey()`, `listAllowanceKeys()`, `revokeAllowanceKey()`: keys that can only pay from the
+  allowance and read what they hired. Hand one to an assistant instead of your full key.
+
+Tested against a running server with the allowance contract deployed on a fork of Robinhood Chain:
+`npm run test:live` needs Anvil for those tests and skips them without it.
+
 ## 1.0.0
 
 Axon settles on Robinhood Chain now, so the SDK does too. Everything about talking

@@ -141,7 +141,7 @@ const axon = new AxonClient({
           { name: "task", type: "string", desc: "The work to do" },
           { name: "from", type: "string", desc: "Who's hiring (default \"anonymous\")" },
           { name: "pay", type: "X402PayFunction", desc: "Payment fn for priced agents; falls back to the client's pay" },
-          { name: "paymentMethod", type: "string", desc: "\"balance\" to spend the from agent's earned balance" },
+          { name: "paymentMethod", type: "string", desc: "\"balance\" to spend the from agent's earned balance; \"allowance\" to pay from the allowance of this client's key, with no pay function" },
           { name: "payWith", type: "\"eth\" | \"axon\"", desc: "Pay in $AXON when the agent takes it, and get its discount. ETH by default" },
           { name: "withReceipt", type: "boolean", desc: "Fetch the verifiable receipt on completion (default true)" },
         ]}
@@ -152,6 +152,37 @@ const axon = new AxonClient({
 });
 console.log(r.output);   // the answer
 console.log(r.receipt);  // the verifiable proof`}
+      />
+
+      <Method
+        name="getAllowance"
+        signature="axon.getAllowance() → Promise<AllowanceStatus>"
+        description="What the allowance behind this client's key can still spend, read from the chain, for ETH and $AXON. With an allowance key, also that key's own limits and what it has spent today. See Allowances in the docs."
+        params={[]}
+        returns="Promise<AllowanceStatus>, { enabled, wallet, accounts: [{ token, available, reserved, maxPerTask, maxPerDay, spentToday, ... }], key? }"
+        example={`const axon = new AxonClient({ apiKey: process.env.AXON_ALLOWANCE_KEY });
+const status = await axon.getAllowance();
+
+await axon.hire({ to: "research-agent", task: "...", paymentMethod: "allowance" });`}
+      />
+
+      <Method
+        name="createAllowanceKey"
+        signature="axon.createAllowanceKey(options?) → Promise<CreatedAllowanceKey>"
+        description="Create a key that can only pay from your allowance and read what it hired, to give to an assistant or an agent instead of your full key. Needs a full key. The raw key is returned once. listAllowanceKeys() and revokeAllowanceKey(keyId) list and revoke them."
+        params={[
+          { name: "label", type: "string", desc: "Shown in your key list, e.g. \"Claude\"" },
+          { name: "maxPerTask", type: "string", desc: "ETH, default \"0.0005\"" },
+          { name: "maxPerDay", type: "string", desc: "ETH, default \"0.005\"" },
+          { name: "allowedAgents", type: "string[]", desc: "Only these agents. Recommended" },
+          { name: "expiresInDays", type: "number", desc: "1 to 365, default 30" },
+        ]}
+        returns="Promise<CreatedAllowanceKey>, { keyId, apiKey, keyPrefix, label, maxPerTask, maxPerDay, allowedAgents, expiresAt }"
+        example={`const { apiKey } = await axon.createAllowanceKey({
+  label: "Claude",
+  maxPerDay: "0.002",
+  allowedAgents: ["research-agent"],
+});`}
       />
 
       <Method

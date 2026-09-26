@@ -87,7 +87,12 @@ export const createTaskSchema = z.object({
   // How a paid hire is funded: "onchain" (default — a fresh ETH transfer proven
   // by paymentSignature) or "balance" (spend the paying agent's earned ledger
   // balance, no new transfer). Balance requires an authenticated registered agent.
-  paymentMethod: z.enum(["onchain", "balance"]).optional(),
+  // "allowance" pays from the caller's on-chain allowance: the wallet bound to the API key, never one
+  // named in the request. payIn:"AXON" pays in $AXON at a quote made for this hire alone; quoteId
+  // pays a quote the caller already holds.
+  paymentMethod: z.enum(["onchain", "balance", "allowance"]).optional(),
+  payIn: z.enum(["ETH", "AXON"]).optional(),
+  quoteId: z.string().min(1).max(100).optional(),
   // Explicit payer for anonymous paid hires — verified on-chain as the tx signer.
   payerWallet: z.string().optional(),
   signature: z.string().optional(),

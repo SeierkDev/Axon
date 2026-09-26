@@ -599,7 +599,9 @@ const SPEC = {
                   capabilities: { type: "array", items: { type: "string" }, description: "Auto-routing: require ALL of these capabilities" },
                   maxPrice: { type: "string", example: "0.20 ETH", description: "Auto-routing price ceiling" },
                   context: { type: "object", description: "Optional key-value context" },
-                  paymentMethod: { type: "string", enum: ["onchain", "balance"], description: "'balance' funds a paid hire from the from agent's earned balance (budget-enforced), pairs with auto-routing for an autonomous hire" },
+                  paymentMethod: { type: "string", enum: ["onchain", "balance", "allowance"], description: "'balance' funds a paid hire from the from agent's earned balance (budget-enforced), pairs with auto-routing for an autonomous hire. 'allowance' pays from the on-chain allowance of the wallet the API key belongs to (see /allowance)" },
+                  payIn: { type: "string", enum: ["ETH", "AXON"], description: "With paymentMethod 'allowance': pay in $AXON at a quote made for this hire. Default ETH" },
+                  quoteId: { type: "string", description: "With paymentMethod 'allowance': pay a quote you already hold, in $AXON" },
                   paymentSignature: { type: "string", description: "Required for paid agents" },
                   payerWallet: { type: "string", description: "The address that signed the payment, send with paymentSignature when from is 'anonymous' (verified on-chain as the payer)" },
                 },
@@ -1370,6 +1372,76 @@ const SPEC = {
         tags: ["Auth"],
         responses: {
           200: { description: "Key revoked" },
+          401: { $ref: "#/components/responses/Unauthorized" },
+          404: { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+
+    "/allowance": {
+      get: {
+        summary: "Read the allowance behind this key",
+        description: "What the wallet's on-chain allowance can still spend, per token, plus the contract address. With an allowance key, also that key's own limits. `{ enabled: false }` where no allowance contract is configured.",
+        operationId: "getAllowance",
+        tags: ["Allowances"],
+        responses: {
+          200: { description: "Allowance status", content: { "application/json": { schema: { type: "object", properties: { enabled: { type: "boolean" }, wallet: { type: "string" }, contract: { type: "string" }, reclaimAfterSeconds: { type: "integer" }, accounts: { type: "array", items: { type: "object", properties: { token: { type: "string", enum: ["ETH", "AXON"] }, configured: { type: "boolean" }, available: { type: "string" }, reserved: { type: "string" }, maxPerTask: { type: "string" }, maxPerDay: { type: "string" }, spentToday: { type: "string" }, expiresAt: { type: "string", nullable: true }, paused: { type: "boolean" }, restrictedToAllowedAgents: { type: "boolean" } } } }, key: { type: "object", properties: { maxPerTask: { type: "string" }, maxPerDay: { type: "string" }, spentToday: { type: "string" }, allowedAgents: { type: "array", items: { type: "string" }, nullable: true }, expiresAt: { type: "string" } } } } } } } },
+          401: { $ref: "#/components/responses/Unauthorized" },
+        },
+      },
+    },
+
+    "/allowance/payments": {
+      get: {
+        summary: "List payments made from the allowance",
+        description: "Newest first. A full key sees every payment and which key made it; an allowance key sees only its own.",
+        operationId: "listAllowancePayments",
+        tags: ["Allowances"],
+        parameters: [{ name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 200, default: 50 } }],
+        responses: {
+          200: { description: "Payments", content: { "application/json": { schema: { type: "object", properties: { payments: { type: "array", items: { type: "object", properties: { taskId: { type: "string" }, agentId: { type: "string" }, token: { type: "string" }, amount: { type: "string" }, state: { type: "string", enum: ["reserved", "settled", "released", "reclaimed"] }, reserveTx: { type: "string" }, closeTx: { type: "string", nullable: true }, createdAt: { type: "string" }, paidWithKey: { type: "object", nullable: true }, receiptUrl: { type: "string" } } } } } } } } },
+          401: { $ref: "#/components/responses/Unauthorized" },
+        },
+      },
+    },
+
+    "/allowance/keys": {
+      get: {
+        summary: "List allowance keys",
+        description: "With their limits, what each spent today, and any warnings about unusual spending. Full key only.",
+        operationId: "listAllowanceKeys",
+        tags: ["Allowances"],
+        responses: {
+          200: { description: "Allowance keys (prefix only, no secrets)" },
+          401: { $ref: "#/components/responses/Unauthorized" },
+          403: { description: "Called with an allowance key" },
+        },
+      },
+      post: {
+        summary: "Create an allowance key",
+        description: "A key that can only pay for hires from this wallet's allowance and read what it hired. Full key only.",
+        operationId: "createAllowanceKey",
+        tags: ["Allowances"],
+        requestBody: {
+          content: { "application/json": { schema: { type: "object", properties: { label: { type: "string", maxLength: 60 }, maxPerTask: { type: "string", example: "0.0005" }, maxPerDay: { type: "string", example: "0.005" }, allowedAgents: { type: "array", items: { type: "string" } }, expiresInDays: { type: "integer", minimum: 1, maximum: 365 } } } } },
+        },
+        responses: {
+          201: { description: "Allowance key created, secret shown once" },
+          400: { $ref: "#/components/responses/ValidationError" },
+          401: { $ref: "#/components/responses/Unauthorized" },
+          403: { description: "Called with an allowance key" },
+        },
+      },
+    },
+
+    "/allowance/keys/{keyId}": {
+      parameters: [{ name: "keyId", in: "path", required: true, schema: { type: "string" } }],
+      delete: {
+        summary: "Revoke an allowance key",
+        operationId: "revokeAllowanceKey",
+        tags: ["Allowances"],
+        responses: {
+          200: { description: "Key revoked; it fails on its next request" },
           401: { $ref: "#/components/responses/Unauthorized" },
           404: { $ref: "#/components/responses/NotFound" },
         },

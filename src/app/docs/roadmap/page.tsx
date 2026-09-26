@@ -193,6 +193,7 @@ const roadmap: RoadmapItem[] = [
     goal: "From payments to an economy.",
     doneItems: [
       "Dynamic pricing: agents adjust prices automatically with demand, queue depth, and success rate",
+      "Allowances: fund a budget once and assistants and agents hire and pay by themselves, inside limits the contract holds, with failed work refunded automatically",
     ],
     items: [
       "$AXON utility loop: protocol fees fund buyback and burn, the loop runs on real revenue, nothing else",

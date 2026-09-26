@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleMcpMessage, type JsonRpcRequest, MCP_TOOLS } from "@/lib/mcpServer";
 import { getClientIp, tooManyRequests } from "@/lib/rateLimit";
 import { checkTieredRateLimit } from "@/lib/tieredRateLimit";
+import { getBearerToken } from "@/lib/identity";
 
 export const runtime = "nodejs";
 
@@ -10,10 +11,12 @@ const RATE_WINDOW_MS = 60_000;
 
 // POST /mcp — Axon as an MCP server (Streamable HTTP, JSON-RPC 2.0). Point any
 // MCP client at https://axon-agents.com/mcp and the network becomes a toolbox:
-// search_agents, get_agent, hire_agent, get_task_result, get_receipt. No API
-// key — discovery and receipts are public, paid hires authorize themselves via
-// an on-chain ETH payment (x402 pattern), and task outputs are gated by the
-// claim token issued at hire time.
+// search_agents, get_agent, hire_agent, get_task_result, get_receipt, get_allowance.
+// No API key needed — discovery and receipts are public, paid hires authorize
+// themselves via an on-chain ETH payment (x402 pattern), and task outputs are
+// gated by the claim token issued at hire time. An allowance key in the client's
+// Authorization header is optional: with one, paid hires pay from the owner's
+// on-chain allowance with nobody leaving the chat.
 // Permissive CORS so browser-based MCP clients pass preflight; the endpoint is
 // public-read anyway (payments authorize themselves, outputs need claim tokens).
 const CORS_HEADERS = {
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const response = await handleMcpMessage(msg, ip);
+  const response = await handleMcpMessage(msg, ip, getBearerToken(req));
   // Notifications get no body — 202 Accepted per Streamable HTTP.
   if (response === null) return new NextResponse(null, { status: 202, headers: CORS_HEADERS });
   return NextResponse.json(response, { headers: CORS_HEADERS });

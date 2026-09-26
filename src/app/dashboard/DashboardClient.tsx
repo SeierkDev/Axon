@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { useWallet } from "@/components/WalletProvider";
+import AllowancePanel from "./AllowancePanel";
 
 type Agent = {
   agentId: string;
@@ -74,6 +75,8 @@ type ApiKey = {
   keyPrefix: string;
   createdAt: string;
   lastUsedAt: string | null;
+  /** "allowance" keys are listed and revoked in the Allowance panel, with their limits. */
+  scope?: "full" | "allowance";
 };
 
 type BudgetStatus = {
@@ -1299,7 +1302,7 @@ npm run demo:agent`}</code>
               </div>
             )}
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
-              {data.keys.map((key) => {
+              {data.keys.filter((key) => key.scope !== "allowance").map((key) => {
                 const isCurrent = key.keyId === data.keyId;
                 const isRevoking = revoking.has(key.keyId);
                 const isRevealed = revealedKeys.has(key.keyId);
@@ -1371,6 +1374,8 @@ npm run demo:agent`}</code>
               })}
             </div>
           </section>
+
+          <AllowancePanel apiKey={apiKey} onToast={addToast} />
 
           <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
             <div className="flex items-center justify-between gap-4 mb-4">

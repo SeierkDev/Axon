@@ -8,7 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
-import { settleQuote, getQuote, type SettleFailure } from "./axonQuote";
+import { settleQuote, consumeQuoteForReservation, getQuote, type SettleFailure } from "./axonQuote";
 import { getSplitsForTask } from "./escrowSplits";
 import { getSlaForTask } from "./sla";
 import { getBudget } from "./budgets";
@@ -60,6 +60,32 @@ function unitsToDecimal(units: bigint): string {
  * ETH-denominated caps, and both would be handed a number in the wrong unit. Refusing is honest;
  * dividing 9,178 $AXON against a 0.5 ETH cap is not.
  */
+/**
+ * Why a task cannot be paid in $AXON at all, whatever proves the payment, or null when it can.
+ *
+ * Separate from createAxonPayment so a caller that has to commit money before recording the payment,
+ * an allowance reserving on chain, can ask first and never lock up funds for a hire that would be
+ * refused anyway.
+ */
+export function axonPaymentRefusal(opts: {
+  taskId?: string;
+  fromAgent: string;
+  toAgent: string;
+}): AxonPaymentFailure | null {
+  if (opts.taskId && getSplitsForTask(opts.taskId).length > 0) return "task-has-splits";
+  // Refused when the SLA is agreed rather than when the penalty is applied. The proportional split
+  // itself would survive another eighteen-decimal unit, but a task that cannot be settled cleanly
+  // should never be entered into, and finding that out at settlement is finding out too late.
+  if (opts.taskId && getSlaForTask(opts.taskId)) return "task-has-sla";
+  // A budget is a cap in ETH. Drawing an $AXON amount against it would compare two different units
+  // and let a payer spend far past their limit, or nothing at all, depending which way the rate sat.
+  if (getBudget(opts.fromAgent)) return "payer-has-budget";
+  // The worker's own terms. Escrowing a token payment for an agent that never opted in would commit
+  // its owner to being paid in something they did not agree to take.
+  if (!getAgentById(opts.toAgent)?.acceptsAxon) return "agent-does-not-accept-axon";
+  return null;
+}
+
 export async function createAxonPayment(opts: {
   taskId?: string;
   fromAgent: string;
@@ -67,6 +93,11 @@ export async function createAxonPayment(opts: {
   quoteId: string;
   txHash: string;
   payerWallet?: string;
+  /**
+   * What proves the quote was paid. A transfer to the receiver by default. "allowance" means txHash
+   * is a reservation the allowance path has already verified on chain, for exactly the quote's amount.
+   */
+  proof?: "transfer" | "allowance";
 }): Promise<{ ok: true; payment: AxonPayment } | { ok: false; reason: AxonPaymentFailure; detail?: string }> {
   const db = getDb();
 
@@ -75,32 +106,20 @@ export async function createAxonPayment(opts: {
     .get(opts.txHash);
   if (already) return { ok: false, reason: "signature-already-used" };
 
-  if (opts.taskId && getSplitsForTask(opts.taskId).length > 0) {
-    return { ok: false, reason: "task-has-splits" };
-  }
-  // Refused when the SLA is agreed rather than when the penalty is applied. The proportional split
-  // itself would survive another eighteen-decimal unit, but a task that cannot be settled cleanly
-  // should never be entered into, and finding that out at settlement is finding out too late.
-  if (opts.taskId && getSlaForTask(opts.taskId)) {
-    return { ok: false, reason: "task-has-sla" };
-  }
-  // A budget is a cap in ETH. Drawing an $AXON amount against it would compare two different units
-  // and let a payer spend far past their limit, or nothing at all, depending which way the rate sat.
-  if (getBudget(opts.fromAgent)) {
-    return { ok: false, reason: "payer-has-budget" };
-  }
-  // The worker's own terms. Escrowing a token payment for an agent that never opted in would commit
-  // its owner to being paid in something they did not agree to take.
-  if (!getAgentById(opts.toAgent)?.acceptsAxon) {
-    return { ok: false, reason: "agent-does-not-accept-axon" };
-  }
+  const refusal = axonPaymentRefusal(opts);
+  if (refusal) return { ok: false, reason: refusal };
 
-  const settled = await settleQuote({
-    quoteId: opts.quoteId,
-    txHash: opts.txHash,
-    ...(opts.payerWallet ? { payer: opts.payerWallet } : {}),
-  });
-  if (!settled.ok) return { ok: false, reason: settled.reason, detail: settled.detail };
+  const settled = opts.proof === "allowance"
+    ? consumeQuoteForReservation({ quoteId: opts.quoteId, reserveTx: opts.txHash })
+    : await settleQuote({
+      quoteId: opts.quoteId,
+      txHash: opts.txHash,
+      ...(opts.payerWallet ? { payer: opts.payerWallet } : {}),
+    });
+  if (!settled.ok) {
+    const detail = "detail" in settled && typeof settled.detail === "string" ? settled.detail : undefined;
+    return { ok: false, reason: settled.reason, detail };
+  }
 
   // The agent is owed the payment less the burned share. The obligation is written alongside, but is
   // not due yet: it becomes due only if this payment completes, and dies if it is refunded, because

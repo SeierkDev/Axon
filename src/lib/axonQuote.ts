@@ -258,6 +258,34 @@ export async function settleQuote(opts: {
   return { ok: true, quote: { ...quote, consumedAt, txHash: opts.txHash } };
 }
 
+/**
+ * Mark a quote paid by an allowance reservation.
+ *
+ * The allowance path has already proven, from the Reserved event, that exactly this quote's amount
+ * was set aside, so there is no transfer to verify here. Expiry is deliberately not rechecked: it was
+ * checked before the reservation was sent, and once the money is locked for the quoted amount the
+ * payer has done what they were asked, however long the block took.
+ */
+export function consumeQuoteForReservation(opts: {
+  quoteId: string;
+  reserveTx: string;
+}): { ok: true; quote: AxonQuote } | { ok: false; reason: SettleFailure } {
+  const quote = getQuote(opts.quoteId);
+  if (!quote) return { ok: false, reason: "unknown-quote" };
+  if (quote.consumedAt) {
+    return quote.txHash === opts.reserveTx ? { ok: true, quote } : { ok: false, reason: "already-settled" };
+  }
+  const consumedAt = new Date().toISOString();
+  const wrote = getDb()
+    .prepare("UPDATE axon_quotes SET consumed_at = ?, tx_hash = ? WHERE quote_id = ? AND consumed_at IS NULL")
+    .run(consumedAt, opts.reserveTx, quote.quoteId);
+  if (wrote.changes === 0) {
+    const current = getQuote(quote.quoteId);
+    return current?.txHash === opts.reserveTx ? { ok: true, quote: current } : { ok: false, reason: "already-settled" };
+  }
+  return { ok: true, quote: { ...quote, consumedAt, txHash: opts.reserveTx } };
+}
+
 /** Keeps the table from growing without limit. Called by the retention pass. */
 export function pruneQuotes(keepDays = 30): number {
   try {

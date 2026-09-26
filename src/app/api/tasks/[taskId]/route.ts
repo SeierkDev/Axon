@@ -3,6 +3,13 @@ import { getTaskById } from "@/lib/tasks";
 import { canAccessIdentity, requireApiKey } from "@/lib/apiAuth";
 import { claimTokenValid } from "@/lib/mcpServer";
 import { apiError } from "@/lib/apiError";
+import { getDb } from "@/lib/db";
+
+function paidByKey(taskId: string, keyId: string): boolean {
+  return Boolean(
+    getDb().prepare("SELECT 1 FROM allowance_reservations WHERE task_id = ? AND api_key_id = ?").get(taskId, keyId),
+  );
+}
 
 export async function GET(
   req: NextRequest,
@@ -25,11 +32,19 @@ export async function GET(
   }
 
   // Otherwise fall back to API-key auth (owner of the from/to agent).
-  const auth = requireApiKey(req);
+  const auth = requireApiKey(req, { allowAllowanceScope: true });
   if (!auth.ok) return auth.response;
   const task = getTaskById(taskId);
   if (!task) {
     return apiError("NOT_FOUND", `Task '${taskId}' not found`, 404);
+  }
+  // An allowance key reads what it hired and nothing else of its owner's, so a leaked assistant key
+  // exposes that assistant's own work rather than everything the wallet has ever done.
+  if (auth.user.scope === "allowance") {
+    if (!paidByKey(taskId, auth.user.keyId)) {
+      return apiError("FORBIDDEN", "This allowance key did not hire this task", 403);
+    }
+    return NextResponse.json(task);
   }
   if (!canAccessIdentity(auth.user, task.fromAgent) && !canAccessIdentity(auth.user, task.toAgent)) {
     return apiError("FORBIDDEN", "API key does not have access to this task", 403);

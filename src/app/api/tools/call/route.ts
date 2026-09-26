@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { handleMcpMessage } from "@/lib/mcpServer";
+import { getBearerToken } from "@/lib/identity";
 import { getClientIp, tooManyRequests } from "@/lib/rateLimit";
 import { checkTieredRateLimit } from "@/lib/tieredRateLimit";
 import { apiError } from "@/lib/apiError";
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
   const response = await handleMcpMessage(
     { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } },
     ip,
+    getBearerToken(req),
   );
 
   // An unknown tool comes back as a JSON-RPC error rather than a result, and over HTTP that deserves

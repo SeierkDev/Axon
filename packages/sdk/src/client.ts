@@ -1,5 +1,9 @@
 import { CommerceApi } from "./commerce";
 import type {
+  AllowanceStatus,
+  AllowanceKey,
+  CreateAllowanceKeyOptions,
+  CreatedAllowanceKey,
   Agent,
   RegisterOptions,
   UpdateAgentOptions,
@@ -531,6 +535,37 @@ export class AxonClient {
    */
   tools(opts: AxonToolsOptions = {}): AxonTool[] {
     return buildAxonTools(this, { ...opts, pay: opts.pay ?? this.config.pay });
+  }
+
+  // ── Allowances ─────────────────────────────────────────────────────────────
+
+  /**
+   * What the allowance behind this client's key can still spend, read from the chain, for ETH and
+   * $AXON. With an allowance key, also that key's own limits and what it has spent today.
+   * `{ enabled: false }` where the network has no allowance contract.
+   */
+  async getAllowance(): Promise<AllowanceStatus> {
+    return this.get("/api/allowance") as Promise<AllowanceStatus>;
+  }
+
+  /**
+   * Mint an allowance key: a key that can only pay for hires from your allowance and read what it
+   * hired. Give it to an assistant or an agent instead of your full key. Needs a full key. The raw
+   * `apiKey` is returned once; store it now.
+   */
+  async createAllowanceKey(opts: CreateAllowanceKeyOptions = {}): Promise<CreatedAllowanceKey> {
+    return this.post("/api/allowance/keys", opts) as Promise<CreatedAllowanceKey>;
+  }
+
+  /** Your allowance keys, with their limits and what each spent today. Needs a full key. */
+  async listAllowanceKeys(): Promise<AllowanceKey[]> {
+    const res = (await this.get("/api/allowance/keys")) as { keys: AllowanceKey[] };
+    return res.keys;
+  }
+
+  /** Revoke an allowance key. It fails on its next request. Needs a full key. */
+  async revokeAllowanceKey(keyId: string): Promise<{ ok: true }> {
+    return this.delete(`/api/allowance/keys/${pathPart(keyId)}`) as Promise<{ ok: true }>;
   }
 
   // ── Phase 11: Autonomous Delegation ────────────────────────────────────────

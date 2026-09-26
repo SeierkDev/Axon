@@ -72,11 +72,11 @@ describe("MCP endpoint: protocol surface", () => {
     expect(((await none.json()) as { result: { protocolVersion: string } }).result.protocolVersion).toBe("2025-03-26");
   });
 
-  it("tools/list exposes the five marketplace tools", async () => {
+  it("tools/list exposes the six marketplace tools", async () => {
     const res = await rpc("tools/list");
     const json = (await res.json()) as { result: { tools: { name: string }[] } };
     const names = json.result.tools.map((t) => t.name);
-    expect(names).toEqual(["search_agents", "get_agent", "hire_agent", "get_task_result", "get_receipt"]);
+    expect(names).toEqual(["search_agents", "get_agent", "hire_agent", "get_task_result", "get_allowance", "get_receipt"]);
   });
 
   it("notifications get 202 with no body", async () => {

@@ -20,6 +20,7 @@ import { verifyAgentEndpoint } from "../lib/verification";
 import { logger } from "../lib/logger";
 import { runWithTraceId } from "../lib/tracing";
 import { checkAllThresholds } from "../lib/spendThreshold";
+import { reconcileAllowances } from "../lib/allowancePayment";
 
 // Agents that append live market prices to their task message
 const PRICE_AGENTS = new Set(["crypto-agent", "trading-agent"]);
@@ -29,6 +30,8 @@ const PRICE_AGENTS = new Set(["crypto-agent", "trading-agent"]);
 const POLL_INTERVAL_MS = 3_000;
 const HEALTH_INTERVAL_MS = 5 * 60 * 1000;
 const THRESHOLD_INTERVAL_MS = 5 * 60 * 1000;
+/** How often allowance reservations are settled or released. Well inside the owner's 24h reclaim window. */
+const ALLOWANCE_INTERVAL_MS = 60 * 1000;
 const SHUTDOWN_TIMEOUT_MS = Number.parseInt(process.env.AXON_WORKER_SHUTDOWN_TIMEOUT_MS ?? "25000", 10);
 // 10 min. Sized for a single inference (up to 3 retries × 120 s provider
 // timeout); a tool-granted agent spends it across several model calls plus the
@@ -92,6 +95,8 @@ let shutdownRequested = false;
 let pollTimer: NodeJS.Timeout | null = null;
 let healthTimer: NodeJS.Timeout | null = null;
 let thresholdTimer: NodeJS.Timeout | null = null;
+let allowanceTimer: NodeJS.Timeout | null = null;
+let allowanceRunning = false;
 let activePoll: Promise<void> | null = null;
 let activeHealthCheck: Promise<void> | null = null;
 
@@ -430,6 +435,10 @@ function clearTimers(): void {
     clearInterval(thresholdTimer);
     thresholdTimer = null;
   }
+  if (allowanceTimer) {
+    clearInterval(allowanceTimer);
+    allowanceTimer = null;
+  }
 }
 
 async function waitForActiveWork(): Promise<void> {
@@ -585,6 +594,16 @@ export async function startWorkerLoops(): Promise<void> {
   thresholdTimer = setInterval(() => {
     checkAllThresholds();
   }, THRESHOLD_INTERVAL_MS);
+
+  // Settle or release allowance reservations the ledger has decided. Does nothing until allowances
+  // are enabled. Skips a tick rather than overlap one still waiting on the chain.
+  allowanceTimer = setInterval(() => {
+    if (allowanceRunning || shutdownRequested) return;
+    allowanceRunning = true;
+    reconcileAllowances()
+      .catch((err) => logger.error("allowance.reconcile_failed", "Allowance reconcile failed", { err }))
+      .finally(() => { allowanceRunning = false; });
+  }, ALLOWANCE_INTERVAL_MS);
 }
 
 // Run the full standalone worker (own signal + crash handling) only when launched

@@ -7,12 +7,17 @@
 //
 //   search_agents -> hire_agent -> get_task_result -> get_receipt
 //
-// Payments stay non-custodial, exactly like the rest of Axon: a paid hire
-// returns x402-style payment requirements (amount + treasury address); the
-// client pays with its own wallet and calls hire_agent again
-// with the payment signature. This module never touches funds — hire_agent
-// delegates to the real /api/tasks route handler, inheriting its free-lane
-// limits, payment verification, and replay guards without duplicating any of it.
+// Payments stay non-custodial, exactly like the rest of Axon. Two ways to pay for a paid hire:
+//
+//   with an allowance key on the connection (Authorization header in the client's MCP config):
+//     hire_agent pays from the owner's on-chain allowance, inside the owner's rules and the key's
+//     own limits. Nobody leaves the chat. See allowancePayment.ts.
+//   without one: hire_agent returns x402-style payment requirements (amount + treasury address);
+//     the client pays with its own wallet and calls hire_agent again with the payment signature.
+//
+// This module never touches funds either way: hire_agent delegates to the real /api/tasks route
+// handler, inheriting its free-lane limits, payment verification, allowance checks and replay guards
+// without duplicating any of it.
 //
 // Task outputs are private. hire_agent returns a claim token (HMAC over the
 // task id, derived from SEED_SECRET) and get_task_result requires it — only the
@@ -29,6 +34,7 @@ import { computeProofScore } from "./proofScore";
 import { semanticSearchAgents } from "./embeddings";
 import { parsePriceToEth } from "./payments";
 import { parsePaymentAmount } from "./money";
+import { authenticateApiKey } from "./identity";
 import type { Agent } from "@/sdk/types";
 
 const PROTOCOL_VERSION = "2025-03-26";
@@ -108,7 +114,7 @@ export const MCP_TOOLS = [
   {
     name: "hire_agent",
     description:
-      "Hire an Axon agent for a task. Free-lane agents run immediately. Paid agents return payment requirements (an ETH amount and an address): pay with your own wallet, then call again with paymentSignature, the payment IS the authorization, no account needed. Returns a taskId plus a claimToken; keep the claimToken, it is the only way to read the result.",
+      "Hire an Axon agent for a task. Free-lane agents run immediately. Paid agents: if this connection carries an Axon allowance key, the hire is paid automatically from the owner's on-chain allowance, within their limits; if a limit would be exceeded the reason comes back in words. Without a key, paid agents return payment requirements (an ETH amount and an address): pay with your own wallet, then call again with paymentSignature. Returns a taskId plus a claimToken; keep the claimToken, it is the only way to read the result.",
     inputSchema: {
       type: "object",
       properties: {
@@ -122,6 +128,15 @@ export const MCP_TOOLS = [
         payerWallet: {
           type: "string",
           description: "The address that sent the payment (send with paymentSignature for paid agents)",
+        },
+        payIn: {
+          type: "string",
+          enum: ["ETH", "AXON"],
+          description: "With an allowance key: pay in ETH (default) or in $AXON, for agents that accept it",
+        },
+        idempotencyKey: {
+          type: "string",
+          description: "A unique string for this hire, 8-128 characters of letters, numbers, '.', '_', ':' or '-'. Retrying with the same key returns the same task instead of paying twice",
         },
       },
       required: ["agentId", "task"],
@@ -139,6 +154,12 @@ export const MCP_TOOLS = [
       },
       required: ["taskId", "claimToken"],
     },
+  },
+  {
+    name: "get_allowance",
+    description:
+      "What the allowance behind this connection's key can still spend: available balance, per-task and daily limits and what is left today, for ETH and $AXON, plus this key's own limits. Needs an Axon allowance key in the connection's Authorization header.",
+    inputSchema: { type: "object", properties: {} },
   },
   {
     name: "get_receipt",
@@ -212,7 +233,7 @@ function toolGetAgent(args: Record<string, unknown>) {
 // Delegates to the real /api/tasks route handler so the MCP path inherits its
 // free-lane limits, x402 payment verification, and replay guards verbatim. The
 // caller's IP is forwarded so per-IP limits apply to the actual client.
-async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
+async function toolHireAgent(args: Record<string, unknown>, clientIp: string, apiKey: string | null) {
   const agentId = String(args.agentId ?? "");
   const task = typeof args.task === "string" ? args.task.trim() : "";
   if (!agentId || !task) return { error: "agentId and task are required" };
@@ -225,6 +246,9 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
   // Paid means exactly what the tasks route will enforce (parsePriceToEth) — a
   // price of "0 ETH" or unparseable text is free there, so it is free here too.
   const paid = parsePriceToEth(agent.price ?? undefined) !== null;
+  if (paid && !paymentSignature && apiKey) {
+    return hireFromAllowance(args, agent, task, clientIp, apiKey);
+  }
   if (paid && !paymentSignature) {
     const parsed = parsePaymentAmount(agent.price!);
     const payTo = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_WALLET_ADDRESS ?? null;
@@ -236,6 +260,7 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
       payTo,
       network: "eip155:4663",
       instructions: `Pay ${agent.price} to ${payTo ?? "the Axon treasury"} on Robinhood Chain with your own wallet, then call hire_agent again with the transaction hash as paymentSignature and your wallet address as payerWallet. The payment is the authorization, no account needed.`,
+      orUseAnAllowance: "Or add an Axon allowance key to this MCP connection's Authorization header, and hire_agent pays from your on-chain allowance automatically, within your limits.",
     };
   }
 
@@ -283,6 +308,72 @@ async function toolHireAgent(args: Record<string, unknown>, clientIp: string) {
   };
 }
 
+/** The wallet a key on this connection belongs to, or null if it is not a key we know. */
+function walletForKey(apiKey: string): string | null {
+  const probe = new NextRequest(`${BASE_URL}/mcp`, { headers: { "x-api-key": apiKey } });
+  return authenticateApiKey(probe, { allowAllowanceScope: true })?.walletAddress ?? null;
+}
+
+/** An error the tasks route returned, as the words it said. */
+function routeError(json: Record<string, unknown>, status: number) {
+  return { error: typeof json.error === "string" ? json.error : `hire failed (${status})`, code: json.code ?? null };
+}
+
+// A paid hire, paid from the allowance of the wallet this connection's key belongs to. The tasks route
+// does every check: the owner's rules on chain, the key's own limits, and refusal in words.
+async function hireFromAllowance(
+  args: Record<string, unknown>,
+  agent: Agent,
+  task: string,
+  clientIp: string,
+  apiKey: string,
+) {
+  const wallet = walletForKey(apiKey);
+  if (!wallet) return { error: "The Authorization key on this MCP connection is not a valid Axon key" };
+
+  const body: Record<string, unknown> = { from: wallet, to: agent.agentId, task, paymentMethod: "allowance" };
+  if (args.context && typeof args.context === "object") body.context = args.context;
+
+  // The route makes a quote for this hire alone; see freshAxonQuoteFor.
+  if (args.payIn === "AXON") body.payIn = "AXON";
+
+  const { POST: createTaskRoute } = await import("@/app/api/tasks/route");
+  const idempotencyKey = typeof args.idempotencyKey === "string" ? args.idempotencyKey.trim() : "";
+  const res = await createTaskRoute(new NextRequest(`${BASE_URL}/api/tasks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-forwarded-for": clientIp,
+      "x-api-key": apiKey,
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+    },
+    body: JSON.stringify(body),
+  }));
+  const json = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) return routeError(json, res.status);
+
+  const taskId = String(json.taskId);
+  return {
+    taskId,
+    status: json.status,
+    paidFrom: "allowance",
+    ...(res.headers.get("X-Idempotent-Replay") === "true" ? { alreadyHired: true } : {}),
+    claimToken: claimTokenFor(taskId),
+    receiptUrl: `${BASE_URL}/r/${taskId}`,
+    note: "Paid from your allowance. Keep the claimToken, it is the only way to read this task's output via get_task_result.",
+  };
+}
+
+async function toolGetAllowance(apiKey: string | null) {
+  if (!apiKey) {
+    return { error: "get_allowance needs an Axon allowance key in this MCP connection's Authorization header" };
+  }
+  const { GET: allowanceRoute } = await import("@/app/api/allowance/route");
+  const res = await allowanceRoute(new NextRequest(`${BASE_URL}/api/allowance`, { headers: { "x-api-key": apiKey } }));
+  const json = (await res.json()) as Record<string, unknown>;
+  return res.ok ? json : routeError(json, res.status);
+}
+
 function toolGetTaskResult(args: Record<string, unknown>) {
   const taskId = String(args.taskId ?? "");
   const token = String(args.claimToken ?? "");
@@ -321,14 +412,16 @@ function toolGetReceipt(args: Record<string, unknown>) {
 
 // ── Dispatcher ────────────────────────────────────────────────────────────────
 
-async function callTool(name: string, args: Record<string, unknown>, clientIp: string): Promise<unknown> {
+async function callTool(name: string, args: Record<string, unknown>, clientIp: string, apiKey: string | null): Promise<unknown> {
   switch (name) {
     case "search_agents":
       return toolSearchAgents(args);
     case "get_agent":
       return toolGetAgent(args);
     case "hire_agent":
-      return toolHireAgent(args, clientIp);
+      return toolHireAgent(args, clientIp, apiKey);
+    case "get_allowance":
+      return toolGetAllowance(apiKey);
     case "get_task_result":
       return toolGetTaskResult(args);
     case "get_receipt":
@@ -340,7 +433,15 @@ async function callTool(name: string, args: Record<string, unknown>, clientIp: s
 
 // Handle one JSON-RPC message. Returns null for notifications (no id) — the
 // route replies 202 with no body, per Streamable HTTP.
-export async function handleMcpMessage(msg: JsonRpcRequest, clientIp: string): Promise<JsonRpcResponse | null> {
+/**
+ * @param apiKey the key on the connection's Authorization header, if any. Optional: discovery, free
+ *   hires and receipts need none. With one, paid hires pay from the owner's allowance.
+ */
+export async function handleMcpMessage(
+  msg: JsonRpcRequest,
+  clientIp: string,
+  apiKey: string | null = null,
+): Promise<JsonRpcResponse | null> {
   const id = msg.id ?? null;
   const isNotification = msg.id === undefined;
 
@@ -356,7 +457,7 @@ export async function handleMcpMessage(msg: JsonRpcRequest, clientIp: string): P
         capabilities: { tools: {} },
         serverInfo: SERVER_INFO,
         instructions:
-          "Axon is an open agent marketplace: search_agents to discover, hire_agent to create a task (paid agents return ETH payment requirements, pay with your own wallet, then retry with paymentSignature), get_task_result with your claimToken for the output, get_receipt for the public verifiable proof.",
+          "Axon is an open agent marketplace: search_agents to discover, hire_agent to create a task, get_task_result with your claimToken for the output, get_receipt for the public verifiable proof. Paid agents: with an Axon allowance key on this connection, hire_agent pays from the owner's on-chain allowance automatically (get_allowance shows what is left); without one, it returns ETH payment requirements to pay with your own wallet and retry with paymentSignature.",
       });
     }
     case "notifications/initialized":
@@ -372,7 +473,7 @@ export async function handleMcpMessage(msg: JsonRpcRequest, clientIp: string): P
       const args = (params.arguments && typeof params.arguments === "object" ? params.arguments : {}) as Record<string, unknown>;
       let result: unknown;
       try {
-        result = await callTool(name, args, clientIp);
+        result = await callTool(name, args, clientIp, apiKey);
       } catch (e) {
         return rpcResult(id, {
           content: [{ type: "text", text: e instanceof Error ? e.message : "tool execution failed" }],

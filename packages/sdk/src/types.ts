@@ -183,8 +183,13 @@ export interface SendTaskOptions {
    * How a paid hire is funded: "onchain" (default — a fresh ETH transfer proven
    * by paymentSignature) or "balance" (spend the `from` agent's earned balance,
    * no new transfer). "balance" requires an authenticated, registered `from`.
+   * "allowance" pays from the on-chain allowance of the wallet this client's key belongs to.
    */
-  paymentMethod?: "onchain" | "balance";
+  paymentMethod?: "onchain" | "balance" | "allowance";
+  /** With paymentMethod "allowance": pay in $AXON at a quote made for this hire. Default ETH. */
+  payIn?: "ETH" | "AXON";
+  /** With paymentMethod "allowance": pay a quote you already hold, in $AXON. */
+  quoteId?: string;
   signature?: string;
   idempotencyKey?: string;
 }
@@ -1136,7 +1141,7 @@ export interface RunOptions {
    * for it is safe; what it never does is quietly change what a wallet spends.
    */
   payWith?: X402Currency;
-  paymentMethod?: "onchain" | "balance";
+  paymentMethod?: "onchain" | "balance" | "allowance";
   pollIntervalMs?: number;
   timeoutMs?: number;
   withReceipt?: boolean;
@@ -1158,7 +1163,7 @@ export interface RouteHireOptions {
   /** Price ceiling, e.g. "0.0002 ETH". */
   maxPrice?: string;
   context?: Record<string, unknown>;
-  paymentMethod?: "onchain" | "balance";
+  paymentMethod?: "onchain" | "balance" | "allowance";
 }
 
 /** The router's decision, attached to an auto-routed task. */
@@ -1264,8 +1269,12 @@ export interface HireOptions {
    * Set to "balance" to fund a paid hire from the `from` agent's earned balance
    * instead of a fresh on-chain transfer — no `pay` function needed. Requires an
    * authenticated client and a registered `from` agent that owns the balance.
+   *
+   * Set to "allowance" to pay from the on-chain allowance of the wallet this client's key belongs to:
+   * no `pay` function, no wallet prompt. Works with a full key or an allowance key. `payWith: "axon"`
+   * pays it in $AXON. A hire over a limit throws AxonApiError (402) with the reason in its message.
    */
-  paymentMethod?: "onchain" | "balance";
+  paymentMethod?: "onchain" | "balance" | "allowance";
   /** Poll interval while waiting for completion, ms. Default 2000. */
   pollIntervalMs?: number;
   /** Overall wait for completion before giving up, ms. Default 120000. */
@@ -1543,4 +1552,82 @@ export interface AutoApprovePolicy {
   onSkipped?: (intent: PurchaseIntent, reason: string) => void | Promise<void>;
   onError?: (err: unknown) => void;
   intervalMs?: number;
+}
+
+// ── Allowances ───────────────────────────────────────────────────────────────
+
+/** One token's allowance, as the chain has it right now. Amounts are decimal strings. */
+export interface AllowanceAccount {
+  token: "ETH" | "AXON";
+  tokenAddress: string;
+  /** False until the owner has set rules for this token; nothing can be paid from it before then. */
+  configured: boolean;
+  /** What can still be set aside for new hires. */
+  available: string;
+  /** Held for hires still running. */
+  reserved: string;
+  maxPerTask: string;
+  maxPerDay: string;
+  spentToday: string;
+  expiresAt: string | null;
+  paused: boolean;
+  restrictedToAllowedAgents: boolean;
+}
+
+/** An allowance key's own limits, under the allowance's. Amounts in ETH. */
+export interface AllowanceKeyLimitsView {
+  maxPerTask: string;
+  maxPerDay: string;
+  spentToday: string;
+  /** null: any agent the allowance itself permits. */
+  allowedAgents: string[] | null;
+  expiresAt: string;
+}
+
+export type AllowanceStatus =
+  | { enabled: false }
+  | {
+    enabled: true;
+    wallet: string;
+    accounts: AllowanceAccount[];
+    /** Present when this client holds an allowance key. */
+    key?: AllowanceKeyLimitsView;
+  };
+
+export interface CreateAllowanceKeyOptions {
+  /** Shown in your key list, e.g. "Claude" or "research bot". */
+  label?: string;
+  /** ETH, as a decimal string. Default "0.0005". */
+  maxPerTask?: string;
+  /** ETH, as a decimal string. Default "0.005". */
+  maxPerDay?: string;
+  /** Limit the key to these agents. Omit to allow any agent the allowance permits. */
+  allowedAgents?: string[];
+  /** 1 to 365. Default 30. */
+  expiresInDays?: number;
+}
+
+export interface AllowanceKey {
+  keyId: string;
+  keyPrefix: string;
+  label: string | null;
+  maxPerTask: string;
+  maxPerDay: string;
+  spentToday: string;
+  allowedAgents: string[] | null;
+  expiresAt: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+/** A newly minted allowance key. `apiKey` is shown once and never again. */
+export interface CreatedAllowanceKey {
+  keyId: string;
+  apiKey: string;
+  keyPrefix: string;
+  label: string | null;
+  maxPerTask: string;
+  maxPerDay: string;
+  allowedAgents: string[] | null;
+  expiresAt: string;
 }

@@ -152,15 +152,34 @@ export function verifyWalletSignature(opts: {
 
 // ─── API key auth ─────────────────────────────────────────────────────────────
 
+/**
+ * What a key may do. "full" is every key that existed before allowances and every key minted by
+ * /api/auth/keys. "allowance" can only pay for hires from its wallet's on-chain allowance and read
+ * what it hired; see allowanceKeys.ts.
+ */
+export type ApiKeyScope = "full" | "allowance";
+
 export interface AuthenticatedUser {
   keyId: string;
   walletAddress: string;
+  /** Absent means "full", so code that builds a user by hand keeps meaning what it meant. */
+  scope?: ApiKeyScope;
+}
+
+export interface AuthenticateOptions {
+  /**
+   * Accept an allowance-scoped key. Off by default, and that default is the security of the whole
+   * feature: every route that reads a key treats an allowance key as no key at all, unless the route
+   * was written to take one. A route added next year is safe without anyone remembering allowances.
+   */
+  allowAllowanceScope?: boolean;
 }
 
 interface ApiKeyRow {
   key_id: string;
   wallet_address: string;
   hash_algorithm: string;
+  scope: ApiKeyScope | null;
 }
 
 /**
@@ -177,7 +196,7 @@ export function getBearerToken(req: NextRequest): string | null {
   return match?.[1]?.trim() ?? null;
 }
 
-export function createApiKey(walletAddress: string): {
+export function createApiKey(walletAddress: string, opts: { scope?: ApiKeyScope; label?: string } = {}): {
   keyId: string;
   apiKey: string;
   keyPrefix: string;
@@ -193,31 +212,29 @@ export function createApiKey(walletAddress: string): {
   const now = new Date().toISOString();
 
   db.prepare(`
-    INSERT INTO api_keys (key_id, wallet_address, key_hash, key_prefix, hash_algorithm, created_at)
-    VALUES (?, ?, ?, ?, 'scrypt', ?)
-  `).run(keyId, owner, hashApiKeyScrypt(apiKey), keyPrefix, now);
+    INSERT INTO api_keys (key_id, wallet_address, key_hash, key_prefix, hash_algorithm, created_at, scope, label)
+    VALUES (?, ?, ?, ?, 'scrypt', ?, ?, ?)
+  `).run(keyId, owner, hashApiKeyScrypt(apiKey), keyPrefix, now, opts.scope ?? "full", opts.label ?? null);
   void syncToTurso();
 
   return { keyId, apiKey, keyPrefix, walletAddress: owner };
 }
 
-export function authenticateApiKey(req: NextRequest): AuthenticatedUser | null {
-  const apiKey = getBearerToken(req);
-  if (!apiKey) return null;
-
+/** The stored row for a presented key, upgrading a legacy hash on first sight. Null if unknown. */
+function lookupApiKey(apiKey: string): ApiKeyRow | null {
   const db = getDb();
 
   // Try scrypt (new keys)
   const scryptHash = hashApiKeyScrypt(apiKey);
   let row = db
-    .prepare("SELECT key_id, wallet_address, hash_algorithm FROM api_keys WHERE key_hash = ? AND hash_algorithm = 'scrypt'")
+    .prepare("SELECT key_id, wallet_address, hash_algorithm, scope FROM api_keys WHERE key_hash = ? AND hash_algorithm = 'scrypt'")
     .get(scryptHash) as ApiKeyRow | undefined;
 
   if (!row) {
     // Transparent migration: look up legacy SHA-256 hash and upgrade on first auth
     const sha256Hash = hashApiKeySha256Legacy(apiKey);
     const legacyRow = db
-      .prepare("SELECT key_id, wallet_address, hash_algorithm FROM api_keys WHERE key_hash = ? AND hash_algorithm = 'sha256'")
+      .prepare("SELECT key_id, wallet_address, hash_algorithm, scope FROM api_keys WHERE key_hash = ? AND hash_algorithm = 'sha256'")
       .get(sha256Hash) as ApiKeyRow | undefined;
 
     if (legacyRow) {
@@ -226,13 +243,34 @@ export function authenticateApiKey(req: NextRequest): AuthenticatedUser | null {
       row = legacyRow;
     }
   }
+  return row ?? null;
+}
 
+export function authenticateApiKey(req: NextRequest, opts: AuthenticateOptions = {}): AuthenticatedUser | null {
+  const apiKey = getBearerToken(req);
+  if (!apiKey) return null;
+
+  const row = lookupApiKey(apiKey);
   if (!row) return null;
+  const scope: ApiKeyScope = row.scope === "allowance" ? "allowance" : "full";
+  if (scope === "allowance" && !opts.allowAllowanceScope) return null;
 
-  db.prepare("UPDATE api_keys SET last_used_at = ? WHERE key_id = ?")
+  getDb().prepare("UPDATE api_keys SET last_used_at = ? WHERE key_id = ?")
     .run(new Date().toISOString(), row.key_id);
 
-  return { keyId: row.key_id, walletAddress: row.wallet_address };
+  return { keyId: row.key_id, walletAddress: row.wallet_address, scope };
+}
+
+/**
+ * The scope of the key on this request, without authenticating it for anything. Lets a route that
+ * refused an allowance key say why, rather than answer "invalid key" to a key that is perfectly valid.
+ */
+export function presentedKeyScope(req: NextRequest): ApiKeyScope | null {
+  const apiKey = getBearerToken(req);
+  if (!apiKey) return null;
+  const row = lookupApiKey(apiKey);
+  if (!row) return null;
+  return row.scope === "allowance" ? "allowance" : "full";
 }
 
 export function revokeApiKey(req: NextRequest): boolean {
@@ -257,13 +295,15 @@ export interface ApiKeyInfo {
   keyPrefix: string;
   createdAt: string;
   lastUsedAt: string | null;
+  scope: ApiKeyScope;
+  label: string | null;
 }
 
 export function listApiKeys(walletAddress: string): ApiKeyInfo[] {
-  interface Row { key_id: string; key_prefix: string; created_at: string; last_used_at: string | null }
+  interface Row { key_id: string; key_prefix: string; created_at: string; last_used_at: string | null; scope: string | null; label: string | null }
   const rows = getDb()
     .prepare(`
-      SELECT key_id, key_prefix, created_at, last_used_at
+      SELECT key_id, key_prefix, created_at, last_used_at, scope, label
       FROM api_keys WHERE wallet_address = ?
       ORDER BY created_at DESC
     `)
@@ -273,6 +313,8 @@ export function listApiKeys(walletAddress: string): ApiKeyInfo[] {
     keyPrefix: r.key_prefix,
     createdAt: r.created_at,
     lastUsedAt: r.last_used_at,
+    scope: r.scope === "allowance" ? "allowance" : "full",
+    label: r.label,
   }));
 }
 
